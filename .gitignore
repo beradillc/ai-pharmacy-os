@@ -29,6 +29,7 @@ frontend/out/
 *.swp
 .idea/
 .vscode/
+.claude/
 
 # Data / runtime
 *.sqlite3
