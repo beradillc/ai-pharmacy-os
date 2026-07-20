@@ -1,0 +1,29 @@
+[importlinter]
+root_package = pharmacy_os
+
+[importlinter:contract:layers]
+name = Hexagonal layers (kernel-ready; module layers added per-module)
+type = layers
+layers =
+    pharmacy_os.api
+    pharmacy_os.modules
+    pharmacy_os.core
+    pharmacy_os.shared
+
+[importlinter:contract:kernel-knows-no-business]
+name = Core kernel must not import business modules
+type = forbidden
+source_modules =
+    pharmacy_os.core
+forbidden_modules =
+    pharmacy_os.modules
+
+[importlinter:contract:shared-is-leaf]
+name = Shared must not import core/modules/api
+type = forbidden
+source_modules =
+    pharmacy_os.shared
+forbidden_modules =
+    pharmacy_os.core
+    pharmacy_os.modules
+    pharmacy_os.api
