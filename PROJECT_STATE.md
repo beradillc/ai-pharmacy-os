@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 2 (HOÀN THÀNH)**
+> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 3 (HOÀN THÀNH)**
 
 ---
 
@@ -10,13 +10,13 @@
 | Hạng mục | Trạng thái |
 |----------|-----------|
 | Giai đoạn | Giai đoạn 1 — Nền tảng |
-| Sprint | Sprint 2 — Skeleton & Kernel |
+| Sprint | Sprint 3 — Catalog & Inventory |
 | Tình trạng Sprint | ✅ **HOÀN THÀNH** |
-| Kernel backend | ✅ Chạy được (health + OpenAPI); 21 test xanh |
-| Module nghiệp vụ | ❌ Chưa (đúng chủ đích — bắt đầu Sprint 3) |
-| Chất lượng | ✅ ruff · ✅ ruff format · ✅ import-linter (3/0) · ✅ mypy strict (35 file) · ✅ pytest (21) |
-| Hạ tầng dev | ✅ docker compose (postgres pgvector + redis) healthy; ✅ alembic `0001` áp dụng live |
-| Sprint kế tiếp | Sprint 3 — Catalog & Inventory (chưa khởi động) |
+| Kernel backend | ✅ (Sprint 2) |
+| Module nghiệp vụ | ✅ `catalog`, `inventory` (Hexagonal, event-sourced, FEFO) |
+| Chất lượng | ✅ ruff · ✅ format · ✅ import-linter (**6/0**) · ✅ mypy strict (**92 file**) · ✅ pytest (**46**) · domain coverage **97%** |
+| Hạ tầng dev | ✅ docker compose healthy; ✅ alembic `0001`+`0002` áp dụng live; ✅ seed ATC idempotent |
+| Sprint kế tiếp | Sprint 4 — Sales / POS offline (chưa khởi động) |
 
 ---
 
@@ -83,6 +83,21 @@
 
 **Bằng chứng chạy:** `pytest` 21 passed · `mypy` strict no issues (35 file) · `ruff`+format sạch · `import-linter` 3 kept/0 broken · `docker compose up` healthy · `alembic upgrade head` bật `vector`+`pgcrypto`.
 
+## 3c. Module nghiệp vụ đã hiện thực (Sprint 3)
+
+| Module | Điểm chính | Trạng thái |
+|--------|-----------|-----------|
+| `catalog` | `Drug` aggregate, `DrugUnit` quy đổi (`to_base_quantity`), `RxClass` (OTC/ETC/CONTROLLED) | ✅ domain+app+infra+interface |
+| `inventory` | `ProductBatch`, `StockMovement` event-sourced, `allocate_fefo` thuần, projection `stock_balances` | ✅ |
+| — | Use-cases: `receive_stock`, `dispense_stock` (FEFO), `on_hand`, `list_near_expiry` | ✅ |
+| — | Events: `StockMovedIn/Out`, `LowStockDetected` (publish-after-commit) | ✅ |
+| — | API v1: `/drugs`, `/inventory/{receive,dispense,on-hand,alerts/near-expiry}` | ✅ |
+| — | Migration `0002_catalog_inventory` (6 bảng, unique + index) | ✅ live + reversible |
+| — | Seed ATC (10 mã) idempotent — `make seed` | ✅ |
+| — | Context dep **tạm** (dev header-based) tới khi có IAM (Sprint 6) — xem `api/deps.py` | ⚠️ interim |
+
+**Bằng chứng Sprint 3:** `pytest` **46 passed** · domain coverage **97%** · `mypy` strict (92 file) · `import-linter` **6 kept/0 broken** (thêm domain-purity + module-independence) · migration `0002` autogenerate→apply→`alembic check` không drift→downgrade/upgrade OK · seed chạy live (10→0).
+
 ## 4. Cấu trúc hiện có trên đĩa
 
 ```text
@@ -127,17 +142,16 @@ AI_Pharmacy_OS/
 
 ---
 
-## 7. Việc cần làm ngay khi mở Sprint 3
+## 7. Việc cần làm ngay khi mở Sprint 4 (Sales / POS)
 
-1. `pip install -e ".[dev]"` trong `backend/` (hoặc `make install`).
-2. Tạo module `catalog/` theo 4 lớp Hexagonal ([04](docs/04_FOLDER_STRUCTURE.md) §2.1).
-3. ORM models kế thừa `Base` + mixins; migration mới cho bảng `drugs`, `drug_units`, `atc_codes`.
-4. Module `inventory/`: `ProductBatch`, `StockMovement` (event-sourced), FEFO allocator.
-5. Đăng ký router + event handler qua `register(container)`; thêm contract layer vào `.importlinter`.
-6. Integration test với testcontainers (Postgres thật) — mục tiêu ≥ 80% domain.
-7. (Quản trị) Chốt **giấy phép mã nguồn** + commit git đầu tiên nếu chủ dự án đồng ý.
+1. Module `sales/`: `SalesOrder` aggregate, items, payments, returns (Hexagonal).
+2. Idempotency `client_uuid` + endpoint `/sync/sales` (offline-first).
+3. Sự kiện `SaleCompleted` → handler ở `inventory` gọi FEFO dispense (nối 2 module qua event bus — lần đầu cross-module).
+4. Rule chặn ETC thiếu đơn (`ensure_rx_for_etc`) — dùng `Drug.is_prescription_required()`.
+5. FE POS tối thiểu + Dexie offline queue (khởi tạo `frontend/`, `pnpm`).
+6. Thay context tạm ở `api/deps.py` bằng JWT thực khi IAM sẵn sàng (hoặc giữ tới Sprint 6).
 
-> **Ranh giới:** kernel (Sprint 2) không chứa nghiệp vụ; nghiệp vụ bắt đầu ở Sprint 3.
+> **Nợ kỹ thuật cần theo dõi:** `api/deps.py` dùng context dev-header tạm (không dùng ở prod); FK `drugs.atc_code`→`atc_codes` chưa bật (đang là string). Ghi tại đây để không quên.
 
 ---
 
@@ -145,15 +159,16 @@ AI_Pharmacy_OS/
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-21 | **Sprint 3 HOÀN THÀNH.** Module `catalog` + `inventory` (Hexagonal, event-sourced, FEFO thuần). API v1 drugs/inventory. Migration `0002` (6 bảng) live + reversible, `alembic check` sạch. Seed ATC idempotent. Contract mới: domain-purity + module-independence. 46 test, domain coverage 97%, mypy strict 92 file, import-linter 6/0. |
 | 2026-07-21 | **Quản trị pre-Sprint 3.** Chốt giấy phép **Apache-2.0** (thêm `LICENSE`, `NOTICE`, metadata pyproject). Commit git đầu tiên `c6fc698` (74 file, branch `main`); working tree sạch. |
 | 2026-07-21 | **Sprint 2 HOÀN THÀNH.** Hiện thực kernel backend (config, DI, event bus, UoW, security, audit, AI port, plugin loader, errors, API v1 + health, Alembic `0001`). CI + docker-compose + Makefile. Gate xanh: pytest 21, mypy strict 35 file, ruff/format, import-linter 3/0; docker+migration chạy live. Cập nhật README/ROADMAP/PROJECT_STATE. |
 | 2026-07-21 | Khởi tạo dự án. Hoàn thành Sprint 1: 15 tài liệu thiết kế. Chốt stack, kiến trúc, ERD, module, plugin, AI, config, API. README/ROADMAP/PROJECT_STATE hoàn chỉnh. |
 
 ---
 
-## 9. Tuyên bố kết thúc Sprint 2
+## 9. Tuyên bố kết thúc Sprint 3
 
-> ✅ **Sprint 2 đạt Definition of Done.**
-> `docker compose up` chạy · kernel test xanh (21) · contract phụ thuộc pass (3/0) · mypy strict sạch · migration live bật pgvector · **chưa có module nghiệp vụ** (đúng chủ đích).
-> Chờ lệnh mở **Sprint 3 — Catalog & Inventory**.
-> **Không tự động chuyển sang lập trình.** Chờ lệnh mở Sprint 2.
+> ✅ **Sprint 3 đạt Definition of Done.**
+> Nhập lô → tồn kho phản ánh · FEFO chọn đúng lô cận date · 46 test xanh · domain coverage 97% · import-linter 6/0 (domain-purity + module-independence) · mypy strict · migration `0002` live/reversible · seed ATC idempotent.
+> Chờ lệnh mở **Sprint 4 — Sales / POS offline**.
+> **Không tự động chuyển sang sprint tiếp theo.** Giữ ranh giới sprint.

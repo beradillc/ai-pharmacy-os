@@ -3,10 +3,12 @@
 > **Hệ điều hành nghiệp vụ AI-native cho nhà thuốc / chuỗi nhà thuốc tại Việt Nam.**
 > POS + Kho + Đơn thuốc + Dược sĩ AI, kiến trúc module hóa, tuân thủ quy định Bộ Y tế (DAV).
 
-[![Sprint](https://img.shields.io/badge/Sprint%202-Kernel%20Complete-brightgreen)]()
+[![Sprint](https://img.shields.io/badge/Sprint%203-Catalog%20%26%20Inventory-brightgreen)]()
 [![Stage](https://img.shields.io/badge/stage-foundation-blue)]()
-[![Tests](https://img.shields.io/badge/tests-21%20passed-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-46%20passed-brightgreen)]()
+[![Domain coverage](https://img.shields.io/badge/domain%20coverage-97%25-brightgreen)]()
 [![Types](https://img.shields.io/badge/mypy-strict-brightgreen)]()
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)]()
 
 ---
 
@@ -52,9 +54,9 @@ Chi tiết: [docs/02_ARCHITECTURE.md](docs/02_ARCHITECTURE.md).
 
 ## 3. Module nghiệp vụ
 
-`iam` · `catalog` · `inventory` · `procurement` · `sales` · `prescription` · `clinical` · `crm` · `compliance` · `analytics`
+✅ `catalog` · ✅ `inventory` · ⏳ `sales` · ⏳ `prescription` · ⏳ `clinical` · ⏳ `crm` · ⏳ `procurement` · ⏳ `compliance` · ⏳ `analytics` · ⏳ `iam`
 
-Mỗi module theo Hexagonal (`domain → application → infrastructure → interface`), giao tiếp **chỉ qua domain events / ports**. Xem [docs/08_MODULES.md](docs/08_MODULES.md).
+(✅ = đã hiện thực · ⏳ = đã thiết kế, theo lộ trình). Mỗi module theo Hexagonal (`domain → application → infrastructure → interface`), giao tiếp **chỉ qua domain events / ports** — được ép bằng `import-linter` (domain-purity + module-independence). Xem [docs/08_MODULES.md](docs/08_MODULES.md).
 
 ---
 
@@ -79,12 +81,13 @@ Mỗi module theo Hexagonal (`domain → application → infrastructure → inte
 
 ## 5. Trạng thái dự án
 
-**Sprint 2 — Skeleton & Kernel: HOÀN THÀNH.** Kernel backend chạy được; chưa có module nghiệp vụ (đúng chủ đích).
+**Sprint 3 — Catalog & Inventory: HOÀN THÀNH.** Hai module nghiệp vụ đầu tiên chạy được end-to-end.
 
 - ✅ Sprint 1 — Thiết kế: 12 tài liệu + README/ROADMAP/PROJECT_STATE
-- ✅ Sprint 2 — Kernel: config, DI, event bus, UoW, security, audit, AI port, plugin loader, API v1 + health, Alembic `0001` (pgvector)
-- ✅ Gate xanh: `pytest` 21 · `mypy` strict (35 file) · `ruff`/format · `import-linter` 3/0 · `docker compose` + migration chạy live
-- ⏭️ Sprint 3 — Catalog & Inventory (xem [ROADMAP.md](ROADMAP.md))
+- ✅ Sprint 2 — Kernel: config, DI, event bus, UoW, security, audit, AI port, plugin loader, API v1 + health, Alembic `0001`
+- ✅ Sprint 3 — `catalog` (drug master, quy đổi đơn vị, Rx class) + `inventory` (lô/hạn dùng, movement event-sourced, **FEFO**, cảnh báo cận date). Migration `0002`, seed ATC.
+- ✅ Gate xanh: `pytest` **46** · domain coverage **97%** · `mypy` strict (92 file) · `import-linter` **6/0** · migration live/reversible
+- ⏭️ Sprint 4 — Sales / POS offline (xem [ROADMAP.md](ROADMAP.md))
 
 Xem chi tiết & lịch sử: [PROJECT_STATE.md](PROJECT_STATE.md).
 
@@ -112,13 +115,14 @@ python3 -m venv .venv && source .venv/bin/activate
 cd backend && pip install -e ".[dev]"
 cp .env.example .env                 # điền AI__API_KEY, SECURITY__JWT_SECRET...
 
-# 3) Migration + chạy API
-alembic upgrade head                 # bật vector + pgcrypto
+# 3) Migration + seed + chạy API
+alembic upgrade head                 # 0001 (extensions) + 0002 (catalog/inventory)
+python -m seeds.run                  # seed mã ATC (idempotent)
 uvicorn pharmacy_os.main:app --reload
-# → http://localhost:8000/api/v1/health · /api/v1/docs
+# → /api/v1/health · /api/v1/docs · /api/v1/drugs · /api/v1/inventory/*
 ```
 
-Hoặc dùng `make`: `make up` · `make install` · `make migrate` · `make serve` · `make check` (lint+contracts+types+test).
+Hoặc dùng `make`: `make up` · `make install` · `make migrate` · `make seed` · `make serve` · `make check` (lint+contracts+types+test).
 
 Cấu hình: [docs/10_CONFIG.md](docs/10_CONFIG.md).
 

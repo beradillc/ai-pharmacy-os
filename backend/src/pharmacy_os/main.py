@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from pharmacy_os import __version__
-from pharmacy_os.api.v1 import api_v1
+from pharmacy_os.api.v1 import build_api_router
 from pharmacy_os.core.bootstrap import build_container
 from pharmacy_os.core.config import Settings, get_settings
 from pharmacy_os.core.errors import register_error_handlers
@@ -44,7 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.container = build_container(settings)
     register_error_handlers(app)
-    app.include_router(api_v1)
+    app.include_router(build_api_router(app.state.container))
     return app
 
 

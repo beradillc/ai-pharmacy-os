@@ -1,5 +1,6 @@
 [importlinter]
 root_package = pharmacy_os
+include_external_packages = True
 
 [importlinter:contract:layers]
 name = Hexagonal layers (kernel-ready; module layers added per-module)
@@ -27,3 +28,34 @@ forbidden_modules =
     pharmacy_os.core
     pharmacy_os.modules
     pharmacy_os.api
+
+[importlinter:contract:catalog-domain-innermost]
+name = Catalog domain must not import outer layers or frameworks
+type = forbidden
+source_modules =
+    pharmacy_os.modules.catalog.domain
+forbidden_modules =
+    pharmacy_os.modules.catalog.application
+    pharmacy_os.modules.catalog.infrastructure
+    pharmacy_os.modules.catalog.interface
+    fastapi
+    sqlalchemy
+
+[importlinter:contract:inventory-domain-innermost]
+name = Inventory domain must not import outer layers or frameworks
+type = forbidden
+source_modules =
+    pharmacy_os.modules.inventory.domain
+forbidden_modules =
+    pharmacy_os.modules.inventory.application
+    pharmacy_os.modules.inventory.infrastructure
+    pharmacy_os.modules.inventory.interface
+    fastapi
+    sqlalchemy
+
+[importlinter:contract:module-independence]
+name = Business modules must not import each other directly
+type = independence
+modules =
+    pharmacy_os.modules.catalog
+    pharmacy_os.modules.inventory

@@ -64,19 +64,25 @@ timeline
 
 ---
 
-## Sprint 3 — Catalog & Inventory *(kế tiếp)*
+## ✅ Sprint 3 — Catalog & Inventory *(HOÀN THÀNH — 2026-07-21)*
 
-- [ ] Module `catalog`: Drug, đơn vị quy đổi, ATC, phân loại Rx.
-- [ ] Module `inventory`: ProductBatch, StockMovement (event-sourced), FEFO allocator, balances.
-- [ ] Cảnh báo cận date / dưới định mức.
-- [ ] Seed dữ liệu tham chiếu (ATC, đơn vị).
-- [ ] API + test integration.
+- [x] Module `catalog`: `Drug`, đơn vị quy đổi (`DrugUnit`, hệ số về base unit), ATC, phân loại Rx (OTC/ETC/CONTROLLED). Hexagonal 4 lớp.
+- [x] Module `inventory`: `ProductBatch`, `StockMovement` (event-sourced), `allocate_fefo` (domain thuần), projection `stock_balances`.
+- [x] Cảnh báo cận date (`/inventory/alerts/near-expiry`) + sự kiện `LowStockDetected` khi hết định mức.
+- [x] Seed dữ liệu tham chiếu (10 mã ATC) — idempotent, chạy `make seed`.
+- [x] API v1 (`/drugs`, `/inventory/receive|dispense|on-hand|alerts`) + test integration (service + HTTP e2e).
+- [x] Migration `0002_catalog_inventory` (6 bảng) — autogenerate, áp dụng live, reversible, `alembic check` không drift.
+- [x] Contract kiến trúc mới: domain purity (không import framework) + module independence (catalog ⟂ inventory).
 
-**DoD:** Nhập lô → tồn kho phản ánh; FEFO chọn đúng lô; test ≥ 80% domain.
+**DoD:** ✅ Đạt. Bằng chứng đã chạy thật:
+- Nhập lô → `on_hand` phản ánh (test + HTTP e2e trên Postgres/SQLite).
+- FEFO chọn đúng lô cận date nhất, chặn xuất quá tồn (rollback), loại lô hết hạn.
+- Test **46 passed**; **domain coverage 97%** (≥ 80%); `mypy` strict; `import-linter` **6/0**; `ruff`/format sạch.
+- Sự kiện `StockMovedIn/Out` publish sau commit (test kiểm chứng thứ tự).
 
 ---
 
-## Sprint 4 — Sales / POS offline
+## Sprint 4 — Sales / POS offline *(kế tiếp)*
 
 - [ ] Module `sales`: SalesOrder, items, payments, returns.
 - [ ] Idempotency (`client_uuid`), endpoint `/sync/sales`.

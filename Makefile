@@ -38,5 +38,8 @@ down:
 migrate:
 	cd backend && alembic upgrade head
 
+seed:
+	cd backend && python -m seeds.run
+
 serve:
 	cd backend && uvicorn pharmacy_os.main:app --reload

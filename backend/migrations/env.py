@@ -12,7 +12,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from pharmacy_os.core.config import get_settings
-from pharmacy_os.core.db.base import Base
+from pharmacy_os.models_registry import Base  # imports all ORM models as a side effect
 
 config = context.config
 if config.config_file_name is not None:

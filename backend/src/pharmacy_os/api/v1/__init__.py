@@ -1,12 +1,27 @@
-"""API v1 router aggregation."""
+"""API v1 router aggregation.
+
+Builds the versioned router from the health endpoint plus each business
+module's router. Module ``register`` functions also wire their services and
+event handlers into the container (side effect), so this runs at app startup.
+"""
 
 from __future__ import annotations
 
 from fastapi import APIRouter
 
+from pharmacy_os.api.deps import get_context
 from pharmacy_os.api.v1.health import router as health_router
+from pharmacy_os.core.di import Container
+from pharmacy_os.modules.catalog.interface import register as register_catalog
+from pharmacy_os.modules.inventory.interface import register as register_inventory
 
-api_v1 = APIRouter(prefix="/api/v1")
-api_v1.include_router(health_router)
 
-__all__ = ["api_v1"]
+def build_api_router(container: Container) -> APIRouter:
+    api = APIRouter(prefix="/api/v1")
+    api.include_router(health_router)
+    api.include_router(register_catalog(container, get_context))
+    api.include_router(register_inventory(container, get_context))
+    return api
+
+
+__all__ = ["build_api_router"]
