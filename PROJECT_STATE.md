@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 5 (S5.1–S5.4 xong, DỪNG chờ lệnh S5.5)** song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
+> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 5 (S5.1–S5.4 xong; S5.5 đang làm — bước 5.5.1 domain xong)** song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
 
 ---
 
@@ -11,14 +11,14 @@
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Giai đoạn         | Giai đoạn 2 — Bán hàng · (Compliance kéo sớm từ Giai đoạn 3)                                          |
 | Sprint            | Sprint 5 — Prescription & Clinical AI (backend) · **+ Compliance (docs/13, kéo sớm từ Sprint 7)**     |
-| Tình trạng Sprint | 🔄 Sprint 5: **S5.1–S5.4 xong** (S5.4 = prescription↔sales cross-module), DỪNG chờ duyệt S5.5. ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng |
+| Tình trạng Sprint | 🔄 Sprint 5: **S5.1–S5.4 xong**; **S5.5 đang làm** (5.5.1 domain `clinical` xong, mock-only). ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng |
 | Kernel backend    | ✅ (Sprint 2)                                                                                          |
-| Module nghiệp vụ  | ✅ `catalog`, `inventory`, `sales`, `prescription` (Hexagonal 4 lớp; cross-module: sale→dispense, sale↔prescription-ref S5.4; chưa AI); ✅ `compliance` (domain+app+infra+schemas+sync/MockAdapter + C.5 cross-module: `SaleCompleted`→enqueue sync log — C.1–C.5 đủ) |
+| Module nghiệp vụ  | ✅ `catalog`, `inventory`, `sales`, `prescription` (Hexagonal 4 lớp; cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); 🔄 `clinical` (S5.5 domain thuần xong: interaction engine + AiRecommendation, mock-only) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
-| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**9/0**) · ✅ mypy strict (**127 file**) · ✅ pytest (**206**)     |
+| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**10/0**) · ✅ mypy strict (**133 file**) · ✅ pytest (**218**)    |
 | Hạ tầng dev       | ✅ docker compose healthy; ✅ alembic `0001`..`0006`; ✅ seed ATC idempotent                             |
-| Sprint kế tiếp    | **S5.5** (Clinical AI, Opus 4.8 + phiên đầy, xem §7) — chờ lệnh mở (2 blocker cũ chưa gỡ). Compliance C.1–C.5 đã đóng (§7b). |
+| Sprint kế tiếp    | **S5.5 bước 5.5.2** (app+infra+migration `0007_clinical`, mock LLM, xem §7c) — chờ lệnh tiếp. Compliance C.1–C.5 đã đóng (§7b). |
 
 ---
 
@@ -350,6 +350,36 @@ re-sync `/api/v1/sync/sales` cùng `client_uuid` → vẫn 1 dòng (không nhân
 - Cross-module **nối ở composition root** `api/v1/` — không để module import module.
 - Mỗi bước = 1 commit chạy được, 4 cổng xanh (ruff + import-linter + mypy strict + pytest), cập nhật PROJECT_STATE sau mỗi commit.
 - Bước rủi ro cao (cross-module, C.5) → dừng chờ duyệt sau bước đó.
+
+---
+
+## 7c. S5.5 Clinical AI (đang làm — mock LLM only, để phiên sau nối lại ngay)
+
+> **Trạng thái:** **5.5.1 (domain thuần `clinical`) XONG.** Còn 5.5.2 (app+infra+migration) → 5.5.3 (interface) → 5.5.4 (cross-module,
+> KHÔNG làm trong lõi). Working tree sạch sau commit 5.5.1. **218 test xanh, 10 contract kept/0 broken**, mypy 133 file, ruff sạch.
+
+**Kế hoạch đã chốt (sếp duyệt qua 2 quyết định):**
+- **Phạm vi lõi = A1** (kiểm tra tương tác thuốc chéo) **+ xương sống AI** (audit `ai_recommendations` + guardrail human-in-the-loop).
+  Hoãn A2/A3/A4/A5/A6.
+- **Khóa tương tác = ingredient-based, input hoạt chất tường minh** (đúng ERD). Map `drug_id→hoạt chất` là dependency riêng ở 5.5.4.
+- **Mock LLM only** — không gọi API thật. LLM chỉ *diễn giải*; quyết định an toàn đến từ bảng `drug_interactions` (tất định).
+
+**5.5.1 đã làm:** module `clinical/domain/` — `entities.py` (`InteractionSeverity`, `AiContextType`, `DrugInteraction` [cặp hoạt chất
+canonical/order-independent], `AiRecommendation` [bất biến + `accept()` human-in-the-loop, guard `confidence∈[0,1]`]); `rules.py`
+(engine thuần `find_interactions` xếp theo severity + guardrail `requires_pharmacist_review`: CONTRAINDICATED/MAJOR hoặc
+`confidence<min` → cần dược sĩ duyệt); `ports.py` (`DrugInteractionRepository`, `AiRecommendationRepository`); `exceptions.py`.
+Thêm contract import-linter `clinical-domain-innermost` + đưa `clinical` vào `module-independence` (9→10 contract; **không** đổi 9 cái cũ).
+Test: `tests/unit/test_clinical_domain.py` (12). Domain **không** import LLM/framework.
+
+**3 điểm BLOCKER đã ghi trong code (chưa gỡ được ở S5.5):**
+- `# BLOCKER: AI__API_KEY thật` — sẽ đặt `AnthropicProvider`; 5.5.2 chỉ wire `MockLLMProvider`.
+- `# BLOCKER: nguồn tri thức dược thật + bản quyền` — RAG over `drug_knowledge_chunks`; bảng tạo nhưng để trống/stub.
+- `# BLOCKER: catalog chưa có mô hình hoạt chất` (`active_ingredients`/`drug_ingredients` trong ERD chưa implement) — chặn
+  drug→ingredient resolution ⇒ auto-check ở sale/prescription (5.5.4) chờ dependency này + duyệt riêng (chung mạch dị ứng KH Sprint 6).
+
+**Bước kế 5.5.2 (app+infra+migration):** `ClinicalService.check_interactions`/`accept_recommendation`; ORM+mapper+repo cho
+`drug_interactions`+`ai_recommendations` (+`drug_knowledge_chunks` stub); migration `0007_clinical`; `MockLLMProvider` ở `core/ai`;
+seed vài cặp tương tác **mẫu** (ghi rõ không phải nguồn chính thức). Quyền mới: `clinical.check`/`clinical.accept` (thêm vào dev context).
 
 ---
 
