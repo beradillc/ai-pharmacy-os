@@ -14,6 +14,7 @@ from pharmacy_os.api.v1.health import router as health_router
 from pharmacy_os.core.di import Container
 from pharmacy_os.modules.catalog.interface import register as register_catalog
 from pharmacy_os.modules.inventory.interface import register as register_inventory
+from pharmacy_os.modules.sales.interface import register as register_sales
 
 
 def build_api_router(container: Container) -> APIRouter:
@@ -21,6 +22,7 @@ def build_api_router(container: Container) -> APIRouter:
     api.include_router(health_router)
     api.include_router(register_catalog(container, get_context))
     api.include_router(register_inventory(container, get_context))
+    api.include_router(register_sales(container, get_context))
     return api
 
 

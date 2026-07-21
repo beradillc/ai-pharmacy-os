@@ -30,6 +30,8 @@ _DEV_PERMISSIONS = frozenset(
         "inventory.read",
         "inventory.receive",
         "inventory.dispense",
+        "sales.read",
+        "sales.create",
     }
 )
 
