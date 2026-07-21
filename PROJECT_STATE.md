@@ -287,7 +287,7 @@ AI_Pharmacy_OS/
 
 > **Trạng thái:** Compliance **C.1→C.4 xong** (domain → app/infra/migration `0005` → schemas/export → NationalSyncLog+MockAdapter/migration
 > `0006`), đúng nhịp đã chốt. **C.5 (cross-module) CHƯA làm — dừng đúng theo lệnh sếp**, không tự ý tiếp tục.
-> **HEAD `main` = `<commit C.4>`**, working tree **sạch** — không có việc dở giữa chừng, mọi thứ đã commit.
+> **HEAD `main` = `ba703b1`** (Compliance C.4), working tree **sạch** — không có việc dở giữa chừng, mọi thứ đã commit.
 > **187 test xanh, 9 contract kept/0 broken**, mypy strict 126 file, ruff sạch. Migration hiện tại `0001`→`0006`
 > (`0006_national_sync_log` live trên Postgres, `alembic check` sạch, downgrade/upgrade OK). Docker compose (postgres+redis)
 > **đang chạy healthy** — không cần `make up` lại khi mở phiên C.5, chỉ `docker compose ps` để xác nhận còn sống.
