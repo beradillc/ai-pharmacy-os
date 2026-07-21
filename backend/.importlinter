@@ -53,9 +53,22 @@ forbidden_modules =
     fastapi
     sqlalchemy
 
+[importlinter:contract:sales-domain-innermost]
+name = Sales domain must not import outer layers or frameworks
+type = forbidden
+source_modules =
+    pharmacy_os.modules.sales.domain
+forbidden_modules =
+    pharmacy_os.modules.sales.application
+    pharmacy_os.modules.sales.infrastructure
+    pharmacy_os.modules.sales.interface
+    fastapi
+    sqlalchemy
+
 [importlinter:contract:module-independence]
 name = Business modules must not import each other directly
 type = independence
 modules =
     pharmacy_os.modules.catalog
     pharmacy_os.modules.inventory
+    pharmacy_os.modules.sales

@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 3 (HOÀN THÀNH)**
+> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 4 (ĐANG CHẠY — S4.1 xong)**
 
 ---
 
@@ -100,6 +100,25 @@
 
 **Bằng chứng Sprint 3:** `pytest` **46 passed** · domain coverage **97%** · `mypy` strict (92 file) · `import-linter` **6 kept/0 broken** (thêm domain-purity + module-independence) · migration `0002` autogenerate→apply→`alembic check` không drift→downgrade/upgrade OK · seed chạy live (10→0).
 
+## 3d. Sprint 4 — Sales / POS offline (ĐANG CHẠY)
+
+> Phạm vi Sprint 4: **chỉ backend S4.1–S4.5** (FE tách sang đợt sau). Nhịp: S4.1→S4.3 tự chạy;
+> S4.4 & S4.5 (cross-module rủi ro cao) dừng chờ duyệt sau mỗi bước.
+
+| Bước | Nội dung | Trạng thái |
+|------|----------|-----------|
+| S4.1 | Sales **domain thuần**: `SalesOrder`/`SaleLine`/`Payment`/`Return`, `SaleStatus`, event `SaleCompleted`+`SoldItem`, exceptions, `SalesRepository` port, rule `ensure_rx_for_etc`. Contract mới `sales-domain-innermost` + `sales` vào `module-independence` (**7/0**). | ✅ (commit tiếp theo) |
+| S4.2 | Sales **application + infrastructure** + migration `0003_sales` (unique `client_uuid`/tenant = idempotency). | ⏳ |
+| S4.3 | Sales **interface + API** `/sales`, `/sync/sales` (dedup `client_uuid`), quyền `sales.*`. → DỪNG báo cáo. | ⏳ |
+| S4.4 ⚠️ | Cross-module: `SaleCompleted` → inventory FEFO dispense (handler ở composition root `api`). | ⏳ chờ duyệt |
+| S4.5 ⚠️ | Chặn ETC end-to-end: adapter `DrugInfoProvider` đọc catalog ở composition root. | ⏳ chờ duyệt |
+
+**Ghi chú thiết kế:** rx_class **không** để sales import catalog — dùng cờ `requires_prescription` snapshot trên `SaleLine`;
+S4.1–S4.3 nhận cờ từ request, **S4.5** thay bằng nguồn thẩm quyền (catalog qua port/adapter). `DrugInfoProvider` port
+hoãn tới S4.5 (nơi thực sự tiêu thụ) để tránh abstraction treo. `DispenseInput.ref_type/ref_id` sẵn có để móc idempotent ở S4.4.
+
+**Bằng chứng S4.1:** `ruff` sạch · `import-linter` **7/0** · `mypy` strict **78 file** · `pytest` **69 passed** (+15 test domain sales).
+
 ## 4. Cấu trúc hiện có trên đĩa
 
 ```text
@@ -161,6 +180,7 @@ AI_Pharmacy_OS/
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-21 | **Sprint 4 · S4.1 — Sales domain thuần.** Module `sales` lớp domain: `SalesOrder` aggregate (DRAFT→COMPLETED→PARTIALLY_RETURNED/RETURNED), `SaleLine`/`Payment`/returns, `SaleStatus`/`PaymentMethod`, event `SaleCompleted`+`SoldItem`, exceptions, `SalesRepository` port, rule thuần `ensure_rx_for_etc`. Contract mới `sales-domain-innermost`; `sales` vào `module-independence`. Gate: ruff sạch, import-linter **7/0**, mypy strict 78 file, pytest **69** (+15). Chưa wiring, chưa infra. |
 | 2026-07-21 | **Demo & Self-Refine.** Thêm `demo_preview.py` (xem trước sản phẩm, chạy end-to-end SQLite in-memory, trung thực về phạm vi — clinical đánh dấu CHƯA làm). Self-refine `modules/`: docstring use-case + `signed_quantity`; thêm `test_edge_cases.py` (8 test: qty=0, demand=0, lô rỗng, on_hand thuốc lạ, barcode trùng/khác tenant). Tạo `TODO.md`. Gate: 54 test, mypy strict 92 file, import-linter 6/0. |
 | 2026-07-21 | **Sprint 3 HOÀN THÀNH.** Module `catalog` + `inventory` (Hexagonal, event-sourced, FEFO thuần). API v1 drugs/inventory. Migration `0002` (6 bảng) live + reversible, `alembic check` sạch. Seed ATC idempotent. Contract mới: domain-purity + module-independence. 46 test, domain coverage 97%, mypy strict 92 file, import-linter 6/0. |
 | 2026-07-21 | **Quản trị pre-Sprint 3.** Chốt giấy phép **Apache-2.0** (thêm `LICENSE`, `NOTICE`, metadata pyproject). Commit git đầu tiên `c6fc698` (74 file, branch `main`); working tree sạch. |
