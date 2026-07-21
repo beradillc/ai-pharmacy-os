@@ -270,6 +270,10 @@ AI_Pharmacy_OS/
 
 > **Trạng thái:** Compliance **C.1→C.2→C.3 xong liên tục** (domain → application/infrastructure/migration `0005_compliance` →
 > schemas/export mapper), đúng nhịp đã chốt. **C.4 và C.5 CHƯA làm — dừng đúng theo lệnh sếp**, không tự ý tiếp tục.
+> **HEAD `main` = `5a1981a`** (Compliance C.3), working tree **sạch** — không có việc dở giữa chừng, mọi thứ đã commit.
+> **168 test xanh, 9 contract kept/0 broken**, mypy strict 124 file, ruff sạch. Migration hiện tại `0001`→`0005`
+> (`0005_compliance` live trên Postgres, `alembic check` sạch, downgrade/upgrade OK). Docker compose (postgres+redis)
+> **đang chạy healthy** — không cần `make up` lại khi mở phiên C.4/C.5, chỉ `docker compose ps` để xác nhận còn sống.
 
 **⚠️ Điều kiện bắt buộc trước khi mở C.4/C.5 (yêu cầu của sếp, giống tiền lệ S4.4/S5.4):**
 - **Dùng Opus** (không dùng Sonnet) cho cả C.4 (`NationalDrugDbGateway` + `MockAdapter`) và C.5 (cross-module).
