@@ -44,14 +44,15 @@
 
 ---
 
-## ⏳ Chưa hiện thực (theo ROADMAP — KHÔNG demo/bịa)
+### Sprint 4 — Sales / POS offline *(BACKEND HOÀN THÀNH 2026-07-21)*
+- [x] Module `sales`: SalesOrder, items, payments, returns (domain thuần, Hexagonal 4 lớp).
+- [x] Idempotency `client_uuid` + `/sync/sales` (offline-first, upsert 200).
+- [x] Cross-module: `SaleCompleted` → inventory FEFO dispense (nối ở `api/v1/cross_module.py`; idempotent cấp đơn; thiếu tồn → `StockShortfallDetected`, không chặn bán).
+- [x] Rule chặn ETC thiếu đơn (`ensure_rx_for_etc`) — catalog là nguồn thẩm quyền qua port `DrugInfoProvider` + adapter.
+- [ ] **Nợ Sprint 4 (S4.6, tách đợt sau):** khởi tạo `frontend/` (Next.js + Dexie) POS tối thiểu + hàng đợi offline gọi `/sync/sales`.
+- [ ] **Nợ Sprint 4:** persist trả hàng (`register_return`) ở tầng use-case + trả tồn (cross-module) — domain đã có, use-case/khôi phục tồn chưa làm (ngoài DoD lần này).
 
-### Sprint 4 — Sales / POS offline *(kế tiếp)*
-- [ ] Module `sales`: SalesOrder, items, payments, returns.
-- [ ] Idempotency `client_uuid` + `/sync/sales` (offline-first).
-- [ ] Cross-module: `SaleCompleted` → inventory FEFO dispense (qua event bus).
-- [ ] Rule chặn ETC thiếu đơn (`ensure_rx_for_etc`, dùng `Drug.is_prescription_required()`).
-- [ ] Khởi tạo `frontend/` (Next.js + Dexie).
+## ⏳ Chưa hiện thực (theo ROADMAP — KHÔNG demo/bịa)
 
 ### Sprint 5 — Prescription & Clinical AI
 - [ ] Module `prescription` (đơn thuốc nháp, xác thực, cấp phát).

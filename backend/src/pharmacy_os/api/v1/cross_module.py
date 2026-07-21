@@ -14,9 +14,11 @@ import structlog
 
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.di import Container
+from pharmacy_os.core.errors import NotFoundError
 from pharmacy_os.core.events import DomainEvent, EventBus
+from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.inventory.application import InventoryService, SaleDispenseItem
-from pharmacy_os.modules.sales.domain import SaleCompleted
+from pharmacy_os.modules.sales.domain import DrugInfo, SaleCompleted
 
 _log = structlog.get_logger("cross_module.sales_inventory")
 
@@ -44,3 +46,27 @@ def wire_sale_dispensing(container: Container) -> None:
         _log.info("sale_dispensed", order_id=str(event.order_id), lines=len(items))
 
     event_bus.subscribe(SaleCompleted, on_sale_completed)
+
+
+class CatalogDrugInfoProvider:
+    """Adapter making catalog the authority for a sale's Rx status.
+
+    Implements the sales ``DrugInfoProvider`` port over ``CatalogService`` — the
+    dependency lives here in ``api`` so sales never imports catalog.
+    """
+
+    def __init__(self, catalog: CatalogService) -> None:
+        self._catalog = catalog
+
+    async def get(self, drug_id: UUID, tenant_id: UUID) -> DrugInfo | None:
+        ctx = RequestContext(
+            tenant_id=tenant_id,
+            branch_id=tenant_id,
+            user_id=_SYSTEM_USER,
+            permissions=frozenset({"catalog.read"}),
+        )
+        try:
+            drug = await self._catalog.get_drug(drug_id, ctx)
+        except NotFoundError:
+            return None
+        return DrugInfo(drug_id=drug_id, requires_prescription=drug.prescription_required)

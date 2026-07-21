@@ -16,7 +16,11 @@ from pharmacy_os.modules.sales.domain.exceptions import (
     SalesError,
     UnderpaidError,
 )
-from pharmacy_os.modules.sales.domain.ports import SalesRepository
+from pharmacy_os.modules.sales.domain.ports import (
+    DrugInfo,
+    DrugInfoProvider,
+    SalesRepository,
+)
 from pharmacy_os.modules.sales.domain.rules import ensure_rx_for_etc
 
 __all__ = [
@@ -34,5 +38,7 @@ __all__ = [
     "SalesError",
     "UnderpaidError",
     "SalesRepository",
+    "DrugInfo",
+    "DrugInfoProvider",
     "ensure_rx_for_etc",
 ]

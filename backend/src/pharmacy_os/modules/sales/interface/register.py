@@ -14,11 +14,16 @@ from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.di import Container
 from pharmacy_os.core.events import EventBus
 from pharmacy_os.modules.sales.application import SalesService
+from pharmacy_os.modules.sales.domain import DrugInfoProvider
 from pharmacy_os.modules.sales.infrastructure import SqlAlchemySalesRepository
 from pharmacy_os.modules.sales.interface.router import ContextDep, build_router
 
 
-def register(container: Container, get_context: ContextDep) -> APIRouter:
+def register(
+    container: Container,
+    get_context: ContextDep,
+    drug_info: DrugInfoProvider | None = None,
+) -> APIRouter:
     session_factory = container.resolve(async_sessionmaker[AsyncSession])
     event_bus = container.resolve(EventBus)  # type: ignore[type-abstract]
 
@@ -28,6 +33,6 @@ def register(container: Container, get_context: ContextDep) -> APIRouter:
     def repo_factory(uow: UnitOfWork, ctx: RequestContext) -> SqlAlchemySalesRepository:
         return SqlAlchemySalesRepository(uow.session, ctx)
 
-    service = SalesService(uow_factory, repo_factory)
+    service = SalesService(uow_factory, repo_factory, drug_info)
     container.register_instance(SalesService, service)
     return build_router(get_context)

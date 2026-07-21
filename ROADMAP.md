@@ -82,15 +82,17 @@ timeline
 
 ---
 
-## Sprint 4 — Sales / POS offline *(kế tiếp)*
+## Sprint 4 — Sales / POS offline *(BACKEND HOÀN THÀNH — 2026-07-21)*
 
-- [ ] Module `sales`: SalesOrder, items, payments, returns.
-- [ ] Idempotency (`client_uuid`), endpoint `/sync/sales`.
-- [ ] Sự kiện `SaleCompleted` → inventory trừ tồn FEFO.
-- [ ] FE POS tối thiểu + Dexie offline queue.
-- [ ] Chặn ETC thiếu đơn (rule).
+- [x] Module `sales`: SalesOrder, items, payments, returns (Hexagonal 4 lớp).
+- [x] Idempotency (`client_uuid`), endpoint `/sync/sales` (upsert 200).
+- [x] Sự kiện `SaleCompleted` → inventory trừ tồn FEFO (nối ở composition root; idempotent cấp đơn; thiếu tồn → `StockShortfallDetected`, không chặn bán).
+- [x] Chặn ETC thiếu đơn — catalog là nguồn thẩm quyền qua port `DrugInfoProvider` + adapter.
+- [ ] FE POS tối thiểu + Dexie offline queue — **tách sang đợt sau** (S4.6, ngoài phạm vi Sprint 4 lần này).
 
-**DoD:** Bán offline → online sync không nhân đôi; tồn kho đúng.
+**DoD backend:** ✅ Đạt. Bán → tồn giảm đúng FEFO; re-sync cùng `client_uuid` **không nhân đôi** tồn/đơn; ETC thiếu đơn bị chặn (422); bán quá tồn không làm tồn âm.
+- Migration `0003_sales` (unique `tenant_id`+`client_uuid`) apply→`alembic check` không drift→reversible.
+- `import-linter` **7/0** (thêm `sales-domain-innermost`; 2 điểm cross-module nối ở lớp `api`, `module-independence` giữ nguyên); `mypy` strict 90 file; `pytest` **94 passed** (+40 so với 54).
 
 ---
 

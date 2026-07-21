@@ -18,7 +18,11 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import ConflictError, NotFoundError, ValidationError
 from pharmacy_os.core.security import require_permission
-from pharmacy_os.modules.sales.application.dto import CreateSaleInput, SaleOutput
+from pharmacy_os.modules.sales.application.dto import (
+    CreateSaleInput,
+    SaleLineInput,
+    SaleOutput,
+)
 from pharmacy_os.modules.sales.domain import (
     Payment,
     SaleCompleted,
@@ -27,7 +31,7 @@ from pharmacy_os.modules.sales.domain import (
     SalesOrder,
     SoldItem,
 )
-from pharmacy_os.modules.sales.domain.ports import SalesRepository
+from pharmacy_os.modules.sales.domain.ports import DrugInfoProvider, SalesRepository
 from pharmacy_os.shared.value_objects import Money
 
 UowFactory = Callable[[], UnitOfWork]
@@ -35,9 +39,15 @@ RepoFactory = Callable[[UnitOfWork, RequestContext], SalesRepository]
 
 
 class SalesService:
-    def __init__(self, uow_factory: UowFactory, repo_factory: RepoFactory) -> None:
+    def __init__(
+        self,
+        uow_factory: UowFactory,
+        repo_factory: RepoFactory,
+        drug_info: DrugInfoProvider | None = None,
+    ) -> None:
         self._uow_factory = uow_factory
         self._repo_factory = repo_factory
+        self._drug_info = drug_info
 
     async def complete_sale(self, data: CreateSaleInput, ctx: RequestContext) -> SaleOutput:
         """Record and finalise a sale for the caller's tenant/branch.
@@ -46,6 +56,10 @@ class SalesService:
         order untouched. On a fresh sale, runs the domain rules (Rx + full
         payment) and emits :class:`SaleCompleted` after commit. Raises
         :class:`ValidationError` on a domain rule violation.
+
+        When a :class:`DrugInfoProvider` is configured, the Rx status of each
+        known drug comes authoritatively from catalog — a client cannot mislabel
+        an ETC line as OTC to bypass the prescription rule.
         """
         require_permission(ctx, "sales.create")
 
@@ -58,12 +72,13 @@ class SalesService:
         )
         try:
             for line in data.lines:
+                requires_rx = await self._resolve_requires_rx(line, ctx)
                 order.add_line(
                     SaleLine(
                         drug_id=line.drug_id,
                         quantity=line.quantity,
                         unit_price=Money(line.unit_price, data.currency),
-                        requires_prescription=line.requires_prescription,
+                        requires_prescription=requires_rx,
                     )
                 )
             for payment in data.payments:
@@ -103,6 +118,15 @@ class SalesService:
                 raise ConflictError("Không thể ghi nhận đơn bán") from exc
 
         return SaleOutput.of(order)
+
+    async def _resolve_requires_rx(self, line: SaleLineInput, ctx: RequestContext) -> bool:
+        """Authoritative Rx status from catalog when known; else the client's flag."""
+        if self._drug_info is None:
+            return line.requires_prescription
+        info = await self._drug_info.get(line.drug_id, ctx.tenant_id)
+        if info is None:
+            return line.requires_prescription  # unknown drug — trust the caller
+        return info.requires_prescription
 
     async def get_sale(self, order_id: UUID, ctx: RequestContext) -> SaleOutput:
         """Return one sale by id, scoped to the tenant; 404 if not found."""
