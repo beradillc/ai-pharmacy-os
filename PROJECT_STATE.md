@@ -18,7 +18,7 @@
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
 | Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**10/0**) · ✅ mypy strict (**145 file**) · ✅ pytest (**239**)    |
 | Hạ tầng dev       | ✅ docker compose healthy; ✅ alembic `0001`..`0007`; ✅ seed ATC + tương tác mẫu idempotent              |
-| Sprint kế tiếp    | **Sprint 6 (Procurement & CRM)** — CHƯA mở (chờ lệnh). Gồm gỡ 2 blocker S5.5: mô hình hoạt chất trong catalog + auto-check clinical 5.5.4 + dị ứng KH. Compliance C.1–C.5 đã đóng (§7b). |
+| Sprint kế tiếp    | **Sprint 6 (Procurement & CRM)** — CHƯA mở (chờ lệnh), xem **§7d**. Gồm: mô hình hoạt chất catalog → auto-check clinical 5.5.4 → module `crm`+dị ứng KH → **feature flag AI theo tenant (SaaS)** → `procurement`. Compliance C.1–C.5 đã đóng (§7b). |
 
 ---
 
@@ -398,6 +398,30 @@ schema 422. **DoD Sprint 5 đạt qua mock.**
 
 **5.5.4 (cross-module auto-check) — BLOCKER, KHÔNG làm:** cần `drug_id→hoạt chất` (mô hình hoạt chất trong catalog chưa có).
 Chốt: gộp vào **Sprint 6** cùng dị ứng KH. Nay client gọi `/clinical/check-interactions` với danh sách hoạt chất tường minh.
+
+---
+
+## 7d. Điểm bắt đầu Sprint 6 — Procurement & CRM (chưa mở, chờ lệnh)
+
+> **Sprint 5 ĐÓNG ở mức MOCK (2026-07-22).** `clinical` A1 đủ 4 lớp + `MockLLMProvider`; DoD "có nguồn + confidence" đạt qua mock.
+> **5.5.4 (auto-check cross-module) chính thức HOÃN sang Sprint 6 — KHÔNG quay lại trong Sprint 5.** HEAD `main` sạch sau `1326854`.
+
+**Sprint 6 gồm (thứ tự đề xuất — chưa chốt):**
+1. **Mô hình hoạt chất trong `catalog`** (`active_ingredients` + `drug_ingredients` theo docs/03) — gỡ blocker map `drug_id→hoạt chất`.
+   Đây là nền cho cả (2) và (4). Sẽ cần migration mới + có thể contract mới cho catalog.
+2. **Auto-check tương tác 5.5.4** — nối `clinical.check_interactions` vào luồng sale/prescription (composition root, giữ module-independence).
+   Phụ thuộc (1). Duyệt riêng vì là cross-module (rủi ro cao).
+3. **Module `crm`** (Customer, dị ứng, bệnh nền, lịch sử) + nối **dị ứng KH** vào kiểm tra clinical (chung mạch với (2)).
+4. **Feature flag AI theo tenant (SaaS)** — chuyển `AISettings.enable_clinical_ai` (và các cờ AI khác) từ cấu hình **toàn cục** sang
+   **theo tenant** (bảng `settings` scope TENANT theo docs/03, hoặc `tenant_*_configs`). Lý do: SaaS đa tenant — mỗi nhà thuốc bật/tắt
+   AI độc lập, không thể là 1 cờ chung. Liên quan nguyên tắc [[feedback_keep_unconfirmed_rules_as_flags]] (cờ mặc-định-tắt theo tenant).
+5. **Module `procurement`** (Supplier, PO, GRN → inventory IN) — DoD gốc Sprint 6.
+
+**Blocker mang sang (chưa gỡ, đã ghi TODO/ROADMAP):** `AI__API_KEY` thật (`AnthropicProvider`); nguồn tri thức dược + bản quyền
+(RAG `drug_knowledge_chunks` — chưa tạo bảng); IAM thật thay dev-header context (`api/deps.py`).
+
+**Hành động đầu tiên khi mở Sprint 6:** đọc §7d này + docs/03 (ERD `active_ingredients`/`drug_ingredients`) → dựng mô hình hoạt chất (1)
+trước, vì nó mở khóa (2)+(3). Chưa chốt = chưa code.
 
 ---
 

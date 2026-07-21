@@ -118,12 +118,14 @@ timeline
 
 ## Sprint 6 — Procurement & CRM
 
+- [ ] **Mô hình hoạt chất trong `catalog`** (`active_ingredients`/`drug_ingredients`) — gỡ blocker S5.5, cho map `drug_id→hoạt chất`. *(nền cho 2 mục dưới)*
+- [ ] **Auto-check tương tác (clinical 5.5.4)** — nối `clinical.check_interactions` vào luồng sale/prescription (composition root, giữ module-independence).
+- [ ] Module `crm`: Customer, dị ứng, bệnh nền, lịch sử — nối **dị ứng KH** vào kiểm tra clinical.
+- [ ] **Feature flag AI theo tenant (SaaS)** — chuyển `enable_clinical_ai` (và cờ AI khác) từ cấu hình toàn cục → **theo tenant**
+      (bảng `settings` scope TENANT / `tenant_*_configs`); mỗi nhà thuốc bật/tắt AI độc lập.
 - [ ] Module `procurement`: Supplier, PO, GRN → inventory IN.
-- [ ] Module `crm`: Customer, dị ứng, bệnh nền, lịch sử.
-- [ ] **Mô hình hoạt chất trong `catalog`** (`active_ingredients`/`drug_ingredients`) — gỡ blocker S5.5, cho map `drug_id→hoạt chất`.
-- [ ] Kết nối dị ứng KH + auto-check tương tác (clinical 5.5.4) vào luồng sale/prescription (dùng mô hình hoạt chất trên).
 
-**DoD:** Nhập PO→GRN tạo lô; lịch sử KH cập nhật từ sự kiện bán/cấp phát.
+**DoD:** Nhập PO→GRN tạo lô; lịch sử KH cập nhật từ sự kiện bán/cấp phát; cờ AI cấu hình được theo từng tenant.
 
 ---
 
