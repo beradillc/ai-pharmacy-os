@@ -39,7 +39,7 @@
 
 - [ ] `api/deps.py`: request-context **dev-header tạm** — thay bằng JWT thật khi có IAM (Sprint 6). Prod đã chặn unauth.
 - [ ] FK `drugs.atc_code → atc_codes` chưa bật (đang lưu string). Cân nhắc bật khi seed ATC là bắt buộc.
-- [ ] Uniqueness của `registration_no` (SĐK) chưa enforce — hiện chỉ chặn trùng `barcode` theo tenant.
+- [ ] Uniqueness của `registration_no` (SĐK) chưa enforce — hiện chỉ chặn trùng `barcode` theo tenant. **Kế hoạch:** bật trong migration `0005_compliance` (Compliance C.2).
 - [ ] `StarletteDeprecationWarning` (httpx + TestClient) — không ảnh hưởng, theo dõi khi nâng cấp.
 
 ---
@@ -51,6 +51,20 @@
 - [x] Rule chặn ETC thiếu đơn (`ensure_rx_for_etc`) — catalog là nguồn thẩm quyền qua port `DrugInfoProvider` + adapter.
 - [ ] **Nợ Sprint 4 (S4.6, tách đợt sau):** khởi tạo `frontend/` (Next.js + Dexie) POS tối thiểu + hàng đợi offline gọi `/sync/sales`.
 - [ ] **Nợ Sprint 4:** persist trả hàng (`register_return`) ở tầng use-case + trả tồn (cross-module) — domain đã có, use-case/khôi phục tồn chưa làm (ngoài DoD lần này).
+
+### Compliance — kéo sớm từ Sprint 7 *(ĐANG CHẠY, spec khóa 2026-07-21)*
+- [x] Spec pháp lý khóa: [docs/13_COMPLIANCE_SPEC.md](docs/13_COMPLIANCE_SPEC.md) đối chiếu văn bản gốc
+      (`docs/legal/*.docx`: QĐ540, TT20/2017, QĐ1867) + code thật (`catalog`/`inventory`) — bảng Traceability đầu file.
+- [x] C.1 — domain thuần: `ControlledSubstanceCategory`, `NationalDrugRecord` (23 trường Bảng 1 QĐ540),
+      `ControlledLedgerEntry`/`CustomerDetail` (Phụ lục XXI), converter helpers, rule GN/HT/TC +
+      `EtcPrescriptionPolicy` (feature-flag tắt mặc định — nguồn C.3.1 chưa xác định), read-port `DrugMasterProvider`.
+      Contract `compliance-domain-innermost` (**9/0**).
+- [ ] C.2 — application + infrastructure + migration `0005_compliance` (ledger, customer detail, tenant config mới).
+- [ ] C.3 — Pydantic v2 schemas + validators, export mapper 23-field DTO.
+- [ ] C.4 (Opus) — `NationalDrugDbGateway` port + `MockAdapter` (chưa wiring endpoint thật — chờ đặc tả API 6/2026).
+- [ ] C.5 (Opus, từng bước chờ duyệt) — cross-module: `SaleCompleted`/controlled dispense → ghi ledger + enqueue sync log.
+- [ ] **Nguồn còn thiếu** (chặn phần liên quan, xem cảnh báo đầu docs/13): TT11/2025, NĐ163/2025, NĐ90/2026,
+      đặc tả API DAV, văn bản kê đơn ngoại trú hiện hành (cho rule C.3.1 ETC).
 
 ## ⏳ Chưa hiện thực (theo ROADMAP — KHÔNG demo/bịa)
 
