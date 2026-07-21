@@ -16,6 +16,7 @@ from pharmacy_os.core.di import Container
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.catalog.interface import register as register_catalog
 from pharmacy_os.modules.inventory.interface import register as register_inventory
+from pharmacy_os.modules.prescription.interface import register as register_prescription
 from pharmacy_os.modules.sales.interface import register as register_sales
 
 
@@ -24,6 +25,7 @@ def build_api_router(container: Container) -> APIRouter:
     api.include_router(health_router)
     api.include_router(register_catalog(container, get_context))
     api.include_router(register_inventory(container, get_context))
+    api.include_router(register_prescription(container, get_context))
 
     # Catalog is authoritative for a sale's Rx status (adapter over its service).
     drug_info = CatalogDrugInfoProvider(container.resolve(CatalogService))
