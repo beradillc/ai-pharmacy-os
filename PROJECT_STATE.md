@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 5 (S5.1–S5.3 xong, DỪNG chờ lệnh S5.4/S5.5)** song song **Compliance (kéo sớm từ Sprint 7): C.1–C.4 + C.5 bước 5a/5b xong, DỪNG chờ duyệt 5b (còn 5c e2e đóng Sprint)**
+> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 5 (S5.1–S5.3 xong, DỪNG chờ lệnh S5.4/S5.5)** song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
 
 ---
 
@@ -11,14 +11,14 @@
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Giai đoạn         | Giai đoạn 2 — Bán hàng · (Compliance kéo sớm từ Giai đoạn 3)                                          |
 | Sprint            | Sprint 5 — Prescription & Clinical AI (backend) · **+ Compliance (docs/13, kéo sớm từ Sprint 7)**     |
-| Tình trạng Sprint | 🔄 Sprint 5: **S5.1–S5.3 xong**, DỪNG chờ duyệt S5.4/S5.5. 🔄 Compliance: **C.1–C.4 + C.5 5a/5b xong**, DỪNG chờ duyệt 5b (còn 5c e2e) |
+| Tình trạng Sprint | 🔄 Sprint 5: **S5.1–S5.3 xong**, DỪNG chờ duyệt S5.4/S5.5. ✅ Compliance: **C.1–C.5 XONG** (cross-module: `SaleCompleted`→enqueue sync log), Sprint đóng |
 | Kernel backend    | ✅ (Sprint 2)                                                                                          |
-| Module nghiệp vụ  | ✅ `catalog`, `inventory`, `sales`, `prescription` (Hexagonal 4 lớp, chưa cross-module/AI); 🔄 `compliance` (domain+app+infra+schemas+sync/MockAdapter — C.1–C.4; C.5 cross-module 5a/5b xong: `SaleCompleted`→enqueue sync log) |
+| Module nghiệp vụ  | ✅ `catalog`, `inventory`, `sales`, `prescription` (Hexagonal 4 lớp, chưa cross-module/AI); ✅ `compliance` (domain+app+infra+schemas+sync/MockAdapter + C.5 cross-module: `SaleCompleted`→enqueue sync log — C.1–C.5 đủ) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
-| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**9/0**) · ✅ mypy strict (**127 file**) · ✅ pytest (**190**)     |
+| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**9/0**) · ✅ mypy strict (**127 file**) · ✅ pytest (**192**)     |
 | Hạ tầng dev       | ✅ docker compose healthy; ✅ alembic `0001`..`0006`; ✅ seed ATC idempotent                             |
-| Sprint kế tiếp    | **S5.4** (cross-module, Opus 4.8 + phiên đầy, xem §7) — chờ lệnh mở. **Compliance C.5 bước 5c** (e2e đóng Sprint, Opus, xem §7b) — chờ duyệt 5b. |
+| Sprint kế tiếp    | **S5.4** (cross-module, Opus 4.8 + phiên đầy, xem §7) — chờ lệnh mở. Compliance C.1–C.5 đã đóng (§7b). |
 
 ---
 
@@ -283,11 +283,10 @@ AI_Pharmacy_OS/
 
 ---
 
-## 7b. Điểm bắt đầu Compliance C.5 (để phiên sau nối lại ngay)
+## 7b. Compliance C.1–C.5 (ĐÃ ĐÓNG — lưu vết để phiên sau nối lại nếu mở tiếp)
 
-> **Trạng thái:** Compliance **C.1→C.4 xong** + **C.5 bước 5a (thiết kế) & 5b (implement) xong**. **Còn 5c (e2e thật, đóng Sprint) —
-> DỪNG chờ duyệt 5b theo lệnh sếp.**
-> **HEAD `main` = C.5 5b** (`wire_compliance_sync`), working tree **sạch**. **190 test xanh, 9 contract kept/0 broken**,
+> **Trạng thái:** Compliance **C.1→C.4 xong** + **C.5 (5a thiết kế · 5b implement · 5c e2e) XONG — SPRINT COMPLIANCE ĐÓNG.** ✅
+> **HEAD `main` = C.5 5c** (e2e), working tree **sạch**. **192 test xanh, 9 contract kept/0 broken**,
 > mypy strict 127 file, ruff sạch. Migration `0001`→`0006` (không thêm migration ở C.5 — không có bảng/field mới).
 > Docker compose (postgres+redis) **đang chạy healthy** — chỉ `docker compose ps` để xác nhận.
 >
@@ -307,9 +306,14 @@ Nối trong `build_api_router` ngay sau `wire_national_sync`. `compliance` KHÔN
 y như `wire_sale_dispensing`). Test: `tests/integration/test_cross_module_compliance_sync.py` (3 test: enqueue 1 log ACK · re-sync cùng
 `client_uuid` không nhân đôi · 2 sale khác nhau ra 2 log).
 
-**Còn lại — bước 5c (đóng Sprint Compliance):** e2e thật xuyên `SalesService.record_sale` → `SaleCompleted` publish qua UoW →
-handler enqueue sync log (không phải publish event thủ công như test 5b). Kiểm: bán thuốc → có dòng sync log mới; re-sync cùng
-`client_uuid` không nhân đôi log. Commit. **Không** kiểm ledger (5a đã loại auto-ghi ledger khỏi phạm vi).
+**Bước 5c đã làm (đóng Sprint Compliance):** e2e thật `tests/integration/test_compliance_sync_e2e.py` qua `TestClient(create_app())`
+— POST `/api/v1/sales` → `SaleCompleted` publish qua UoW (sau commit) → handler C.5 enqueue sync log (KHÔNG publish event thủ công như
+5b). Kiểm trực tiếp trên SQLite (compliance chưa có HTTP router): bán thuốc → đúng 1 dòng `national_sync_logs` (`sale`, `ACK`);
+re-sync `/api/v1/sync/sales` cùng `client_uuid` → vẫn 1 dòng (không nhân đôi). Không kiểm ledger (5a đã loại auto-ghi ledger).
+
+**Nếu mở lại Compliance sau này (ngoài phạm vi Sprint đã đóng):** ứng viên kế tiếp — (a) HTTP router cho `compliance` (dược sĩ nhập tay
+1 dòng sổ / xem sync log); (b) adapter `NationalDrugDbGateway` thật khi có đặc tả API DAV (`# BLOCKER: DAV API spec`, ~6/2026);
+(c) nếu nghiệp vụ yêu cầu auto-ghi ledger từ bán hàng, cần quyết lại 5a: hoặc event `SaleCompleted` giàu hơn, hoặc 3 read-port cross-module.
 
 **Hook code đã sẵn cho C.5 (không phải làm lại):**
 - `ComplianceService.record_controlled_entry` (C.2) — đã validate rule C.3, đã persist `ControlledLedgerEntry`, sẵn để cross-module gọi.
