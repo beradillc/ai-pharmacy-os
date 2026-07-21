@@ -25,6 +25,8 @@ from pharmacy_os.modules.inventory.infrastructure import (
     SqlAlchemyBatchRepository,
     SqlAlchemyMovementRepository,
 )
+from pharmacy_os.modules.sales.application import SalesService
+from pharmacy_os.modules.sales.infrastructure import SqlAlchemySalesRepository
 
 
 @pytest.fixture
@@ -58,6 +60,8 @@ def ctx() -> RequestContext:
                 "inventory.read",
                 "inventory.receive",
                 "inventory.dispense",
+                "sales.read",
+                "sales.create",
             }
         ),
     )
@@ -88,4 +92,17 @@ def inventory_service(
         lambda uow, c: SqlAlchemyBatchRepository(uow.session, c),
         lambda uow, c: SqlAlchemyMovementRepository(uow.session, c),
         lambda uow, c: SqlAlchemyBalanceRepository(uow.session, c),
+    )
+
+
+@pytest.fixture
+def sales_service(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> SalesService:
+    def uow_factory() -> UnitOfWork:
+        return SqlAlchemyUnitOfWork(session_factory, event_bus)
+
+    return SalesService(
+        uow_factory,
+        lambda uow, c: SqlAlchemySalesRepository(uow.session, c),
     )
