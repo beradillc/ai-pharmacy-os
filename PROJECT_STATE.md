@@ -9,16 +9,16 @@
 
 | Hạng mục | Trạng thái |
 |----------|-----------|
-| Giai đoạn | Giai đoạn 1 — Nền tảng |
-| Sprint | Sprint 3 — Catalog & Inventory (+ Demo & Self-Refine) |
-| Tình trạng Sprint | ✅ **HOÀN THÀNH** |
+| Giai đoạn | Giai đoạn 2 — Bán hàng |
+| Sprint | Sprint 4 — Sales / POS offline (backend) |
+| Tình trạng Sprint | ✅ **HOÀN THÀNH (backend S4.1–S4.5)** — FE S4.6 tách đợt sau |
 | Kernel backend | ✅ (Sprint 2) |
-| Module nghiệp vụ | ✅ `catalog`, `inventory` (Hexagonal, event-sourced, FEFO) |
+| Module nghiệp vụ | ✅ `catalog`, `inventory`, `sales` (Hexagonal, event-sourced, FEFO, cross-module qua composition root) |
 | Demo | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm) |
-| Self-Refine | ✅ docstring use-case + 8 edge-case test; xem [TODO.md](TODO.md) |
-| Chất lượng | ✅ ruff · ✅ format · ✅ import-linter (**6/0**) · ✅ mypy strict (**92 file**) · ✅ pytest (**54**) · domain coverage **97%** |
-| Hạ tầng dev | ✅ docker compose healthy; ✅ alembic `0001`+`0002` áp dụng live; ✅ seed ATC idempotent |
-| Sprint kế tiếp | Sprint 4 — Sales / POS offline (chưa khởi động) |
+| Self-Refine | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md) |
+| Chất lượng | ✅ ruff · ✅ format · ✅ import-linter (**7/0**) · ✅ mypy strict (**90 file**) · ✅ pytest (**94**) |
+| Hạ tầng dev | ✅ docker compose healthy; ✅ alembic `0001`+`0002`+`0003`; ✅ seed ATC idempotent |
+| Sprint kế tiếp | **Sprint 5 — Prescription & Clinical AI** (chưa khởi động) |
 
 ---
 
@@ -198,9 +198,16 @@ AI_Pharmacy_OS/
 
 ---
 
-## 9. Tuyên bố kết thúc Sprint 3
+## 9. Tuyên bố kết thúc Sprint 4 (backend)
 
-> ✅ **Sprint 3 đạt Definition of Done.**
-> Nhập lô → tồn kho phản ánh · FEFO chọn đúng lô cận date · 46 test xanh · domain coverage 97% · import-linter 6/0 (domain-purity + module-independence) · mypy strict · migration `0002` live/reversible · seed ATC idempotent.
-> Chờ lệnh mở **Sprint 4 — Sales / POS offline**.
-> **Không tự động chuyển sang sprint tiếp theo.** Giữ ranh giới sprint.
+> ✅ **Sprint 4 (backend) đạt Definition of Done.**
+> Bán → tồn giảm đúng FEFO · re-sync cùng `client_uuid` **không nhân đôi** tồn/đơn · ETC thiếu đơn bị chặn (422, catalog là thẩm quyền) · bán quá tồn không làm tồn âm (`StockShortfallDetected`).
+> 5 commit `d4e7029`→`85aa6d4` · **94 test xanh** · import-linter **7/0** (2 điểm cross-module nối ở composition root, `module-independence` giữ nguyên) · mypy strict 90 file · migration `0003` không drift/reversible.
+> **Còn nợ:** S4.6 FE (tách đợt sau), persist trả hàng, 3 nợ cũ — xem [TODO.md](TODO.md).
+> Bước kế tiếp: **Sprint 5 — Prescription & Clinical AI**. **Không tự động chuyển sprint** — chờ lệnh mở.
+
+<details><summary>Lịch sử: Tuyên bố kết thúc Sprint 3</summary>
+
+> ✅ **Sprint 3 đạt Definition of Done.** Nhập lô → tồn kho phản ánh · FEFO chọn đúng lô cận date · 46 test xanh · domain coverage 97% · import-linter 6/0 · mypy strict · migration `0002` live/reversible · seed ATC idempotent.
+
+</details>
