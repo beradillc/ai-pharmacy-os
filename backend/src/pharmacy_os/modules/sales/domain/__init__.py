@@ -11,6 +11,7 @@ from pharmacy_os.modules.sales.domain.events import SaleCompleted, SoldItem
 from pharmacy_os.modules.sales.domain.exceptions import (
     EmptyOrderError,
     InvalidOrderStateError,
+    InvalidPrescriptionRefError,
     InvalidReturnError,
     PrescriptionRequiredError,
     SalesError,
@@ -19,9 +20,14 @@ from pharmacy_os.modules.sales.domain.exceptions import (
 from pharmacy_os.modules.sales.domain.ports import (
     DrugInfo,
     DrugInfoProvider,
+    PrescriptionInfo,
+    PrescriptionInfoProvider,
     SalesRepository,
 )
-from pharmacy_os.modules.sales.domain.rules import ensure_rx_for_etc
+from pharmacy_os.modules.sales.domain.rules import (
+    ensure_prescription_valid_for_sale,
+    ensure_rx_for_etc,
+)
 
 __all__ = [
     "Payment",
@@ -33,6 +39,7 @@ __all__ = [
     "SoldItem",
     "EmptyOrderError",
     "InvalidOrderStateError",
+    "InvalidPrescriptionRefError",
     "InvalidReturnError",
     "PrescriptionRequiredError",
     "SalesError",
@@ -40,5 +47,8 @@ __all__ = [
     "SalesRepository",
     "DrugInfo",
     "DrugInfoProvider",
+    "PrescriptionInfo",
+    "PrescriptionInfoProvider",
+    "ensure_prescription_valid_for_sale",
     "ensure_rx_for_etc",
 ]

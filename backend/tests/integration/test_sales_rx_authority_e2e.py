@@ -39,6 +39,31 @@ def _create_drug(client: TestClient, rx_class: str) -> str:
     return str(r.json()["id"])
 
 
+def _validated_prescription(client: TestClient) -> str:
+    """Create + validate a prescription; return its id (status VALIDATED)."""
+    created = client.post(
+        "/api/v1/prescriptions",
+        json={
+            "customer_id": str(uuid4()),
+            "doctor_name": "BS Trần",
+            "items": [
+                {
+                    "drug_id": str(uuid4()),
+                    "quantity": "1",
+                    "dose": "1 viên",
+                    "frequency": "1 lần/ngày",
+                    "duration": "3 ngày",
+                }
+            ],
+        },
+    )
+    assert created.status_code == 201, created.text
+    rx_id = str(created.json()["id"])
+    validated = client.post(f"/api/v1/prescriptions/{rx_id}/validate")
+    assert validated.status_code == 200, validated.text
+    return rx_id
+
+
 def _sale_body(
     client_uuid: str, drug_id: str, *, client_rx: bool, rx_ref: str | None = None
 ) -> dict[str, object]:
@@ -64,12 +89,22 @@ def test_etc_drug_cannot_be_sold_as_otc(client: TestClient) -> None:
     assert resp.status_code == 422, resp.text
 
 
-def test_etc_drug_sold_with_prescription(client: TestClient) -> None:
+def test_etc_drug_sold_with_validated_prescription(client: TestClient) -> None:
     etc = _create_drug(client, "ETC")
+    rx_ref = _validated_prescription(client)
     resp = client.post(
-        "/api/v1/sales", json=_sale_body("ok-1", etc, client_rx=False, rx_ref=str(uuid4()))
+        "/api/v1/sales", json=_sale_body("ok-1", etc, client_rx=False, rx_ref=rx_ref)
     )
     assert resp.status_code == 201, resp.text
+
+
+def test_etc_drug_blocked_when_prescription_ref_is_not_real(client: TestClient) -> None:
+    etc = _create_drug(client, "ETC")
+    # Catalog forces ETC; a bogus ref no longer satisfies the Rx rule (S5.4).
+    resp = client.post(
+        "/api/v1/sales", json=_sale_body("bad-1", etc, client_rx=False, rx_ref=str(uuid4()))
+    )
+    assert resp.status_code == 422, resp.text
 
 
 def test_otc_drug_sold_despite_client_marking_rx(client: TestClient) -> None:

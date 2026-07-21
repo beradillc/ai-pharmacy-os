@@ -46,6 +46,32 @@ def _payload(client_uuid: str, *, rx: bool = False, rx_ref: str | None = None) -
     }
 
 
+def _validated_prescription(client: TestClient) -> str:
+    """Create a prescription and validate it; return its id (status VALIDATED)."""
+    created = client.post(
+        "/api/v1/prescriptions",
+        json={
+            "customer_id": str(uuid4()),
+            "doctor_name": "BS Nguyễn",
+            "items": [
+                {
+                    "drug_id": str(uuid4()),
+                    "quantity": "1",
+                    "dose": "1 viên",
+                    "frequency": "2 lần/ngày",
+                    "duration": "5 ngày",
+                }
+            ],
+        },
+    )
+    assert created.status_code == 201, created.text
+    rx_id = str(created.json()["id"])
+    validated = client.post(f"/api/v1/prescriptions/{rx_id}/validate")
+    assert validated.status_code == 200, validated.text
+    assert validated.json()["status"] == "VALIDATED"
+    return rx_id
+
+
 def test_create_sale_then_read_back(client: TestClient) -> None:
     resp = client.post("/api/v1/sales", json=_payload("pos-1"))
     assert resp.status_code == 201, resp.text
@@ -72,9 +98,16 @@ def test_etc_without_prescription_rejected(client: TestClient) -> None:
     assert resp.headers["content-type"].startswith("application/problem+json")
 
 
-def test_etc_with_prescription_allowed(client: TestClient) -> None:
-    resp = client.post("/api/v1/sales", json=_payload("etc-2", rx=True, rx_ref=str(uuid4())))
+def test_etc_with_validated_prescription_allowed(client: TestClient) -> None:
+    rx_ref = _validated_prescription(client)
+    resp = client.post("/api/v1/sales", json=_payload("etc-2", rx=True, rx_ref=rx_ref))
     assert resp.status_code == 201, resp.text
+
+
+def test_etc_with_unknown_prescription_ref_rejected(client: TestClient) -> None:
+    # A ref that is not a real prescription for the tenant is no longer accepted (S5.4).
+    resp = client.post("/api/v1/sales", json=_payload("etc-3", rx=True, rx_ref=str(uuid4())))
+    assert resp.status_code == 422, resp.text
 
 
 def test_empty_lines_rejected_by_schema(client: TestClient) -> None:

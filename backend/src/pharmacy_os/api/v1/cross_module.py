@@ -18,7 +18,8 @@ from pharmacy_os.core.errors import NotFoundError
 from pharmacy_os.core.events import DomainEvent, EventBus
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.inventory.application import InventoryService, SaleDispenseItem
-from pharmacy_os.modules.sales.domain import DrugInfo, SaleCompleted
+from pharmacy_os.modules.prescription.application import PrescriptionService
+from pharmacy_os.modules.sales.domain import DrugInfo, PrescriptionInfo, SaleCompleted
 
 _log = structlog.get_logger("cross_module.sales_inventory")
 
@@ -70,3 +71,28 @@ class CatalogDrugInfoProvider:
         except NotFoundError:
             return None
         return DrugInfo(drug_id=drug_id, requires_prescription=drug.prescription_required)
+
+
+class PrescriptionInfoAdapter:
+    """Adapter making prescription the authority for a sale's ``prescription_ref``.
+
+    Implements the sales ``PrescriptionInfoProvider`` port over ``PrescriptionService``
+    — the dependency lives here in ``api`` so sales never imports prescription. Lets
+    ``complete_sale`` verify an ETC order's ref is a real, sale-authorising Rx (S5.4).
+    """
+
+    def __init__(self, prescription: PrescriptionService) -> None:
+        self._prescription = prescription
+
+    async def get(self, prescription_id: UUID, tenant_id: UUID) -> PrescriptionInfo | None:
+        ctx = RequestContext(
+            tenant_id=tenant_id,
+            branch_id=tenant_id,
+            user_id=_SYSTEM_USER,
+            permissions=frozenset({"rx.read"}),
+        )
+        try:
+            rx = await self._prescription.get_prescription(prescription_id, ctx)
+        except NotFoundError:
+            return None
+        return PrescriptionInfo(prescription_id=prescription_id, status=rx.status)

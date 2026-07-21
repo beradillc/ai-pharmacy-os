@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 5 (S5.1–S5.3 xong, DỪNG chờ lệnh S5.4/S5.5)** song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
+> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 5 (S5.1–S5.4 xong, DỪNG chờ lệnh S5.5)** song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
 
 ---
 
@@ -11,14 +11,14 @@
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Giai đoạn         | Giai đoạn 2 — Bán hàng · (Compliance kéo sớm từ Giai đoạn 3)                                          |
 | Sprint            | Sprint 5 — Prescription & Clinical AI (backend) · **+ Compliance (docs/13, kéo sớm từ Sprint 7)**     |
-| Tình trạng Sprint | 🔄 Sprint 5: **S5.1–S5.3 xong**, DỪNG chờ duyệt S5.4/S5.5. ✅ Compliance: **C.1–C.5 XONG** (cross-module: `SaleCompleted`→enqueue sync log), Sprint đóng |
+| Tình trạng Sprint | 🔄 Sprint 5: **S5.1–S5.4 xong** (S5.4 = prescription↔sales cross-module), DỪNG chờ duyệt S5.5. ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng |
 | Kernel backend    | ✅ (Sprint 2)                                                                                          |
-| Module nghiệp vụ  | ✅ `catalog`, `inventory`, `sales`, `prescription` (Hexagonal 4 lớp, chưa cross-module/AI); ✅ `compliance` (domain+app+infra+schemas+sync/MockAdapter + C.5 cross-module: `SaleCompleted`→enqueue sync log — C.1–C.5 đủ) |
+| Module nghiệp vụ  | ✅ `catalog`, `inventory`, `sales`, `prescription` (Hexagonal 4 lớp; cross-module: sale→dispense, sale↔prescription-ref S5.4; chưa AI); ✅ `compliance` (domain+app+infra+schemas+sync/MockAdapter + C.5 cross-module: `SaleCompleted`→enqueue sync log — C.1–C.5 đủ) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
-| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**9/0**) · ✅ mypy strict (**127 file**) · ✅ pytest (**192**)     |
+| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**9/0**) · ✅ mypy strict (**127 file**) · ✅ pytest (**206**)     |
 | Hạ tầng dev       | ✅ docker compose healthy; ✅ alembic `0001`..`0006`; ✅ seed ATC idempotent                             |
-| Sprint kế tiếp    | **S5.4** (cross-module, Opus 4.8 + phiên đầy, xem §7) — chờ lệnh mở. Compliance C.1–C.5 đã đóng (§7b). |
+| Sprint kế tiếp    | **S5.5** (Clinical AI, Opus 4.8 + phiên đầy, xem §7) — chờ lệnh mở (2 blocker cũ chưa gỡ). Compliance C.1–C.5 đã đóng (§7b). |
 
 ---
 
@@ -248,19 +248,32 @@ AI_Pharmacy_OS/
 
 ---
 
-## 7. Điểm bắt đầu S5.4 — Cross-module (để phiên sau nối lại ngay)
+## 7. S5.4 Cross-module prescription↔sales — XONG (để phiên sau nối lại ngay)
 
-> **Trạng thái:** Sprint 5 **S5.1–S5.3 xong** (`prescription` domain+application+infrastructure+interface, Hexagonal 4 lớp đủ, đã có API sống). HEAD `main` = `3b9bf18`, working tree sạch, **118 test xanh**, **8 contract kept/0 broken**. **S5.4 và S5.5 CHƯA làm — dừng đúng theo lệnh sếp**, không tự ý tiếp tục.
+> **Trạng thái:** Sprint 5 **S5.1–S5.3 xong** + **S5.4 XONG** (prescription↔sales). **S5.5 (Clinical AI) CHƯA làm — dừng đúng theo
+> lệnh sếp**, không tự ý tiếp tục. Working tree sạch, **206 test xanh, 9 contract kept/0 broken**, mypy strict 127 file, ruff sạch.
+>
+> **S5.4 đã làm (PA1 — sales đọc prescription qua read-port, sếp duyệt):** khi bán thuốc ETC, `SalesService.complete_sale` xác thực
+> `prescription_ref` là đơn **có thật** của tenant và **đã `VALIDATED`/`DISPENSED`** trước khi hoàn tất (accept-list sếp chốt; chặn
+> DRAFT/REJECTED/không tồn tại). Giữ đúng khuôn S4.5:
+> - Read-port mới `PrescriptionInfoProvider` + VO `PrescriptionInfo(prescription_id, status: str)` trong `sales/domain/ports.py`
+>   (sales **không** import enum status của prescription — chính sách accept-list nằm ở `sales.domain.rules._SALE_AUTHORISING_RX_STATES`).
+> - Rule thuần `ensure_prescription_valid_for_sale(status)` + exception `InvalidPrescriptionRefError` (họ `SalesError`→`ValidationError` 422).
+> - Adapter `PrescriptionInfoAdapter` over `PrescriptionService` ở `api/v1/cross_module.py` (quyền `rx.read`, system-context), wire qua
+>   `register_sales(container, get_context, drug_info, rx_info)` trong `build_api_router`. `sales` không import `prescription`.
+> - Provider optional: `_prescription_info is None` (unit/integration cũ, hoặc chưa wire) → giữ nguyên rule cũ "chỉ cần có ref"
+>   (`ensure_rx_for_etc`), nên test không-provider vẫn xanh.
+> - Test: unit `test_sales_rx_prescription_rule.py` (rule) · integration `test_sales_prescription_authority.py` (service + stub provider:
+>   VALIDATED/DISPENSED cho bán, DRAFT/REJECTED/unknown chặn, OTC bỏ qua, no-provider giữ rule cũ) · cập nhật 2 e2e app-level
+>   (`test_sales_api_e2e`, `test_sales_rx_authority_e2e`): đơn ETC cần đơn thuốc thật đã duyệt; ref uuid giả → 422.
 
-**⚠️ Điều kiện bắt buộc trước khi mở S5.4 (yêu cầu của sếp):**
-- **Dùng model Opus 4.8** (không dùng Sonnet) — S5.4 là bước cross-module rủi ro cao, giống tiền lệ S4.4/S4.5 ở Sprint 4 (những bước đó cũng phải dừng chờ duyệt riêng).
-- **Mở vào phiên có hạn mức còn đầy** — không bắt đầu S5.4 giữa chừng một phiên sắp cạn hạn mức, để tránh dừng dở ở bước rủi ro cao (mất tính nguyên tử của 1 bước = 1 commit chạy được).
+**⚠️ Điều kiện bắt buộc trước khi mở S5.5 (yêu cầu của sếp, giữ như S5.4):**
+- **Dùng model Opus 4.8** (không dùng Sonnet) — bước rủi ro cao, làm **từng bước dừng chờ duyệt**.
+- **Mở vào phiên có hạn mức còn đầy** — không bắt đầu giữa chừng phiên sắp cạn hạn mức (giữ tính nguyên tử 1 bước = 1 commit).
 
-**Hành động đầu tiên khi mở S5.4:** đọc `backend/src/pharmacy_os/api/v1/cross_module.py` (tiền lệ S4.4/S4.5) để theo đúng khuôn mẫu — cross-module luôn nối ở composition root `api/v1/`, module không bao giờ import module khác trực tiếp.
-
-**⚠️ Phạm vi S5.4 chưa chốt cụ thể** — cần thảo luận với sếp trước khi code, ví dụ 2 hướng có thể:
-- (a) `PrescriptionDispensed` → gợi ý/khởi tạo `SalesOrder` với `prescription_ref` đã gắn sẵn (đơn thuốc đã cấp phát thì đi thẳng ra quầy tính tiền), hoặc
-- (b) sales đọc `prescription` (qua adapter, giống `DrugInfoProvider`/`CatalogDrugInfoProvider` ở S4.5) để xác thực `prescription_ref` client gửi lên là đơn có thật, đã `VALIDATED`/`DISPENSED` — không chỉ là 1 UUID bất kỳ như hiện tại.
+**Quyết định S5.4 đã chốt (khỏi bàn lại):** chọn **PA1 (b)** — sales đọc prescription qua read-port, KHÔNG dùng PA2 (event
+`PrescriptionDispensed` gắn ngược `SalesOrder`) vì event chỉ mang `prescription_id`, không dựng lại được đơn bán và không cho bảo đảm
+xác thực đồng bộ. Accept-list = **{VALIDATED, DISPENSED}**. Chi tiết thực thi ở khối trạng thái đầu §7.
 
 **S5.5 (Clinical AI) vẫn còn nguyên 2 blocker cũ, chưa gỡ:**
 - Nguồn tri thức dược cụ thể cho RAG + bản quyền hợp pháp (chưa có → không seed `drug_knowledge_chunks`).

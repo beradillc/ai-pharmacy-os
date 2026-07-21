@@ -30,8 +30,13 @@ from pharmacy_os.modules.sales.domain import (
     SalesError,
     SalesOrder,
     SoldItem,
+    ensure_prescription_valid_for_sale,
 )
-from pharmacy_os.modules.sales.domain.ports import DrugInfoProvider, SalesRepository
+from pharmacy_os.modules.sales.domain.ports import (
+    DrugInfoProvider,
+    PrescriptionInfoProvider,
+    SalesRepository,
+)
 from pharmacy_os.shared.value_objects import Money
 
 UowFactory = Callable[[], UnitOfWork]
@@ -44,10 +49,12 @@ class SalesService:
         uow_factory: UowFactory,
         repo_factory: RepoFactory,
         drug_info: DrugInfoProvider | None = None,
+        prescription_info: PrescriptionInfoProvider | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._repo_factory = repo_factory
         self._drug_info = drug_info
+        self._prescription_info = prescription_info
 
     async def complete_sale(self, data: CreateSaleInput, ctx: RequestContext) -> SaleOutput:
         """Record and finalise a sale for the caller's tenant/branch.
@@ -85,6 +92,7 @@ class SalesService:
                 order.add_payment(
                     Payment(method=payment.method, amount=Money(payment.amount, data.currency))
                 )
+            await self._verify_prescription_ref(order, ctx)
             order.complete()
         except SalesError as exc:
             raise ValidationError(str(exc)) from exc
@@ -118,6 +126,21 @@ class SalesService:
                 raise ConflictError("Không thể ghi nhận đơn bán") from exc
 
         return SaleOutput.of(order)
+
+    async def _verify_prescription_ref(self, order: SalesOrder, ctx: RequestContext) -> None:
+        """Verify an ETC order's ``prescription_ref`` is a real, sale-authorising Rx.
+
+        No-op unless a :class:`PrescriptionInfoProvider` is wired (else the
+        ref-present-only rule in :meth:`SalesOrder.complete` still applies) and the
+        order actually has ETC items with a ref. Keeps sales independent of the
+        prescription module — the lookup goes through the injected read-port.
+        """
+        if self._prescription_info is None:
+            return
+        if not order.requires_prescription or order.prescription_ref is None:
+            return
+        info = await self._prescription_info.get(order.prescription_ref, ctx.tenant_id)
+        ensure_prescription_valid_for_sale(info.status if info is not None else None)
 
     async def _resolve_requires_rx(self, line: SaleLineInput, ctx: RequestContext) -> bool:
         """Authoritative Rx status from catalog when known; else the client's flag."""

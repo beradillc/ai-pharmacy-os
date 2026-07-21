@@ -33,3 +33,26 @@ class DrugInfoProvider(Protocol):
     """
 
     async def get(self, drug_id: UUID, tenant_id: UUID) -> DrugInfo | None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class PrescriptionInfo:
+    """The authoritative Rx facts sales needs to authorise a prescription sale.
+
+    ``status`` is the prescription's raw status *value* (e.g. ``"VALIDATED"``);
+    sales owns the accept-list of sale-authorising states in its domain rules, so
+    it never imports the prescription module's status enum.
+    """
+
+    prescription_id: UUID
+    status: str
+
+
+class PrescriptionInfoProvider(Protocol):
+    """Read-port for prescription facts, so sales never imports the prescription module.
+
+    Implemented at the composition root (adapter over ``PrescriptionService``).
+    Returns ``None`` when the prescription is unknown to the caller's tenant.
+    """
+
+    async def get(self, prescription_id: UUID, tenant_id: UUID) -> PrescriptionInfo | None: ...
