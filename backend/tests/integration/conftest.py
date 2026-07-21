@@ -77,6 +77,8 @@ def ctx() -> RequestContext:
                 "compliance.ledger.write",
                 "compliance.config.read",
                 "compliance.config.write",
+                "compliance.sync.push",
+                "compliance.sync.read",
             }
         ),
     )

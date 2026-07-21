@@ -2,16 +2,20 @@
 
 from pharmacy_os.modules.compliance.infrastructure.models import (
     ControlledLedgerEntryORM,
+    NationalSyncLogORM,
     TenantComplianceConfigORM,
 )
 from pharmacy_os.modules.compliance.infrastructure.repository import (
     SqlAlchemyControlledLedgerRepository,
+    SqlAlchemyNationalSyncLogRepository,
     SqlAlchemyTenantComplianceConfigRepository,
 )
 
 __all__ = [
     "ControlledLedgerEntryORM",
+    "NationalSyncLogORM",
     "TenantComplianceConfigORM",
     "SqlAlchemyControlledLedgerRepository",
+    "SqlAlchemyNationalSyncLogRepository",
     "SqlAlchemyTenantComplianceConfigRepository",
 ]

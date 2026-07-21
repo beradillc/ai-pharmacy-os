@@ -1,5 +1,5 @@
-"""Compliance domain: national drug record, controlled-substance ledger, converter
-helpers for QĐ540/TT20/2017 legal-compliance sync. Framework-free.
+"""Compliance domain: national drug record, controlled-substance ledger, national-DB
+sync log/gateway, converter helpers for QĐ540/TT20/2017/QĐ1867. Framework-free.
 """
 
 from pharmacy_os.modules.compliance.domain.converters import (
@@ -13,10 +13,14 @@ from pharmacy_os.modules.compliance.domain.entities import (
     CustomerDetail,
     LedgerDirection,
     NationalDrugRecord,
+    NationalSyncLog,
+    SyncPayloadType,
+    SyncStatus,
     TenantComplianceConfig,
 )
 from pharmacy_os.modules.compliance.domain.exceptions import (
     ComplianceError,
+    InvalidSyncStateError,
     MissingControlledCustomerDetailError,
     MissingControlledPrescriptionCodeError,
     MissingEtcPrescriptionFieldsError,
@@ -26,6 +30,10 @@ from pharmacy_os.modules.compliance.domain.ports import (
     ControlledLedgerRepository,
     DrugMasterFacts,
     DrugMasterProvider,
+    NationalDrugDbGateway,
+    NationalSyncLogRepository,
+    SyncAck,
+    SyncRequest,
     TenantComplianceConfigRepository,
 )
 from pharmacy_os.modules.compliance.domain.rules import (
@@ -43,8 +51,12 @@ __all__ = [
     "CustomerDetail",
     "LedgerDirection",
     "NationalDrugRecord",
+    "NationalSyncLog",
+    "SyncPayloadType",
+    "SyncStatus",
     "TenantComplianceConfig",
     "ComplianceError",
+    "InvalidSyncStateError",
     "MissingControlledCustomerDetailError",
     "MissingControlledPrescriptionCodeError",
     "MissingEtcPrescriptionFieldsError",
@@ -52,6 +64,10 @@ __all__ = [
     "ControlledLedgerRepository",
     "DrugMasterFacts",
     "DrugMasterProvider",
+    "NationalDrugDbGateway",
+    "NationalSyncLogRepository",
+    "SyncAck",
+    "SyncRequest",
     "TenantComplianceConfigRepository",
     "EtcPrescriptionPolicy",
     "validate_controlled_sale",

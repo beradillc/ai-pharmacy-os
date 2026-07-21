@@ -6,7 +6,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Date, DateTime, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Date, DateTime, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pharmacy_os.core.db.base import Base, PkUuidMixin, TenantScopedMixin, TimestampMixin
@@ -45,3 +45,29 @@ class TenantComplianceConfigORM(PkUuidMixin, TimestampMixin, Base):
     tenant_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
     ma_co_so_ban_le: Mapped[str] = mapped_column(String(12), nullable=False)
     ma_co_so_ban_buon: Mapped[str | None] = mapped_column(String(12), nullable=True)
+
+
+class NationalSyncLogORM(PkUuidMixin, TimestampMixin, Base):
+    """Audit truyền nhận lên CSDL Dược Quốc gia (docs/13 mục D.2).
+
+    Tenant-scoped (chỉ ``tenant_id``, không ``branch_id`` — liên thông ở cấp cơ sở, đồng nhất
+    với ``tenant_compliance_configs``). ``client_uuid`` unique theo tenant = khóa idempotency.
+    Chỉ lưu ``payload_hash``, KHÔNG lưu payload thô (mục D.2).
+    """
+
+    __tablename__ = "national_sync_logs"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "client_uuid", name="uq_national_sync_logs_client_uuid"),
+    )
+
+    tenant_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
+    payload_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    payload_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    client_uuid: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(8), nullable=False)
+    request_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    response_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    response_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    response_body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)

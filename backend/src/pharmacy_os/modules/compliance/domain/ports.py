@@ -12,6 +12,8 @@ from uuid import UUID
 
 from pharmacy_os.modules.compliance.domain.entities import (
     ControlledLedgerEntry,
+    NationalSyncLog,
+    SyncPayloadType,
     TenantComplianceConfig,
 )
 
@@ -30,6 +32,47 @@ class TenantComplianceConfigRepository(Protocol):
     async def upsert(self, config: TenantComplianceConfig) -> None: ...
 
     async def get(self, tenant_id: UUID) -> TenantComplianceConfig | None: ...
+
+
+class NationalSyncLogRepository(Protocol):
+    """Persistence port for :class:`NationalSyncLog` (tenant-scoped)."""
+
+    async def add(self, log: NationalSyncLog) -> None: ...
+
+    async def update(self, log: NationalSyncLog) -> None: ...
+
+    async def get(self, log_id: UUID) -> NationalSyncLog | None: ...
+
+    async def by_client_uuid(self, client_uuid: str) -> NationalSyncLog | None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class SyncRequest:
+    """A single record/batch to push to the national drug database (docs/13 mục D.2)."""
+
+    payload_type: SyncPayloadType
+    client_uuid: str
+    payload: str  # serialized payload sent to the gateway; only its hash is persisted
+
+
+@dataclass(frozen=True, slots=True)
+class SyncAck:
+    """The gateway's response to a push. ``ok`` distinguishes ACK from FAILED."""
+
+    ok: bool
+    response_code: str | None
+    response_body: str | None
+
+
+class NationalDrugDbGateway(Protocol):
+    """Outbound port to the CSDL Dược Quốc gia (docs/13 mục D.3).
+
+    ⚠️ The real endpoint spec does not exist yet (due ~6/2026 per QĐ1867 mục 1.2). Only a
+    ``MockNationalDrugDbGateway`` implements this today, wired at the composition root — the
+    real adapter is deliberately not built until the DAV API spec is available.
+    """
+
+    async def push(self, request: SyncRequest) -> SyncAck: ...
 
 
 @dataclass(frozen=True, slots=True)

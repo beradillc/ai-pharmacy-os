@@ -21,3 +21,7 @@ class MissingControlledPrescriptionCodeError(ComplianceError):
 
 class MissingEtcPrescriptionFieldsError(ComplianceError):
     """Feature-flagged ETC prescription rule (docs/13 mục C.3.1) is enabled and unmet."""
+
+
+class InvalidSyncStateError(ComplianceError):
+    """Raised on a ``NationalSyncLog`` transition not allowed in its current status."""

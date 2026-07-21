@@ -7,10 +7,14 @@ from pharmacy_os.modules.compliance.domain import (
     ControlledSubstanceCategory,
     CustomerDetail,
     LedgerDirection,
+    NationalSyncLog,
+    SyncPayloadType,
+    SyncStatus,
     TenantComplianceConfig,
 )
 from pharmacy_os.modules.compliance.infrastructure.models import (
     ControlledLedgerEntryORM,
+    NationalSyncLogORM,
     TenantComplianceConfigORM,
 )
 
@@ -78,4 +82,40 @@ def tenant_config_to_orm(config: TenantComplianceConfig) -> TenantComplianceConf
         tenant_id=config.tenant_id,
         ma_co_so_ban_le=config.ma_co_so_ban_le,
         ma_co_so_ban_buon=config.ma_co_so_ban_buon,
+    )
+
+
+def sync_log_to_domain(row: NationalSyncLogORM) -> NationalSyncLog:
+    return NationalSyncLog(
+        id=row.id,
+        tenant_id=row.tenant_id,
+        payload_type=SyncPayloadType(row.payload_type),
+        payload_hash=row.payload_hash,
+        client_uuid=row.client_uuid,
+        status=SyncStatus(row.status),
+        request_at=row.request_at,
+        response_at=row.response_at,
+        response_code=row.response_code,
+        response_body=row.response_body,
+        retry_count=row.retry_count,
+        error=row.error,
+        created_at=row.created_at,
+    )
+
+
+def sync_log_to_orm(log: NationalSyncLog) -> NationalSyncLogORM:
+    return NationalSyncLogORM(
+        id=log.id,
+        tenant_id=log.tenant_id,
+        payload_type=log.payload_type.value,
+        payload_hash=log.payload_hash,
+        client_uuid=log.client_uuid,
+        status=log.status.value,
+        request_at=log.request_at,
+        response_at=log.response_at,
+        response_code=log.response_code,
+        response_body=log.response_body,
+        retry_count=log.retry_count,
+        error=log.error,
+        created_at=log.created_at,
     )

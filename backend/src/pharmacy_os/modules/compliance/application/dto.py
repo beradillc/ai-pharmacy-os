@@ -11,6 +11,8 @@ from pharmacy_os.modules.compliance.domain import (
     ControlledLedgerEntry,
     ControlledSubstanceCategory,
     LedgerDirection,
+    NationalSyncLog,
+    SyncPayloadType,
     TenantComplianceConfig,
 )
 
@@ -103,4 +105,49 @@ class TenantComplianceConfigOutput:
             tenant_id=config.tenant_id,
             ma_co_so_ban_le=config.ma_co_so_ban_le,
             ma_co_so_ban_buon=config.ma_co_so_ban_buon,
+        )
+
+
+@dataclass(slots=True)
+class PushSyncInput:
+    """A record/batch to push to the national drug database (docs/13 mục D).
+
+    ``payload`` is the serialized data sent to the gateway; the log stores only its hash.
+    """
+
+    payload_type: SyncPayloadType
+    client_uuid: str
+    payload: str
+
+
+@dataclass(slots=True)
+class NationalSyncLogOutput:
+    id: UUID
+    tenant_id: UUID
+    payload_type: str
+    payload_hash: str
+    client_uuid: str
+    status: str
+    request_at: datetime
+    response_at: datetime | None
+    response_code: str | None
+    response_body: str | None
+    retry_count: int
+    error: str | None
+
+    @classmethod
+    def of(cls, log: NationalSyncLog) -> NationalSyncLogOutput:
+        return cls(
+            id=log.id,
+            tenant_id=log.tenant_id,
+            payload_type=log.payload_type.value,
+            payload_hash=log.payload_hash,
+            client_uuid=log.client_uuid,
+            status=log.status.value,
+            request_at=log.request_at,
+            response_at=log.response_at,
+            response_code=log.response_code,
+            response_body=log.response_body,
+            retry_count=log.retry_count,
+            error=log.error,
         )

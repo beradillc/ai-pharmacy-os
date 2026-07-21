@@ -11,7 +11,10 @@ from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from pharmacy_os.modules.compliance.domain.exceptions import NotControlledSubstanceError
+from pharmacy_os.modules.compliance.domain.exceptions import (
+    InvalidSyncStateError,
+    NotControlledSubstanceError,
+)
 
 
 def _now() -> datetime:
@@ -151,3 +154,73 @@ class TenantComplianceConfig:
     def __post_init__(self) -> None:
         if not self.ma_co_so_ban_le.strip():
             raise ValueError("ma_co_so_ban_le không được để trống")
+
+
+class SyncPayloadType(StrEnum):
+    """Loại bản ghi đẩy lên CSDL Dược (docs/13 mục D.2 — payload_type drug/sale/prescription)."""
+
+    DRUG = "drug"
+    SALE = "sale"
+    PRESCRIPTION = "prescription"
+
+
+class SyncStatus(StrEnum):
+    """Trạng thái truyền nhận 1 bản ghi lên CSDL Dược (docs/13 mục D.2)."""
+
+    PENDING = "PENDING"  # đã tạo, chưa gửi
+    SENT = "SENT"  # đã gửi, chờ phản hồi
+    ACK = "ACK"  # cổng CSDL Dược đã xác nhận nhận
+    FAILED = "FAILED"  # gửi lỗi / bị từ chối
+
+
+@dataclass(slots=True)
+class NationalSyncLog:
+    """Audit truyền nhận 1 bản ghi/lô lên CSDL Dược Quốc gia (docs/13 mục D.2).
+
+    Chỉ lưu ``payload_hash`` (không lưu payload thô — mục D.2 chỉ liệt kê hash). ``client_uuid``
+    dùng làm khóa idempotency (unique theo tenant). Vòng đời:
+    ``PENDING`` → ``SENT`` → ``ACK`` hoặc ``FAILED``; ``FAILED`` có thể gửi lại (``mark_sent``).
+    Tenant-scoped (chỉ ``tenant_id``, không ``branch_id`` — liên thông ở cấp cơ sở, đồng nhất với
+    :class:`TenantComplianceConfig`).
+    """
+
+    tenant_id: UUID
+    payload_type: SyncPayloadType
+    payload_hash: str
+    client_uuid: str
+    status: SyncStatus = SyncStatus.PENDING
+    request_at: datetime = field(default_factory=_now)
+    response_at: datetime | None = None
+    response_code: str | None = None
+    response_body: str | None = None
+    retry_count: int = 0
+    error: str | None = None
+    id: UUID = field(default_factory=uuid4)
+    created_at: datetime = field(default_factory=_now)
+
+    def mark_sent(self) -> None:
+        """Ghi nhận vừa gửi request đi: ``PENDING``/``FAILED`` (gửi lại) → ``SENT``."""
+        if self.status not in (SyncStatus.PENDING, SyncStatus.FAILED):
+            raise InvalidSyncStateError(f"Chỉ gửi được khi ở PENDING/FAILED (đang {self.status})")
+        self.status = SyncStatus.SENT
+        self.request_at = _now()
+
+    def mark_acked(self, *, response_code: str | None, response_body: str | None) -> None:
+        """Cổng CSDL Dược xác nhận: ``SENT`` → ``ACK``."""
+        if self.status is not SyncStatus.SENT:
+            raise InvalidSyncStateError(f"Chỉ ACK được khi ở SENT (đang {self.status})")
+        self.status = SyncStatus.ACK
+        self.response_at = _now()
+        self.response_code = response_code
+        self.response_body = response_body
+        self.error = None
+
+    def mark_failed(self, *, error: str, response_code: str | None = None) -> None:
+        """Gửi lỗi / bị từ chối: ``SENT`` → ``FAILED``, tăng ``retry_count``."""
+        if self.status is not SyncStatus.SENT:
+            raise InvalidSyncStateError(f"Chỉ FAILED được khi ở SENT (đang {self.status})")
+        self.status = SyncStatus.FAILED
+        self.response_at = _now()
+        self.response_code = response_code
+        self.error = error
+        self.retry_count += 1
