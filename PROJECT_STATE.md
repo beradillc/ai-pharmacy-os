@@ -18,7 +18,7 @@
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
 | Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**8/0**) · ✅ mypy strict (**107 file**) · ✅ pytest (**118**)     |
 | Hạ tầng dev       | ✅ docker compose healthy; ✅ alembic `0001`..`0004`; ✅ seed ATC idempotent                             |
-| Sprint kế tiếp    | S5.4 (cross-module, nếu cần) và S5.5 (Clinical AI) — **chờ lệnh mở**, chưa tự động chuyển               |
+| Sprint kế tiếp    | **S5.4** (cross-module) — cần **Opus 4.8** + phiên hạn mức đầy, xem §7. **Chờ lệnh mở**, chưa tự động chuyển |
 
 ---
 
@@ -191,36 +191,38 @@ AI_Pharmacy_OS/
 
 ---
 
-## 7. Điểm bắt đầu Sprint 5 — Prescription & Clinical AI (để phiên sau nối lại ngay)
+## 7. Điểm bắt đầu S5.4 — Cross-module (để phiên sau nối lại ngay)
 
-> **Trạng thái vào Sprint 5:** backend Sprint 4 DONE, HEAD `main` = commit doc Sprint-4-DONE, working tree sạch, 94 test xanh, 7 contract. Chưa khởi động Sprint 5.
+> **Trạng thái:** Sprint 5 **S5.1–S5.3 xong** (`prescription` domain+application+infrastructure+interface, Hexagonal 4 lớp đủ, đã có API sống). HEAD `main` = `3b9bf18`, working tree sạch, **118 test xanh**, **8 contract kept/0 broken**. **S5.4 và S5.5 CHƯA làm — dừng đúng theo lệnh sếp**, không tự ý tiếp tục.
 
-**⚠️ Phải CHỐT trước khi code (blocker):**
-- **Nguồn tri thức dược cụ thể cho RAG + bản quyền** (PROJECT_STATE §5 đã hẹn "trước Sprint 5"). Chưa có nguồn hợp pháp thì **không** seed `drug_knowledge_chunks` / không demo RAG.
-- **`AI__API_KEY` thực** để chạy thử LLM (hiện test dùng `"test-key"`; config sẵn ở `AISettings`: `AI__MODEL_REASONING=claude-opus-4-8`, `AI__MODEL_FAST=claude-sonnet-5`).
+**⚠️ Điều kiện bắt buộc trước khi mở S5.4 (yêu cầu của sếp):**
+- **Dùng model Opus 4.8** (không dùng Sonnet) — S5.4 là bước cross-module rủi ro cao, giống tiền lệ S4.4/S4.5 ở Sprint 4 (những bước đó cũng phải dừng chờ duyệt riêng).
+- **Mở vào phiên có hạn mức còn đầy** — không bắt đầu S5.4 giữa chừng một phiên sắp cạn hạn mức, để tránh dừng dở ở bước rủi ro cao (mất tính nguyên tử của 1 bước = 1 commit chạy được).
 
-**Hành động đầu tiên (2 phút để vào việc):** mở `backend/src/pharmacy_os/core/ai/provider.py` (port `LLMProvider` — đang chỉ có interface, chưa impl) và `docs/12_AI_INTEGRATION.md`; quyết impl adapter Anthropic trước hay module `prescription` (thuần domain, không cần AI) trước. **Khuyến nghị: làm `prescription` domain trước** (không phụ thuộc blocker AI/RAG), để có tiến độ ngay.
+**Hành động đầu tiên khi mở S5.4:** đọc `backend/src/pharmacy_os/api/v1/cross_module.py` (tiền lệ S4.4/S4.5) để theo đúng khuôn mẫu — cross-module luôn nối ở composition root `api/v1/`, module không bao giờ import module khác trực tiếp.
 
-**Hạng mục Sprint 5** (từ [ROADMAP](ROADMAP.md)):
-1. Module `prescription/`: state machine (nháp→xác thực→cấp phát), Hexagonal 4 lớp.
-2. `core/ai`: impl `LLMProvider` (Anthropic), AI Gateway + guardrails.
-3. RAG: pgvector (**đã bật từ migration `0001`**), chunk/embed `drug_knowledge_chunks`.
-4. Module `clinical/`: rule engine tương tác thuốc + LLM diễn giải; kiểm liều / thay thế.
-5. Trích xuất đơn từ ảnh (vision). Ghi `ai_recommendations` + human-in-the-loop.
+**⚠️ Phạm vi S5.4 chưa chốt cụ thể** — cần thảo luận với sếp trước khi code, ví dụ 2 hướng có thể:
+- (a) `PrescriptionDispensed` → gợi ý/khởi tạo `SalesOrder` với `prescription_ref` đã gắn sẵn (đơn thuốc đã cấp phát thì đi thẳng ra quầy tính tiền), hoặc
+- (b) sales đọc `prescription` (qua adapter, giống `DrugInfoProvider`/`CatalogDrugInfoProvider` ở S4.5) để xác thực `prescription_ref` client gửi lên là đơn có thật, đã `VALIDATED`/`DISPENSED` — không chỉ là 1 UUID bất kỳ như hiện tại.
 
-**Hook code đã sẵn (không phải làm lại):**
-- `core.ai.LLMProvider` port — `backend/src/pharmacy_os/core/ai/provider.py`.
-- `Drug.is_prescription_required()` + `RxClass` (catalog) — phân loại ETC/CONTROLLED.
-- **`SalesOrder.prescription_ref`** (mới ở Sprint 4) — chỗ để nối đơn thuốc ↔ đơn bán.
-- ERD `drug_interactions`, `drug_knowledge_chunks`, `ai_recommendations` — [docs/03](docs/03_DATABASE_ERD.md).
-- pgvector + pgcrypto đã bật live (migration `0001`).
+**S5.5 (Clinical AI) vẫn còn nguyên 2 blocker cũ, chưa gỡ:**
+- Nguồn tri thức dược cụ thể cho RAG + bản quyền hợp pháp (chưa có → không seed `drug_knowledge_chunks`).
+- `AI__API_KEY` thực (hiện test vẫn dùng `"test-key"`).
 
-**Khuôn mẫu bắt buộc giữ (theo Sprint 3–4):**
-- Mỗi module mới (`prescription`, `clinical`) = Hexagonal 4 lớp; thêm contract `<mod>-domain-innermost` + đưa vào `module-independence` (7 → 9 contract).
-- Cross-module (vd `PrescriptionDispensed` → sales/inventory, hay clinical đọc catalog/crm) **nối ở composition root** `api/v1/cross_module.py` — không để module import module (đã có tiền lệ Sprint 4).
-- Mỗi bước = 1 commit chạy được, 3 cổng xanh (pytest + mypy strict + import-linter), cập nhật PROJECT_STATE sau commit.
+**Hook code đã sẵn cho S5.4/S5.5 (không phải làm lại):**
+- `Prescription`/`PrescriptionService` đủ 4 lớp (S5.1–S5.3) — `PrescriptionDispensed`/`PrescriptionValidated`/`PrescriptionRejected` đã phát sau commit, sẵn để subscribe ở composition root.
+- `SalesOrder.prescription_ref` (Sprint 4) — chỗ để nối đơn thuốc ↔ đơn bán.
+- `core.ai.LLMProvider` port — `backend/src/pharmacy_os/core/ai/provider.py` (chỉ có interface, chưa impl).
+- ERD `drug_interactions`, `drug_knowledge_chunks`, `ai_recommendations` — [docs/03](docs/03_DATABASE_ERD.md); pgvector + pgcrypto đã bật live (migration `0001`).
 
-> **Nợ kỹ thuật mang sang (chưa chặn Sprint 5):** `api/deps.py` dev-header context tạm (thay bằng JWT thật ở Sprint 6); FK `drugs.atc_code`→`atc_codes` chưa bật; uniqueness `registration_no` chưa enforce; **persist trả hàng** (`register_return`) chưa có use-case + trả tồn. Chi tiết ở [TODO.md](TODO.md).
+**Khuôn mẫu bắt buộc giữ (theo Sprint 3–5):**
+- Cross-module **nối ở composition root** `api/v1/cross_module.py` — không để module import module (tiền lệ Sprint 4, giữ nguyên ở S5.1–S5.3).
+- Mỗi bước = 1 commit chạy được, 4 cổng xanh (ruff + import-linter + mypy strict + pytest), cập nhật PROJECT_STATE sau mỗi commit.
+- Bước rủi ro cao (cross-module, S5.4) → dừng chờ duyệt sau bước đó, không tự chạy tiếp sang S5.5.
+
+**Hạ tầng còn mở từ phiên này:** docker compose (postgres+redis) đang chạy — kiểm tra `docker compose ps` khi mở phiên mới; `make down` nếu không cần nữa. Migration hiện tại: `0001`→`0004` (`0004_prescription` đã apply live trên Postgres, `alembic check` sạch, reversible).
+
+> **Nợ kỹ thuật mang sang (chưa chặn S5.4):** `api/deps.py` dev-header context tạm (thay bằng JWT thật ở Sprint 6); FK `drugs.atc_code`→`atc_codes` chưa bật; uniqueness `registration_no` chưa enforce; **persist trả hàng** (`register_return`, Sprint 4) chưa có use-case + trả tồn. Chi tiết ở [TODO.md](TODO.md).
 
 ---
 
