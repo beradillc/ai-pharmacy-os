@@ -36,6 +36,8 @@ _DEV_PERMISSIONS = frozenset(
         "rx.create",
         "rx.approve",
         "rx.dispense",
+        "clinical.check",
+        "clinical.accept",
     }
 )
 

@@ -1,6 +1,6 @@
 # TODO — AI Pharmacy OS
 
-> Trạng thái công việc theo hạng mục. Cập nhật cuối: **2026-07-21**.
+> Trạng thái công việc theo hạng mục. Cập nhật cuối: **2026-07-22**.
 > Nguồn sự thật tổng quan: [PROJECT_STATE.md](PROJECT_STATE.md). Lộ trình: [ROADMAP.md](ROADMAP.md).
 
 ---
@@ -75,16 +75,32 @@
 - [ ] **Nguồn còn thiếu** (chặn phần liên quan, xem cảnh báo đầu docs/13): TT11/2025, NĐ163/2025, NĐ90/2026,
       đặc tả API DAV, văn bản kê đơn ngoại trú hiện hành (cho rule C.3.1 ETC).
 
-## ⏳ Chưa hiện thực (theo ROADMAP — KHÔNG demo/bịa)
+### Sprint 5 — Clinical AI (S5.5, mock LLM only)
+- [x] **5.5.1 domain** — `clinical/domain`: `DrugInteraction` (cặp hoạt chất canonical), `AiRecommendation`
+      (audit bất biến + `accept()`), engine `find_interactions` + guardrail `requires_pharmacist_review`.
+- [x] **5.5.2 app+infra+migration** *(2026-07-22)* — `ClinicalService.check_interactions/get_recommendation/accept_recommendation`;
+      ORM+mapper+repo cho `drug_interactions`+`ai_recommendations`; migration `0007_clinical` (live Postgres, `alembic check`
+      sạch, downgrade/upgrade sạch); `MockLLMProvider` ở `core/ai` (KHÔNG gọi API); seed 5 cặp tương tác **mẫu**
+      (`seed_drug_interactions`, idempotent — nguồn `SAMPLE …`, không chính thức); quyền `clinical.check`/`clinical.accept`
+      thêm vào dev context + system permissions test. 4 cổng xanh (**233 test**, 10 contract kept/0).
+- [ ] **5.5.3 interface** — `interface/schemas.py` + router `/clinical/*`; wire `ClinicalService` + `MockLLMProvider` vào DI (`bootstrap`/`api/v1`).
+- [ ] **5.5.4 cross-module** (chờ duyệt riêng — Opus) — auto-check tương tác ở sale/prescription. **BỊ CHẶN** bởi blocker hoạt chất dưới đây.
 
-### Sprint 5 — Prescription & Clinical AI
-- [ ] Module `prescription` (đơn thuốc nháp, xác thực, cấp phát).
-- [ ] **`ClinicalSafetyEngine`**: kiểm tra dị ứng theo hoạt chất (xử lý danh sách dị ứng rỗng),
-      tương tác thuốc chéo (rule engine + bảng `drug_interactions`), kiểm tra liều.
-- [ ] Nối `core.ai.LLMProvider` → Claude; RAG trên `drug_knowledge_chunks` (pgvector).
+**Quyết định cần chốt (blocker đã đánh dấu trong code — CHƯA tự làm ở 5.5.2):**
+- [ ] **Catalog thiếu mô hình hoạt chất** (`active_ingredients` / `drug_ingredients` theo docs/03 chưa implement).
+      Chặn `drug_id → hoạt chất` ⇒ chặn auto-check tương tác ở sale/prescription (5.5.4). **KHÔNG tự thêm vào catalog** —
+      chờ sếp quyết: **(a)** thêm ngay vào `catalog` (đụng contract/migration catalog), hay **(b)** tách sprint riêng
+      (gộp cùng mạch dị ứng khách hàng Sprint 6). Không đổi 10 contract sẵn có.
+- [ ] **`drug_knowledge_chunks` (RAG) — HOÃN, chưa tạo bảng ở `0007`.** Lý do: là blocker (nguồn tri thức dược thật +
+      bản quyền, bảng rỗng vô nghĩa cho A1) **và** cột `vector(1536)` (pgvector) phá test-harness SQLite (`create_all`).
+      Sẽ tạo bảng + index embedding + migration riêng **khi làm RAG thật** (gỡ được blocker), test đầy đủ khi đó.
+- [ ] Nối `core.ai.LLMProvider` → Claude thật (`AnthropicProvider`) — `# BLOCKER: AI__API_KEY thật`. Nay dùng `MockLLMProvider`.
 
-> Điểm tích hợp đã sẵn sàng cho Sprint 5: `Drug.is_prescription_required()`, `core.ai.LLMProvider` port,
-> ERD `drug_interactions` / `drug_knowledge_chunks`.
+### Sprint 5 — Prescription (đã có từ S5.1–S5.4)
+- [x] Module `prescription` (đơn thuốc nháp, xác thực, cấp phát) — Hexagonal 4 lớp, migration `0004`.
+
+> Điểm tích hợp đã sẵn sàng: `Drug.is_prescription_required()`, `core.ai.LLMProvider` port + `MockLLMProvider`,
+> bảng `drug_interactions` (+seed mẫu). `drug_knowledge_chunks` HOÃN (xem trên).
 
 ---
 

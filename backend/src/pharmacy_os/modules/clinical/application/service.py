@@ -1,0 +1,159 @@
+"""Clinical use-cases: check drug interactions (with an audited AI explanation) and
+record the pharmacist's human-in-the-loop sign-off.
+
+The safety verdict is deterministic — it comes from the domain engine over the
+``drug_interactions`` reference table, never from the LLM. The injected
+``LLMProvider`` (a mock in S5.5, see ``# BLOCKER: AI__API_KEY thật``) only produces an
+advisory *explanation*; its confidence feeds the review guardrail but cannot clear a
+serious finding. The service depends only on ports + the provider protocol; concrete
+repositories and the unit of work are injected as factories at composition time.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from hashlib import sha256
+from uuid import UUID
+
+from pharmacy_os.core.ai import LLMProvider, Message
+from pharmacy_os.core.context import RequestContext
+from pharmacy_os.core.db import UnitOfWork
+from pharmacy_os.core.errors import ConflictError, NotFoundError
+from pharmacy_os.core.security import require_permission
+from pharmacy_os.modules.clinical.application.dto import (
+    AiRecommendationOutput,
+    CheckInteractionsInput,
+    DrugInteractionOutput,
+    InteractionCheckResult,
+)
+from pharmacy_os.modules.clinical.domain import (
+    AiRecommendation,
+    AiRecommendationAlreadyAcceptedError,
+    DrugInteraction,
+    find_interactions,
+    requires_pharmacist_review,
+)
+from pharmacy_os.modules.clinical.domain.ports import (
+    AiRecommendationRepository,
+    DrugInteractionRepository,
+)
+
+UowFactory = Callable[[], UnitOfWork]
+InteractionRepoFactory = Callable[[UnitOfWork], DrugInteractionRepository]
+RecommendationRepoFactory = Callable[[UnitOfWork, RequestContext], AiRecommendationRepository]
+
+_SYSTEM_PROMPT = (
+    "Bạn là trợ lý dược lâm sàng. Diễn giải ngắn gọn các tương tác thuốc đã được "
+    "phát hiện. KHÔNG tự quyết định mức độ an toàn — mức độ đã do hệ thống xác định."
+)
+
+
+def _build_messages(ingredients: list[str], findings: list[DrugInteraction]) -> list[Message]:
+    if findings:
+        lines = "\n".join(
+            f"- {f.ingredient_a} × {f.ingredient_b}: {f.severity.value} — {f.mechanism}"
+            for f in findings
+        )
+        user = f"Hoạt chất: {', '.join(ingredients)}.\nTương tác đã phát hiện:\n{lines}"
+    else:
+        user = f"Hoạt chất: {', '.join(ingredients)}.\nKhông phát hiện tương tác đã biết."
+    return [Message(role="system", content=_SYSTEM_PROMPT), Message(role="user", content=user)]
+
+
+class ClinicalService:
+    def __init__(
+        self,
+        uow_factory: UowFactory,
+        interaction_repo_factory: InteractionRepoFactory,
+        recommendation_repo_factory: RecommendationRepoFactory,
+        llm: LLMProvider,
+        *,
+        min_confidence: float,
+        model: str | None = None,
+    ) -> None:
+        self._uow_factory = uow_factory
+        self._interaction_repo_factory = interaction_repo_factory
+        self._recommendation_repo_factory = recommendation_repo_factory
+        self._llm = llm
+        self._min_confidence = min_confidence
+        self._model = model
+
+    async def check_interactions(
+        self, data: CheckInteractionsInput, ctx: RequestContext
+    ) -> InteractionCheckResult:
+        """Deterministically find drug interactions, then audit an AI explanation.
+
+        The findings come from the domain engine (:func:`find_interactions`) over the
+        reference table — the LLM call only explains. Every check writes one immutable
+        :class:`AiRecommendation`; :attr:`requires_review` is the guardrail verdict
+        (docs/12 mục 6): a serious finding or low model confidence demands a pharmacist.
+        """
+        require_permission(ctx, "clinical.check")
+
+        async with self._uow_factory() as uow:
+            interaction_repo = self._interaction_repo_factory(uow)
+            known = await interaction_repo.find_for_ingredients(data.ingredients)
+            findings = find_interactions(data.ingredients, known)
+
+            messages = _build_messages(data.ingredients, findings)
+            result = self._llm.complete(messages, model=self._model)
+            confidence = result.confidence if result.confidence is not None else 0.0
+            requires_review = requires_pharmacist_review(
+                findings, confidence, min_confidence=self._min_confidence
+            )
+            prompt_hash = sha256("\n".join(m.content for m in messages).encode("utf-8")).hexdigest()
+            # Cite the reference rows that produced the findings (the mock LLM has no RAG).
+            sources = tuple(sorted({f.source for f in findings}))
+
+            recommendation = AiRecommendation(
+                tenant_id=ctx.tenant_id,
+                context_type=data.context_type,
+                context_id=data.context_id,
+                model=result.model,
+                prompt_hash=prompt_hash,
+                confidence=confidence,
+                requires_review=requires_review,
+                output=result.content,
+                sources=sources,
+            )
+            repo = self._recommendation_repo_factory(uow, ctx)
+            await repo.add(recommendation)
+            await uow.commit()
+
+        return InteractionCheckResult(
+            findings=[DrugInteractionOutput.of(f) for f in findings],
+            recommendation=AiRecommendationOutput.of(recommendation),
+        )
+
+    async def get_recommendation(
+        self, recommendation_id: UUID, ctx: RequestContext
+    ) -> AiRecommendationOutput:
+        """Return one recommendation by id (tenant-scoped); 404 if not found."""
+        require_permission(ctx, "clinical.check")
+        async with self._uow_factory() as uow:
+            repo = self._recommendation_repo_factory(uow, ctx)
+            rec = await repo.get(recommendation_id)
+        if rec is None:
+            raise NotFoundError(f"Không tìm thấy khuyến nghị AI {recommendation_id}")
+        return AiRecommendationOutput.of(rec)
+
+    async def accept_recommendation(
+        self, recommendation_id: UUID, ctx: RequestContext
+    ) -> AiRecommendationOutput:
+        """Pharmacist signs off on a recommendation (human-in-the-loop, docs/12 mục 6).
+
+        404 if unknown; 409 if it was already accepted (accepting twice is a conflict).
+        """
+        require_permission(ctx, "clinical.accept")
+        async with self._uow_factory() as uow:
+            repo = self._recommendation_repo_factory(uow, ctx)
+            rec = await repo.get(recommendation_id)
+            if rec is None:
+                raise NotFoundError(f"Không tìm thấy khuyến nghị AI {recommendation_id}")
+            try:
+                rec.accept(ctx.user_id)
+            except AiRecommendationAlreadyAcceptedError as exc:
+                raise ConflictError(str(exc)) from exc
+            await repo.update(rec)
+            await uow.commit()
+        return AiRecommendationOutput.of(rec)

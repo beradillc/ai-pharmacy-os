@@ -13,7 +13,7 @@ import structlog
 
 from pharmacy_os.core.config import get_settings
 from pharmacy_os.core.db import build_engine, build_sessionmaker
-from seeds.reference_data import seed_atc_codes
+from seeds.reference_data import seed_atc_codes, seed_drug_interactions
 
 _log = structlog.get_logger("seed")
 
@@ -23,10 +23,15 @@ async def main() -> None:
     engine = build_engine(settings.db.url, pool_size=settings.db.pool_size)
     session_factory = build_sessionmaker(engine)
     async with session_factory() as session:
-        count = await seed_atc_codes(session)
+        atc_count = await seed_atc_codes(session)
+        interaction_count = await seed_drug_interactions(session)
         await session.commit()
     await engine.dispose()
-    _log.info("seed_complete", atc_codes_inserted=count)
+    _log.info(
+        "seed_complete",
+        atc_codes_inserted=atc_count,
+        drug_interactions_inserted=interaction_count,
+    )
 
 
 if __name__ == "__main__":

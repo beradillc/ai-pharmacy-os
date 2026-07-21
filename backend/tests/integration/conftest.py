@@ -13,12 +13,18 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import StaticPool
 
+from pharmacy_os.core.ai import MockLLMProvider
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.events import InMemoryEventBus
 from pharmacy_os.models_registry import Base
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.catalog.infrastructure import SqlAlchemyDrugRepository
+from pharmacy_os.modules.clinical.application import ClinicalService
+from pharmacy_os.modules.clinical.infrastructure import (
+    SqlAlchemyAiRecommendationRepository,
+    SqlAlchemyDrugInteractionRepository,
+)
 from pharmacy_os.modules.compliance.application import ComplianceService
 from pharmacy_os.modules.compliance.infrastructure import (
     SqlAlchemyControlledLedgerRepository,
@@ -79,6 +85,8 @@ def ctx() -> RequestContext:
                 "compliance.config.write",
                 "compliance.sync.push",
                 "compliance.sync.read",
+                "clinical.check",
+                "clinical.accept",
             }
         ),
     )
@@ -149,4 +157,20 @@ def compliance_service(
         uow_factory,
         lambda uow, c: SqlAlchemyControlledLedgerRepository(uow.session, c),
         lambda uow, c: SqlAlchemyTenantComplianceConfigRepository(uow.session, c),
+    )
+
+
+@pytest.fixture
+def clinical_service(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> ClinicalService:
+    def uow_factory() -> UnitOfWork:
+        return SqlAlchemyUnitOfWork(session_factory, event_bus)
+
+    return ClinicalService(
+        uow_factory,
+        lambda uow: SqlAlchemyDrugInteractionRepository(uow.session),
+        lambda uow, c: SqlAlchemyAiRecommendationRepository(uow.session, c),
+        MockLLMProvider(),
+        min_confidence=0.6,
     )
