@@ -10,6 +10,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from pharmacy_os.api.deps import get_context
+from pharmacy_os.api.v1.compliance_cross import wire_compliance_sync
 from pharmacy_os.api.v1.cross_module import CatalogDrugInfoProvider, wire_sale_dispensing
 from pharmacy_os.api.v1.health import router as health_router
 from pharmacy_os.api.v1.national_sync import wire_national_sync
@@ -38,6 +39,10 @@ def build_api_router(container: Container) -> APIRouter:
     # National drug DB sync service (mock gateway — BLOCKER: DAV API spec).
     # Registered here so C.5's cross-module subscriber can resolve it; no router.
     wire_national_sync(container)
+
+    # C.5 cross-module reaction: a completed sale enqueues a national-DB sync push
+    # (both the event bus and the sync service are now registered).
+    wire_compliance_sync(container)
     return api
 
 
