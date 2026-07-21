@@ -27,6 +27,11 @@ class CatalogService:
         self._repo_factory = repo_factory
 
     async def create_drug(self, data: CreateDrugInput, ctx: RequestContext) -> DrugOutput:
+        """Create a drug (with its units) for the caller's tenant.
+
+        Raises :class:`ValidationError` on a duplicate unit name and
+        :class:`ConflictError` when *data.barcode* is already registered.
+        """
         require_permission(ctx, "catalog.create")
         drug = Drug(
             name=data.name,
@@ -55,6 +60,7 @@ class CatalogService:
         return DrugOutput.of(drug)
 
     async def get_drug(self, drug_id: UUID, ctx: RequestContext) -> DrugOutput:
+        """Return one drug by id, scoped to the tenant; 404 if not found."""
         require_permission(ctx, "catalog.read")
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)
@@ -66,6 +72,7 @@ class CatalogService:
     async def list_drugs(
         self, ctx: RequestContext, *, limit: int = 50, offset: int = 0
     ) -> list[DrugOutput]:
+        """List the tenant's drugs (name-ordered), paginated by limit/offset."""
         require_permission(ctx, "catalog.read")
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)

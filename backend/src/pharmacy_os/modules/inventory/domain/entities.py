@@ -54,6 +54,7 @@ class StockMovement:
     occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def signed_quantity(self) -> Decimal:
+        """Return the quantity signed by direction (negative for OUT moves)."""
         if self.type in (MovementType.OUT,):
             return -self.quantity
         return self.quantity

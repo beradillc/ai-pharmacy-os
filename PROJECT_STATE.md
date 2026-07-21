@@ -10,11 +10,13 @@
 | Hạng mục | Trạng thái |
 |----------|-----------|
 | Giai đoạn | Giai đoạn 1 — Nền tảng |
-| Sprint | Sprint 3 — Catalog & Inventory |
+| Sprint | Sprint 3 — Catalog & Inventory (+ Demo & Self-Refine) |
 | Tình trạng Sprint | ✅ **HOÀN THÀNH** |
 | Kernel backend | ✅ (Sprint 2) |
 | Module nghiệp vụ | ✅ `catalog`, `inventory` (Hexagonal, event-sourced, FEFO) |
-| Chất lượng | ✅ ruff · ✅ format · ✅ import-linter (**6/0**) · ✅ mypy strict (**92 file**) · ✅ pytest (**46**) · domain coverage **97%** |
+| Demo | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm) |
+| Self-Refine | ✅ docstring use-case + 8 edge-case test; xem [TODO.md](TODO.md) |
+| Chất lượng | ✅ ruff · ✅ format · ✅ import-linter (**6/0**) · ✅ mypy strict (**92 file**) · ✅ pytest (**54**) · domain coverage **97%** |
 | Hạ tầng dev | ✅ docker compose healthy; ✅ alembic `0001`+`0002` áp dụng live; ✅ seed ATC idempotent |
 | Sprint kế tiếp | Sprint 4 — Sales / POS offline (chưa khởi động) |
 
@@ -159,6 +161,7 @@ AI_Pharmacy_OS/
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-21 | **Demo & Self-Refine.** Thêm `demo_preview.py` (xem trước sản phẩm, chạy end-to-end SQLite in-memory, trung thực về phạm vi — clinical đánh dấu CHƯA làm). Self-refine `modules/`: docstring use-case + `signed_quantity`; thêm `test_edge_cases.py` (8 test: qty=0, demand=0, lô rỗng, on_hand thuốc lạ, barcode trùng/khác tenant). Tạo `TODO.md`. Gate: 54 test, mypy strict 92 file, import-linter 6/0. |
 | 2026-07-21 | **Sprint 3 HOÀN THÀNH.** Module `catalog` + `inventory` (Hexagonal, event-sourced, FEFO thuần). API v1 drugs/inventory. Migration `0002` (6 bảng) live + reversible, `alembic check` sạch. Seed ATC idempotent. Contract mới: domain-purity + module-independence. 46 test, domain coverage 97%, mypy strict 92 file, import-linter 6/0. |
 | 2026-07-21 | **Quản trị pre-Sprint 3.** Chốt giấy phép **Apache-2.0** (thêm `LICENSE`, `NOTICE`, metadata pyproject). Commit git đầu tiên `c6fc698` (74 file, branch `main`); working tree sạch. |
 | 2026-07-21 | **Sprint 2 HOÀN THÀNH.** Hiện thực kernel backend (config, DI, event bus, UoW, security, audit, AI port, plugin loader, errors, API v1 + health, Alembic `0001`). CI + docker-compose + Makefile. Gate xanh: pytest 21, mypy strict 35 file, ruff/format, import-linter 3/0; docker+migration chạy live. Cập nhật README/ROADMAP/PROJECT_STATE. |

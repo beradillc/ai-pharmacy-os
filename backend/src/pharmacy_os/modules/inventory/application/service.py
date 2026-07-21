@@ -63,6 +63,11 @@ class InventoryService:
         self._reorder_point = reorder_point
 
     async def receive_stock(self, data: ReceiveStockInput, ctx: RequestContext) -> ReceiptOutput:
+        """Receive a batch: create it, append an IN movement, project the balance.
+
+        Emits :class:`StockMovedIn` after commit. Raises :class:`ValidationError`
+        if the received quantity is not strictly positive.
+        """
         require_permission(ctx, "inventory.receive")
         if data.quantity <= 0:
             raise ValidationError("Số lượng nhập phải > 0")
@@ -117,6 +122,15 @@ class InventoryService:
         )
 
     async def dispense_stock(self, data: DispenseInput, ctx: RequestContext) -> DispenseOutput:
+        """Dispense a quantity using FEFO across the drug's non-expired batches.
+
+        Appends one OUT movement per allocated batch and projects the balances.
+        Emits :class:`StockMovedOut` (and :class:`LowStockDetected` when the new
+        on-hand falls to/below the reorder point) after commit. Raises
+        :class:`ValidationError` for a non-positive quantity and
+        :class:`ConflictError` when available stock is insufficient — in which
+        case the whole transaction rolls back untouched.
+        """
         require_permission(ctx, "inventory.dispense")
         if data.quantity <= 0:
             raise ValidationError("Số lượng xuất phải > 0")
@@ -182,6 +196,7 @@ class InventoryService:
         )
 
     async def on_hand(self, drug_id: UUID, ctx: RequestContext) -> Decimal:
+        """Total on-hand of a drug at the caller's branch (0 if none exists)."""
         require_permission(ctx, "inventory.read")
         async with self._uow_factory() as uow:
             balances = self._balances(uow, ctx)
@@ -190,6 +205,7 @@ class InventoryService:
     async def list_near_expiry(
         self, ctx: RequestContext, *, within_days: int = 90
     ) -> list[NearExpiryItem]:
+        """List the branch's batches expiring on/before today + *within_days*."""
         require_permission(ctx, "inventory.read")
         before = date.today() + timedelta(days=within_days)
         async with self._uow_factory() as uow:
