@@ -13,6 +13,7 @@ from pharmacy_os.modules.compliance.domain.entities import (
     CustomerDetail,
     LedgerDirection,
     NationalDrugRecord,
+    TenantComplianceConfig,
 )
 from pharmacy_os.modules.compliance.domain.exceptions import (
     ComplianceError,
@@ -21,7 +22,12 @@ from pharmacy_os.modules.compliance.domain.exceptions import (
     MissingEtcPrescriptionFieldsError,
     NotControlledSubstanceError,
 )
-from pharmacy_os.modules.compliance.domain.ports import DrugMasterFacts, DrugMasterProvider
+from pharmacy_os.modules.compliance.domain.ports import (
+    ControlledLedgerRepository,
+    DrugMasterFacts,
+    DrugMasterProvider,
+    TenantComplianceConfigRepository,
+)
 from pharmacy_os.modules.compliance.domain.rules import (
     EtcPrescriptionPolicy,
     validate_controlled_sale,
@@ -37,13 +43,16 @@ __all__ = [
     "CustomerDetail",
     "LedgerDirection",
     "NationalDrugRecord",
+    "TenantComplianceConfig",
     "ComplianceError",
     "MissingControlledCustomerDetailError",
     "MissingControlledPrescriptionCodeError",
     "MissingEtcPrescriptionFieldsError",
     "NotControlledSubstanceError",
+    "ControlledLedgerRepository",
     "DrugMasterFacts",
     "DrugMasterProvider",
+    "TenantComplianceConfigRepository",
     "EtcPrescriptionPolicy",
     "validate_controlled_sale",
     "validate_etc_sale",

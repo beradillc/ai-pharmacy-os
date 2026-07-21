@@ -133,3 +133,21 @@ class ControlledLedgerEntry:
             )
         if self.quantity <= 0:
             raise ValueError("Số lượng giao dịch phải > 0")
+
+
+@dataclass(slots=True)
+class TenantComplianceConfig:
+    """Mã cơ sở do Cục QLD cấp (docs/13 mục B field 22/23, mục F).
+
+    GAP xác nhận khi khóa spec: KHÔNG có bảng cấu hình tenant nào tồn tại trước đó — đây là
+    entity mới, không phải bổ sung field vào bảng có sẵn.
+    """
+
+    tenant_id: UUID
+    ma_co_so_ban_le: str
+    ma_co_so_ban_buon: str | None = None
+    id: UUID = field(default_factory=uuid4)
+
+    def __post_init__(self) -> None:
+        if not self.ma_co_so_ban_le.strip():
+            raise ValueError("ma_co_so_ban_le không được để trống")

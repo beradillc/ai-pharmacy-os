@@ -19,6 +19,11 @@ from pharmacy_os.core.events import InMemoryEventBus
 from pharmacy_os.models_registry import Base
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.catalog.infrastructure import SqlAlchemyDrugRepository
+from pharmacy_os.modules.compliance.application import ComplianceService
+from pharmacy_os.modules.compliance.infrastructure import (
+    SqlAlchemyControlledLedgerRepository,
+    SqlAlchemyTenantComplianceConfigRepository,
+)
 from pharmacy_os.modules.inventory.application import InventoryService
 from pharmacy_os.modules.inventory.infrastructure import (
     SqlAlchemyBalanceRepository,
@@ -68,6 +73,10 @@ def ctx() -> RequestContext:
                 "rx.create",
                 "rx.approve",
                 "rx.dispense",
+                "compliance.ledger.read",
+                "compliance.ledger.write",
+                "compliance.config.read",
+                "compliance.config.write",
             }
         ),
     )
@@ -124,4 +133,18 @@ def prescription_service(
     return PrescriptionService(
         uow_factory,
         lambda uow, c: SqlAlchemyPrescriptionRepository(uow.session, c),
+    )
+
+
+@pytest.fixture
+def compliance_service(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> ComplianceService:
+    def uow_factory() -> UnitOfWork:
+        return SqlAlchemyUnitOfWork(session_factory, event_bus)
+
+    return ComplianceService(
+        uow_factory,
+        lambda uow, c: SqlAlchemyControlledLedgerRepository(uow.session, c),
+        lambda uow, c: SqlAlchemyTenantComplianceConfigRepository(uow.session, c),
     )

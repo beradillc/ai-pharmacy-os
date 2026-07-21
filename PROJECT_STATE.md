@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 5 (S5.1–S5.3 xong, DỪNG chờ lệnh S5.4/S5.5)** song song **Compliance C.1 xong (kéo sớm từ Sprint 7 theo yêu cầu pháp lý), ĐANG CHẠY C.2**
+> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 5 (S5.1–S5.3 xong, DỪNG chờ lệnh S5.4/S5.5)** song song **Compliance C.1–C.2 xong (kéo sớm từ Sprint 7 theo yêu cầu pháp lý), tiếp C.3**
 
 ---
 
@@ -11,14 +11,14 @@
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Giai đoạn         | Giai đoạn 2 — Bán hàng · (Compliance kéo sớm từ Giai đoạn 3)                                          |
 | Sprint            | Sprint 5 — Prescription & Clinical AI (backend) · **+ Compliance (docs/13, kéo sớm từ Sprint 7)**     |
-| Tình trạng Sprint | 🔄 Sprint 5: **S5.1–S5.3 xong**, DỪNG chờ duyệt S5.4/S5.5. 🔄 Compliance: **C.1 domain xong**, tiếp C.2 |
+| Tình trạng Sprint | 🔄 Sprint 5: **S5.1–S5.3 xong**, DỪNG chờ duyệt S5.4/S5.5. 🔄 Compliance: **C.1–C.2 xong**, tiếp C.3 |
 | Kernel backend    | ✅ (Sprint 2)                                                                                          |
-| Module nghiệp vụ  | ✅ `catalog`, `inventory`, `sales`, `prescription` (Hexagonal 4 lớp, chưa cross-module/AI); 🔄 `compliance` (domain xong — C.1) |
+| Module nghiệp vụ  | ✅ `catalog`, `inventory`, `sales`, `prescription` (Hexagonal 4 lớp, chưa cross-module/AI); 🔄 `compliance` (domain+app+infra xong — C.1–C.2, chưa interface) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
-| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**9/0**) · ✅ mypy strict (**114 file**) · ✅ pytest (**144**)     |
-| Hạ tầng dev       | ✅ docker compose healthy; ✅ alembic `0001`..`0004`; ✅ seed ATC idempotent                             |
-| Sprint kế tiếp    | **S5.4** (cross-module, Opus 4.8 + phiên đầy, xem §7) — chờ lệnh mở. **Compliance C.2** (app+infra+migration `0005`) — đang chạy tiếp ngay. |
+| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**9/0**) · ✅ mypy strict (**121 file**) · ✅ pytest (**155**)     |
+| Hạ tầng dev       | ✅ docker compose healthy; ✅ alembic `0001`..`0005`; ✅ seed ATC idempotent                             |
+| Sprint kế tiếp    | **S5.4** (cross-module, Opus 4.8 + phiên đầy, xem §7) — chờ lệnh mở. **Compliance C.3** (Pydantic schemas + export mapper) — đang chạy tiếp ngay, DỪNG báo cáo sau đó. |
 
 ---
 
@@ -159,18 +159,28 @@ này — thuộc S5.5 Clinical AI.
 | Bước | Nội dung | Trạng thái |
 |------|----------|-----------|
 | C.1 | Compliance **domain thuần**: `ControlledSubstanceCategory` (7 giá trị, TT20/2017 Điều 3), `NationalDrugRecord` (23 trường Bảng 1 QĐ540 — mapping đã sửa: `lot_no` không phải `batch_no`, `Drug.base_unit` không phải `DrugUnit`), `ControlledLedgerEntry` + `CustomerDetail` (Phụ lục XXI — chỉ `patient_name`+`patient_address`, KHÔNG có CCCD), converter helpers thuần `to_qld_date`/`to_qld_datetime`/`to_qld_code` (đã sửa: bỏ dấu tiếng Việt), rule `validate_controlled_sale` (GN/HT bắt buộc `prescription_code`, TC thì không) + `validate_etc_sale` dưới cờ `EtcPrescriptionPolicy.require_etc_prescription_fields` (**mặc định `False`** — nguồn C.3.1 chưa xác định, TODO bật khi có văn bản), read-port `DrugMasterProvider`. Contract mới `compliance-domain-innermost` + `compliance` vào `module-independence` (**9/0**). | ✅ (commit tiếp theo) |
-| C.2 | Compliance **application + infrastructure** + migration `0005_compliance` (bảng ledger, customer detail, cấu hình tenant mới `ma_co_so_ban_le`/`ma_co_so_ban_buon` — xác nhận code hiện KHÔNG có bảng tenant config nào, phải tạo mới). Enforce unique `registration_no` theo tenant trong cùng migration (nợ cũ TODO.md). | ⏳ tiếp theo |
-| C.3 | Compliance **schemas + validators**: Pydantic v2 schemas, `field_validator` cho rule C.3; export mapper domain → 23-field DTO dùng converter helpers. → **DỪNG báo cáo tổng kết**. | ⏳ sau C.2 |
+| C.2 | Compliance **application + infrastructure** + migration `0005_compliance` (bảng `controlled_ledger_entries`, `tenant_compliance_configs` — xác nhận code hiện KHÔNG có bảng tenant config nào trước đó, đã tạo mới). `ComplianceService`: `record_controlled_entry`/`get_ledger_entry`/`set_tenant_config`/`get_tenant_config`. Enforce unique `registration_no` theo tenant (`uq_drugs_tenant_registration_no`) trong cùng migration (nợ cũ TODO.md). | ✅ (commit tiếp theo) |
+| C.3 | Compliance **schemas + validators**: Pydantic v2 schemas, `field_validator` cho rule C.3; export mapper domain → 23-field DTO dùng converter helpers. → **DỪNG báo cáo tổng kết**. | ⏳ tiếp theo |
 
 **Ghi chú thiết kế:** `NationalDrugRecord` là value object thuần (frozen dataclass), KHÔNG có bảng riêng — lắp ráp tại thời điểm đồng bộ,
 không lưu trữ nội bộ. `ControlledLedgerEntry` hợp nhất cột Phụ lục VIII (xuất/nhập/tồn, mọi giao dịch) và Phụ lục XXI (khách hàng,
-chỉ chiều `XUAT`) thành 1 bảng ghi sổ, theo đúng cấu trúc đã bổ sung ở docs/13 mục C.2.1 khi sửa spec. Rule ETC (C.3.1) giữ nguyên
+chỉ chiều `XUAT`) thành 1 bảng ghi sổ (`customer_name`/`customer_address` nullable trên cùng bảng — đúng cấu trúc phẳng của mẫu sổ
+gốc, không tách bảng khách hàng riêng), theo đúng cấu trúc đã bổ sung ở docs/13 mục C.2.1 khi sửa spec. Rule ETC (C.3.1) giữ nguyên
 dưới dạng feature-flag tắt thay vì xóa — theo đúng yêu cầu sếp, để khi có văn bản kê đơn ngoại trú chỉ cần bật cờ, không thiết kế lại.
+`TenantComplianceConfig` là entity mới hoàn toàn (tenant_id unique, `ma_co_so_ban_le` bắt buộc, `ma_co_so_ban_buon` optional) —
+không phải bổ sung field vào bảng cấu hình có sẵn (xác nhận GAP khi khóa spec). Unique constraint `registration_no` cho phép nhiều
+`NULL` trùng nhau (chuẩn SQL) — thuốc chưa có SĐK không bị chặn tạo.
 
 **Bằng chứng C.1:** `ruff` sạch · `import-linter` **9/0** · `mypy` strict **114 file** · `pytest` **144 passed** (+26 test domain compliance,
 gồm: converter helpers khớp đúng ví dụ văn bản gốc, `NationalDrugRecord` immutable + coerce Decimal, `ControlledLedgerEntry` chặn category
 `NONE`/quantity≤0, `CustomerDetail` chặn tên/địa chỉ rỗng và xác nhận không có field `patient_id`, rule GN/HT cần `prescription_code`
 còn TC thì không, rule ETC no-op khi cờ tắt và enforce khi bật).
+**Bằng chứng C.2:** `ruff` sạch · `import-linter` **9/0** · `mypy` strict **121 file** · `pytest` **155 passed** (+11 integration: record
+controlled sale GN/HT/TC đúng rule, NHAP không cần khách hàng, get ledger entry 404 khi không có, set/get tenant config roundtrip,
+upsert lần 2 không tạo dòng trùng, get config khi chưa cấu hình → 404). Migration `0005_compliance` autogenerate→apply **live trên
+Postgres** (docker compose)→`alembic check` không drift→downgrade→upgrade lại→`alembic check` vẫn sạch. `uq_drugs_tenant_registration_no`
+thêm vào bảng `drugs` hiện có cùng migration. Đăng ký `models_registry`. Chưa wiring API (không có `interface/` — module này chưa cần
+router riêng ở giai đoạn này, xem ghi chú thiết kế).
 
 ## 4. Cấu trúc hiện có trên đĩa
 
@@ -245,7 +255,7 @@ AI_Pharmacy_OS/
 - Mỗi bước = 1 commit chạy được, 4 cổng xanh (ruff + import-linter + mypy strict + pytest), cập nhật PROJECT_STATE sau mỗi commit.
 - Bước rủi ro cao (cross-module, S5.4) → dừng chờ duyệt sau bước đó, không tự chạy tiếp sang S5.5.
 
-**Hạ tầng còn mở từ phiên này:** docker compose (postgres+redis) đang chạy — kiểm tra `docker compose ps` khi mở phiên mới; `make down` nếu không cần nữa. Migration hiện tại: `0001`→`0004` (`0004_prescription` đã apply live trên Postgres, `alembic check` sạch, reversible).
+**Hạ tầng còn mở từ phiên này:** docker compose (postgres+redis) đang chạy — kiểm tra `docker compose ps` khi mở phiên mới; `make down` nếu không cần nữa. Migration hiện tại: `0001`→`0005` (`0005_compliance` đã apply live trên Postgres, `alembic check` sạch, downgrade/upgrade reversible).
 
 > **Nợ kỹ thuật mang sang (chưa chặn S5.4):** `api/deps.py` dev-header context tạm (thay bằng JWT thật ở Sprint 6); FK `drugs.atc_code`→`atc_codes` chưa bật; uniqueness `registration_no` chưa enforce; **persist trả hàng** (`register_return`, Sprint 4) chưa có use-case + trả tồn. Chi tiết ở [TODO.md](TODO.md).
 
@@ -255,6 +265,7 @@ AI_Pharmacy_OS/
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-21 | **Compliance · C.2 — Application + infrastructure + migration `0005_compliance`.** `ComplianceService`: `record_controlled_entry` (validate GN/HT cần `prescription_code`, TC thì không, chỉ áp dụng chiều XUAT) / `get_ledger_entry` / `set_tenant_config` (upsert) / `get_tenant_config`. ORM `controlled_ledger_entries` (hợp nhất cột Phụ lục VIII+XXI, `customer_name`/`customer_address` nullable cùng bảng) + `tenant_compliance_configs` (entity mới, tenant_id unique) + mapper + repo tenant-scoped. Cùng migration: bật `uq_drugs_tenant_registration_no` trên bảng `drugs` có sẵn (nợ kỹ thuật TODO.md). Autogenerate→apply **live trên Postgres**→`alembic check` không drift→downgrade→upgrade lại→sạch. Đăng ký `models_registry`. Gate: ruff sạch, import-linter **9/0**, mypy strict 121 file, pytest **155** (+11). Chưa wiring API. |
 | 2026-07-21 | **Compliance · C.1 — Domain thuần (kéo sớm từ Sprint 7 theo yêu cầu pháp lý QĐ1867).** Module `compliance` lớp domain, bám sát [docs/13_COMPLIANCE_SPEC.md](docs/13_COMPLIANCE_SPEC.md) đã khóa spec (đối chiếu văn bản gốc + code thật): `ControlledSubstanceCategory` (7 giá trị, TT20/2017 Điều 3); `NationalDrugRecord` value object 23 trường Bảng 1 QĐ540 (mapping `so_lo`→`lot_no`, `don_vi_dong_goi_nn`→`Drug.base_unit` — đã sửa theo spec, không phải `batch_no`/`DrugUnit`); `ControlledLedgerEntry` + `CustomerDetail` (Phụ lục XXI — chỉ tên+địa chỉ, không CCCD); converter helpers `to_qld_date`/`to_qld_datetime`/`to_qld_code` (đã sửa: bỏ dấu tiếng Việt, khớp đúng ví dụ văn bản gốc `VN-12345-18-lọ 200 viên`→`VN1234518lo200vien`); rule `validate_controlled_sale` (GN/HT bắt buộc `prescription_code`, TC thì không) + `validate_etc_sale` dưới cờ `EtcPrescriptionPolicy` (mặc định **tắt** — nguồn C.3.1 chưa xác định, giữ TODO thay vì xóa); read-port `DrugMasterProvider`. Contract mới `compliance-domain-innermost`; `compliance` vào `module-independence`. Gate: ruff sạch, import-linter **9/0**, mypy strict 114 file, pytest **144** (+26). Chưa wiring, chưa infra — tiếp C.2 (migration `0005_compliance`). |
 | 2026-07-21 | **Sprint 5 · S5.3 — Prescription interface + API (DỪNG báo cáo tổng kết).** Router/schemas Pydantic; `POST /api/v1/prescriptions` (201), `GET /api/v1/prescriptions/{id}`, `POST /api/v1/prescriptions/{id}/validate`, `POST /api/v1/prescriptions/{id}/reject`, `POST /api/v1/prescriptions/{id}/dispense`. `register()` wiring service + include vào `api/v1`; quyền `rx.create`/`rx.read`/`rx.approve`/`rx.dispense` (deps dev + ctx test). Chưa cross-module (chưa nối `prescription_ref` trên `SalesOrder`, chưa clinical). Gate: ruff sạch, import-linter **8/0**, mypy strict 107 file, pytest **118** (+6 e2e). **S5.1–S5.3 xong — dừng phiên theo lệnh, chờ duyệt S5.4/S5.5.** |
 | 2026-07-21 | **Sprint 5 · S5.2 — Prescription application + infrastructure.** `PrescriptionService`: create/validate/reject/dispense/get, phát `PrescriptionValidated`/`PrescriptionRejected`/`PrescriptionDispensed` sau commit. ORM `prescriptions`/`prescription_items` + mapper + repo tenant-scoped (`update()` để ghi lại trạng thái sau fetch). Migration `0004_prescription` — autogenerate→apply **live trên Postgres**→`alembic check` không drift→downgrade/upgrade OK. Đăng ký `models_registry`. Gate: ruff sạch, import-linter **8/0**, mypy strict 103 file, pytest **112** (+6). Chưa wiring API. |

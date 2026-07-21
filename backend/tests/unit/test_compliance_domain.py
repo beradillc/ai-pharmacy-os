@@ -18,6 +18,7 @@ from pharmacy_os.modules.compliance.domain import (
     MissingEtcPrescriptionFieldsError,
     NationalDrugRecord,
     NotControlledSubstanceError,
+    TenantComplianceConfig,
     to_qld_code,
     to_qld_date,
     to_qld_datetime,
@@ -255,3 +256,16 @@ def test_compliance_errors_share_base_class() -> None:
     assert issubclass(MissingControlledPrescriptionCodeError, ComplianceError)
     assert issubclass(MissingEtcPrescriptionFieldsError, ComplianceError)
     assert issubclass(NotControlledSubstanceError, ComplianceError)
+
+
+# --- TenantComplianceConfig (docs/13 mục F) --------------------------------
+
+
+def test_tenant_compliance_config_ma_co_so_ban_buon_optional() -> None:
+    config = TenantComplianceConfig(tenant_id=uuid4(), ma_co_so_ban_le="HCM-00123")
+    assert config.ma_co_so_ban_buon is None
+
+
+def test_tenant_compliance_config_rejects_blank_ma_co_so_ban_le() -> None:
+    with pytest.raises(ValueError, match="ma_co_so_ban_le"):
+        TenantComplianceConfig(tenant_id=uuid4(), ma_co_so_ban_le="  ")

@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Boolean, ForeignKey, Numeric, String
+from sqlalchemy import Boolean, ForeignKey, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from pharmacy_os.core.db.base import Base, PkUuidMixin, TimestampMixin
@@ -21,6 +21,11 @@ class AtcCodeORM(Base):
 
 class DrugORM(PkUuidMixin, TimestampMixin, Base):
     __tablename__ = "drugs"
+    __table_args__ = (
+        # SĐK phải duy nhất theo tenant (docs/13_COMPLIANCE_SPEC.md mục F). NULL được phép
+        # trùng nhiều lần (chuẩn SQL: NULL != NULL) — thuốc chưa có SĐK không bị chặn.
+        UniqueConstraint("tenant_id", "registration_no", name="uq_drugs_tenant_registration_no"),
+    )
 
     tenant_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)

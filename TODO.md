@@ -39,7 +39,7 @@
 
 - [ ] `api/deps.py`: request-context **dev-header tạm** — thay bằng JWT thật khi có IAM (Sprint 6). Prod đã chặn unauth.
 - [ ] FK `drugs.atc_code → atc_codes` chưa bật (đang lưu string). Cân nhắc bật khi seed ATC là bắt buộc.
-- [ ] Uniqueness của `registration_no` (SĐK) chưa enforce — hiện chỉ chặn trùng `barcode` theo tenant. **Kế hoạch:** bật trong migration `0005_compliance` (Compliance C.2).
+- [x] ~~Uniqueness của `registration_no` (SĐK) chưa enforce~~ — bật `uq_drugs_tenant_registration_no` trong migration `0005_compliance` (Compliance C.2, 2026-07-21). `barcode` vẫn chỉ chặn ở tầng ứng dụng (không phải nợ mới, không đổi).
 - [ ] `StarletteDeprecationWarning` (httpx + TestClient) — không ảnh hưởng, theo dõi khi nâng cấp.
 
 ---
@@ -59,7 +59,10 @@
       `ControlledLedgerEntry`/`CustomerDetail` (Phụ lục XXI), converter helpers, rule GN/HT/TC +
       `EtcPrescriptionPolicy` (feature-flag tắt mặc định — nguồn C.3.1 chưa xác định), read-port `DrugMasterProvider`.
       Contract `compliance-domain-innermost` (**9/0**).
-- [ ] C.2 — application + infrastructure + migration `0005_compliance` (ledger, customer detail, tenant config mới).
+- [x] C.2 — application (`ComplianceService`: record_controlled_entry/get_ledger_entry/set_tenant_config/get_tenant_config)
+      + infrastructure + migration `0005_compliance` (`controlled_ledger_entries`, `tenant_compliance_configs` mới;
+      `uq_drugs_tenant_registration_no` bật trên `drugs` cùng migration) — live trên Postgres, `alembic check` sạch,
+      downgrade/upgrade OK.
 - [ ] C.3 — Pydantic v2 schemas + validators, export mapper 23-field DTO.
 - [ ] C.4 (Opus) — `NationalDrugDbGateway` port + `MockAdapter` (chưa wiring endpoint thật — chờ đặc tả API 6/2026).
 - [ ] C.5 (Opus, từng bước chờ duyệt) — cross-module: `SaleCompleted`/controlled dispense → ghi ledger + enqueue sync log.
