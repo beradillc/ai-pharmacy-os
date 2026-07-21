@@ -96,16 +96,23 @@ timeline
 
 ---
 
-## Sprint 5 — Prescription & Clinical AI
+## Sprint 5 — Prescription & Clinical AI *(DONE ở mức MOCK — 2026-07-22)*
 
-- [ ] Module `prescription`: state machine, xác thực, cấp phát.
-- [ ] `core/ai`: LLMProvider (Anthropic), AI Gateway, guardrails.
-- [ ] RAG: pgvector, chunk/embed tri thức dược mẫu.
-- [ ] Module `clinical`: rule engine tương tác + LLM diễn giải; dose/substitute.
-- [ ] Trích xuất đơn từ ảnh (vision).
-- [ ] Ghi `ai_recommendations`, human-in-the-loop.
+- [x] Module `prescription`: state machine, xác thực, cấp phát *(S5.1–S5.4)*.
+- [x] `core/ai`: `LLMProvider` port + guardrail human-in-the-loop. **Impl = `MockLLMProvider`** (KHÔNG gọi API).
+      🔒 **BLOCKER:** `AnthropicProvider` thật chờ `AI__API_KEY` + SDK.
+- [x] Module `clinical` (A1): rule engine tương tác chéo (bảng `drug_interactions`, tất định) + LLM **diễn giải** (mock);
+      full 4 lớp Hexagonal + endpoint `POST /clinical/check-interactions` (+ get/accept recommendation).
+- [x] Ghi `ai_recommendations`, human-in-the-loop (dược sĩ `accept`, guardrail `requires_review`).
+- [ ] 🔒 **BLOCKER — RAG:** pgvector `drug_knowledge_chunks` chưa tạo (cột `vector(1536)` phá test-harness SQLite + nguồn tri thức
+      dược thật/bản quyền chưa có). Tạo bảng+index+migration riêng khi làm RAG thật. **Quyết định đã chốt:** hoãn, không stub rỗng.
+- [ ] 🔒 **BLOCKER — hoạt chất:** `catalog` chưa có `active_ingredients`/`drug_ingredients` ⇒ chưa map `drug_id→hoạt chất` ⇒
+      auto-check tương tác ở sale/prescription (5.5.4) hoãn. **Quyết định đã chốt:** KHÔNG thêm vào catalog vội — gộp cùng mạch
+      dị ứng KH ở **Sprint 6** (xem dưới). Nay `/clinical/check-interactions` nhận danh sách hoạt chất tường minh.
+- [ ] Dose-check / substitute / trích xuất đơn từ ảnh (vision) — hoãn (A2–A6, ngoài phạm vi lõi A1).
 
-**DoD:** Kiểm tra tương tác trả kết quả có nguồn + confidence; log đầy đủ; dược sĩ duyệt được.
+**DoD:** ✅ Kiểm tra tương tác trả kết quả **có nguồn + confidence**; log `ai_recommendations` đầy đủ; dược sĩ duyệt được.
+**Đạt qua MOCK** (`MockLLMProvider`, e2e HTTP thật). Phần AI/RAG **thật** vẫn blocker (chờ API key + nguồn tri thức dược).
 
 ---
 
@@ -113,7 +120,8 @@ timeline
 
 - [ ] Module `procurement`: Supplier, PO, GRN → inventory IN.
 - [ ] Module `crm`: Customer, dị ứng, bệnh nền, lịch sử.
-- [ ] Kết nối dị ứng KH vào kiểm tra clinical.
+- [ ] **Mô hình hoạt chất trong `catalog`** (`active_ingredients`/`drug_ingredients`) — gỡ blocker S5.5, cho map `drug_id→hoạt chất`.
+- [ ] Kết nối dị ứng KH + auto-check tương tác (clinical 5.5.4) vào luồng sale/prescription (dùng mô hình hoạt chất trên).
 
 **DoD:** Nhập PO→GRN tạo lô; lịch sử KH cập nhật từ sự kiện bán/cấp phát.
 

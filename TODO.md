@@ -83,8 +83,10 @@
       sạch, downgrade/upgrade sạch); `MockLLMProvider` ở `core/ai` (KHÔNG gọi API); seed 5 cặp tương tác **mẫu**
       (`seed_drug_interactions`, idempotent — nguồn `SAMPLE …`, không chính thức); quyền `clinical.check`/`clinical.accept`
       thêm vào dev context + system permissions test. 4 cổng xanh (**233 test**, 10 contract kept/0).
-- [ ] **5.5.3 interface** — `interface/schemas.py` + router `/clinical/*`; wire `ClinicalService` + `MockLLMProvider` vào DI (`bootstrap`/`api/v1`).
-- [ ] **5.5.4 cross-module** (chờ duyệt riêng — Opus) — auto-check tương tác ở sale/prescription. **BỊ CHẶN** bởi blocker hoạt chất dưới đây.
+- [x] **5.5.3 interface** *(2026-07-22)* — `interface/schemas.py` + router `/clinical/*` (`POST /clinical/check-interactions`,
+      GET/accept recommendation); DI: `bootstrap` đăng ký `LLMProvider → MockLLMProvider`, `api/v1` nối `register_clinical`.
+      e2e HTTP thật `test_clinical_api_e2e.py` (6) — response có **nguồn + confidence**, mock (không API). **⇒ Sprint 5 DONE mức MOCK.**
+- [ ] **5.5.4 cross-module** — auto-check tương tác ở sale/prescription. **BỊ CHẶN** bởi blocker hoạt chất dưới đây → gộp Sprint 6.
 
 **Quyết định cần chốt (blocker đã đánh dấu trong code — CHƯA tự làm ở 5.5.2):**
 - [ ] **Catalog thiếu mô hình hoạt chất** (`active_ingredients` / `drug_ingredients` theo docs/03 chưa implement).

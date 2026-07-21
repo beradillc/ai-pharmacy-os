@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-22** · Sprint hiện tại: **Sprint 5 (S5.1–S5.4 xong; S5.5 đang làm — bước 5.5.1 domain + 5.5.2 app/infra/migration xong)** song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
+> Cập nhật cuối: **2026-07-22** · Sprint hiện tại: **Sprint 5 — DONE ở mức MOCK ✅ (S5.1–S5.4 + S5.5 clinical A1 đủ 4 lớp; AI/RAG thật vẫn blocker)** song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
 
 ---
 
@@ -11,14 +11,14 @@
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Giai đoạn         | Giai đoạn 2 — Bán hàng · (Compliance kéo sớm từ Giai đoạn 3)                                          |
 | Sprint            | Sprint 5 — Prescription & Clinical AI (backend) · **+ Compliance (docs/13, kéo sớm từ Sprint 7)**     |
-| Tình trạng Sprint | 🔄 Sprint 5: **S5.1–S5.4 xong**; **S5.5 đang làm** (5.5.1 domain + 5.5.2 app/infra/migration `clinical` xong, mock-only). ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng |
+| Tình trạng Sprint | ✅ Sprint 5 **DONE mức MOCK**: S5.1–S5.4 + S5.5 `clinical` A1 đủ 4 lớp (domain→app/infra/migration→interface HTTP), `MockLLMProvider`. AI/RAG thật + auto-check cross-module = blocker (Sprint 6). ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng |
 | Kernel backend    | ✅ (Sprint 2)                                                                                          |
-| Module nghiệp vụ  | ✅ `catalog`, `inventory`, `sales`, `prescription` (Hexagonal 4 lớp; cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); 🔄 `clinical` (S5.5 domain + app/infra/migration xong: interaction engine + AiRecommendation + `ClinicalService`, mock LLM; chưa interface) |
+| Module nghiệp vụ  | ✅ `catalog`, `inventory`, `sales`, `prescription` (Hexagonal 4 lớp; cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp: engine tương tác + AiRecommendation + `ClinicalService` + router `/clinical/*`, mock LLM) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
-| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**10/0**) · ✅ mypy strict (**141 file**) · ✅ pytest (**233**)    |
+| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**10/0**) · ✅ mypy strict (**145 file**) · ✅ pytest (**239**)    |
 | Hạ tầng dev       | ✅ docker compose healthy; ✅ alembic `0001`..`0007`; ✅ seed ATC + tương tác mẫu idempotent              |
-| Sprint kế tiếp    | **S5.5 bước 5.5.3** (interface: schemas + router `/clinical/*` + wire DI, xem §7c) — chờ lệnh tiếp. Compliance C.1–C.5 đã đóng (§7b). |
+| Sprint kế tiếp    | **Sprint 6 (Procurement & CRM)** — CHƯA mở (chờ lệnh). Gồm gỡ 2 blocker S5.5: mô hình hoạt chất trong catalog + auto-check clinical 5.5.4 + dị ứng KH. Compliance C.1–C.5 đã đóng (§7b). |
 
 ---
 
@@ -353,10 +353,11 @@ re-sync `/api/v1/sync/sales` cùng `client_uuid` → vẫn 1 dòng (không nhân
 
 ---
 
-## 7c. S5.5 Clinical AI (đang làm — mock LLM only, để phiên sau nối lại ngay)
+## 7c. S5.5 Clinical AI (DONE mức MOCK — 5.5.1→5.5.3 xong; 5.5.4 blocker)
 
-> **Trạng thái:** **5.5.1 (domain) + 5.5.2 (app+infra+migration) XONG.** Còn 5.5.3 (interface) → 5.5.4 (cross-module,
-> KHÔNG làm trong lõi). Working tree sạch sau commit 5.5.2. **233 test xanh, 10 contract kept/0 broken**, mypy 141 file, ruff sạch.
+> **Trạng thái:** **5.5.1 (domain) + 5.5.2 (app+infra+migration) + 5.5.3 (interface HTTP) XONG — Sprint 5 DONE ở mức MOCK.**
+> Còn **5.5.4 (cross-module auto-check)** = **BLOCKER** (chờ mô hình hoạt chất trong catalog, gộp Sprint 6). Working tree sạch sau
+> commit 5.5.3. **239 test xanh, 10 contract kept/0 broken**, mypy 145 file, ruff sạch.
 
 **Kế hoạch đã chốt (sếp duyệt qua 2 quyết định):**
 - **Phạm vi lõi = A1** (kiểm tra tương tác thuốc chéo) **+ xương sống AI** (audit `ai_recommendations` + guardrail human-in-the-loop).
@@ -388,8 +389,15 @@ system-permission test. Test: `test_clinical_flow.py` (8), `test_mock_llm_provid
 - `# BLOCKER: nguồn tri thức dược thật + bản quyền` — RAG `drug_knowledge_chunks` **HOÃN, chưa tạo bảng ở `0007`**: cột `vector(1536)`
   phá test-harness SQLite (`create_all`) + bảng rỗng vô nghĩa cho A1. Tạo bảng+index+migration riêng khi làm RAG thật.
 
-**Bước kế 5.5.3 (interface):** `clinical/interface/schemas.py` (Pydantic request/response cho check/accept) + router `/clinical/*`;
-wire `ClinicalService` + `MockLLMProvider` vào DI (`bootstrap` đăng ký `LLMProvider`, `api/v1` thêm `wire_clinical` + router). Chưa cross-module.
+**5.5.3 đã làm (interface HTTP):** `clinical/interface/` — `schemas.py` (Pydantic `CheckInteractionsRequest` [validator strip/không rỗng]
++ `InteractionCheckResponse`/`DrugInteractionResponse`/`AiRecommendationResponse`), `router.py` (`POST /clinical/check-interactions`,
+`GET /clinical/recommendations/{id}`, `POST /clinical/recommendations/{id}/accept`), `register.py`. **DI wiring:** `bootstrap` đăng ký
+`LLMProvider → MockLLMProvider` (`# BLOCKER: AI__API_KEY thật` — chỗ swap `AnthropicProvider`); `api/v1` nối `register_clinical`.
+Test **e2e HTTP thật** `test_clinical_api_e2e.py` (6): response có `source`+`confidence`, `model=mock-llm`, xếp severity, accept 200/lại 409,
+schema 422. **DoD Sprint 5 đạt qua mock.**
+
+**5.5.4 (cross-module auto-check) — BLOCKER, KHÔNG làm:** cần `drug_id→hoạt chất` (mô hình hoạt chất trong catalog chưa có).
+Chốt: gộp vào **Sprint 6** cùng dị ứng KH. Nay client gọi `/clinical/check-interactions` với danh sách hoạt chất tường minh.
 
 ---
 
@@ -397,6 +405,7 @@ wire `ClinicalService` + `MockLLMProvider` vào DI (`bootstrap` đăng ký `LLMP
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-22 | **S5.5 (5.5.3) · Clinical interface HTTP — SPRINT 5 DONE ở mức MOCK.** Interface: `clinical/interface/schemas.py` (Pydantic `CheckInteractionsRequest` với `field_validator` strip + chặn hoạt chất rỗng; `InteractionCheckResponse` = `findings[]` [ingredient_a/b, severity, mechanism, management, **source**] + `recommendation` [model, **confidence**, requires_review, output, sources, accepted_by, created_at]), `router.py` (`POST /clinical/check-interactions`, `GET /clinical/recommendations/{id}`, `POST /clinical/recommendations/{id}/accept`), `register.py`. DI: `bootstrap` đăng ký `LLMProvider → MockLLMProvider` (`# BLOCKER: AI__API_KEY thật` — điểm swap `AnthropicProvider`); `api/v1/__init__.py` nối `register_clinical`. Test **e2e HTTP thật** `test_clinical_api_e2e.py` (6): kiểm response có **nguồn + confidence**, `model=mock-llm` (không API thật), xếp severity MAJOR→MODERATE, accept 200 rồi lại 409 (problem+json), schema 422. **DoD Sprint 5 đạt qua mock**; AI/RAG thật + auto-check cross-module (5.5.4) vẫn blocker → Sprint 6. Gate: ruff+format sạch, import-linter **10/0** (không đổi contract), mypy strict **145 file**, pytest **239** (+6). **DỪNG — không tự mở Sprint 6.** |
 | 2026-07-22 | **S5.5 (5.5.2) · Clinical app+infra+migration `0007` (mock LLM).** App: `ClinicalService.check_interactions` (engine tất định trên bảng `drug_interactions` → LLM chỉ diễn giải → ghi 1 `AiRecommendation` bất biến với `requires_review` = guardrail dược sĩ), `get_recommendation`, `accept_recommendation` (human-in-the-loop; 404 lạ, 409 nếu đã duyệt) + DTO. Infra: ORM `DrugInteractionORM` (global, `uq` cặp canonical) + `AiRecommendationORM` (tenant-scoped, `output`/`sources` jsonb-variant PG/JSON SQLite, chỉ `accepted_by` mutate) + mapper + repo (interaction repo không tenant-scope). Kernel: `core/ai/MockLLMProvider` — KHÔNG gọi API, deterministic, sync `complete/stream/embed` (`# BLOCKER: AI__API_KEY thật`). Migration `0007_clinical` (2 bảng, index+unique): autogenerate→apply **live Postgres**→`alembic check` sạch→downgrade→upgrade→**check sạch lại**. Seed `seed_drug_interactions` (5 cặp **mẫu**, source `SAMPLE — không phải nguồn chính thức`, idempotent theo cặp — live PG 5→0). Quyền mới `clinical.check`/`clinical.accept` (dev context + system-permission test). **Quyết định (ghi TODO):** KHÔNG thêm mô hình hoạt chất vào catalog (chờ sếp: thêm ngay hay tách sprint); HOÃN bảng `drug_knowledge_chunks` (pgvector phá SQLite test-harness + là blocker RAG) sang khi làm RAG thật. Gate: ruff+format sạch, import-linter **10/0** (không đổi contract), mypy strict **141 file**, pytest **233** (+15). **DỪNG, CHƯA sang 5.5.3.** |
 | 2026-07-21 | **Compliance · C.4 — NationalSyncLog + MockAdapter (DỪNG báo cáo, chờ duyệt C.5).** Domain: entity `NationalSyncLog` (state machine `PENDING`→`SENT`→`ACK`/`FAILED`, `FAILED` gửi lại được, `retry_count` đếm lỗi) + enum `SyncPayloadType`/`SyncStatus`; port thuần `NationalDrugDbGateway` + DTO `SyncRequest`/`SyncAck` (mục D). Application: `NationalSyncService.push_payload` (idempotent theo `client_uuid`; best-effort — gateway từ chối/ném lỗi ghi `FAILED` không ném ra ngoài) + `get_sync_log`; chỉ lưu `payload_hash` (sha256), KHÔNG lưu payload thô. Infra: ORM+mapper+repo tenant-scoped + migration `0006_national_sync_log`. **Composition root** `api/v1/national_sync.py`: `MockNationalDrugDbGateway` (log + ACK giả, `# BLOCKER: DAV API spec`, KHÔNG endpoint thật) + `wire_national_sync(container)` đăng ký service vào `build_api_router`. Migration autogenerate→apply **live Postgres**→`alembic check` sạch→downgrade/upgrade OK. Gate: ruff sạch, import-linter **9/0** (MockAdapter ở `api`, không phá module-independence), mypy strict 126 file, pytest **187** (+19). Chưa cross-module/event subscription (đó là C.5). **Dừng phiên theo lệnh, chờ duyệt C.5.** |
 | 2026-07-21 | **Compliance · C.3 — Schemas + validators (DỪNG báo cáo tổng kết, chờ duyệt C.4/C.5).** `interface/schemas.py`: `RecordControlledEntryRequest` với `model_validator` cho rule C.3 (XUAT controlled cần khách hàng; GN/HT cần thêm `prescription_code`, TC thì không; NHAP/category NONE bỏ qua) — defense-in-depth song song domain rule; `SetTenantComplianceConfigRequest` enforce cỡ 12 (Bảng 1 mục 22/23). `interface/export.py`: `to_national_drug_record_export` map `NationalDrugRecord` → `NationalDrugRecordExport` (23 field) dùng đúng converter helpers, enforce cỡ tối đa Bảng 1 QĐ540. Chưa có router/endpoint HTTP. Gate: ruff sạch, import-linter **9/0**, mypy strict 124 file, pytest **168** (+13). **C.1–C.3 xong — dừng phiên theo lệnh, chờ duyệt C.4 (MockAdapter, Opus) / C.5 (cross-module, Opus, từng bước).** |

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from pharmacy_os.core.ai import LLMProvider, MockLLMProvider
 from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.config import Settings
 from pharmacy_os.core.db import build_engine, build_sessionmaker
@@ -30,6 +31,10 @@ def build_container(settings: Settings) -> Container:
 
     # EventBus is a Protocol used as a service key; concrete impl is InMemoryEventBus.
     container.register_singleton(EventBus, lambda _c: InMemoryEventBus())  # type: ignore[type-abstract]
+    # LLM port: mock implementation only in S5.5 — no real vendor call is made.
+    # BLOCKER: AI__API_KEY thật — swap in the AnthropicProvider here (chosen from
+    # settings.ai.provider / api_key) once a live key + the vendor SDK are wired.
+    container.register_singleton(LLMProvider, lambda _c: MockLLMProvider())  # type: ignore[type-abstract]
     container.register_singleton(AuditLogger, lambda _c: AuditLogger())
     container.register_singleton(PluginLoader, lambda _c: PluginLoader())
     container.register_singleton(
