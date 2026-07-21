@@ -52,7 +52,7 @@
 - [ ] **Nợ Sprint 4 (S4.6, tách đợt sau):** khởi tạo `frontend/` (Next.js + Dexie) POS tối thiểu + hàng đợi offline gọi `/sync/sales`.
 - [ ] **Nợ Sprint 4:** persist trả hàng (`register_return`) ở tầng use-case + trả tồn (cross-module) — domain đã có, use-case/khôi phục tồn chưa làm (ngoài DoD lần này).
 
-### Compliance — kéo sớm từ Sprint 7 *(ĐANG CHẠY, spec khóa 2026-07-21)*
+### Compliance — kéo sớm từ Sprint 7 *(C.1–C.3 XONG 2026-07-21, DỪNG chờ lệnh C.4/C.5)*
 - [x] Spec pháp lý khóa: [docs/13_COMPLIANCE_SPEC.md](docs/13_COMPLIANCE_SPEC.md) đối chiếu văn bản gốc
       (`docs/legal/*.docx`: QĐ540, TT20/2017, QĐ1867) + code thật (`catalog`/`inventory`) — bảng Traceability đầu file.
 - [x] C.1 — domain thuần: `ControlledSubstanceCategory`, `NationalDrugRecord` (23 trường Bảng 1 QĐ540),
@@ -63,7 +63,9 @@
       + infrastructure + migration `0005_compliance` (`controlled_ledger_entries`, `tenant_compliance_configs` mới;
       `uq_drugs_tenant_registration_no` bật trên `drugs` cùng migration) — live trên Postgres, `alembic check` sạch,
       downgrade/upgrade OK.
-- [ ] C.3 — Pydantic v2 schemas + validators, export mapper 23-field DTO.
+- [x] C.3 — `interface/schemas.py` (`RecordControlledEntryRequest` với `model_validator` rule C.3,
+      `SetTenantComplianceConfigRequest` cỡ 12) + `interface/export.py` (`to_national_drug_record_export`,
+      23-field DTO dùng converter helpers, enforce cỡ tối đa Bảng 1). Chưa có router/endpoint HTTP.
 - [ ] C.4 (Opus) — `NationalDrugDbGateway` port + `MockAdapter` (chưa wiring endpoint thật — chờ đặc tả API 6/2026).
 - [ ] C.5 (Opus, từng bước chờ duyệt) — cross-module: `SaleCompleted`/controlled dispense → ghi ledger + enqueue sync log.
 - [ ] **Nguồn còn thiếu** (chặn phần liên quan, xem cảnh báo đầu docs/13): TT11/2025, NĐ163/2025, NĐ90/2026,
