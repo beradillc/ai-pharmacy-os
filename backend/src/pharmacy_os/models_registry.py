@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pharmacy_os.modules.catalog.infrastructure.models  # noqa: F401
 import pharmacy_os.modules.inventory.infrastructure.models  # noqa: F401
+import pharmacy_os.modules.prescription.infrastructure.models  # noqa: F401
 import pharmacy_os.modules.sales.infrastructure.models  # noqa: F401
 from pharmacy_os.core.db.base import Base
 
