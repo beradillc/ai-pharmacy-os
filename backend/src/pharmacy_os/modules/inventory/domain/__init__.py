@@ -9,6 +9,7 @@ from pharmacy_os.modules.inventory.domain.events import (
     LowStockDetected,
     StockMovedIn,
     StockMovedOut,
+    StockShortfallDetected,
 )
 from pharmacy_os.modules.inventory.domain.exceptions import InsufficientStockError
 from pharmacy_os.modules.inventory.domain.fefo import Allocation, BatchAvailability, allocate_fefo
@@ -25,6 +26,7 @@ __all__ = [
     "StockMovedIn",
     "StockMovedOut",
     "LowStockDetected",
+    "StockShortfallDetected",
     "InsufficientStockError",
     "Allocation",
     "BatchAvailability",

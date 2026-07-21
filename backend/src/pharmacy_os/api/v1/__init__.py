@@ -10,6 +10,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from pharmacy_os.api.deps import get_context
+from pharmacy_os.api.v1.cross_module import wire_sale_dispensing
 from pharmacy_os.api.v1.health import router as health_router
 from pharmacy_os.core.di import Container
 from pharmacy_os.modules.catalog.interface import register as register_catalog
@@ -23,6 +24,9 @@ def build_api_router(container: Container) -> APIRouter:
     api.include_router(register_catalog(container, get_context))
     api.include_router(register_inventory(container, get_context))
     api.include_router(register_sales(container, get_context))
+
+    # Cross-module reactions (both modules' services now registered).
+    wire_sale_dispensing(container)
     return api
 
 

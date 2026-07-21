@@ -26,6 +26,10 @@ class BatchRepository(Protocol):
 class MovementRepository(Protocol):
     async def add(self, movement: StockMovement) -> None: ...
 
+    async def exists_for_ref(self, ref_type: str, ref_id: UUID) -> bool:
+        """True if any movement already references *(ref_type, ref_id)* (idempotency)."""
+        ...
+
 
 class BalanceRepository(Protocol):
     async def adjust(

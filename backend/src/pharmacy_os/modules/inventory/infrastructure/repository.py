@@ -105,6 +105,15 @@ class SqlAlchemyMovementRepository:
         )
         await self._session.flush()
 
+    async def exists_for_ref(self, ref_type: str, ref_id: UUID) -> bool:
+        stmt = select(StockMovementORM.id).where(
+            StockMovementORM.ref_type == ref_type,
+            StockMovementORM.ref_id == ref_id,
+            StockMovementORM.tenant_id == self._ctx.tenant_id,
+        )
+        row = (await self._session.execute(stmt)).first()
+        return row is not None
+
 
 class SqlAlchemyBalanceRepository:
     def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:

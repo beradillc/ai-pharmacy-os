@@ -35,6 +35,14 @@ class DispenseInput:
 
 
 @dataclass(slots=True)
+class SaleDispenseItem:
+    """One line of a completed sale to dispense (base-unit quantity)."""
+
+    drug_id: UUID
+    quantity: Decimal
+
+
+@dataclass(slots=True)
 class AllocationOutput:
     batch_id: UUID
     quantity: Decimal

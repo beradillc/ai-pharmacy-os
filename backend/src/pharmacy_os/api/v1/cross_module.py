@@ -1,0 +1,46 @@
+"""Cross-module wiring lives here, at the API composition root.
+
+Business modules never import one another (the ``module-independence``
+contract). When one module must react to another's event, the subscription is
+declared here — the ``api`` layer is allowed to depend on any module. This is
+the first such link: a completed sale drives an inventory dispense (FEFO).
+"""
+
+from __future__ import annotations
+
+from uuid import UUID
+
+import structlog
+
+from pharmacy_os.core.context import RequestContext
+from pharmacy_os.core.di import Container
+from pharmacy_os.core.events import DomainEvent, EventBus
+from pharmacy_os.modules.inventory.application import InventoryService, SaleDispenseItem
+from pharmacy_os.modules.sales.domain import SaleCompleted
+
+_log = structlog.get_logger("cross_module.sales_inventory")
+
+# The dispense is a system reaction (no end-user request), so it runs under a
+# fixed system identity holding exactly the inventory permissions it needs.
+_SYSTEM_USER = UUID("00000000-0000-0000-0000-00005a1e5001")
+_SYSTEM_PERMISSIONS = frozenset({"inventory.read", "inventory.dispense"})
+
+
+def wire_sale_dispensing(container: Container) -> None:
+    """Subscribe inventory dispensing to ``SaleCompleted``."""
+    event_bus = container.resolve(EventBus)  # type: ignore[type-abstract]
+    inventory = container.resolve(InventoryService)
+
+    async def on_sale_completed(event: DomainEvent) -> None:
+        assert isinstance(event, SaleCompleted)
+        ctx = RequestContext(
+            tenant_id=event.tenant_id,
+            branch_id=event.branch_id,
+            user_id=_SYSTEM_USER,
+            permissions=_SYSTEM_PERMISSIONS,
+        )
+        items = [SaleDispenseItem(drug_id=it.drug_id, quantity=it.quantity) for it in event.items]
+        await inventory.dispense_for_sale(items, event.order_id, ctx)
+        _log.info("sale_dispensed", order_id=str(event.order_id), lines=len(items))
+
+    event_bus.subscribe(SaleCompleted, on_sale_completed)

@@ -23,6 +23,7 @@ from pharmacy_os.modules.inventory.application.dto import (
     NearExpiryItem,
     ReceiptOutput,
     ReceiveStockInput,
+    SaleDispenseItem,
 )
 from pharmacy_os.modules.inventory.domain import (
     InsufficientStockError,
@@ -32,6 +33,7 @@ from pharmacy_os.modules.inventory.domain import (
     StockMovedIn,
     StockMovedOut,
     StockMovement,
+    StockShortfallDetected,
     allocate_fefo,
 )
 from pharmacy_os.modules.inventory.domain.ports import (
@@ -194,6 +196,76 @@ class InventoryService:
                 AllocationOutput(batch_id=a.batch_id, quantity=a.quantity) for a in allocations
             ],
         )
+
+    async def dispense_for_sale(
+        self, items: list[SaleDispenseItem], order_id: UUID, ctx: RequestContext
+    ) -> None:
+        """React to a completed sale: dispense each line by FEFO, idempotently.
+
+        Idempotent on ``order_id`` (skips if already dispensed for this sale). A
+        line exceeding available stock is dispensed as far as possible and a
+        :class:`StockShortfallDetected` event flags the remainder — the sale is
+        never blocked (it is already committed) and stock never goes negative.
+        """
+        require_permission(ctx, "inventory.dispense")
+        async with self._uow_factory() as uow:
+            batches = self._batches(uow, ctx)
+            movements = self._movements(uow, ctx)
+            balances = self._balances(uow, ctx)
+
+            if await movements.exists_for_ref("sale", order_id):
+                return  # this sale was already dispensed
+
+            for item in items:
+                if item.quantity <= 0:
+                    continue
+                avail = await batches.availabilities(
+                    item.drug_id, ctx.branch_id, not_expired_on=date.today()
+                )
+                total = sum((a.available for a in avail), Decimal("0"))
+                take = min(item.quantity, total)
+                if take > 0:
+                    for alloc in allocate_fefo(avail, take):
+                        await movements.add(
+                            StockMovement(
+                                drug_id=item.drug_id,
+                                batch_id=alloc.batch_id,
+                                branch_id=ctx.branch_id,
+                                tenant_id=ctx.tenant_id,
+                                type=MovementType.OUT,
+                                quantity=alloc.quantity,
+                                ref_type="sale",
+                                ref_id=order_id,
+                            )
+                        )
+                        await balances.adjust(
+                            item.drug_id,
+                            alloc.batch_id,
+                            ctx.branch_id,
+                            ctx.tenant_id,
+                            -alloc.quantity,
+                        )
+                    uow.collect(
+                        StockMovedOut(
+                            tenant_id=ctx.tenant_id,
+                            drug_id=item.drug_id,
+                            branch_id=ctx.branch_id,
+                            quantity=take,
+                        )
+                    )
+                if item.quantity > total:
+                    uow.collect(
+                        StockShortfallDetected(
+                            tenant_id=ctx.tenant_id,
+                            drug_id=item.drug_id,
+                            branch_id=ctx.branch_id,
+                            requested=item.quantity,
+                            available=total,
+                            ref_type="sale",
+                            ref_id=order_id,
+                        )
+                    )
+            await uow.commit()
 
     async def on_hand(self, drug_id: UUID, ctx: RequestContext) -> Decimal:
         """Total on-hand of a drug at the caller's branch (0 if none exists)."""

@@ -6,6 +6,7 @@ from pharmacy_os.modules.inventory.application.dto import (
     NearExpiryItem,
     ReceiptOutput,
     ReceiveStockInput,
+    SaleDispenseItem,
 )
 from pharmacy_os.modules.inventory.application.service import InventoryService
 
@@ -15,5 +16,6 @@ __all__ = [
     "DispenseInput",
     "DispenseOutput",
     "NearExpiryItem",
+    "SaleDispenseItem",
     "InventoryService",
 ]
