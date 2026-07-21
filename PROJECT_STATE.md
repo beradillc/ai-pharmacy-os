@@ -1,24 +1,24 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 4 (BACKEND HOÀN THÀNH — S4.1–S4.5; FE S4.6 tách đợt sau)**
+> Cập nhật cuối: **2026-07-21** · Sprint hiện tại: **Sprint 5 (ĐANG CHẠY — S5.1 xong)**
 
 ---
 
 ## 1. Trạng thái tổng quan
 
-| Hạng mục | Trạng thái |
-|----------|-----------|
-| Giai đoạn | Giai đoạn 2 — Bán hàng |
-| Sprint | Sprint 4 — Sales / POS offline (backend) |
-| Tình trạng Sprint | ✅ **HOÀN THÀNH (backend S4.1–S4.5)** — FE S4.6 tách đợt sau |
-| Kernel backend | ✅ (Sprint 2) |
-| Module nghiệp vụ | ✅ `catalog`, `inventory`, `sales` (Hexagonal, event-sourced, FEFO, cross-module qua composition root) |
-| Demo | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm) |
-| Self-Refine | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md) |
-| Chất lượng | ✅ ruff · ✅ format · ✅ import-linter (**7/0**) · ✅ mypy strict (**90 file**) · ✅ pytest (**94**) |
-| Hạ tầng dev | ✅ docker compose healthy; ✅ alembic `0001`+`0002`+`0003`; ✅ seed ATC idempotent |
-| Sprint kế tiếp | **Sprint 5 — Prescription & Clinical AI** (chưa khởi động) |
+| Hạng mục          | Trạng thái                                                                                            |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| Giai đoạn         | Giai đoạn 2 — Bán hàng                                                                                |
+| Sprint            | Sprint 5 — Prescription & Clinical AI (backend)                                                       |
+| Tình trạng Sprint | 🔄 **ĐANG CHẠY — S5.1 xong** (domain `prescription`); S5.2/S5.3 tiếp theo, S5.4/S5.5 chưa đụng          |
+| Kernel backend    | ✅ (Sprint 2)                                                                                          |
+| Module nghiệp vụ  | ✅ `catalog`, `inventory`, `sales` · 🔄 `prescription` (domain xong, app/infra/interface chưa)         |
+| Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
+| Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
+| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**8/0**) · ✅ mypy strict (**96 file**) · ✅ pytest (**106**)      |
+| Hạ tầng dev       | ✅ docker compose healthy; ✅ alembic `0001`+`0002`+`0003`; ✅ seed ATC idempotent                       |
+| Sprint kế tiếp    | Sprint 5 tiếp: S5.2 (app+infra+migration `0004`), S5.3 (interface+API) — cùng phiên; S5.4/S5.5 sau     |
 
 ---
 
@@ -124,6 +124,27 @@ composition root `api/v1/` → `module-independence` giữ nguyên 7/0.
 **Bằng chứng S4.4:** `ruff` sạch · `import-linter` **7/0** (handler ở lớp `api` — `module-independence` KEPT) · `mypy` strict **90 file** · `pytest` **88 passed** (+7: 4 service dispense_for_sale + 3 e2e sale→kho). E2e: bán 12/tồn 20 → tồn **8**; re-sync cùng `client_uuid` → tồn vẫn **8** (không nhân đôi); bán 10/tồn 5 → đơn vẫn 201, tồn về **0** (không âm). Không cần migration mới.
 **Bằng chứng S4.5:** `ruff` sạch · `import-linter` **7/0** (sales vẫn KHÔNG import catalog) · `mypy` strict **90 file** · `pytest` **94 passed** (+6: 3 service override + 3 e2e). E2e: thuốc ETP tạo trong catalog bán như OTC không đơn → **422**; kèm `prescription_ref` → 201; thuốc OTC dù client gắn cờ Rx → 201 (catalog ghi đè). Thuốc lạ (không có trong catalog) → fallback theo cờ client.
 
+## 3e. Sprint 5 — Prescription & Clinical AI (ĐANG CHẠY)
+
+> Phạm vi phiên này: **S5.1 → S5.3, backend thuần cho module `prescription`** (chưa cross-module,
+> chưa clinical/AI). Nhịp: S5.1→S5.3 tự chạy liên tục; dừng báo cáo sau S5.3. S5.4 (cross-module,
+> nếu có) và S5.5 (Clinical AI) để phiên sau.
+
+| Bước | Nội dung | Trạng thái |
+|------|----------|-----------|
+| S5.1 | Prescription **domain thuần**: `Prescription` aggregate (`DRAFT`→`VALIDATED`→`DISPENSED`, hoặc →`REJECTED` từ `DRAFT`/`VALIDATED`), `PrescriptionItem`, `PrescriptionSource`, events `PrescriptionValidated`/`PrescriptionRejected`/`PrescriptionDispensed`, exceptions, `PrescriptionRepository` port. Contract mới `prescription-domain-innermost` + `prescription` vào `module-independence` (**8/0**). | ✅ (commit tiếp theo) |
+| S5.2 | Prescription **application + infrastructure** + migration `0004_prescription` (bảng `prescriptions`, `prescription_items`). `PrescriptionService`: create/validate/reject/dispense/get. | ⏳ |
+| S5.3 | Prescription **interface + API**: `POST /prescriptions` (201), `GET /prescriptions/{id}`, `POST /prescriptions/{id}/validate`, `POST /prescriptions/{id}/reject`, `POST /prescriptions/{id}/dispense`; quyền `rx.create`/`rx.read`/`rx.approve`/`rx.dispense`. → **DỪNG báo cáo tổng kết**. | ⏳ |
+
+**Ghi chú thiết kế:** module thuần, không phụ thuộc catalog/sales/clinical — `drug_id` trên `PrescriptionItem` chỉ là UUID tham chiếu
+(không FK, giống `SaleLine.drug_id`). `/prescriptions/{id}/reject` là điểm khác nhỏ so với phác thảo ban đầu ở
+[docs/11_API_DESIGN.md](docs/11_API_DESIGN.md) (chỉ liệt kê create/extract/validate/dispense) — thêm endpoint riêng cho `reject`
+vì đây là 1 trong 3 hành động độc lập của dược sĩ trên state machine (docs/07 §4), tách khỏi `validate` cho rõ ràng REST + dễ test,
+thay vì gộp chung bằng 1 flag `approved` trong `/validate`. Endpoint `/prescriptions/extract` (OCR/vision) **không làm** trong phiên
+này — thuộc S5.5 Clinical AI.
+
+**Bằng chứng S5.1:** `ruff` sạch · `import-linter` **8/0** · `mypy` strict **96 file** · `pytest` **106 passed** (+12 test domain prescription).
+
 ## 4. Cấu trúc hiện có trên đĩa
 
 ```text
@@ -205,6 +226,7 @@ AI_Pharmacy_OS/
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-21 | **Sprint 5 · S5.1 — Prescription domain thuần.** Module `prescription` lớp domain: `Prescription` aggregate (`DRAFT`→`VALIDATED`→`DISPENSED`, hoặc →`REJECTED` từ `DRAFT`/`VALIDATED`), `PrescriptionItem`, `PrescriptionSource`/`PrescriptionStatus`, events `PrescriptionValidated`/`PrescriptionRejected`/`PrescriptionDispensed`, exceptions, `PrescriptionRepository` port. Contract mới `prescription-domain-innermost`; `prescription` vào `module-independence`. Gate: ruff sạch, import-linter **8/0**, mypy strict 96 file, pytest **106** (+12). Chưa wiring, chưa infra. |
 | 2026-07-21 | **Sprint 4 · S4.5 — Chặn ETC end-to-end (RỦI RO CAO, đạt).** Port `DrugInfoProvider` + DTO `DrugInfo` (sales.domain); adapter `CatalogDrugInfoProvider` (lớp `api`, đọc `CatalogService`); `SalesService` ghi đè `requires_prescription` theo catalog khi biết thuốc (thuốc lạ → fallback cờ client). Catalog thành nguồn thẩm quyền: client khai gian OTC↔ETC đều bị ghi đè. **sales vẫn không import catalog** (nối ở `api`). Gate: ruff sạch, import-linter **7/0**, mypy strict 90 file, pytest **94** (+6). **Backend Sprint 4 hoàn thành (S4.1–S4.5); FE S4.6 tách đợt sau.** |
 | 2026-07-21 | **Sprint 4 · S4.4 — Cross-module: sale → inventory dispense (RỦI RO CAO, đạt).** Handler `api/v1/cross_module.py` subscribe `SaleCompleted` → `InventoryService.dispense_for_sale` (FEFO) dưới system-context. Idempotent cấp đơn qua `MovementRepository.exists_for_ref(ref_type="sale", ref_id=order_id)`. Thiếu tồn → xuất phần có sẵn (tồn không âm) + event `StockShortfallDetected`, không chặn bán (đơn đã COMPLETED). **`module-independence` KEPT** (nối ở lớp `api`, sales/inventory không import nhau). Gate: ruff sạch, import-linter **7/0**, mypy strict 90 file, pytest **88** (+7). Không migration mới. |
 | 2026-07-21 | **Sprint 4 · S4.3 — Sales interface + API.** Router/schemas Pydantic; `POST /api/v1/sales` (201), `GET /api/v1/sales/{id}`, `POST /api/v1/sync/sales` (idempotent 200, upsert). `register()` wiring service + include vào `api/v1`; quyền `sales.read`/`sales.create` (deps dev + ctx test). Chưa cross-module (SaleCompleted chưa có subscriber → chưa trừ kho). Gate: ruff sạch, import-linter **7/0**, mypy strict 89 file, pytest **81** (+5 e2e). **DỪNG chờ duyệt S4.4.** |
