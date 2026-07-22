@@ -1,7 +1,28 @@
 """Catalog domain: drug master data. Framework-free."""
 
-from pharmacy_os.modules.catalog.domain.entities import Drug, DrugUnit, RxClass
-from pharmacy_os.modules.catalog.domain.exceptions import DuplicateUnitError
-from pharmacy_os.modules.catalog.domain.ports import DrugRepository
+from pharmacy_os.modules.catalog.domain.entities import (
+    ActiveIngredient,
+    Drug,
+    DrugIngredient,
+    DrugUnit,
+    RxClass,
+)
+from pharmacy_os.modules.catalog.domain.exceptions import (
+    DuplicateIngredientError,
+    DuplicateUnitError,
+    InvalidIngredientError,
+)
+from pharmacy_os.modules.catalog.domain.ports import ActiveIngredientRepository, DrugRepository
 
-__all__ = ["Drug", "DrugUnit", "RxClass", "DuplicateUnitError", "DrugRepository"]
+__all__ = [
+    "ActiveIngredient",
+    "Drug",
+    "DrugIngredient",
+    "DrugUnit",
+    "RxClass",
+    "DuplicateIngredientError",
+    "DuplicateUnitError",
+    "InvalidIngredientError",
+    "ActiveIngredientRepository",
+    "DrugRepository",
+]

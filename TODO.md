@@ -86,15 +86,14 @@
 - [x] **5.5.3 interface** *(2026-07-22)* — `interface/schemas.py` + router `/clinical/*` (`POST /clinical/check-interactions`,
       GET/accept recommendation); DI: `bootstrap` đăng ký `LLMProvider → MockLLMProvider`, `api/v1` nối `register_clinical`.
       e2e HTTP thật `test_clinical_api_e2e.py` (6) — response có **nguồn + confidence**, mock (không API). **⇒ Sprint 5 DONE mức MOCK.**
-- [ ] **5.5.4 cross-module** — auto-check tương tác ở sale/prescription. **BỊ CHẶN** bởi blocker hoạt chất dưới đây → gộp Sprint 6.
+- [ ] **5.5.4 cross-module** — auto-check tương tác ở sale/prescription. **BỊ CHẶN** bởi mô hình hoạt chất → **chính thức hoãn sang
+      Sprint 6 Bước 2** (KHÔNG quay lại trong Sprint 5; cần Opus + phiên riêng, cross-module rủi ro cao).
 
-**Quyết định cần chốt (blocker đã đánh dấu trong code — CHƯA tự làm ở 5.5.2):**
-- [ ] **Catalog thiếu mô hình hoạt chất** (`active_ingredients` / `drug_ingredients` theo docs/03 chưa implement).
-      Chặn `drug_id → hoạt chất` ⇒ chặn auto-check tương tác ở sale/prescription (5.5.4). **KHÔNG tự thêm vào catalog** —
-      chờ sếp quyết: **(a)** thêm ngay vào `catalog` (đụng contract/migration catalog), hay **(b)** tách sprint riêng
-      (gộp cùng mạch dị ứng khách hàng Sprint 6). Không đổi 10 contract sẵn có.
-- [ ] **`drug_knowledge_chunks` (RAG) — HOÃN, chưa tạo bảng ở `0007`.** Lý do: là blocker (nguồn tri thức dược thật +
-      bản quyền, bảng rỗng vô nghĩa cho A1) **và** cột `vector(1536)` (pgvector) phá test-harness SQLite (`create_all`).
+**Quyết định đã chốt (2026-07-22):**
+- [x] **Catalog thiếu mô hình hoạt chất** → chốt **(b) tách sang Sprint 6**, KHÔNG thêm vội vào catalog trong S5.5. Gộp cùng mạch dị
+      ứng khách hàng (`crm`). Không đổi 10 contract sẵn có.
+- [x] **`drug_knowledge_chunks` (RAG) — HOÃN**, chưa tạo bảng. Lý do: là blocker (nguồn tri thức dược thật + bản quyền, bảng rỗng
+      vô nghĩa cho A1) **và** cột `vector(1536)` (pgvector) phá test-harness SQLite (`create_all`).
       Sẽ tạo bảng + index embedding + migration riêng **khi làm RAG thật** (gỡ được blocker), test đầy đủ khi đó.
 - [ ] Nối `core.ai.LLMProvider` → Claude thật (`AnthropicProvider`) — `# BLOCKER: AI__API_KEY thật`. Nay dùng `MockLLMProvider`.
 
@@ -103,6 +102,20 @@
 
 > Điểm tích hợp đã sẵn sàng: `Drug.is_prescription_required()`, `core.ai.LLMProvider` port + `MockLLMProvider`,
 > bảng `drug_interactions` (+seed mẫu). `drug_knowledge_chunks` HOÃN (xem trên).
+
+### Sprint 6 — Procurement & CRM (ĐANG MỞ, 2026-07-22)
+- [x] **Bước 1 — mô hình hoạt chất trong `catalog`, domain thuần** *(2026-07-22)* — `ActiveIngredient` (hoạt chất, global reference,
+      không tenant-scope) + `DrugIngredient` (hàm lượng: `ingredient_id`+`amount>0`+`unit`) + `Drug.add_ingredient()` (chặn trùng,
+      cho phép nhiều hoạt chất/thuốc — thuốc phối hợp là bình thường); port `ActiveIngredientRepository` (chưa impl). Không đổi
+      infra/migration/interface catalog hiện có (field `ingredients` default rỗng, tương thích ngược). **KHÔNG động clinical/compliance.**
+      4 cổng xanh (**245 test**, 10 contract kept/0).
+- [ ] **Bước 1 tiếp — app+infra+migration hoạt chất** — `ActiveIngredientRepository` impl (SQLAlchemy) + ORM `DrugIngredientORM`
+      (FK `drugs.id`+`active_ingredients.id`) + mapper + cập nhật `DrugRepository`/mappers để persist `Drug.ingredients` + migration
+      mới (live Postgres, `alembic check` sạch, downgrade/upgrade) + có thể mở rộng `catalog/interface/schemas.py`.
+- [ ] **Bước 2 — 5.5.4 auto-check tương tác** (cần Opus + phiên riêng) — phụ thuộc Bước 1 tiếp xong.
+- [ ] Module `crm` (Customer, dị ứng, bệnh nền, lịch sử) + nối dị ứng KH vào kiểm tra clinical.
+- [ ] Feature flag AI theo tenant (SaaS) — `enable_clinical_ai` từ toàn cục sang theo tenant.
+- [ ] Module `procurement` (Supplier, PO, GRN → inventory IN).
 
 ---
 

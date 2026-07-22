@@ -1,8 +1,18 @@
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
 
-from pharmacy_os.modules.catalog.domain import Drug, DrugUnit, DuplicateUnitError, RxClass
+from pharmacy_os.modules.catalog.domain import (
+    ActiveIngredient,
+    Drug,
+    DrugIngredient,
+    DrugUnit,
+    DuplicateIngredientError,
+    DuplicateUnitError,
+    InvalidIngredientError,
+    RxClass,
+)
 
 
 def _drug() -> Drug:
@@ -46,3 +56,45 @@ def test_prescription_required_flag() -> None:
 def test_zero_factor_rejected() -> None:
     with pytest.raises(ValueError):
         DrugUnit(unit_name="x", factor=Decimal("0"))
+
+
+def test_active_ingredient_requires_name() -> None:
+    with pytest.raises(InvalidIngredientError):
+        ActiveIngredient(name="   ")
+
+
+def test_active_ingredient_optional_english_name() -> None:
+    ing = ActiveIngredient(name="Paracetamol", name_en="Acetaminophen")
+    assert ing.name_en == "Acetaminophen"
+
+
+def test_drug_ingredient_amount_must_be_positive() -> None:
+    with pytest.raises(InvalidIngredientError):
+        DrugIngredient(ingredient_id=uuid4(), amount=Decimal("0"), unit="mg")
+
+
+def test_drug_ingredient_unit_required() -> None:
+    with pytest.raises(InvalidIngredientError):
+        DrugIngredient(ingredient_id=uuid4(), amount=Decimal("500"), unit="  ")
+
+
+def test_add_ingredient_combination_drug() -> None:
+    """A drug can carry more than one active ingredient (combination product)."""
+    d = _drug()
+    amoxicillin = uuid4()
+    clavulanic_acid = uuid4()
+    d.add_ingredient(DrugIngredient(ingredient_id=amoxicillin, amount=Decimal("500"), unit="mg"))
+    d.add_ingredient(
+        DrugIngredient(ingredient_id=clavulanic_acid, amount=Decimal("125"), unit="mg")
+    )
+    assert {i.ingredient_id for i in d.ingredients} == {amoxicillin, clavulanic_acid}
+
+
+def test_duplicate_ingredient_rejected() -> None:
+    d = _drug()
+    ingredient_id = uuid4()
+    d.add_ingredient(DrugIngredient(ingredient_id=ingredient_id, amount=Decimal("500"), unit="mg"))
+    with pytest.raises(DuplicateIngredientError):
+        d.add_ingredient(
+            DrugIngredient(ingredient_id=ingredient_id, amount=Decimal("250"), unit="mg")
+        )
