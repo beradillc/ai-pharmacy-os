@@ -14,23 +14,39 @@ from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import ConflictError, NotFoundError, ValidationError
 from pharmacy_os.core.security import require_permission
 from pharmacy_os.modules.catalog.application.dto import CreateDrugInput, DrugOutput
-from pharmacy_os.modules.catalog.domain import Drug, DrugUnit, DuplicateUnitError, RxClass
-from pharmacy_os.modules.catalog.domain.ports import DrugRepository
+from pharmacy_os.modules.catalog.domain import (
+    Drug,
+    DrugIngredient,
+    DrugUnit,
+    DuplicateIngredientError,
+    DuplicateUnitError,
+    InvalidIngredientError,
+    RxClass,
+)
+from pharmacy_os.modules.catalog.domain.ports import ActiveIngredientRepository, DrugRepository
 
 UowFactory = Callable[[], UnitOfWork]
 RepoFactory = Callable[[UnitOfWork, RequestContext], DrugRepository]
+IngredientRepoFactory = Callable[[UnitOfWork], ActiveIngredientRepository]
 
 
 class CatalogService:
-    def __init__(self, uow_factory: UowFactory, repo_factory: RepoFactory) -> None:
+    def __init__(
+        self,
+        uow_factory: UowFactory,
+        repo_factory: RepoFactory,
+        ingredient_repo_factory: IngredientRepoFactory,
+    ) -> None:
         self._uow_factory = uow_factory
         self._repo_factory = repo_factory
+        self._ingredient_repo_factory = ingredient_repo_factory
 
     async def create_drug(self, data: CreateDrugInput, ctx: RequestContext) -> DrugOutput:
-        """Create a drug (with its units) for the caller's tenant.
+        """Create a drug (with its units and ingredients) for the caller's tenant.
 
-        Raises :class:`ValidationError` on a duplicate unit name and
-        :class:`ConflictError` when *data.barcode* is already registered.
+        Raises :class:`ValidationError` on a duplicate unit/ingredient, :class:`NotFoundError`
+        when an *ingredients[].ingredient_id* doesn't reference an existing active ingredient,
+        and :class:`ConflictError` when *data.barcode* is already registered.
         """
         require_permission(ctx, "catalog.create")
         drug = Drug(
@@ -55,6 +71,18 @@ class CatalogService:
             repo = self._repo_factory(uow, ctx)
             if data.barcode and await repo.by_barcode(data.barcode) is not None:
                 raise ConflictError(f"Barcode '{data.barcode}' đã tồn tại")
+
+            ingredient_repo = self._ingredient_repo_factory(uow)
+            try:
+                for i in data.ingredients:
+                    if await ingredient_repo.get(i.ingredient_id) is None:
+                        raise NotFoundError(f"Không tìm thấy hoạt chất {i.ingredient_id}")
+                    drug.add_ingredient(
+                        DrugIngredient(ingredient_id=i.ingredient_id, amount=i.amount, unit=i.unit)
+                    )
+            except (DuplicateIngredientError, InvalidIngredientError) as exc:
+                raise ValidationError(str(exc)) from exc
+
             await repo.add(drug)
             await uow.commit()
         return DrugOutput.of(drug)

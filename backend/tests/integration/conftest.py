@@ -19,7 +19,10 @@ from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.events import InMemoryEventBus
 from pharmacy_os.models_registry import Base
 from pharmacy_os.modules.catalog.application import CatalogService
-from pharmacy_os.modules.catalog.infrastructure import SqlAlchemyDrugRepository
+from pharmacy_os.modules.catalog.infrastructure import (
+    SqlAlchemyActiveIngredientRepository,
+    SqlAlchemyDrugRepository,
+)
 from pharmacy_os.modules.clinical.application import ClinicalService
 from pharmacy_os.modules.clinical.infrastructure import (
     SqlAlchemyAiRecommendationRepository,
@@ -102,6 +105,7 @@ def catalog_service(
     return CatalogService(
         uow_factory,
         lambda uow, c: SqlAlchemyDrugRepository(uow.session, c),
+        lambda uow: SqlAlchemyActiveIngredientRepository(uow.session),
     )
 
 

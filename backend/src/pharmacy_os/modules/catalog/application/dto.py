@@ -17,6 +17,13 @@ class DrugUnitInput:
 
 
 @dataclass(slots=True)
+class DrugIngredientInput:
+    ingredient_id: UUID
+    amount: Decimal
+    unit: str
+
+
+@dataclass(slots=True)
 class CreateDrugInput:
     name: str
     rx_class: RxClass
@@ -27,6 +34,7 @@ class CreateDrugInput:
     strength: str | None = None
     barcode: str | None = None
     units: list[DrugUnitInput] = field(default_factory=list)
+    ingredients: list[DrugIngredientInput] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -34,6 +42,13 @@ class DrugUnitOutput:
     unit_name: str
     factor: Decimal
     is_sellable: bool
+
+
+@dataclass(slots=True)
+class DrugIngredientOutput:
+    ingredient_id: UUID
+    amount: Decimal
+    unit: str
 
 
 @dataclass(slots=True)
@@ -49,6 +64,7 @@ class DrugOutput:
     barcode: str | None
     prescription_required: bool
     units: list[DrugUnitOutput]
+    ingredients: list[DrugIngredientOutput]
 
     @classmethod
     def of(cls, drug: Drug) -> DrugOutput:
@@ -66,5 +82,9 @@ class DrugOutput:
             units=[
                 DrugUnitOutput(unit_name=u.unit_name, factor=u.factor, is_sellable=u.is_sellable)
                 for u in drug.units
+            ],
+            ingredients=[
+                DrugIngredientOutput(ingredient_id=i.ingredient_id, amount=i.amount, unit=i.unit)
+                for i in drug.ingredients
             ],
         )

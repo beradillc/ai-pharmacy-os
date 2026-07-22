@@ -1,6 +1,23 @@
 """Catalog infrastructure: ORM models and repository implementations."""
 
-from pharmacy_os.modules.catalog.infrastructure.models import AtcCodeORM, DrugORM, DrugUnitORM
-from pharmacy_os.modules.catalog.infrastructure.repository import SqlAlchemyDrugRepository
+from pharmacy_os.modules.catalog.infrastructure.models import (
+    ActiveIngredientORM,
+    AtcCodeORM,
+    DrugIngredientORM,
+    DrugORM,
+    DrugUnitORM,
+)
+from pharmacy_os.modules.catalog.infrastructure.repository import (
+    SqlAlchemyActiveIngredientRepository,
+    SqlAlchemyDrugRepository,
+)
 
-__all__ = ["AtcCodeORM", "DrugORM", "DrugUnitORM", "SqlAlchemyDrugRepository"]
+__all__ = [
+    "ActiveIngredientORM",
+    "AtcCodeORM",
+    "DrugIngredientORM",
+    "DrugORM",
+    "DrugUnitORM",
+    "SqlAlchemyActiveIngredientRepository",
+    "SqlAlchemyDrugRepository",
+]

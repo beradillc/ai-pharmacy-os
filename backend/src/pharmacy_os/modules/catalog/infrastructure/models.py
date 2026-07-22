@@ -42,6 +42,11 @@ class DrugORM(PkUuidMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    ingredients: Mapped[list[DrugIngredientORM]] = relationship(
+        back_populates="drug",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class DrugUnitORM(PkUuidMixin, Base):
@@ -53,3 +58,31 @@ class DrugUnitORM(PkUuidMixin, Base):
     is_sellable: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     drug: Mapped[DrugORM] = relationship(back_populates="units")
+
+
+class ActiveIngredientORM(PkUuidMixin, Base):
+    """Global active-ingredient reference (docs/03 ``active_ingredients``), not tenant-scoped."""
+
+    __tablename__ = "active_ingredients"
+    __table_args__ = (
+        # Dedup key for find_by_name — global reference data, one row per distinct ingredient.
+        UniqueConstraint("name", name="uq_active_ingredients_name"),
+    )
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name_en: Mapped[str | None] = mapped_column(String(255))
+
+
+class DrugIngredientORM(PkUuidMixin, Base):
+    """Dosage strength of one active ingredient within a drug (docs/03 ``drug_ingredients``)."""
+
+    __tablename__ = "drug_ingredients"
+
+    drug_id: Mapped[UUID] = mapped_column(ForeignKey("drugs.id", ondelete="CASCADE"), index=True)
+    ingredient_id: Mapped[UUID] = mapped_column(
+        ForeignKey("active_ingredients.id"), index=True, nullable=False
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    unit: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    drug: Mapped[DrugORM] = relationship(back_populates="ingredients")

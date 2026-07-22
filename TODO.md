@@ -109,10 +109,15 @@
       cho phép nhiều hoạt chất/thuốc — thuốc phối hợp là bình thường); port `ActiveIngredientRepository` (chưa impl). Không đổi
       infra/migration/interface catalog hiện có (field `ingredients` default rỗng, tương thích ngược). **KHÔNG động clinical/compliance.**
       4 cổng xanh (**245 test**, 10 contract kept/0).
-- [ ] **Bước 1 tiếp — app+infra+migration hoạt chất** — `ActiveIngredientRepository` impl (SQLAlchemy) + ORM `DrugIngredientORM`
-      (FK `drugs.id`+`active_ingredients.id`) + mapper + cập nhật `DrugRepository`/mappers để persist `Drug.ingredients` + migration
-      mới (live Postgres, `alembic check` sạch, downgrade/upgrade) + có thể mở rộng `catalog/interface/schemas.py`.
-- [ ] **Bước 2 — 5.5.4 auto-check tương tác** (cần Opus + phiên riêng) — phụ thuộc Bước 1 tiếp xong.
+- [x] **Bước 1 tiếp — app+infra+migration hoạt chất** *(2026-07-22)* — `SqlAlchemyActiveIngredientRepository` (global, session-only)
+      + ORM `ActiveIngredientORM` (unique `name`)/`DrugIngredientORM` (FK `drugs.id`+`active_ingredients.id`) + mapper + `CatalogService`
+      validate `ingredient_id` tồn tại khi tạo thuốc (404 nếu không) + `CreateDrugRequest`/`DrugResponse` mở rộng `ingredients`.
+      Migration `0008_catalog_ingredients` live Postgres, `alembic check` sạch, downgrade/upgrade OK. 4 cổng xanh (**249 test**,
+      10 contract kept/0). **⇒ Bước 1 XONG hoàn toàn — sẵn sàng cho Bước 2.**
+- [ ] **Nợ mới:** chưa có HTTP endpoint tạo/liệt kê `active_ingredients` (chỉ tham chiếu `ingredient_id` có sẵn khi tạo thuốc) —
+      quyết định khi làm `crm`/`procurement` hoặc khi có nhu cầu FE thật.
+- [ ] **Bước 2 — 5.5.4 auto-check tương tác** (cần Opus + phiên riêng, mở vào phiên hạn mức đầy, từng bước dừng chờ duyệt) —
+      điều kiện phụ thuộc (Bước 1) **đã đủ**, chưa mở.
 - [ ] Module `crm` (Customer, dị ứng, bệnh nền, lịch sử) + nối dị ứng KH vào kiểm tra clinical.
 - [ ] Feature flag AI theo tenant (SaaS) — `enable_clinical_ai` từ toàn cục sang theo tenant.
 - [ ] Module `procurement` (Supplier, PO, GRN → inventory IN).

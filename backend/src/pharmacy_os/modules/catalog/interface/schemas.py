@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from pharmacy_os.modules.catalog.application.dto import (
     CreateDrugInput,
+    DrugIngredientInput,
     DrugOutput,
     DrugUnitInput,
 )
@@ -21,6 +22,12 @@ class DrugUnitSchema(BaseModel):
     is_sellable: bool = True
 
 
+class DrugIngredientSchema(BaseModel):
+    ingredient_id: UUID
+    amount: Decimal = Field(gt=0)
+    unit: str
+
+
 class CreateDrugRequest(BaseModel):
     name: str
     rx_class: RxClass
@@ -31,6 +38,7 @@ class CreateDrugRequest(BaseModel):
     strength: str | None = None
     barcode: str | None = None
     units: list[DrugUnitSchema] = Field(default_factory=list)
+    ingredients: list[DrugIngredientSchema] = Field(default_factory=list)
 
     def to_input(self) -> CreateDrugInput:
         return CreateDrugInput(
@@ -46,6 +54,10 @@ class CreateDrugRequest(BaseModel):
                 DrugUnitInput(unit_name=u.unit_name, factor=u.factor, is_sellable=u.is_sellable)
                 for u in self.units
             ],
+            ingredients=[
+                DrugIngredientInput(ingredient_id=i.ingredient_id, amount=i.amount, unit=i.unit)
+                for i in self.ingredients
+            ],
         )
 
 
@@ -53,6 +65,12 @@ class DrugUnitResponse(BaseModel):
     unit_name: str
     factor: Decimal
     is_sellable: bool
+
+
+class DrugIngredientResponse(BaseModel):
+    ingredient_id: UUID
+    amount: Decimal
+    unit: str
 
 
 class DrugResponse(BaseModel):
@@ -67,6 +85,7 @@ class DrugResponse(BaseModel):
     barcode: str | None
     prescription_required: bool
     units: list[DrugUnitResponse]
+    ingredients: list[DrugIngredientResponse]
 
     @classmethod
     def of(cls, out: DrugOutput) -> DrugResponse:
@@ -84,5 +103,9 @@ class DrugResponse(BaseModel):
             units=[
                 DrugUnitResponse(unit_name=u.unit_name, factor=u.factor, is_sellable=u.is_sellable)
                 for u in out.units
+            ],
+            ingredients=[
+                DrugIngredientResponse(ingredient_id=i.ingredient_id, amount=i.amount, unit=i.unit)
+                for i in out.ingredients
             ],
         )
