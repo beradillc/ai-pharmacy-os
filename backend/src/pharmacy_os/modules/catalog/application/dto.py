@@ -52,6 +52,19 @@ class DrugIngredientOutput:
 
 
 @dataclass(slots=True)
+class DrugIngredientRef:
+    """A drug's active ingredient resolved to both of its identities.
+
+    Catalog is the single authority mapping a ``drug_id`` to its ingredients; the
+    cross-module safety checks consume this pair because they key differently —
+    clinical interaction rules match by ``name``, CRM allergies by ``ingredient_id``.
+    """
+
+    ingredient_id: UUID
+    name: str
+
+
+@dataclass(slots=True)
 class DrugOutput:
     id: UUID
     name: str

@@ -114,6 +114,89 @@ async def test_create_drug_with_existing_ingredients_round_trips(
     }
 
 
+async def test_get_drug_ingredients_resolves_id_and_name(
+    catalog_service: CatalogService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    async with session_factory() as session:
+        repo = SqlAlchemyActiveIngredientRepository(session)
+        amoxicillin = ActiveIngredient(name="Amoxicillin")
+        clavulanic_acid = ActiveIngredient(name="Acid clavulanic")
+        await repo.add(amoxicillin)
+        await repo.add(clavulanic_acid)
+        await session.commit()
+
+    created = await catalog_service.create_drug(
+        CreateDrugInput(
+            name="Augmentin 625mg",
+            rx_class=RxClass.ETC,
+            base_unit="viên",
+            ingredients=[
+                DrugIngredientInput(ingredient_id=amoxicillin.id, amount=Decimal("500"), unit="mg"),
+                DrugIngredientInput(
+                    ingredient_id=clavulanic_acid.id, amount=Decimal("125"), unit="mg"
+                ),
+            ],
+        ),
+        ctx,
+    )
+
+    refs = await catalog_service.get_drug_ingredients(created.id, ctx)
+    assert {(r.ingredient_id, r.name) for r in refs} == {
+        (amoxicillin.id, "Amoxicillin"),
+        (clavulanic_acid.id, "Acid clavulanic"),
+    }
+
+
+async def test_get_drug_ingredients_empty_for_drug_without_ingredients(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    created = await catalog_service.create_drug(
+        CreateDrugInput(name="Nước muối sinh lý", rx_class=RxClass.OTC, base_unit="chai"), ctx
+    )
+    assert await catalog_service.get_drug_ingredients(created.id, ctx) == []
+
+
+async def test_get_drug_ingredients_unknown_drug_not_found(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    with pytest.raises(NotFoundError):
+        await catalog_service.get_drug_ingredients(uuid4(), ctx)
+
+
+async def test_get_drug_ingredients_permission_enforced(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    created = await catalog_service.create_drug(
+        CreateDrugInput(name="V", rx_class=RxClass.OTC, base_unit="viên"), ctx
+    )
+    no_perm = RequestContext(
+        tenant_id=ctx.tenant_id,
+        branch_id=ctx.branch_id,
+        user_id=ctx.user_id,
+        permissions=frozenset(),
+    )
+    with pytest.raises(PermissionDeniedError):
+        await catalog_service.get_drug_ingredients(created.id, no_perm)
+
+
+async def test_get_drug_ingredients_tenant_isolation(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    created = await catalog_service.create_drug(
+        CreateDrugInput(name="Iso", rx_class=RxClass.OTC, base_unit="viên"), ctx
+    )
+    other = RequestContext(
+        tenant_id=uuid4(),
+        branch_id=ctx.branch_id,
+        user_id=ctx.user_id,
+        permissions=ctx.permissions,
+    )
+    with pytest.raises(NotFoundError):
+        await catalog_service.get_drug_ingredients(created.id, other)
+
+
 async def test_create_drug_unknown_ingredient_not_found(
     catalog_service: CatalogService, ctx: RequestContext
 ) -> None:

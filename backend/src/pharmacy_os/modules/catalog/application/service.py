@@ -13,7 +13,11 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import ConflictError, NotFoundError, ValidationError
 from pharmacy_os.core.security import require_permission
-from pharmacy_os.modules.catalog.application.dto import CreateDrugInput, DrugOutput
+from pharmacy_os.modules.catalog.application.dto import (
+    CreateDrugInput,
+    DrugIngredientRef,
+    DrugOutput,
+)
 from pharmacy_os.modules.catalog.domain import (
     Drug,
     DrugIngredient,
@@ -96,6 +100,32 @@ class CatalogService:
         if drug is None:
             raise NotFoundError(f"Không tìm thấy thuốc {drug_id}")
         return DrugOutput.of(drug)
+
+    async def get_drug_ingredients(
+        self, drug_id: UUID, ctx: RequestContext
+    ) -> list[DrugIngredientRef]:
+        """Resolve a drug's active ingredients to ``(ingredient_id, name)`` pairs.
+
+        Catalog owns the ``drug_id → ingredients`` mapping; the cross-module safety
+        checks (clinical interactions match by name, CRM allergies by ingredient_id)
+        both read through here. Raises :class:`NotFoundError` if the drug doesn't
+        exist for the tenant, or if a referenced ingredient is missing (a
+        data-integrity fault the ``drug_ingredients`` FK should prevent).
+        """
+        require_permission(ctx, "catalog.read")
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            drug = await repo.get(drug_id)
+            if drug is None:
+                raise NotFoundError(f"Không tìm thấy thuốc {drug_id}")
+            ingredient_repo = self._ingredient_repo_factory(uow)
+            refs: list[DrugIngredientRef] = []
+            for di in drug.ingredients:
+                ingredient = await ingredient_repo.get(di.ingredient_id)
+                if ingredient is None:
+                    raise NotFoundError(f"Không tìm thấy hoạt chất {di.ingredient_id}")
+                refs.append(DrugIngredientRef(ingredient_id=di.ingredient_id, name=ingredient.name))
+        return refs
 
     async def list_drugs(
         self, ctx: RequestContext, *, limit: int = 50, offset: int = 0

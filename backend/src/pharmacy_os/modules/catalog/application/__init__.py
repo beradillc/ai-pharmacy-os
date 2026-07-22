@@ -4,6 +4,7 @@ from pharmacy_os.modules.catalog.application.dto import (
     CreateDrugInput,
     DrugIngredientInput,
     DrugIngredientOutput,
+    DrugIngredientRef,
     DrugOutput,
     DrugUnitInput,
 )
@@ -13,6 +14,7 @@ __all__ = [
     "CreateDrugInput",
     "DrugIngredientInput",
     "DrugIngredientOutput",
+    "DrugIngredientRef",
     "DrugUnitInput",
     "DrugOutput",
     "CatalogService",
