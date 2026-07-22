@@ -8,9 +8,11 @@ ORM classes, and ``active_ingredients`` is global (not tenant-scoped) so there i
 cross-tenant risk. Unlike ``sales.SaleLine.drug_id``/``prescription...drug_id``
 (deliberately un-FK'd, tenant-scoped, historical snapshots), an ingredient
 reference here benefits from real integrity since allergies must name a real
-ingredient. Note: SQLite (the test harness) does not enforce FKs unless
-``PRAGMA foreign_keys=ON`` is set, which this project doesn't set — so this
-constraint is only actually enforced on live Postgres.
+ingredient. SQLite (the test harness) doesn't enforce FKs by default, but
+``core.db.session.build_engine`` turns on ``PRAGMA foreign_keys=ON`` per
+connection for SQLite, so this constraint is exercised in tests too, not just
+on live Postgres. ``CrmService.add_allergy`` catches the resulting
+``IntegrityError`` and translates it to a 404 — see that module for why.
 """
 
 from __future__ import annotations

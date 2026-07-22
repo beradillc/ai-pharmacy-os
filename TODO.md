@@ -128,10 +128,14 @@
       (create_customer/add_allergy/add_condition/get_customer/list_customers). Router `/customers/*` đủ (POST/GET/list +
       allergies/conditions), wire vào `api/v1`. Migration `0009_crm_customers` live Postgres, `alembic check` sạch,
       downgrade/upgrade OK. 4 cổng xanh (**272 test**, 11 contract kept/0).
-- [ ] **Nợ mới:** `add_allergy`/`add_condition` không validate ingredient/ICD-10 ở app layer (chỉ dựa FK Postgres — SQLite
-      test không enforce được) → `ingredient_id` sai trả `IntegrityError`/500 thô, chưa phải 404/422 gọn. Cải thiện khi có
-      cross-module thật với catalog. Chưa có use-case ghi `MedicationHistoryEntry` qua HTTP (chờ nối event
-      `SaleCompleted`/`PrescriptionDispensed`).
+- [x] ~~**Nợ:** `add_allergy` không validate ingredient ở app layer → `ingredient_id` sai trả 500 thô~~ — **đã gỡ
+      (2026-07-22)**: `CrmService.add_allergy` bắt `IntegrityError` từ FK → `NotFoundError` (404), không cần cross-module
+      với catalog (đã hỏi sếp trước vì cách "chuẩn" — validate qua `ActiveIngredientRepository` — là cross-module thật,
+      cần Opus theo quy tắc S4.5/S5.4/C.5). Sửa kèm: `core/db/session.build_engine()` bật `PRAGMA foreign_keys=ON` cho
+      SQLite để test thấy được lỗi này (trước đó SQLite mù, chỉ Postgres sống mới lộ bug). Xác nhận thủ công trên Postgres
+      sống. +2 test. 4 cổng xanh (**274 test**).
+- [ ] Chưa có use-case ghi `MedicationHistoryEntry` qua HTTP (chờ nối event `SaleCompleted`/`PrescriptionDispensed`,
+      cross-module, cùng Bước 2).
 - [ ] Nối **dị ứng KH** vào kiểm tra clinical (cross-module, gộp cùng Bước 2/5.5.4 — cần Opus + phiên riêng).
 - [ ] Feature flag AI theo tenant (SaaS) — `enable_clinical_ai` từ toàn cục sang theo tenant.
 - [ ] Module `procurement` (Supplier, PO, GRN → inventory IN).

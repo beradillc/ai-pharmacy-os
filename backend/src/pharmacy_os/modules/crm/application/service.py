@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
+
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import NotFoundError, ValidationError
@@ -59,11 +61,14 @@ class CrmService:
     ) -> CustomerOutput:
         """Record a customer's allergy to an active ingredient (dedup by ingredient_id).
 
-        Ingredient existence is enforced only by the DB foreign key to
-        ``active_ingredients`` — there is no cross-module read here (out of scope
-        for this step). An unknown ``ingredient_id`` surfaces as a raw integrity
-        error on live Postgres, not a friendly 404/422; SQLite (tests) doesn't
-        enforce the FK at all. See ``crm/infrastructure/models.py``.
+        Ingredient existence is enforced by the DB foreign key to
+        ``active_ingredients`` (no cross-module read here — validating via
+        catalog's own repository would require crm to depend on catalog, which
+        is a composition-root cross-module step gated behind Opus, not done in
+        this step). The FK violation is caught here and translated to a 404
+        instead of leaking a raw integrity error: ``customer_id`` is already
+        confirmed to exist by ``_get_or_404`` above, so an ``IntegrityError`` at
+        this insert can only come from the ``ingredient_id`` FK.
         """
         require_permission(ctx, "crm.write")
         customer = await self._get_or_404(customer_id, ctx)
@@ -76,7 +81,10 @@ class CrmService:
 
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)
-            await repo.update(customer)
+            try:
+                await repo.update(customer)
+            except IntegrityError as exc:
+                raise NotFoundError(f"Không tìm thấy hoạt chất {data.ingredient_id}") from exc
             await uow.commit()
         return CustomerOutput.of(customer)
 

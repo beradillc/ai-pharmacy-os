@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -54,6 +55,15 @@ async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
         poolclass=StaticPool,
         connect_args={"check_same_thread": False},
     )
+
+    # SQLite ignores FK constraints unless told to per-connection; enable so
+    # cross-module FKs (e.g. customer_allergies.ingredient_id) behave like Postgres.
+    @event.listens_for(engine.sync_engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection: object, connection_record: object) -> None:
+        cursor = dbapi_connection.cursor()  # type: ignore[attr-defined]
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)

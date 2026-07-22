@@ -123,6 +123,20 @@ async def test_add_allergy_unknown_customer_404(
         )
 
 
+async def test_add_allergy_unknown_ingredient_404_not_500(
+    crm_service: CrmService, ctx: RequestContext
+) -> None:
+    """FK violation (unknown ingredient_id) must surface as 404, not a raw
+    IntegrityError/500 — see CrmService.add_allergy."""
+    created = await crm_service.create_customer(CreateCustomerInput(full_name="T"), ctx)
+    with pytest.raises(NotFoundError):
+        await crm_service.add_allergy(
+            created.id,
+            AddAllergyInput(ingredient_id=uuid4(), severity=AllergySeverity.MILD),
+            ctx,
+        )
+
+
 async def test_add_condition_round_trips_and_rejects_duplicate(
     crm_service: CrmService, ctx: RequestContext
 ) -> None:

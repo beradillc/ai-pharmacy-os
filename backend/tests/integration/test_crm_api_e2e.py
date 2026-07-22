@@ -98,3 +98,14 @@ def test_duplicate_allergy_rejected_with_422(client: TestClient) -> None:
         json={"ingredient_id": str(_PENICILLIN_ID), "severity": "SEVERE"},
     )
     assert again.status_code == 422, again.text
+
+
+def test_unknown_ingredient_id_rejected_with_404_not_500(client: TestClient) -> None:
+    created = client.post("/api/v1/customers", json={"full_name": "D"})
+    customer_id = created.json()["id"]
+    resp = client.post(
+        f"/api/v1/customers/{customer_id}/allergies",
+        json={"ingredient_id": str(uuid4()), "severity": "MILD"},
+    )
+    assert resp.status_code == 404, resp.text
+    assert resp.headers["content-type"].startswith("application/problem+json")
