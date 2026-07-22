@@ -87,6 +87,42 @@ class InteractionCheckResult:
 
 
 @dataclass(slots=True)
+class BasketIngredient:
+    """One active ingredient present in a dispensed basket (resolved by the caller)."""
+
+    ingredient_id: UUID
+    name: str
+
+
+@dataclass(slots=True)
+class CheckAllergiesInput:
+    """Request to match a basket's ingredients against a customer's recorded allergies.
+
+    The caller (api composition root) resolves ``basket`` from catalog and
+    ``allergy_severities`` (``ingredient_id`` → severity) from CRM — clinical stays
+    unaware of either module.
+    """
+
+    basket: list[BasketIngredient]
+    allergy_severities: dict[UUID, str]
+    context_id: UUID | None = None
+
+
+@dataclass(slots=True)
+class AllergyAlertOutput:
+    ingredient_id: UUID
+    ingredient_name: str
+    severity: str
+
+
+@dataclass(slots=True)
+class AllergyCheckResult:
+    """Alerts for each basket ingredient the customer is allergic to (deterministic)."""
+
+    alerts: list[AllergyAlertOutput]
+
+
+@dataclass(slots=True)
 class SetTenantAiSettingsInput:
     enable_clinical_ai: bool
 

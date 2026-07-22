@@ -15,6 +15,7 @@ from pharmacy_os.modules.clinical.domain import (
     InvalidConfidenceError,
     InvalidInteractionError,
     TenantAiSettings,
+    find_allergy_alerts,
     find_interactions,
     requires_pharmacist_review,
 )
@@ -81,6 +82,41 @@ def test_findings_ranked_most_serious_first() -> None:
 def test_no_interactions_returns_empty() -> None:
     known = [_interaction("a", "b", InteractionSeverity.MAJOR)]
     assert find_interactions(["a", "x", "y"], known) == []
+
+
+# --- find_allergy_alerts ---------------------------------------------------
+
+
+def test_allergy_alert_raised_for_matching_ingredient() -> None:
+    warfarin, aspirin = uuid4(), uuid4()
+    alerts = find_allergy_alerts(
+        [(warfarin, "Warfarin"), (aspirin, "Aspirin")],
+        {aspirin: "SEVERE"},
+    )
+    assert len(alerts) == 1
+    assert alerts[0].ingredient_id == aspirin
+    assert alerts[0].ingredient_name == "Aspirin"
+    assert alerts[0].severity == "SEVERE"
+
+
+def test_no_allergy_alert_when_nothing_matches() -> None:
+    a, b = uuid4(), uuid4()
+    assert find_allergy_alerts([(a, "A")], {b: "MILD"}) == []
+
+
+def test_allergy_alert_deduplicated_per_ingredient() -> None:
+    aspirin = uuid4()
+    # A combination product could list the same ingredient twice → one alert only.
+    alerts = find_allergy_alerts(
+        [(aspirin, "Aspirin"), (aspirin, "Aspirin")], {aspirin: "MODERATE"}
+    )
+    assert len(alerts) == 1
+
+
+def test_allergy_match_is_by_id_not_name() -> None:
+    recorded, other = uuid4(), uuid4()
+    # Same display name but a different ingredient id must not alert.
+    assert find_allergy_alerts([(other, "Aspirin")], {recorded: "SEVERE"}) == []
 
 
 # --- requires_pharmacist_review (guardrail) --------------------------------

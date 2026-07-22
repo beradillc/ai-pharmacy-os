@@ -83,6 +83,21 @@ class DrugInteraction:
         object.__setattr__(self, "ingredient_b", hi)
 
 
+@dataclass(frozen=True, slots=True)
+class AllergyAlert:
+    """One active ingredient in a basket that the customer is recorded allergic to.
+
+    Matched by ``ingredient_id`` (a stable reference, unlike interaction names): the
+    catalog resolves a dispensed drug to its ingredient ids, CRM records the customer's
+    allergies by the same id. ``severity`` is carried as a plain string so the clinical
+    domain stays free of the CRM severity enum.
+    """
+
+    ingredient_id: UUID
+    ingredient_name: str
+    severity: str
+
+
 @dataclass(slots=True)
 class AiRecommendation:
     """Immutable audit record of one AI decision-support call (docs/12 mục 7).

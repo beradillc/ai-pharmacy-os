@@ -7,9 +7,11 @@ never delegated to the model (docs/12 mục 1, 6).
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from uuid import UUID
 
 from pharmacy_os.modules.clinical.domain.entities import (
+    AllergyAlert,
     DrugInteraction,
     InteractionSeverity,
     normalize_ingredient,
@@ -49,6 +51,28 @@ def find_interactions(
     ]
     found.sort(key=lambda i: (_SEVERITY_RANK[i.severity], i.ingredient_a, i.ingredient_b))
     return found
+
+
+def find_allergy_alerts(
+    basket: Iterable[tuple[UUID, str]], allergy_severities: Mapping[UUID, str]
+) -> list[AllergyAlert]:
+    """Return an alert for each basket ingredient the customer is recorded allergic to.
+
+    ``basket`` is ``(ingredient_id, ingredient_name)`` pairs for the dispensed drugs;
+    ``allergy_severities`` maps a customer's allergy ``ingredient_id`` to its severity.
+    Deterministic — a set-membership match on ``ingredient_id``, deduplicated so a
+    combination product listing the same ingredient twice raises one alert.
+    """
+    alerts: list[AllergyAlert] = []
+    seen: set[UUID] = set()
+    for ingredient_id, name in basket:
+        severity = allergy_severities.get(ingredient_id)
+        if severity is not None and ingredient_id not in seen:
+            seen.add(ingredient_id)
+            alerts.append(
+                AllergyAlert(ingredient_id=ingredient_id, ingredient_name=name, severity=severity)
+            )
+    return alerts
 
 
 def requires_pharmacist_review(

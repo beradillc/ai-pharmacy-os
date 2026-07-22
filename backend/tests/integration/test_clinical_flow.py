@@ -11,6 +11,8 @@ from pharmacy_os.core.errors import (
     PermissionDeniedError,
 )
 from pharmacy_os.modules.clinical.application import (
+    BasketIngredient,
+    CheckAllergiesInput,
     CheckInteractionsInput,
     ClinicalService,
     SetTenantAiSettingsInput,
@@ -211,6 +213,63 @@ async def test_recommendation_is_tenant_isolated(
     )
     with pytest.raises(NotFoundError):
         await clinical_service.get_recommendation(result.recommendation.id, other_tenant)
+
+
+async def test_check_allergies_alerts_on_matching_ingredient(
+    clinical_service: ClinicalService, ctx: RequestContext
+) -> None:
+    from uuid import uuid4
+
+    warfarin, aspirin = uuid4(), uuid4()
+    result = await clinical_service.check_allergies(
+        CheckAllergiesInput(
+            basket=[
+                BasketIngredient(ingredient_id=warfarin, name="Warfarin"),
+                BasketIngredient(ingredient_id=aspirin, name="Aspirin"),
+            ],
+            allergy_severities={aspirin: "SEVERE"},
+            context_id=uuid4(),
+        ),
+        ctx,
+    )
+    assert len(result.alerts) == 1
+    assert result.alerts[0].ingredient_id == aspirin
+    assert result.alerts[0].severity == "SEVERE"
+
+
+async def test_check_allergies_runs_even_when_ai_disabled(
+    clinical_service: ClinicalService, ctx: RequestContext
+) -> None:
+    from uuid import uuid4
+
+    # Allergy safety is deterministic, not AI — it is NOT gated by TenantAiSettings.
+    await clinical_service.set_tenant_ai_settings(
+        SetTenantAiSettingsInput(enable_clinical_ai=False), ctx
+    )
+    aspirin = uuid4()
+    result = await clinical_service.check_allergies(
+        CheckAllergiesInput(
+            basket=[BasketIngredient(ingredient_id=aspirin, name="Aspirin")],
+            allergy_severities={aspirin: "MILD"},
+        ),
+        ctx,
+    )
+    assert len(result.alerts) == 1
+
+
+async def test_check_allergies_requires_permission(
+    clinical_service: ClinicalService, ctx: RequestContext
+) -> None:
+    unprivileged = RequestContext(
+        tenant_id=ctx.tenant_id,
+        branch_id=ctx.branch_id,
+        user_id=ctx.user_id,
+        permissions=frozenset(),
+    )
+    with pytest.raises(PermissionDeniedError):
+        await clinical_service.check_allergies(
+            CheckAllergiesInput(basket=[], allergy_severities={}), unprivileged
+        )
 
 
 async def test_set_and_get_tenant_ai_settings_roundtrip(

@@ -22,6 +22,9 @@ from pharmacy_os.core.errors import ConflictError, FeatureDisabledError, NotFoun
 from pharmacy_os.core.security import require_permission
 from pharmacy_os.modules.clinical.application.dto import (
     AiRecommendationOutput,
+    AllergyAlertOutput,
+    AllergyCheckResult,
+    CheckAllergiesInput,
     CheckInteractionsInput,
     DrugInteractionOutput,
     InteractionCheckResult,
@@ -33,6 +36,7 @@ from pharmacy_os.modules.clinical.domain import (
     AiRecommendationAlreadyAcceptedError,
     DrugInteraction,
     TenantAiSettings,
+    find_allergy_alerts,
     find_interactions,
     requires_pharmacist_review,
 )
@@ -133,6 +137,32 @@ class ClinicalService:
         return InteractionCheckResult(
             findings=[DrugInteractionOutput.of(f) for f in findings],
             recommendation=AiRecommendationOutput.of(recommendation),
+        )
+
+    async def check_allergies(
+        self, data: CheckAllergiesInput, ctx: RequestContext
+    ) -> AllergyCheckResult:
+        """Match a dispensed basket's ingredients against the customer's allergies.
+
+        Deterministic and non-AI — a set-membership match on ``ingredient_id``. Unlike
+        :meth:`check_interactions` this is **not** gated by :class:`TenantAiSettings` and
+        writes no audit record: allergy safety is a baseline check that runs for every
+        tenant, and there is no model output to persist. Returns the alerts for the
+        caller to surface (the cross-module handler logs them, warn-only).
+        """
+        require_permission(ctx, "clinical.check")
+        alerts = find_allergy_alerts(
+            [(b.ingredient_id, b.name) for b in data.basket], data.allergy_severities
+        )
+        return AllergyCheckResult(
+            alerts=[
+                AllergyAlertOutput(
+                    ingredient_id=a.ingredient_id,
+                    ingredient_name=a.ingredient_name,
+                    severity=a.severity,
+                )
+                for a in alerts
+            ]
         )
 
     async def get_recommendation(

@@ -6,6 +6,7 @@ Framework-free and LLM-free. See docs/12_AI_INTEGRATION.md.
 from pharmacy_os.modules.clinical.domain.entities import (
     AiContextType,
     AiRecommendation,
+    AllergyAlert,
     DrugInteraction,
     InteractionSeverity,
     TenantAiSettings,
@@ -23,6 +24,7 @@ from pharmacy_os.modules.clinical.domain.ports import (
     TenantAiSettingsRepository,
 )
 from pharmacy_os.modules.clinical.domain.rules import (
+    find_allergy_alerts,
     find_interactions,
     requires_pharmacist_review,
 )
@@ -30,6 +32,7 @@ from pharmacy_os.modules.clinical.domain.rules import (
 __all__ = [
     "AiContextType",
     "AiRecommendation",
+    "AllergyAlert",
     "DrugInteraction",
     "InteractionSeverity",
     "TenantAiSettings",
@@ -41,6 +44,7 @@ __all__ = [
     "AiRecommendationRepository",
     "DrugInteractionRepository",
     "TenantAiSettingsRepository",
+    "find_allergy_alerts",
     "find_interactions",
     "requires_pharmacist_review",
 ]

@@ -2,6 +2,10 @@
 
 from pharmacy_os.modules.clinical.application.dto import (
     AiRecommendationOutput,
+    AllergyAlertOutput,
+    AllergyCheckResult,
+    BasketIngredient,
+    CheckAllergiesInput,
     CheckInteractionsInput,
     DrugInteractionOutput,
     InteractionCheckResult,
@@ -13,6 +17,10 @@ from pharmacy_os.modules.clinical.application.service import ClinicalService
 __all__ = [
     "ClinicalService",
     "AiRecommendationOutput",
+    "AllergyAlertOutput",
+    "AllergyCheckResult",
+    "BasketIngredient",
+    "CheckAllergiesInput",
     "CheckInteractionsInput",
     "DrugInteractionOutput",
     "InteractionCheckResult",
