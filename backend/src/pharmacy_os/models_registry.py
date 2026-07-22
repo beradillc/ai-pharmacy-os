@@ -13,6 +13,7 @@ import pharmacy_os.modules.compliance.infrastructure.models  # noqa: F401
 import pharmacy_os.modules.crm.infrastructure.models  # noqa: F401
 import pharmacy_os.modules.inventory.infrastructure.models  # noqa: F401
 import pharmacy_os.modules.prescription.infrastructure.models  # noqa: F401
+import pharmacy_os.modules.procurement.infrastructure.models  # noqa: F401
 import pharmacy_os.modules.sales.infrastructure.models  # noqa: F401
 from pharmacy_os.core.db.base import Base
 

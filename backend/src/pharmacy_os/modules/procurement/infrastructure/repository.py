@@ -1,0 +1,161 @@
+"""SQLAlchemy implementations of the procurement repository ports, tenant-scoped."""
+
+from __future__ import annotations
+
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from pharmacy_os.core.context import RequestContext
+from pharmacy_os.modules.procurement.domain import GoodsReceiptNote, PurchaseOrder, Supplier
+from pharmacy_os.modules.procurement.infrastructure.mappers import (
+    goods_receipt_to_domain,
+    goods_receipt_to_orm,
+    purchase_order_to_domain,
+    purchase_order_to_orm,
+    supplier_to_domain,
+    supplier_to_orm,
+)
+from pharmacy_os.modules.procurement.infrastructure.models import (
+    GoodsReceiptItemORM,
+    GoodsReceiptORM,
+    PurchaseOrderItemORM,
+    PurchaseOrderORM,
+    SupplierORM,
+)
+
+
+class SqlAlchemySupplierRepository:
+    def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
+        self._session = session
+        self._ctx = ctx
+
+    async def add(self, supplier: Supplier) -> None:
+        self._session.add(supplier_to_orm(supplier))
+        await self._session.flush()
+
+    async def update(self, supplier: Supplier) -> None:
+        stmt = select(SupplierORM).where(
+            SupplierORM.id == supplier.id, SupplierORM.tenant_id == self._ctx.tenant_id
+        )
+        row = (await self._session.execute(stmt)).scalar_one()
+        row.name = supplier.name
+        row.tax_code = supplier.tax_code
+        row.contact_name = supplier.contact_name
+        row.phone = supplier.phone
+        row.email = supplier.email
+        row.address = supplier.address
+        row.is_active = supplier.is_active
+        await self._session.flush()
+
+    async def get(self, supplier_id: UUID) -> Supplier | None:
+        stmt = select(SupplierORM).where(
+            SupplierORM.id == supplier_id, SupplierORM.tenant_id == self._ctx.tenant_id
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return supplier_to_domain(row) if row is not None else None
+
+    async def list(self, *, limit: int = 50, offset: int = 0) -> list[Supplier]:
+        stmt = (
+            select(SupplierORM)
+            .where(SupplierORM.tenant_id == self._ctx.tenant_id)
+            .order_by(SupplierORM.name)
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [supplier_to_domain(r) for r in rows]
+
+
+class SqlAlchemyPurchaseOrderRepository:
+    def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
+        self._session = session
+        self._ctx = ctx
+
+    async def add(self, purchase_order: PurchaseOrder) -> None:
+        self._session.add(purchase_order_to_orm(purchase_order))
+        await self._session.flush()
+
+    async def update(self, purchase_order: PurchaseOrder) -> None:
+        """Persist status + each existing line's ``quantity_received``.
+
+        Items are added only while ``DRAFT`` (mirrors ``add_po_item``, which also
+        goes through this method) or accumulate via :meth:`PurchaseOrder.apply_receipt`
+        — never removed — so a straight id-keyed sync (no diff/dedup) is sufficient.
+        """
+        stmt = select(PurchaseOrderORM).where(
+            PurchaseOrderORM.id == purchase_order.id,
+            PurchaseOrderORM.tenant_id == self._ctx.tenant_id,
+        )
+        row = (await self._session.execute(stmt)).scalar_one()
+        row.status = purchase_order.status.value
+        row.ordered_at = purchase_order.ordered_at
+
+        existing_by_id = {it.id: it for it in row.items}
+        for item in purchase_order.items:
+            existing = existing_by_id.get(item.id)
+            if existing is None:
+                row.items.append(
+                    PurchaseOrderItemORM(
+                        id=item.id,
+                        purchase_order_id=purchase_order.id,
+                        drug_id=item.drug_id,
+                        quantity_ordered=item.quantity_ordered,
+                        unit_price=item.unit_price,
+                        quantity_received=item.quantity_received,
+                    )
+                )
+            else:
+                existing.quantity_received = item.quantity_received
+        await self._session.flush()
+
+    async def get(self, po_id: UUID) -> PurchaseOrder | None:
+        stmt = select(PurchaseOrderORM).where(
+            PurchaseOrderORM.id == po_id, PurchaseOrderORM.tenant_id == self._ctx.tenant_id
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return purchase_order_to_domain(row) if row is not None else None
+
+
+class SqlAlchemyGoodsReceiptRepository:
+    def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
+        self._session = session
+        self._ctx = ctx
+
+    async def add(self, receipt: GoodsReceiptNote) -> None:
+        self._session.add(goods_receipt_to_orm(receipt))
+        await self._session.flush()
+
+    async def update(self, receipt: GoodsReceiptNote) -> None:
+        """Persist status + append any newly added lines (insert-only while ``DRAFT``)."""
+        stmt = select(GoodsReceiptORM).where(
+            GoodsReceiptORM.id == receipt.id, GoodsReceiptORM.tenant_id == self._ctx.tenant_id
+        )
+        row = (await self._session.execute(stmt)).scalar_one()
+        row.status = receipt.status.value
+
+        existing_ids = {it.id for it in row.items}
+        for item in receipt.items:
+            if item.id not in existing_ids:
+                row.items.append(
+                    GoodsReceiptItemORM(
+                        id=item.id,
+                        goods_receipt_id=receipt.id,
+                        po_item_id=item.po_item_id,
+                        drug_id=item.drug_id,
+                        quantity_received=item.quantity_received,
+                        lot_no=item.lot_no,
+                        expiry_date=item.expiry_date,
+                        unit_cost=item.unit_cost,
+                        mfg_date=item.mfg_date,
+                    )
+                )
+        await self._session.flush()
+
+    async def get(self, grn_id: UUID) -> GoodsReceiptNote | None:
+        stmt = select(GoodsReceiptORM).where(
+            GoodsReceiptORM.id == grn_id, GoodsReceiptORM.tenant_id == self._ctx.tenant_id
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return goods_receipt_to_domain(row) if row is not None else None

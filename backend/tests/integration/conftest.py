@@ -45,6 +45,12 @@ from pharmacy_os.modules.inventory.infrastructure import (
 )
 from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.infrastructure import SqlAlchemyPrescriptionRepository
+from pharmacy_os.modules.procurement.application import ProcurementService
+from pharmacy_os.modules.procurement.infrastructure import (
+    SqlAlchemyGoodsReceiptRepository,
+    SqlAlchemyPurchaseOrderRepository,
+    SqlAlchemySupplierRepository,
+)
 from pharmacy_os.modules.sales.application import SalesService
 from pharmacy_os.modules.sales.infrastructure import SqlAlchemySalesRepository
 
@@ -108,6 +114,14 @@ def ctx() -> RequestContext:
                 "crm.create",
                 "crm.read",
                 "crm.write",
+                "procurement.supplier.create",
+                "procurement.supplier.read",
+                "procurement.po.create",
+                "procurement.po.read",
+                "procurement.po.write",
+                "procurement.grn.create",
+                "procurement.grn.read",
+                "procurement.grn.confirm",
             }
         ),
     )
@@ -209,4 +223,19 @@ def crm_service(
     return CrmService(
         uow_factory,
         lambda uow, c: SqlAlchemyCustomerRepository(uow.session, c),
+    )
+
+
+@pytest.fixture
+def procurement_service(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> ProcurementService:
+    def uow_factory() -> UnitOfWork:
+        return SqlAlchemyUnitOfWork(session_factory, event_bus)
+
+    return ProcurementService(
+        uow_factory,
+        lambda uow, c: SqlAlchemySupplierRepository(uow.session, c),
+        lambda uow, c: SqlAlchemyPurchaseOrderRepository(uow.session, c),
+        lambda uow, c: SqlAlchemyGoodsReceiptRepository(uow.session, c),
     )
