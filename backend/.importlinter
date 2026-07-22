@@ -101,6 +101,18 @@ forbidden_modules =
     fastapi
     sqlalchemy
 
+[importlinter:contract:crm-domain-innermost]
+name = Crm domain must not import outer layers or frameworks
+type = forbidden
+source_modules =
+    pharmacy_os.modules.crm.domain
+forbidden_modules =
+    pharmacy_os.modules.crm.application
+    pharmacy_os.modules.crm.infrastructure
+    pharmacy_os.modules.crm.interface
+    fastapi
+    sqlalchemy
+
 [importlinter:contract:module-independence]
 name = Business modules must not import each other directly
 type = independence
@@ -111,3 +123,4 @@ modules =
     pharmacy_os.modules.prescription
     pharmacy_os.modules.compliance
     pharmacy_os.modules.clinical
+    pharmacy_os.modules.crm

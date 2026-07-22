@@ -118,7 +118,14 @@
       quyết định khi làm `crm`/`procurement` hoặc khi có nhu cầu FE thật.
 - [ ] **Bước 2 — 5.5.4 auto-check tương tác** (cần Opus + phiên riêng, mở vào phiên hạn mức đầy, từng bước dừng chờ duyệt) —
       điều kiện phụ thuộc (Bước 1) **đã đủ**, chưa mở.
-- [ ] Module `crm` (Customer, dị ứng, bệnh nền, lịch sử) + nối dị ứng KH vào kiểm tra clinical.
+- [x] **Module `crm` — domain thuần** *(2026-07-22)* — `Customer` (aggregate) + `Allergy` (theo `ingredient_id`, khớp
+      `catalog.ActiveIngredient`) + `Condition` (ICD-10) + `MedicationHistoryEntry` (tối giản, chưa nối event). Đã hỏi sếp
+      trước khi code về overlap với `compliance.CustomerDetail` — chốt tách biệt hoàn toàn (xem PROJECT_STATE §7e). Port
+      `CustomerRepository` chưa impl. Contract `crm-domain-innermost` (**11/0**). 4 cổng xanh (**258 test**).
+- [ ] **`crm` Bước tiếp — app+infra+migration** — `SqlAlchemyCustomerRepository` + ORM `CustomerORM`/`CustomerAllergyORM`/
+      `CustomerConditionORM`/ (bảng lịch sử dùng thuốc — đặt tên khi làm, ERD docs/03 chưa có tên chính thức) + mapper +
+      migration mới + `interface/schemas.py`+router `/customers/*`.
+- [ ] Nối **dị ứng KH** vào kiểm tra clinical (cross-module, gộp cùng Bước 2/5.5.4 — cần Opus + phiên riêng).
 - [ ] Feature flag AI theo tenant (SaaS) — `enable_clinical_ai` từ toàn cục sang theo tenant.
 - [ ] Module `procurement` (Supplier, PO, GRN → inventory IN).
 
