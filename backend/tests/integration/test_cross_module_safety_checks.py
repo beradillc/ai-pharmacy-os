@@ -1,10 +1,12 @@
-"""S6 5.5.4 cross-module: auto-check drug interactions on sale / dispense.
+"""S6 5.5.4 cross-module: auto-check clinical safety on sale / dispense.
 
-Warn-only reaction declared at the composition root (``wire_interaction_safety_check``),
-same pattern as ``wire_sale_dispensing``. Sales/prescription never import clinical or
+Warn-only reaction declared at the composition root (``wire_safety_checks``), same
+pattern as ``wire_sale_dispensing``. Sales/prescription/crm never import clinical or
 catalog — the handler in the ``api`` layer resolves the basket's ingredients (catalog,
-S6 Bước 1) and drives the tenant-gated clinical check, which audits an
-``AiRecommendation``. Both trigger events are post-commit, so this only warns.
+S6 Bước 1) and drives the clinical checks: drug interactions on both events (tenant-
+gated, audits an ``AiRecommendation``) and, on dispensing only, allergy matching against
+the customer's crm record (deterministic, not gated, log-only). Both trigger events are
+post-commit, so this only warns.
 """
 
 from __future__ import annotations
@@ -15,8 +17,9 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from structlog.testing import capture_logs
 
-from pharmacy_os.api.v1.cross_module import wire_interaction_safety_check
+from pharmacy_os.api.v1.cross_module import wire_safety_checks
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.di import Container
 from pharmacy_os.core.events import EventBus, InMemoryEventBus
@@ -37,6 +40,12 @@ from pharmacy_os.modules.clinical.infrastructure import (
     AiRecommendationORM,
     SqlAlchemyDrugInteractionRepository,
 )
+from pharmacy_os.modules.crm.application import (
+    AddAllergyInput,
+    CreateCustomerInput,
+    CrmService,
+)
+from pharmacy_os.modules.crm.domain import AllergySeverity
 from pharmacy_os.modules.prescription.application import (
     CreatePrescriptionInput,
     PrescriptionItemInput,
@@ -51,6 +60,7 @@ def wired_container(
     event_bus: InMemoryEventBus,
     catalog_service: CatalogService,
     clinical_service: ClinicalService,
+    crm_service: CrmService,
     prescription_service: PrescriptionService,
 ) -> Container:
     """A container with the real services + the S6 5.5.4 subscription wired."""
@@ -58,8 +68,9 @@ def wired_container(
     container.register_instance(EventBus, event_bus)  # type: ignore[type-abstract]
     container.register_instance(CatalogService, catalog_service)
     container.register_instance(ClinicalService, clinical_service)
+    container.register_instance(CrmService, crm_service)
     container.register_instance(PrescriptionService, prescription_service)
-    wire_interaction_safety_check(container)
+    wire_safety_checks(container)
     return container
 
 
@@ -287,3 +298,105 @@ async def test_unknown_dispensed_prescription_is_ignored(
     # Prescription id that was never persisted → handler 404s internally and skips.
     await event_bus.publish(PrescriptionDispensed(tenant_id=ctx.tenant_id, prescription_id=uuid4()))
     assert await _count_recommendations(session_factory, ctx.tenant_id) == 0
+
+
+# --- allergy path (dispensing only; log-only, not tenant-gated) -------------
+
+
+def _rx_item(drug_id: UUID) -> PrescriptionItemInput:
+    return PrescriptionItemInput(
+        drug_id=drug_id, quantity=Decimal("1"), dose="1", frequency="1", duration="1"
+    )
+
+
+async def _new_customer_with_allergy(
+    crm_service: CrmService, ctx: RequestContext, ingredient_id: UUID, severity: AllergySeverity
+) -> UUID:
+    customer = await crm_service.create_customer(CreateCustomerInput(full_name="KH Test"), ctx)
+    await crm_service.add_allergy(
+        customer.id, AddAllergyInput(ingredient_id=ingredient_id, severity=severity), ctx
+    )
+    return customer.id
+
+
+async def test_dispense_to_allergic_customer_logs_allergy_warning(
+    wired_container: Container,
+    event_bus: InMemoryEventBus,
+    session_factory: async_sessionmaker[AsyncSession],
+    catalog_service: CatalogService,
+    crm_service: CrmService,
+    prescription_service: PrescriptionService,
+    ctx: RequestContext,
+) -> None:
+    # A single-ingredient basket: the interaction check is skipped, so only the
+    # allergy path can produce a log here. AI is deliberately left OFF to prove the
+    # allergy check is not tenant-gated.
+    aspirin = await _new_ingredient(session_factory, "Aspirin")
+    drug = await _new_drug(catalog_service, ctx, "Thuốc A", [aspirin.id])
+    customer_id = await _new_customer_with_allergy(
+        crm_service, ctx, aspirin.id, AllergySeverity.SEVERE
+    )
+    rx = await prescription_service.create_prescription(
+        CreatePrescriptionInput(
+            customer_id=customer_id, doctor_name="BS. Test", items=[_rx_item(drug)]
+        ),
+        ctx,
+    )
+
+    with capture_logs() as logs:
+        await event_bus.publish(
+            PrescriptionDispensed(tenant_id=ctx.tenant_id, prescription_id=rx.id)
+        )
+
+    warnings = [e for e in logs if e["event"] == "allergy_warning_raised"]
+    assert len(warnings) == 1
+    assert warnings[0]["alerts"] == 1
+    assert warnings[0]["context_id"] == str(rx.id)
+
+
+async def test_dispense_to_non_allergic_customer_logs_no_allergy_warning(
+    wired_container: Container,
+    event_bus: InMemoryEventBus,
+    session_factory: async_sessionmaker[AsyncSession],
+    catalog_service: CatalogService,
+    crm_service: CrmService,
+    prescription_service: PrescriptionService,
+    ctx: RequestContext,
+) -> None:
+    aspirin = await _new_ingredient(session_factory, "Aspirin")
+    paracetamol = await _new_ingredient(session_factory, "Paracetamol")
+    drug = await _new_drug(catalog_service, ctx, "Thuốc A", [aspirin.id])
+    # Customer is allergic to a *different* ingredient than the one dispensed.
+    customer_id = await _new_customer_with_allergy(
+        crm_service, ctx, paracetamol.id, AllergySeverity.MILD
+    )
+    rx = await prescription_service.create_prescription(
+        CreatePrescriptionInput(
+            customer_id=customer_id, doctor_name="BS. Test", items=[_rx_item(drug)]
+        ),
+        ctx,
+    )
+
+    with capture_logs() as logs:
+        await event_bus.publish(
+            PrescriptionDispensed(tenant_id=ctx.tenant_id, prescription_id=rx.id)
+        )
+
+    assert [e for e in logs if e["event"] == "allergy_warning_raised"] == []
+
+
+async def test_sale_never_runs_allergy_check(
+    wired_container: Container,
+    event_bus: InMemoryEventBus,
+    session_factory: async_sessionmaker[AsyncSession],
+    catalog_service: CatalogService,
+    ctx: RequestContext,
+) -> None:
+    # A sale carries no customer_id, so the allergy path must not run on SaleCompleted.
+    aspirin = await _new_ingredient(session_factory, "Aspirin")
+    drug = await _new_drug(catalog_service, ctx, "Thuốc A", [aspirin.id])
+
+    with capture_logs() as logs:
+        await event_bus.publish(_sale(ctx, uuid4(), [drug]))
+
+    assert [e for e in logs if e["event"] == "allergy_warning_raised"] == []

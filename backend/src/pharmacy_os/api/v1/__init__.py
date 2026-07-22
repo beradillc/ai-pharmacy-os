@@ -14,7 +14,7 @@ from pharmacy_os.api.v1.compliance_cross import wire_compliance_sync
 from pharmacy_os.api.v1.cross_module import (
     CatalogDrugInfoProvider,
     PrescriptionInfoAdapter,
-    wire_interaction_safety_check,
+    wire_safety_checks,
     wire_sale_dispensing,
 )
 from pharmacy_os.api.v1.health import router as health_router
@@ -51,9 +51,10 @@ def build_api_router(container: Container) -> APIRouter:
     # Cross-module reactions (both modules' services now registered).
     wire_sale_dispensing(container)
 
-    # S6 5.5.4: auto-check drug interactions on a completed sale / dispensed Rx
-    # (warn-only, tenant-gated). Reads catalog for ingredients + drives clinical.
-    wire_interaction_safety_check(container)
+    # S6 5.5.4: auto-check clinical safety on a completed sale / dispensed Rx
+    # (warn-only). Interactions on both (tenant-gated); allergies on dispensing
+    # (reads crm for the customer's allergies). Reads catalog for ingredients.
+    wire_safety_checks(container)
 
     # National drug DB sync service (mock gateway — BLOCKER: DAV API spec).
     # Registered here so C.5's cross-module subscriber can resolve it; no router.
