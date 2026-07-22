@@ -86,8 +86,8 @@
 - [x] **5.5.3 interface** *(2026-07-22)* — `interface/schemas.py` + router `/clinical/*` (`POST /clinical/check-interactions`,
       GET/accept recommendation); DI: `bootstrap` đăng ký `LLMProvider → MockLLMProvider`, `api/v1` nối `register_clinical`.
       e2e HTTP thật `test_clinical_api_e2e.py` (6) — response có **nguồn + confidence**, mock (không API). **⇒ Sprint 5 DONE mức MOCK.**
-- [ ] **5.5.4 cross-module** — auto-check tương tác ở sale/prescription. **BỊ CHẶN** bởi mô hình hoạt chất → **chính thức hoãn sang
-      Sprint 6 Bước 2** (KHÔNG quay lại trong Sprint 5; cần Opus + phiên riêng, cross-module rủi ro cao).
+- [x] **5.5.4 cross-module** — auto-check tương tác ở sale/prescription. Hoãn sang Sprint 6 Bước 2 và **đã XONG ở đó**
+      *(2026-07-22)* — xem Sprint 6 › Bước 2 bên dưới (gồm cả nối dị ứng KH).
 
 **Quyết định đã chốt (2026-07-22):**
 - [x] **Catalog thiếu mô hình hoạt chất** → chốt **(b) tách sang Sprint 6**, KHÔNG thêm vội vào catalog trong S5.5. Gộp cùng mạch dị
@@ -116,8 +116,18 @@
       10 contract kept/0). **⇒ Bước 1 XONG hoàn toàn — sẵn sàng cho Bước 2.**
 - [ ] **Nợ mới:** chưa có HTTP endpoint tạo/liệt kê `active_ingredients` (chỉ tham chiếu `ingredient_id` có sẵn khi tạo thuốc) —
       quyết định khi làm `crm`/`procurement` hoặc khi có nhu cầu FE thật.
-- [ ] **Bước 2 — 5.5.4 auto-check tương tác** (cần Opus + phiên riêng, mở vào phiên hạn mức đầy, từng bước dừng chờ duyệt) —
-      điều kiện phụ thuộc (Bước 1) **đã đủ**, chưa mở.
+- [x] **Bước 2 — 5.5.4 auto-check tương tác + dị ứng, XONG hoàn toàn** *(2026-07-22, Opus, phiên riêng, từng bước duyệt)* —
+      cross-module ở composition root (`api/v1/cross_module.py`), **cảnh báo không chặn** (hậu-commit; quyết định pháp lý sếp chốt).
+      4 bước con, mỗi bước 4 cổng xanh:
+      - **B1** `catalog.get_drug_ingredients(drug_id) -> [(ingredient_id, name)]` (hạ tầng chung, nội bộ catalog) — commit `68a0d74`.
+      - **B2** `wire_safety_checks`: bắt `SaleCompleted`+`PrescriptionDispensed` → `clinical.check_interactions` qua tên hoạt chất;
+        audit `AiRecommendation`; tenant-gated (`TenantAiSettings`, default OFF); bỏ qua giỏ <2 hoạt chất — commit `aeea74d`.
+      - **B3a** `clinical.check_allergies` thuần (domain `AllergyAlert`+`find_allergy_alerts`, khớp theo `ingredient_id`; **không**
+        cổng AI, **không** persist — sếp chốt) — commit `f0281f2`.
+      - **B3b** nối dị ứng KH vào handler dispense: đọc `crm.get_customer(customer_id).allergies` (chỉ luồng prescription — sale
+        không có customer_id); log `allergy_warning_raised` — commit `2de9d2b`.
+      **304 test, 11 contract kept/0 — module-independence GIỮ NGUYÊN** (api compose catalog+clinical+crm+prescription; các module
+      không import nhau).
 - [x] **Module `crm` — domain thuần** *(2026-07-22)* — `Customer` (aggregate) + `Allergy` (theo `ingredient_id`, khớp
       `catalog.ActiveIngredient`) + `Condition` (ICD-10) + `MedicationHistoryEntry` (tối giản, chưa nối event). Đã hỏi sếp
       trước khi code về overlap với `compliance.CustomerDetail` — chốt tách biệt hoàn toàn (xem PROJECT_STATE §7e). Port
@@ -136,7 +146,8 @@
       sống. +2 test. 4 cổng xanh (**274 test**).
 - [ ] Chưa có use-case ghi `MedicationHistoryEntry` qua HTTP (chờ nối event `SaleCompleted`/`PrescriptionDispensed`,
       cross-module, cùng Bước 2).
-- [ ] Nối **dị ứng KH** vào kiểm tra clinical (cross-module, gộp cùng Bước 2/5.5.4 — cần Opus + phiên riêng).
+- [x] Nối **dị ứng KH** vào kiểm tra clinical *(2026-07-22)* — XONG cùng Bước 2/5.5.4 ở trên (B3a+B3b). Chỉ luồng prescription;
+      bán lẻ OTC hoãn (cần thêm `customer_id` vào `SalesOrder` + migration — sếp chốt hoãn).
 - [x] **Feature flag AI theo tenant (SaaS), XONG hoàn toàn** *(2026-07-22)* — `clinical.TenantAiSettings` (entity mới,
       mặc định tắt) + `TenantAiSettingsRepository`/ORM/repo. Tự quyết tạo bảng riêng trong `clinical` thay vì tái dùng
       `compliance.tenant_compliance_configs` (báo lý do trong PROJECT_STATE §7f — tránh cross-module thật + 2 khái niệm

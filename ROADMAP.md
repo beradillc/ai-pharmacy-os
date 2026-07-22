@@ -118,11 +118,12 @@ timeline
 
 ## Sprint 6 — Procurement & CRM
 
-- [ ] **Mô hình hoạt chất trong `catalog`** (`active_ingredients`/`drug_ingredients`) — gỡ blocker S5.5, cho map `drug_id→hoạt chất`. *(nền cho 2 mục dưới)*
-- [ ] **Auto-check tương tác (clinical 5.5.4)** — nối `clinical.check_interactions` vào luồng sale/prescription (composition root, giữ module-independence).
-- [ ] Module `crm`: Customer, dị ứng, bệnh nền, lịch sử — nối **dị ứng KH** vào kiểm tra clinical.
-- [ ] **Feature flag AI theo tenant (SaaS)** — chuyển `enable_clinical_ai` (và cờ AI khác) từ cấu hình toàn cục → **theo tenant**
-      (bảng `settings` scope TENANT / `tenant_*_configs`); mỗi nhà thuốc bật/tắt AI độc lập.
+- [x] **Mô hình hoạt chất trong `catalog`** (`active_ingredients`/`drug_ingredients`) — gỡ blocker S5.5, map `drug_id→hoạt chất`. *(2026-07-22)*
+- [x] **Auto-check tương tác (clinical 5.5.4)** *(2026-07-22)* — nối `clinical.check_interactions` vào sale/prescription ở composition
+      root (`wire_safety_checks`), **cảnh báo không chặn**, tenant-gated. Module-independence giữ nguyên (11 kept/0).
+- [x] Module `crm`: Customer, dị ứng, bệnh nền, lịch sử — nối **dị ứng KH** vào kiểm tra clinical *(2026-07-22)* — `check_allergies`
+      thuần + đọc crm ở dispense (chỉ luồng prescription; OTC hoãn). Lịch sử KH từ event bán/cấp phát: **chưa** (còn treo).
+- [x] **Feature flag AI theo tenant (SaaS)** *(2026-07-22)* — `clinical.TenantAiSettings`, mỗi nhà thuốc bật/tắt AI độc lập.
 - [ ] Module `procurement`: Supplier, PO, GRN → inventory IN.
 
 **DoD:** Nhập PO→GRN tạo lô; lịch sử KH cập nhật từ sự kiện bán/cấp phát; cờ AI cấu hình được theo từng tenant.
