@@ -16,6 +16,7 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.clinical.domain import (
     AiRecommendation,
     DrugInteraction,
+    TenantAiSettings,
     normalize_ingredient,
 )
 from pharmacy_os.modules.clinical.infrastructure.mappers import (
@@ -23,10 +24,13 @@ from pharmacy_os.modules.clinical.infrastructure.mappers import (
     interaction_to_orm,
     recommendation_to_domain,
     recommendation_to_orm,
+    tenant_ai_settings_to_domain,
+    tenant_ai_settings_to_orm,
 )
 from pharmacy_os.modules.clinical.infrastructure.models import (
     AiRecommendationORM,
     DrugInteractionORM,
+    TenantAiSettingsORM,
 )
 
 
@@ -79,4 +83,28 @@ class SqlAlchemyAiRecommendationRepository:
         row = (await self._session.execute(stmt)).scalar_one()
         # Immutable audit record: only the human-in-the-loop sign-off can change.
         row.accepted_by = recommendation.accepted_by
+        await self._session.flush()
+
+
+class SqlAlchemyTenantAiSettingsRepository:
+    """Persistence for :class:`TenantAiSettings` — one row per tenant, upsert-only."""
+
+    def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
+        self._session = session
+        self._ctx = ctx
+
+    async def get(self, tenant_id: UUID) -> TenantAiSettings | None:
+        stmt = select(TenantAiSettingsORM).where(TenantAiSettingsORM.tenant_id == tenant_id)
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return tenant_ai_settings_to_domain(row) if row is not None else None
+
+    async def upsert(self, settings: TenantAiSettings) -> None:
+        stmt = select(TenantAiSettingsORM).where(
+            TenantAiSettingsORM.tenant_id == settings.tenant_id
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        if row is None:
+            self._session.add(tenant_ai_settings_to_orm(settings))
+        else:
+            row.enable_clinical_ai = settings.enable_clinical_ai
         await self._session.flush()

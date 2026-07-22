@@ -15,6 +15,7 @@ from pharmacy_os.modules.clinical.application import ClinicalService
 from pharmacy_os.modules.clinical.infrastructure import (
     SqlAlchemyAiRecommendationRepository,
     SqlAlchemyDrugInteractionRepository,
+    SqlAlchemyTenantAiSettingsRepository,
 )
 from pharmacy_os.modules.clinical.interface.router import ContextDep, build_router
 
@@ -24,6 +25,7 @@ def register(container: Container, get_context: ContextDep) -> APIRouter:
     event_bus = container.resolve(EventBus)  # type: ignore[type-abstract]
     settings = container.resolve(Settings)
     # The LLM only explains; the review threshold comes from config (docs/12 mục 6).
+    # Whether AI runs at all is a per-tenant flag (TenantAiSettings), not config.
     llm = container.resolve(LLMProvider)  # type: ignore[type-abstract]
 
     def uow_factory() -> UnitOfWork:
@@ -37,10 +39,16 @@ def register(container: Container, get_context: ContextDep) -> APIRouter:
     ) -> SqlAlchemyAiRecommendationRepository:
         return SqlAlchemyAiRecommendationRepository(uow.session, ctx)
 
+    def settings_repo_factory(
+        uow: UnitOfWork, ctx: RequestContext
+    ) -> SqlAlchemyTenantAiSettingsRepository:
+        return SqlAlchemyTenantAiSettingsRepository(uow.session, ctx)
+
     service = ClinicalService(
         uow_factory,
         interaction_repo_factory,
         recommendation_repo_factory,
+        settings_repo_factory,
         llm,
         min_confidence=settings.ai.min_confidence,
     )

@@ -28,6 +28,7 @@ from pharmacy_os.modules.clinical.application import ClinicalService
 from pharmacy_os.modules.clinical.infrastructure import (
     SqlAlchemyAiRecommendationRepository,
     SqlAlchemyDrugInteractionRepository,
+    SqlAlchemyTenantAiSettingsRepository,
 )
 from pharmacy_os.modules.compliance.application import ComplianceService
 from pharmacy_os.modules.compliance.infrastructure import (
@@ -102,6 +103,8 @@ def ctx() -> RequestContext:
                 "compliance.sync.read",
                 "clinical.check",
                 "clinical.accept",
+                "clinical.settings.read",
+                "clinical.settings.write",
                 "crm.create",
                 "crm.read",
                 "crm.write",
@@ -190,6 +193,7 @@ def clinical_service(
         uow_factory,
         lambda uow: SqlAlchemyDrugInteractionRepository(uow.session),
         lambda uow, c: SqlAlchemyAiRecommendationRepository(uow.session, c),
+        lambda uow, c: SqlAlchemyTenantAiSettingsRepository(uow.session, c),
         MockLLMProvider(),
         min_confidence=0.6,
     )

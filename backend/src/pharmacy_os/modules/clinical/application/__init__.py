@@ -5,6 +5,8 @@ from pharmacy_os.modules.clinical.application.dto import (
     CheckInteractionsInput,
     DrugInteractionOutput,
     InteractionCheckResult,
+    SetTenantAiSettingsInput,
+    TenantAiSettingsOutput,
 )
 from pharmacy_os.modules.clinical.application.service import ClinicalService
 
@@ -14,4 +16,6 @@ __all__ = [
     "CheckInteractionsInput",
     "DrugInteractionOutput",
     "InteractionCheckResult",
+    "SetTenantAiSettingsInput",
+    "TenantAiSettingsOutput",
 ]

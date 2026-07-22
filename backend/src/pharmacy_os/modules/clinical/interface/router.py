@@ -18,6 +18,8 @@ from pharmacy_os.modules.clinical.interface.schemas import (
     AiRecommendationResponse,
     CheckInteractionsRequest,
     InteractionCheckResponse,
+    SetTenantAiSettingsRequest,
+    TenantAiSettingsResponse,
 )
 
 ContextDep = Callable[..., RequestContext]
@@ -61,6 +63,23 @@ def build_router(get_context: ContextDep) -> APIRouter:
     ) -> AiRecommendationResponse:
         return AiRecommendationResponse.of(
             await service.accept_recommendation(recommendation_id, ctx)
+        )
+
+    @root.get("/settings", response_model=TenantAiSettingsResponse)
+    async def get_tenant_ai_settings(
+        service: ClinicalService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> TenantAiSettingsResponse:
+        return TenantAiSettingsResponse.of(await service.get_tenant_ai_settings(ctx))
+
+    @root.put("/settings", response_model=TenantAiSettingsResponse)
+    async def set_tenant_ai_settings(
+        body: SetTenantAiSettingsRequest,
+        service: ClinicalService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> TenantAiSettingsResponse:
+        return TenantAiSettingsResponse.of(
+            await service.set_tenant_ai_settings(body.to_input(), ctx)
         )
 
     return root

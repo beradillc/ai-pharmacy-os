@@ -14,6 +14,7 @@ from pharmacy_os.modules.clinical.domain import (
     InteractionSeverity,
     InvalidConfidenceError,
     InvalidInteractionError,
+    TenantAiSettings,
     find_interactions,
     requires_pharmacist_review,
 )
@@ -141,3 +142,16 @@ def test_accept_sets_pharmacist_and_blocks_double_accept() -> None:
     assert rec.accepted_by == pharmacist
     with pytest.raises(AiRecommendationAlreadyAcceptedError):
         rec.accept(uuid4())
+
+
+# --- TenantAiSettings (per-tenant SaaS feature flag) ------------------------
+
+
+def test_tenant_ai_settings_defaults_to_off() -> None:
+    settings = TenantAiSettings(tenant_id=uuid4())
+    assert settings.enable_clinical_ai is False
+
+
+def test_tenant_ai_settings_can_be_enabled() -> None:
+    settings = TenantAiSettings(tenant_id=uuid4(), enable_clinical_ai=True)
+    assert settings.enable_clinical_ai is True

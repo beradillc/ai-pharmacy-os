@@ -40,8 +40,7 @@ def _seed_interaction(engine: object, **kw: object) -> None:
         session.commit()
 
 
-@pytest.fixture
-def client(tmp_path: Path) -> Iterator[TestClient]:
+def _build_client(tmp_path: Path) -> TestClient:
     db_path = tmp_path / "clinical_api.db"
     sync_engine = create_engine(f"sqlite:///{db_path}")
     Base.metadata.create_all(sync_engine)
@@ -55,7 +54,23 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
         app=AppSettings(env="dev", debug=True),
         db=DatabaseSettings(url=f"sqlite+aiosqlite:///{db_path}"),
     )
-    with TestClient(create_app(settings)) as c:
+    return TestClient(create_app(settings))
+
+
+@pytest.fixture
+def client(tmp_path: Path) -> Iterator[TestClient]:
+    """Client for the caller (dev-context) tenant with clinical AI already enabled —
+    most tests exercise the check itself, not the feature-flag gate."""
+    with _build_client(tmp_path) as c:
+        enabled = c.put("/api/v1/clinical/settings", json={"enable_clinical_ai": True})
+        assert enabled.status_code == 200, enabled.text
+        yield c
+
+
+@pytest.fixture
+def client_ai_off(tmp_path: Path) -> Iterator[TestClient]:
+    """A tenant that has never configured AI settings — must default to OFF."""
+    with _build_client(tmp_path) as c:
         yield c
 
 
@@ -140,3 +155,47 @@ def test_blank_ingredients_rejected_by_validator(client: TestClient) -> None:
 def test_get_unknown_recommendation_404(client: TestClient) -> None:
     resp = client.get(f"/api/v1/clinical/recommendations/{uuid4()}")
     assert resp.status_code == 404
+
+
+def test_check_interactions_blocked_when_tenant_unconfigured(
+    client_ai_off: TestClient,
+) -> None:
+    """Unconfigured tenant (never called PUT /clinical/settings) must default to OFF."""
+    resp = client_ai_off.post(
+        "/api/v1/clinical/check-interactions",
+        json={"ingredients": ["aspirin"], "context_type": "SALE"},
+    )
+    assert resp.status_code == 403, resp.text
+    assert resp.headers["content-type"].startswith("application/problem+json")
+    assert resp.json()["type"] == "https://errors.pharmacy-os/feature-disabled"
+
+
+def test_check_interactions_blocked_when_explicitly_disabled(
+    client_ai_off: TestClient,
+) -> None:
+    off = client_ai_off.put("/api/v1/clinical/settings", json={"enable_clinical_ai": False})
+    assert off.status_code == 200, off.text
+    resp = client_ai_off.post(
+        "/api/v1/clinical/check-interactions",
+        json={"ingredients": ["aspirin"], "context_type": "SALE"},
+    )
+    assert resp.status_code == 403, resp.text
+
+
+def test_tenant_ai_settings_roundtrip(client_ai_off: TestClient) -> None:
+    default = client_ai_off.get("/api/v1/clinical/settings")
+    assert default.status_code == 200, default.text
+    assert default.json()["enable_clinical_ai"] is False
+
+    enabled = client_ai_off.put("/api/v1/clinical/settings", json={"enable_clinical_ai": True})
+    assert enabled.status_code == 200, enabled.text
+    assert enabled.json()["enable_clinical_ai"] is True
+
+    fetched = client_ai_off.get("/api/v1/clinical/settings")
+    assert fetched.json()["enable_clinical_ai"] is True
+
+    resp = client_ai_off.post(
+        "/api/v1/clinical/check-interactions",
+        json={"ingredients": ["paracetamol"], "context_type": "SALE"},
+    )
+    assert resp.status_code == 200, resp.text

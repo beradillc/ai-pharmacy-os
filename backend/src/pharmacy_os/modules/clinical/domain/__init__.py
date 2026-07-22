@@ -8,6 +8,7 @@ from pharmacy_os.modules.clinical.domain.entities import (
     AiRecommendation,
     DrugInteraction,
     InteractionSeverity,
+    TenantAiSettings,
     normalize_ingredient,
 )
 from pharmacy_os.modules.clinical.domain.exceptions import (
@@ -19,6 +20,7 @@ from pharmacy_os.modules.clinical.domain.exceptions import (
 from pharmacy_os.modules.clinical.domain.ports import (
     AiRecommendationRepository,
     DrugInteractionRepository,
+    TenantAiSettingsRepository,
 )
 from pharmacy_os.modules.clinical.domain.rules import (
     find_interactions,
@@ -30,6 +32,7 @@ __all__ = [
     "AiRecommendation",
     "DrugInteraction",
     "InteractionSeverity",
+    "TenantAiSettings",
     "normalize_ingredient",
     "AiRecommendationAlreadyAcceptedError",
     "ClinicalError",
@@ -37,6 +40,7 @@ __all__ = [
     "InvalidInteractionError",
     "AiRecommendationRepository",
     "DrugInteractionRepository",
+    "TenantAiSettingsRepository",
     "find_interactions",
     "requires_pharmacist_review",
 ]

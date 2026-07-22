@@ -11,7 +11,11 @@ from collections.abc import Sequence
 from typing import Protocol
 from uuid import UUID
 
-from pharmacy_os.modules.clinical.domain.entities import AiRecommendation, DrugInteraction
+from pharmacy_os.modules.clinical.domain.entities import (
+    AiRecommendation,
+    DrugInteraction,
+    TenantAiSettings,
+)
 
 
 class DrugInteractionRepository(Protocol):
@@ -32,3 +36,11 @@ class AiRecommendationRepository(Protocol):
     async def get(self, recommendation_id: UUID) -> AiRecommendation | None: ...
 
     async def update(self, recommendation: AiRecommendation) -> None: ...
+
+
+class TenantAiSettingsRepository(Protocol):
+    """Persistence port for :class:`TenantAiSettings` (one row per tenant)."""
+
+    async def get(self, tenant_id: UUID) -> TenantAiSettings | None: ...
+
+    async def upsert(self, settings: TenantAiSettings) -> None: ...

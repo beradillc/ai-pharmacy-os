@@ -12,6 +12,8 @@ from pharmacy_os.modules.clinical.application.dto import (
     CheckInteractionsInput,
     DrugInteractionOutput,
     InteractionCheckResult,
+    SetTenantAiSettingsInput,
+    TenantAiSettingsOutput,
 )
 from pharmacy_os.modules.clinical.domain import AiContextType
 
@@ -103,3 +105,19 @@ class InteractionCheckResponse(BaseModel):
             findings=[DrugInteractionResponse.of(f) for f in result.findings],
             recommendation=AiRecommendationResponse.of(result.recommendation),
         )
+
+
+class SetTenantAiSettingsRequest(BaseModel):
+    enable_clinical_ai: bool
+
+    def to_input(self) -> SetTenantAiSettingsInput:
+        return SetTenantAiSettingsInput(enable_clinical_ai=self.enable_clinical_ai)
+
+
+class TenantAiSettingsResponse(BaseModel):
+    tenant_id: UUID
+    enable_clinical_ai: bool
+
+    @classmethod
+    def of(cls, out: TenantAiSettingsOutput) -> TenantAiSettingsResponse:
+        return cls(tenant_id=out.tenant_id, enable_clinical_ai=out.enable_clinical_ai)

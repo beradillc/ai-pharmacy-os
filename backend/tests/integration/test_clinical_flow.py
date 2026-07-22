@@ -4,8 +4,17 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.core.errors import ConflictError, NotFoundError, PermissionDeniedError
-from pharmacy_os.modules.clinical.application import CheckInteractionsInput, ClinicalService
+from pharmacy_os.core.errors import (
+    ConflictError,
+    FeatureDisabledError,
+    NotFoundError,
+    PermissionDeniedError,
+)
+from pharmacy_os.modules.clinical.application import (
+    CheckInteractionsInput,
+    ClinicalService,
+    SetTenantAiSettingsInput,
+)
 from pharmacy_os.modules.clinical.domain import (
     AiContextType,
     DrugInteraction,
@@ -28,6 +37,17 @@ def seed_interactions(
             await session.commit()
 
     return _seed
+
+
+@pytest.fixture(autouse=True)
+async def _enable_clinical_ai(clinical_service: ClinicalService, ctx: RequestContext) -> None:
+    """Every test in this module exercises the check itself, not the feature-flag
+    gate (that's covered by test_clinical_api_e2e.py) — enable it up front so the
+    fixture-provided ``ctx`` tenant isn't blocked by the default-off flag.
+    """
+    await clinical_service.set_tenant_ai_settings(
+        SetTenantAiSettingsInput(enable_clinical_ai=True), ctx
+    )
 
 
 def _interaction(a: str, b: str, severity: InteractionSeverity) -> DrugInteraction:
@@ -96,7 +116,10 @@ async def test_no_findings_low_confidence_still_requires_review(
 ) -> None:
     from pharmacy_os.core.ai import MockLLMProvider
     from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
-    from pharmacy_os.modules.clinical.infrastructure import SqlAlchemyAiRecommendationRepository
+    from pharmacy_os.modules.clinical.infrastructure import (
+        SqlAlchemyAiRecommendationRepository,
+        SqlAlchemyTenantAiSettingsRepository,
+    )
 
     def uow_factory() -> UnitOfWork:
         return SqlAlchemyUnitOfWork(session_factory, event_bus)  # type: ignore[arg-type]
@@ -105,6 +128,7 @@ async def test_no_findings_low_confidence_still_requires_review(
         uow_factory,
         lambda uow: SqlAlchemyDrugInteractionRepository(uow.session),
         lambda uow, c: SqlAlchemyAiRecommendationRepository(uow.session, c),
+        lambda uow, c: SqlAlchemyTenantAiSettingsRepository(uow.session, c),
         MockLLMProvider(confidence=0.2),  # below min_confidence
         min_confidence=0.6,
     )
@@ -187,3 +211,65 @@ async def test_recommendation_is_tenant_isolated(
     )
     with pytest.raises(NotFoundError):
         await clinical_service.get_recommendation(result.recommendation.id, other_tenant)
+
+
+async def test_set_and_get_tenant_ai_settings_roundtrip(
+    clinical_service: ClinicalService, ctx: RequestContext
+) -> None:
+    # The module-level autouse fixture already enabled it for ctx's tenant.
+    settings = await clinical_service.get_tenant_ai_settings(ctx)
+    assert settings.enable_clinical_ai is True
+
+    disabled = await clinical_service.set_tenant_ai_settings(
+        SetTenantAiSettingsInput(enable_clinical_ai=False), ctx
+    )
+    assert disabled.enable_clinical_ai is False
+    refetched = await clinical_service.get_tenant_ai_settings(ctx)
+    assert refetched.enable_clinical_ai is False
+
+
+async def test_get_tenant_ai_settings_defaults_off_for_unconfigured_tenant(
+    clinical_service: ClinicalService, ctx: RequestContext
+) -> None:
+    from uuid import uuid4
+
+    unconfigured = RequestContext(
+        tenant_id=uuid4(),
+        branch_id=ctx.branch_id,
+        user_id=ctx.user_id,
+        permissions=ctx.permissions,
+    )
+    settings = await clinical_service.get_tenant_ai_settings(unconfigured)
+    assert settings.enable_clinical_ai is False
+
+
+async def test_check_interactions_blocked_when_ai_disabled(
+    clinical_service: ClinicalService, ctx: RequestContext, seed_interactions: SeedFn
+) -> None:
+    await seed_interactions([])
+    await clinical_service.set_tenant_ai_settings(
+        SetTenantAiSettingsInput(enable_clinical_ai=False), ctx
+    )
+    with pytest.raises(FeatureDisabledError):
+        await clinical_service.check_interactions(
+            CheckInteractionsInput(ingredients=["paracetamol"], context_type=AiContextType.SALE),
+            ctx,
+        )
+
+
+async def test_check_interactions_blocked_for_unconfigured_tenant(
+    clinical_service: ClinicalService, ctx: RequestContext
+) -> None:
+    from uuid import uuid4
+
+    unconfigured = RequestContext(
+        tenant_id=uuid4(),
+        branch_id=ctx.branch_id,
+        user_id=ctx.user_id,
+        permissions=ctx.permissions,
+    )
+    with pytest.raises(FeatureDisabledError):
+        await clinical_service.check_interactions(
+            CheckInteractionsInput(ingredients=["paracetamol"], context_type=AiContextType.SALE),
+            unconfigured,
+        )

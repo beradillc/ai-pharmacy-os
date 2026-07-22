@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-22** · Sprint hiện tại: **Sprint 6 (Procurement & CRM) — ĐANG MỞ, Bước 1 (hoạt chất) XONG hoàn toàn · Module `crm` XONG hoàn toàn (domain + app+infra+migration `0009` + interface HTTP)** · Sprint 5 DONE mức MOCK ✅ song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
+> Cập nhật cuối: **2026-07-22** · Sprint hiện tại: **Sprint 6 (Procurement & CRM) — ĐANG MỞ, Bước 1 (hoạt chất) + `crm` + feature-flag AI theo tenant (migration `0010`) đều XONG hoàn toàn** · Sprint 5 DONE mức MOCK ✅ song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
 
 > ⚠️ **Lưu ý vận hành — trạng thái docker/hạ tầng trong tài liệu này là ảnh chụp tại thời điểm ghi, KHÔNG phải trạng thái sống.**
 > Container có thể tự `Exited` giữa các phiên dù tài liệu ghi "đang chạy"/"healthy" (đã xảy ra 2026-07-22: postgres Exited 5h,
@@ -16,14 +16,14 @@
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Giai đoạn         | Giai đoạn 2 — Bán hàng · (Compliance kéo sớm từ Giai đoạn 3)                                          |
 | Sprint            | Sprint 6 — Procurement & CRM (backend, đang mở) · Sprint 5 (Prescription & Clinical AI) DONE mức mock · **+ Compliance (docs/13, kéo sớm từ Sprint 7)** |
-| Tình trạng Sprint | 🔄 Sprint 6 **Bước 1 (hoạt chất) XONG hoàn toàn**. ✅ **`crm` XONG hoàn toàn** (domain + app+infra+migration `0009` + interface HTTP `/customers/*`) — **chưa nối dị ứng KH vào clinical** (cross-module, để dành Bước 2). ✅ Sprint 5 DONE mức mock. ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng |
+| Tình trạng Sprint | 🔄 Sprint 6 **Bước 1 (hoạt chất) XONG hoàn toàn**. ✅ **`crm` XONG hoàn toàn** (domain + app+infra+migration `0009` + interface HTTP `/customers/*`) — **chưa nối dị ứng KH vào clinical** (cross-module, để dành Bước 2). ✅ **Feature flag AI theo tenant XONG** (`clinical.TenantAiSettings`, migration `0010`, `/clinical/*` gate theo tenant, mặc định TẮT). ✅ Sprint 5 DONE mức mock. ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng |
 | Kernel backend    | ✅ (Sprint 2)                                                                                          |
-| Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp: engine tương tác + AiRecommendation + `ClinicalService` + router `/clinical/*`, mock LLM); ✅ `crm` (Hexagonal 4 lớp đủ: `Customer`/`Allergy`(theo hoạt chất, FK `active_ingredients`)/`Condition`/`MedicationHistoryEntry`, `CrmService`, router `/customers/*`, migration `0009`) |
+| Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp + `TenantAiSettings` feature-flag theo tenant, router `/clinical/*` + `/clinical/settings`, mock LLM); ✅ `crm` (Hexagonal 4 lớp đủ: `Customer`/`Allergy`(theo hoạt chất, FK `active_ingredients`)/`Condition`/`MedicationHistoryEntry`, `CrmService`, router `/customers/*`, migration `0009`) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
-| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**11/0**) · ✅ mypy strict (**161 file**) · ✅ pytest (**274**)    |
-| Hạ tầng dev       | ✅ docker compose healthy (xác nhận lại `docker compose ps` 2026-07-22 — 2 container từng Exited từ phiên trước, đã `up -d` lại); ✅ alembic `0001`..`0009`; ✅ seed ATC + tương tác mẫu idempotent |
-| Sprint kế tiếp    | **Sprint 6 Bước 2 = 5.5.4 auto-check + nối dị ứng KH vào clinical** (cần Opus + phiên riêng, chưa mở) — xem **§7e**. Sau đó feature flag AI theo tenant (SaaS) → `procurement`. Compliance C.1–C.5 đã đóng (§7b). |
+| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**11/0**) · ✅ mypy strict (**161 file**) · ✅ pytest (**283**)    |
+| Hạ tầng dev       | ✅ docker compose healthy (xác nhận lại `docker compose ps` 2026-07-22 — 2 container từng Exited từ phiên trước, đã `up -d` lại); ✅ alembic `0001`..`0010`; ✅ seed ATC + tương tác mẫu idempotent |
+| Sprint kế tiếp    | **Sprint 6 Bước 2 = 5.5.4 auto-check + nối dị ứng KH vào clinical** (cần Opus + phiên riêng, chưa mở) — xem **§7e**. Sau đó `procurement`. Compliance C.1–C.5 đã đóng (§7b). |
 
 ---
 
@@ -561,10 +561,72 @@ Gate cuối (sau khi gỡ gap): ruff+format sạch, import-linter **11/0** (khô
 
 ---
 
+## 7f. Feature flag AI theo tenant (SaaS) — XONG HOÀN TOÀN, 2026-07-22
+
+> Mục tiêu Sprint 6 (4): chuyển `AISettings.enable_clinical_ai` từ cấu hình **toàn cục** (chưa từng thật sự được đọc ở
+> đâu trong code — cờ chết) sang **theo tenant**, để mỗi nhà thuốc (tenant) bật/tắt AI lâm sàng độc lập (đúng tinh thần
+> SaaS đa tenant).
+
+**Quyết định bảng lưu trữ (tự quyết theo đúng license "bạn quyết, báo lý do"):** **KHÔNG** tái dùng
+`compliance.tenant_compliance_configs` — tạo bảng riêng `tenant_ai_settings` trong module `clinical`. Lý do:
+1. Tái dùng bảng compliance nghĩa là `clinical` phải đọc dữ liệu do `compliance` sở hữu — dù chỉ đọc, vẫn là cross-module
+   thật (cần import trực tiếp `compliance` — vi phạm `module-independence`; hoặc dựng read-port + adapter ở composition
+   root — đúng loại bước quy tắc của sếp luôn bắt Opus + phiên riêng, S4.5/S5.4/C.5). Yêu cầu lần này ghi rõ **"Không
+   cross-module mới"** — tái dùng bảng compliance sẽ trực tiếp vi phạm điều đó.
+2. Hai khái niệm không liên quan: `ma_co_so_ban_le`/`ma_co_so_ban_buon` (compliance) là **mã pháp lý do Cục QLD cấp**,
+   phục vụ liên thông CSDL Dược; `enable_clinical_ai` là **cờ tính năng sản phẩm**. Gộp chung 1 bảng làm giảm tính cố kết
+   (cohesion), trộn 2 vòng đời/lý do thay đổi khác nhau vào 1 entity.
+3. `TenantAiSettings` trong `clinical` theo đúng khuôn `TenantComplianceConfig` đã có (entity riêng, 1 dòng/tenant, upsert)
+   — nhất quán kiến trúc, không phát minh pattern mới.
+
+**Đã làm — domain (`clinical/domain/`):** `TenantAiSettings` (`tenant_id` + `enable_clinical_ai: bool = False` — mặc
+định TẮT, fail-safe, "chưa cấu hình" đọc như đã tắt chứ không phải lỗi). Port `TenantAiSettingsRepository`
+(`get`/`upsert`).
+
+**Đã làm — infra:** `TenantAiSettingsORM` (`tenant_ai_settings`, unique `tenant_id`, giống khuôn
+`TenantComplianceConfigORM`) + mapper + `SqlAlchemyTenantAiSettingsRepository` (get/upsert).
+
+**Đã làm — app (`ClinicalService`):**
+- `check_interactions` gọi `_ensure_ai_enabled(ctx)` **ngay sau** `require_permission` (trước khi chạm interaction
+  repo/LLM) — đọc `TenantAiSettingsRepository.get(ctx.tenant_id)` (từ `RequestContext` đã có sẵn qua RBAC, **không**
+  cross-module mới); `None` hoặc `enable_clinical_ai=False` → `FeatureDisabledError` (mới, `core/errors.py`, 403,
+  `error_type: feature-disabled`). **Chỉ `check_interactions` bị chặn** — `get_recommendation`/`accept_recommendation`
+  (đọc/duyệt bản ghi AI **đã có sẵn**) vẫn hoạt động dù tenant tắt AI sau đó, vì đó là tra cứu/audit, không phải "chạy AI".
+- `get_tenant_ai_settings`/`set_tenant_ai_settings` (mới, quyền `clinical.settings.read`/`clinical.settings.write`) —
+  `get` không 404 khi chưa cấu hình (luôn có câu trả lời rõ ràng: tắt), `set` upsert.
+
+**Đã làm — interface:** `GET /clinical/settings`, `PUT /clinical/settings` (schemas
+`SetTenantAiSettingsRequest`/`TenantAiSettingsResponse`), thêm vào router `/clinical/*` hiện có (không router mới).
+
+**Đã dọn:** xoá `AISettings.enable_clinical_ai` khỏi `core/config.py` (cờ đã chuyển hẳn sang tenant, không giữ song song
+2 nguồn sự thật gây nhầm lẫn). `min_confidence` **giữ nguyên** trong `AISettings` — đây là tham số tinh chỉnh LLM toàn
+triển khai (deployment-wide), không phải cờ bật/tắt theo tenant, không thuộc phạm vi yêu cầu.
+
+**Cập nhật test hiện có (vỡ do hành vi mặc định đổi từ "luôn chạy" sang "tắt trừ khi cấu hình"):**
+- `test_clinical_flow.py`: thêm fixture `autouse=True` bật AI cho tenant của `ctx` trước mỗi test trong file (test này đo
+  hành vi check chính, không đo cổng feature-flag) + thêm tham số `settings_repo_factory` vào `ClinicalService(...)` dựng
+  tay trong `test_no_findings_low_confidence_still_requires_review`.
+- `test_clinical_api_e2e.py`: fixture `client` bật AI sẵn qua `PUT /clinical/settings` (đa số test đo hành vi check);
+  fixture mới `client_ai_off` (chưa cấu hình) cho 3 test riêng đo đúng cổng feature-flag.
+
+**Test mới (+9):** domain (+2: mặc định tắt, bật được) · `test_clinical_flow.py` (+4: get/set roundtrip, tenant chưa
+cấu hình đọc ra tắt, chặn khi tắt, chặn tenant chưa cấu hình) · `test_clinical_api_e2e.py` (+3: chặn tenant chưa cấu
+hình → 403 problem+json đúng `type`, chặn khi tắt tường minh, roundtrip get/set/check qua HTTP thật).
+
+**Migration `0010_clinical_tenant_ai_settings`:** autogenerate → apply **live Postgres** → `alembic check` sạch →
+downgrade → upgrade lại → **check sạch lại**. Xác nhận thủ công qua ASGI app trên Postgres sống: mặc định tắt (403) →
+bật (200) → tắt lại (dọn dữ liệu demo, không để tenant dev bị bật ngầm cho phiên sau).
+
+Gate: ruff+format sạch, import-linter **11/0** (không đổi 11 contract — không có cross-module mới), mypy strict
+**161 file**, pytest **283** (+9). **⇒ Feature flag AI theo tenant XONG hoàn toàn.**
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-22 | **Feature flag AI theo tenant (SaaS) — XONG hoàn toàn.** `clinical.TenantAiSettings` (entity mới, `tenant_id`+`enable_clinical_ai=False` mặc định) + port `TenantAiSettingsRepository` + ORM `TenantAiSettingsORM`/`SqlAlchemyTenantAiSettingsRepository`. **Tự quyết (báo lý do)** tạo bảng riêng trong `clinical` thay vì tái dùng `compliance.tenant_compliance_configs`: tái dùng sẽ là cross-module thật (vi phạm `module-independence` hoặc cần bước Opus-gated, trái với yêu cầu "không cross-module mới"), và 2 khái niệm không liên quan (mã pháp lý DAV vs cờ tính năng sản phẩm). `ClinicalService.check_interactions` gọi `_ensure_ai_enabled(ctx)` ngay sau `require_permission` — đọc tenant từ `RequestContext` sẵn có, chưa cấu hình → `FeatureDisabledError` (mới, 403). Chỉ `check_interactions` bị chặn, không chặn đọc/duyệt bản ghi AI cũ. Thêm `get_tenant_ai_settings`/`set_tenant_ai_settings` + `GET`/`PUT /clinical/settings`. Xoá `AISettings.enable_clinical_ai` (cờ chết, chưa từng được đọc) khỏi `core/config.py`; giữ `min_confidence` (tham số toàn triển khai, không phải cờ theo tenant). Cập nhật test cũ vỡ do đổi mặc định (autouse fixture bật AI trong `test_clinical_flow.py`; fixture `client_ai_off` mới trong e2e). Migration `0010_clinical_tenant_ai_settings`: autogenerate→apply **live Postgres**→`alembic check` sạch→downgrade→upgrade lại→**check sạch lại**; xác nhận thủ công qua ASGI app (403→200→tắt lại). Gate: ruff+format sạch, import-linter **11/0** (không đổi, không cross-module mới), mypy strict **161 file**, pytest **283** (+9). **DỪNG theo lệnh — CHƯA làm procurement.** |
 | 2026-07-22 | **`crm.add_allergy` — gỡ gap 500→404 khi `ingredient_id` sai.** Sếp yêu cầu validate qua `ActiveIngredientRepository` giống `CatalogService.create_drug` — nhưng đó là cross-module thật (crm phụ thuộc catalog), đúng loại bước quy tắc của sếp bắt Opus+phiên riêng (S4.5/S5.4/C.5); đã hỏi trước (AskUserQuestion), sếp chọn phương án không cross-module: `CrmService.add_allergy` bắt `sqlalchemy.exc.IntegrityError` quanh `repo.update()`, dịch thành `NotFoundError` (404) — an toàn 100% vì `customer_id` đã xác nhận tồn tại trước đó nên FK `ingredient_id` là ràng buộc duy nhất còn có thể vỡ. FK Postgres giữ nguyên làm nguồn enforcement thật. **Sửa kèm bắt buộc:** `core/db/session.build_engine()` bật `PRAGMA foreign_keys=ON` cho SQLite (mặc định tắt) — nếu không test sẽ không bao giờ thấy được bug này (chỉ lộ trên Postgres sống); áp dụng cả app thật lẫn `conftest.py` fixture; chỉ ảnh hưởng dialect SQLite. Xác nhận thủ công qua ASGI app chạy trên Postgres sống: `ingredient_id` ngẫu nhiên → 404 problem+json đúng. Test mới (+2): `test_add_allergy_unknown_ingredient_404_not_500` (repo) + `test_unknown_ingredient_id_rejected_with_404_not_500` (e2e). `add_condition` không có gap tương tự (không có FK). Gate: ruff+format sạch, import-linter **11/0**, mypy strict **161 file**, pytest **274** (+2, chạy lại toàn bộ để xác nhận FK-enforcement mới không phá test nào khác — an toàn vì chưa có use-case xoá Drug/Customer nào). |
 | 2026-07-22 | **Module `crm` — app+infra+migration `0009`+interface HTTP, XONG hoàn toàn.** `SqlAlchemyCustomerRepository` (tenant-scoped) + ORM `CustomerORM`/`CustomerAllergyORM`/`CustomerConditionORM`/`CustomerMedicationHistoryORM` + mapper (reconcile theo id-diff ở `update()` vì collection con chỉ insert-only). **Quyết định đáng chú ý:** `CustomerAllergyORM.ingredient_id` có FK thật tới `active_ingredients.id` — FK xuyên module đầu tiên trong codebase (khác hẳn `SaleLine.drug_id` không FK), nhưng an toàn với `module-independence` vì FK chỉ là string bảng trong DDL, không cần import ORM catalog; `active_ingredients` là bảng global nên không rủi ro xuyên tenant. Lưu ý: SQLite test harness không enforce FK (không bật `PRAGMA foreign_keys=ON`) nên chỉ Postgres sống mới thật sự chặn `ingredient_id` sai — đã tránh viết test dựa vào nhánh này. `CrmService` (create_customer/add_allergy/add_condition/get_customer/list_customers) theo khuôn `_get_or_404`+mutate-rồi-update() của `PrescriptionService`; quyền `crm.create`/`crm.read`/`crm.write`. Interface đủ: `router.py`/`schemas.py`/`register.py`, `/customers`+`/customers/{id}/allergies`+`/customers/{id}/conditions`, wire vào `api/v1/__init__.py` (đơn giản, không cross-module). Migration `0009_crm_customers`: autogenerate→apply **live Postgres**→`alembic check` sạch→downgrade→upgrade lại→**check sạch lại**. Test: `test_crm_repo.py` (+10) + `test_crm_api_e2e.py` (+4). **KHÔNG cross-module** — không nối dị ứng KH vào clinical (để dành Bước 2, cần Opus). Gate: ruff+format sạch, import-linter **11/0** (không đổi contract), mypy strict **161 file**, pytest **272** (+14). **DỪNG theo lệnh — CHƯA nối dị ứng KH vào clinical.** |
 | 2026-07-22 | **Module `crm` — domain thuần.** Trước khi code: đối chiếu ROADMAP.md §Sprint 6 + docs/13 Phụ lục XXI, phát hiện `compliance.CustomerDetail` (VO bất biến, không id, gắn vào 1 dòng sổ kiểm soát) và `crm.Customer` dự kiến (master data có id) chỉ trùng 2 field tên/địa chỉ — hỏi sếp qua AskUserQuestion trước khi code, **chốt: tách biệt hoàn toàn, không liên kết** (xem §7e). `crm/domain/entities.py`: `Customer` (aggregate root, không tự mang `tenant_id`, giống `Drug`) + `Allergy` (**theo `ingredient_id`**, không phải tên thuốc tự do — khớp `catalog.ActiveIngredient` S6 Bước 1 + kiểu ingredient-based của `clinical.DrugInteraction`; `add_allergy()` chặn trùng hoạt chất) + `Condition` (mã ICD-10, chặn trùng mã) + `MedicationHistoryEntry` (tối giản: `drug_id`+`quantity>0`+`source`(SALE/PRESCRIPTION)+`ref_id`+`occurred_at`, theo khuôn `ref_type`/`ref_id` của `inventory.StockMovement` — chỉ là hình dạng, chưa nối event `SaleCompleted`/`PrescriptionDispensed`). Port `CustomerRepository` khai trong domain, chưa impl. Contract mới `crm-domain-innermost` + `crm` vào `module-independence` (10→**11**, không đổi 10 cái cũ). Test: `test_crm_domain.py` (+9). **KHÔNG cross-module** — không đụng clinical/sales/compliance. Gate: ruff+format sạch, import-linter **11/0**, mypy strict **150 file**, pytest **258** (+9). **DỪNG theo lệnh — CHƯA làm app+infra+migration crm.** |

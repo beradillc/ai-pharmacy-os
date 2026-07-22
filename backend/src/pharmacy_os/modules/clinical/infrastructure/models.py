@@ -61,3 +61,22 @@ class AiRecommendationORM(PkUuidMixin, TimestampMixin, Base):
     output: Mapped[str] = mapped_column(_JSONB, nullable=False)
     sources: Mapped[list[str]] = mapped_column(_JSONB, nullable=False, default=list)
     accepted_by: Mapped[UUID | None] = mapped_column(nullable=True)
+
+
+class TenantAiSettingsORM(PkUuidMixin, TimestampMixin, Base):
+    """Per-tenant AI feature flags — 1 row/tenant (SaaS: independent opt-in per pharmacy).
+
+    Same shape/precedent as ``compliance.TenantComplianceConfigORM``, but kept in
+    ``clinical`` rather than reused from ``compliance``: reusing that table would mean
+    ``clinical`` importing ``compliance`` (breaks ``module-independence``) or a
+    composition-root read-port (a cross-module wiring step gated behind Opus per this
+    project's own rule — not in scope here). The two configs are also conceptually
+    unrelated: ``ma_co_so_ban_le`` is a DAV-issued legal identifier, this is a product
+    feature toggle.
+    """
+
+    __tablename__ = "tenant_ai_settings"
+    __table_args__ = (UniqueConstraint("tenant_id", name="uq_tenant_ai_settings_tenant"),)
+
+    tenant_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
+    enable_clinical_ai: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

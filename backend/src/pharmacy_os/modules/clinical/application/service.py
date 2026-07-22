@@ -18,29 +18,34 @@ from uuid import UUID
 from pharmacy_os.core.ai import LLMProvider, Message
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
-from pharmacy_os.core.errors import ConflictError, NotFoundError
+from pharmacy_os.core.errors import ConflictError, FeatureDisabledError, NotFoundError
 from pharmacy_os.core.security import require_permission
 from pharmacy_os.modules.clinical.application.dto import (
     AiRecommendationOutput,
     CheckInteractionsInput,
     DrugInteractionOutput,
     InteractionCheckResult,
+    SetTenantAiSettingsInput,
+    TenantAiSettingsOutput,
 )
 from pharmacy_os.modules.clinical.domain import (
     AiRecommendation,
     AiRecommendationAlreadyAcceptedError,
     DrugInteraction,
+    TenantAiSettings,
     find_interactions,
     requires_pharmacist_review,
 )
 from pharmacy_os.modules.clinical.domain.ports import (
     AiRecommendationRepository,
     DrugInteractionRepository,
+    TenantAiSettingsRepository,
 )
 
 UowFactory = Callable[[], UnitOfWork]
 InteractionRepoFactory = Callable[[UnitOfWork], DrugInteractionRepository]
 RecommendationRepoFactory = Callable[[UnitOfWork, RequestContext], AiRecommendationRepository]
+SettingsRepoFactory = Callable[[UnitOfWork, RequestContext], TenantAiSettingsRepository]
 
 _SYSTEM_PROMPT = (
     "Bạn là trợ lý dược lâm sàng. Diễn giải ngắn gọn các tương tác thuốc đã được "
@@ -66,6 +71,7 @@ class ClinicalService:
         uow_factory: UowFactory,
         interaction_repo_factory: InteractionRepoFactory,
         recommendation_repo_factory: RecommendationRepoFactory,
+        settings_repo_factory: SettingsRepoFactory,
         llm: LLMProvider,
         *,
         min_confidence: float,
@@ -74,6 +80,7 @@ class ClinicalService:
         self._uow_factory = uow_factory
         self._interaction_repo_factory = interaction_repo_factory
         self._recommendation_repo_factory = recommendation_repo_factory
+        self._settings_repo_factory = settings_repo_factory
         self._llm = llm
         self._min_confidence = min_confidence
         self._model = model
@@ -87,8 +94,11 @@ class ClinicalService:
         reference table — the LLM call only explains. Every check writes one immutable
         :class:`AiRecommendation`; :attr:`requires_review` is the guardrail verdict
         (docs/12 mục 6): a serious finding or low model confidence demands a pharmacist.
+        Gated by the caller tenant's :class:`TenantAiSettings` (SaaS: each tenant opts
+        in independently) — an unconfigured tenant defaults to OFF (fail-safe).
         """
         require_permission(ctx, "clinical.check")
+        await self._ensure_ai_enabled(ctx)
 
         async with self._uow_factory() as uow:
             interaction_repo = self._interaction_repo_factory(uow)
@@ -157,3 +167,42 @@ class ClinicalService:
             await repo.update(rec)
             await uow.commit()
         return AiRecommendationOutput.of(rec)
+
+    async def get_tenant_ai_settings(self, ctx: RequestContext) -> TenantAiSettingsOutput:
+        """Return the caller tenant's AI flags; unconfigured reads back as OFF (fail-safe),
+        not 404 — there is always a well-defined answer to "is AI on for this tenant?".
+        """
+        require_permission(ctx, "clinical.settings.read")
+        async with self._uow_factory() as uow:
+            repo = self._settings_repo_factory(uow, ctx)
+            settings = await repo.get(ctx.tenant_id)
+        if settings is None:
+            settings = TenantAiSettings(tenant_id=ctx.tenant_id, enable_clinical_ai=False)
+        return TenantAiSettingsOutput.of(settings)
+
+    async def set_tenant_ai_settings(
+        self, data: SetTenantAiSettingsInput, ctx: RequestContext
+    ) -> TenantAiSettingsOutput:
+        """Create/update the caller tenant's AI flags (upsert)."""
+        require_permission(ctx, "clinical.settings.write")
+        async with self._uow_factory() as uow:
+            repo = self._settings_repo_factory(uow, ctx)
+            existing = await repo.get(ctx.tenant_id)
+            settings = TenantAiSettings(
+                tenant_id=ctx.tenant_id,
+                enable_clinical_ai=data.enable_clinical_ai,
+            )
+            if existing is not None:
+                settings.id = existing.id
+            await repo.upsert(settings)
+            await uow.commit()
+        return TenantAiSettingsOutput.of(settings)
+
+    async def _ensure_ai_enabled(self, ctx: RequestContext) -> None:
+        async with self._uow_factory() as uow:
+            repo = self._settings_repo_factory(uow, ctx)
+            settings = await repo.get(ctx.tenant_id)
+        if settings is None or not settings.enable_clinical_ai:
+            raise FeatureDisabledError(
+                f"Tính năng AI lâm sàng chưa được bật cho tenant {ctx.tenant_id}"
+            )

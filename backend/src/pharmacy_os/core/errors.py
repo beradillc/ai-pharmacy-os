@@ -42,6 +42,14 @@ class ConflictError(AppError):
     title = "Xung đột dữ liệu"
 
 
+class FeatureDisabledError(AppError):
+    """Raised when a tenant hasn't opted into a gated feature (e.g. clinical AI)."""
+
+    status_code = 403
+    error_type = "https://errors.pharmacy-os/feature-disabled"
+    title = "Tính năng chưa được bật"
+
+
 async def _handle_app_error(request: Request, exc: AppError) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,

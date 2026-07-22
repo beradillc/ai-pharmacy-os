@@ -117,3 +117,19 @@ class AiRecommendation:
                 f"Khuyến nghị đã được {self.accepted_by} chấp nhận"
             )
         self.accepted_by = user_id
+
+
+@dataclass(slots=True)
+class TenantAiSettings:
+    """Per-tenant AI feature flags (SaaS: each pharmacy tenant opts in/out
+    independently — this is not a single global switch, unlike ``min_confidence``
+    which stays a deployment-wide tuning parameter in ``core.config.AISettings``).
+
+    An unconfigured tenant is **not** the same as an explicit "off" — callers must
+    treat "no row yet" as ``enable_clinical_ai=False`` (fail-safe default), same
+    spirit as the rest of clinical's human-in-the-loop guardrails.
+    """
+
+    tenant_id: UUID
+    enable_clinical_ai: bool = False
+    id: UUID = field(default_factory=uuid4)

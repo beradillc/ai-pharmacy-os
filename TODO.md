@@ -137,7 +137,13 @@
 - [ ] Chưa có use-case ghi `MedicationHistoryEntry` qua HTTP (chờ nối event `SaleCompleted`/`PrescriptionDispensed`,
       cross-module, cùng Bước 2).
 - [ ] Nối **dị ứng KH** vào kiểm tra clinical (cross-module, gộp cùng Bước 2/5.5.4 — cần Opus + phiên riêng).
-- [ ] Feature flag AI theo tenant (SaaS) — `enable_clinical_ai` từ toàn cục sang theo tenant.
+- [x] **Feature flag AI theo tenant (SaaS), XONG hoàn toàn** *(2026-07-22)* — `clinical.TenantAiSettings` (entity mới,
+      mặc định tắt) + `TenantAiSettingsRepository`/ORM/repo. Tự quyết tạo bảng riêng trong `clinical` thay vì tái dùng
+      `compliance.tenant_compliance_configs` (báo lý do trong PROJECT_STATE §7f — tránh cross-module thật + 2 khái niệm
+      không liên quan). `check_interactions` gate qua `_ensure_ai_enabled` (`FeatureDisabledError`, 403); thêm
+      `GET`/`PUT /clinical/settings`. Xoá `AISettings.enable_clinical_ai` (cờ chết) khỏi config toàn cục. Migration
+      `0010_clinical_tenant_ai_settings` live Postgres, `alembic check` sạch, downgrade/upgrade OK. 4 cổng xanh
+      (**283 test**, 11 contract kept/0, không cross-module mới).
 - [ ] Module `procurement` (Supplier, PO, GRN → inventory IN).
 
 ---

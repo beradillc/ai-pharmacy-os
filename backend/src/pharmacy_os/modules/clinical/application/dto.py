@@ -10,6 +10,7 @@ from pharmacy_os.modules.clinical.domain import (
     AiContextType,
     AiRecommendation,
     DrugInteraction,
+    TenantAiSettings,
 )
 
 
@@ -83,3 +84,18 @@ class InteractionCheckResult:
 
     findings: list[DrugInteractionOutput]
     recommendation: AiRecommendationOutput
+
+
+@dataclass(slots=True)
+class SetTenantAiSettingsInput:
+    enable_clinical_ai: bool
+
+
+@dataclass(slots=True)
+class TenantAiSettingsOutput:
+    tenant_id: UUID
+    enable_clinical_ai: bool
+
+    @classmethod
+    def of(cls, settings: TenantAiSettings) -> TenantAiSettingsOutput:
+        return cls(tenant_id=settings.tenant_id, enable_clinical_ai=settings.enable_clinical_ai)

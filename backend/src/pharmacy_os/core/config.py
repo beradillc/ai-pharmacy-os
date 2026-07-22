@@ -33,12 +33,16 @@ class RedisSettings(BaseSettings):
 
 
 class AISettings(BaseSettings):
+    """Deployment-wide AI tuning. Whether AI runs at all for a given pharmacy is a
+    **per-tenant** flag (``clinical.TenantAiSettings``, Sprint 6 SaaS requirement),
+    not modelled here — a single global on/off switch doesn't fit multi-tenant.
+    """
+
     provider: str = "anthropic"
     model_reasoning: str = "claude-opus-4-8"
     model_fast: str = "claude-sonnet-5"
     api_key: SecretStr = SecretStr(_PLACEHOLDER)
     max_tokens: int = 2048
-    enable_clinical_ai: bool = True
     min_confidence: float = 0.6
 
 

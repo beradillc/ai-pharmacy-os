@@ -7,10 +7,12 @@ from pharmacy_os.modules.clinical.domain import (
     AiRecommendation,
     DrugInteraction,
     InteractionSeverity,
+    TenantAiSettings,
 )
 from pharmacy_os.modules.clinical.infrastructure.models import (
     AiRecommendationORM,
     DrugInteractionORM,
+    TenantAiSettingsORM,
 )
 
 
@@ -69,4 +71,20 @@ def recommendation_to_orm(rec: AiRecommendation) -> AiRecommendationORM:
         sources=list(rec.sources),
         accepted_by=rec.accepted_by,
         created_at=rec.created_at,
+    )
+
+
+def tenant_ai_settings_to_domain(row: TenantAiSettingsORM) -> TenantAiSettings:
+    return TenantAiSettings(
+        id=row.id,
+        tenant_id=row.tenant_id,
+        enable_clinical_ai=row.enable_clinical_ai,
+    )
+
+
+def tenant_ai_settings_to_orm(settings: TenantAiSettings) -> TenantAiSettingsORM:
+    return TenantAiSettingsORM(
+        id=settings.id,
+        tenant_id=settings.tenant_id,
+        enable_clinical_ai=settings.enable_clinical_ai,
     )
