@@ -23,7 +23,7 @@
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
 | Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**11/0**) · ✅ mypy strict (**161 file**) · ✅ pytest (**283**)    |
 | Hạ tầng dev       | ✅ docker compose healthy (xác nhận lại `docker compose ps` 2026-07-22 — 2 container từng Exited từ phiên trước, đã `up -d` lại); ✅ alembic `0001`..`0010`; ✅ seed ATC + tương tác mẫu idempotent |
-| Sprint kế tiếp    | **Sprint 6 Bước 2 = 5.5.4 auto-check + nối dị ứng KH vào clinical** (cần Opus + phiên riêng, chưa mở) — xem **§7e**. Sau đó `procurement`. Compliance C.1–C.5 đã đóng (§7b). |
+| Sprint kế tiếp    | **2 nhánh độc lập, chọn 1 khi mở phiên mới (xem §7f cuối file):** (A) `procurement` (Supplier/PO/GRN) — **Sonnet**, không phụ thuộc crm/clinical, làm được ngay, độc lập với (B). (B) **Sprint 6 Bước 2 = 5.5.4 auto-check + nối dị ứng KH vào clinical** — gộp chung vì cả hai cùng phụ thuộc `catalog` hoạt chất (Bước 1, XONG) + `crm` (XONG) vừa xong; **cross-module, cần Opus + phiên riêng hạn mức đầy**, dừng chờ duyệt từng bước. Compliance C.1–C.5 đã đóng (§7b). |
 
 ---
 
@@ -619,6 +619,32 @@ bật (200) → tắt lại (dọn dữ liệu demo, không để tenant dev b�
 
 Gate: ruff+format sạch, import-linter **11/0** (không đổi 11 contract — không có cross-module mới), mypy strict
 **161 file**, pytest **283** (+9). **⇒ Feature flag AI theo tenant XONG hoàn toàn.**
+
+---
+
+## 7g. Điểm bắt đầu tiếp theo — 2 nhánh độc lập (2026-07-22, resume point)
+
+> **Trạng thái tại đây:** HEAD `main` = `1b0b7c5`, working tree sạch, **283 test xanh, 11 contract kept/0**. Cả 3 việc của
+> Sprint 6 đã hoàn tất trong phiên này: **Bước 1 (hoạt chất catalog)**, **`crm`**, **feature flag AI theo tenant** — cả
+> domain lẫn app+infra+migration+interface, không còn phần nào dở dang. Docker compose (postgres+redis) — **luôn
+> `docker compose ps` để xác nhận thực tế**, xem lưu ý đầu file.
+
+**Nhánh A — `procurement` (Supplier, PO, GRN → inventory IN):**
+- **Độc lập với nhánh B** — không phụ thuộc `crm`/`clinical`, chỉ cần `catalog`+`inventory` (đã có từ Sprint 3).
+- **Sonnet làm được ngay**, không cần Opus/phiên riêng — theo đúng khuôn stepped-commit cũ (domain → app+infra+migration →
+  interface, mỗi bước 1 commit, 4 cổng xanh).
+- Đây là hạng mục DoD gốc còn lại cuối cùng của Sprint 6 (xem ROADMAP.md §Sprint 6).
+
+**Nhánh B — Sprint 6 Bước 2 = 5.5.4 auto-check + nối dị ứng KH vào clinical (gộp chung):**
+- Gộp 2 việc làm 1 vì cùng phụ thuộc như nhau: `clinical.check_interactions` cần map `drug_id→hoạt chất` (từ `catalog`
+  Bước 1, **XONG**) để tự động chạy trên sale/prescription; dị ứng KH (`crm.Allergy`, **XONG**, theo `ingredient_id`) cần
+  nối vào cùng luồng kiểm tra đó — làm chung 1 bước cross-module thay vì 2 bước tách rời tới cùng 1 điểm nối.
+- **Điều kiện bắt buộc (giữ nguyên như S4.4/S4.5/S5.4/C.5):** dùng **Opus 4.8** (không Sonnet), mở vào **phiên có hạn
+  mức còn đầy**, làm **từng bước dừng chờ duyệt** — không tự chạy liên tục nhiều bước cross-module.
+- Nối ở composition root (`api/v1/`), giữ nguyên `module-independence` (11/0) — không để `clinical`/`crm`/`sales`/
+  `prescription` import lẫn nhau.
+
+**Chưa chốt nhánh nào làm trước** — chờ lệnh sếp khi mở phiên mới.
 
 ---
 
