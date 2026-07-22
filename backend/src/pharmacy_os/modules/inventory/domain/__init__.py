@@ -4,6 +4,7 @@ from pharmacy_os.modules.inventory.domain.entities import (
     MovementType,
     ProductBatch,
     StockMovement,
+    StockReconciliationNeeded,
 )
 from pharmacy_os.modules.inventory.domain.events import (
     LowStockDetected,
@@ -17,12 +18,14 @@ from pharmacy_os.modules.inventory.domain.ports import (
     BalanceRepository,
     BatchRepository,
     MovementRepository,
+    StockReconciliationRepository,
 )
 
 __all__ = [
     "MovementType",
     "ProductBatch",
     "StockMovement",
+    "StockReconciliationNeeded",
     "StockMovedIn",
     "StockMovedOut",
     "LowStockDetected",
@@ -34,4 +37,5 @@ __all__ = [
     "BatchRepository",
     "MovementRepository",
     "BalanceRepository",
+    "StockReconciliationRepository",
 ]

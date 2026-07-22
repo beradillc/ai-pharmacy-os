@@ -10,12 +10,17 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.modules.inventory.domain.entities import ProductBatch, StockMovement
+from pharmacy_os.modules.inventory.domain.entities import (
+    ProductBatch,
+    StockMovement,
+    StockReconciliationNeeded,
+)
 from pharmacy_os.modules.inventory.domain.fefo import BatchAvailability
 from pharmacy_os.modules.inventory.infrastructure.models import (
     ProductBatchORM,
     StockBalanceORM,
     StockMovementORM,
+    StockReconciliationNeededORM,
 )
 
 
@@ -43,6 +48,16 @@ class SqlAlchemyBatchRepository:
     async def get(self, batch_id: UUID) -> ProductBatch | None:
         stmt = select(ProductBatchORM).where(
             ProductBatchORM.id == batch_id,
+            ProductBatchORM.tenant_id == self._ctx.tenant_id,
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return _batch_to_domain(row) if row is not None else None
+
+    async def find_by_lot(self, drug_id: UUID, branch_id: UUID, lot_no: str) -> ProductBatch | None:
+        stmt = select(ProductBatchORM).where(
+            ProductBatchORM.drug_id == drug_id,
+            ProductBatchORM.branch_id == branch_id,
+            ProductBatchORM.lot_no == lot_no,
             ProductBatchORM.tenant_id == self._ctx.tenant_id,
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
@@ -152,6 +167,27 @@ class SqlAlchemyBalanceRepository:
         )
         total = (await self._session.execute(stmt)).scalar_one()
         return Decimal(total)
+
+
+class SqlAlchemyStockReconciliationRepository:
+    def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
+        self._session = session
+        self._ctx = ctx
+
+    async def add(self, record: StockReconciliationNeeded) -> None:
+        self._session.add(
+            StockReconciliationNeededORM(
+                id=record.id,
+                tenant_id=record.tenant_id,
+                branch_id=record.branch_id,
+                grn_id=record.grn_id,
+                po_item_id=record.po_item_id,
+                reason=record.reason,
+                occurred_at=record.occurred_at,
+                resolved=record.resolved,
+            )
+        )
+        await self._session.flush()
 
 
 def _batch_to_domain(row: ProductBatchORM) -> ProductBatch:

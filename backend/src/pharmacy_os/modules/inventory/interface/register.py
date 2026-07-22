@@ -14,6 +14,7 @@ from pharmacy_os.modules.inventory.infrastructure import (
     SqlAlchemyBalanceRepository,
     SqlAlchemyBatchRepository,
     SqlAlchemyMovementRepository,
+    SqlAlchemyStockReconciliationRepository,
 )
 from pharmacy_os.modules.inventory.interface import handlers
 from pharmacy_os.modules.inventory.interface.router import ContextDep, build_router
@@ -31,6 +32,7 @@ def register(container: Container, get_context: ContextDep) -> APIRouter:
         lambda uow, ctx: SqlAlchemyBatchRepository(uow.session, ctx),
         lambda uow, ctx: SqlAlchemyMovementRepository(uow.session, ctx),
         lambda uow, ctx: SqlAlchemyBalanceRepository(uow.session, ctx),
+        lambda uow, ctx: SqlAlchemyStockReconciliationRepository(uow.session, ctx),
     )
     container.register_instance(InventoryService, service)
 

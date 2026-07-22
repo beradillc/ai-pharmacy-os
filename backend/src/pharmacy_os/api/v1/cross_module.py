@@ -25,9 +25,14 @@ from pharmacy_os.modules.clinical.application import (
 )
 from pharmacy_os.modules.clinical.domain import AiContextType
 from pharmacy_os.modules.crm.application import CrmService
-from pharmacy_os.modules.inventory.application import InventoryService, SaleDispenseItem
+from pharmacy_os.modules.inventory.application import (
+    GoodsReceiptLine,
+    InventoryService,
+    SaleDispenseItem,
+)
 from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.domain import PrescriptionDispensed
+from pharmacy_os.modules.procurement.domain import GoodsReceived
 from pharmacy_os.modules.sales.domain import DrugInfo, PrescriptionInfo, SaleCompleted
 
 _log = structlog.get_logger("cross_module.sales_inventory")
@@ -36,6 +41,10 @@ _log = structlog.get_logger("cross_module.sales_inventory")
 # fixed system identity holding exactly the inventory permissions it needs.
 _SYSTEM_USER = UUID("00000000-0000-0000-0000-00005a1e5001")
 _SYSTEM_PERMISSIONS = frozenset({"inventory.read", "inventory.dispense"})
+
+_grn_log = structlog.get_logger("cross_module.goods_receipt_inventory")
+# Stock-in from a confirmed GRN needs only the receive right.
+_GRN_STOCK_IN_PERMISSIONS = frozenset({"inventory.receive"})
 
 _safety_log = structlog.get_logger("cross_module.safety_checks")
 
@@ -62,6 +71,46 @@ def wire_sale_dispensing(container: Container) -> None:
         _log.info("sale_dispensed", order_id=str(event.order_id), lines=len(items))
 
     event_bus.subscribe(SaleCompleted, on_sale_completed)
+
+
+def wire_goods_receipt_stock_in(container: Container) -> None:
+    """Subscribe inventory stock-in to procurement's ``GoodsReceived``.
+
+    A confirmed goods-receipt note creates one inventory ``ProductBatch`` (+ IN
+    movement) per received line, idempotent on ``grn_id``. Lot collisions and any
+    other failures are recorded in ``stock_reconciliation_needed`` by the use-case
+    rather than blocking — the GRN is already committed. This mirrors
+    ``wire_sale_dispensing``; ``procurement`` and ``inventory`` never import each
+    other, the link lives here and maps ``ReceivedItem`` onto inventory's own
+    ``GoodsReceiptLine``.
+    """
+    event_bus = container.resolve(EventBus)  # type: ignore[type-abstract]
+    inventory = container.resolve(InventoryService)
+
+    async def on_goods_received(event: DomainEvent) -> None:
+        assert isinstance(event, GoodsReceived)
+        ctx = RequestContext(
+            tenant_id=event.tenant_id,
+            branch_id=event.branch_id,
+            user_id=_SYSTEM_USER,
+            permissions=_GRN_STOCK_IN_PERMISSIONS,
+        )
+        lines = [
+            GoodsReceiptLine(
+                drug_id=it.drug_id,
+                lot_no=it.lot_no,
+                expiry_date=it.expiry_date,
+                unit_cost=it.unit_cost,
+                quantity=it.quantity,
+                po_item_id=it.po_item_id,
+                mfg_date=it.mfg_date,
+            )
+            for it in event.items
+        ]
+        await inventory.receive_from_goods_receipt(lines, event.grn_id, ctx)
+        _grn_log.info("grn_stock_in", grn_id=str(event.grn_id), lines=len(lines))
+
+    event_bus.subscribe(GoodsReceived, on_goods_received)
 
 
 def wire_safety_checks(container: Container) -> None:

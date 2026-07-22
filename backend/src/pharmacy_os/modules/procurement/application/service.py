@@ -290,6 +290,7 @@ class ProcurementService:
                             expiry_date=it.expiry_date,
                             unit_cost=it.unit_cost,
                             quantity=it.quantity_received,
+                            po_item_id=it.po_item_id,
                             mfg_date=it.mfg_date,
                         )
                         for it in grn.items

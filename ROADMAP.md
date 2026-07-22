@@ -116,7 +116,7 @@ timeline
 
 ---
 
-## Sprint 6 — Procurement & CRM
+## ✅ Sprint 6 — Procurement & CRM *(HOÀN THÀNH — 2026-07-22, DoD lõi)*
 
 - [x] **Mô hình hoạt chất trong `catalog`** (`active_ingredients`/`drug_ingredients`) — gỡ blocker S5.5, map `drug_id→hoạt chất`. *(2026-07-22)*
 - [x] **Auto-check tương tác (clinical 5.5.4)** *(2026-07-22)* — nối `clinical.check_interactions` vào sale/prescription ở composition
@@ -124,9 +124,15 @@ timeline
 - [x] Module `crm`: Customer, dị ứng, bệnh nền, lịch sử — nối **dị ứng KH** vào kiểm tra clinical *(2026-07-22)* — `check_allergies`
       thuần + đọc crm ở dispense (chỉ luồng prescription; OTC hoãn). Lịch sử KH từ event bán/cấp phát: **chưa** (còn treo).
 - [x] **Feature flag AI theo tenant (SaaS)** *(2026-07-22)* — `clinical.TenantAiSettings`, mỗi nhà thuốc bật/tắt AI độc lập.
-- [ ] Module `procurement`: Supplier, PO, GRN → inventory IN.
+- [x] Module `procurement`: Supplier, PO, GRN → inventory IN *(2026-07-22)* — đủ 4 lớp Hexagonal (migration `0011`) + cross-module
+      `GoodsReceived` → `InventoryService` tạo lô ở composition root (`wire_goods_receipt_stock_in`), idempotent theo `grn_id`; va
+      chạm lô/lỗi ghi `stock_reconciliation_needed` (migration `0012`). Module-independence giữ nguyên (12 kept/0).
 
-**DoD:** Nhập PO→GRN tạo lô; lịch sử KH cập nhật từ sự kiện bán/cấp phát; cờ AI cấu hình được theo từng tenant.
+**DoD:** ✅ Nhập PO→GRN tạo lô (đạt) · ✅ cờ AI cấu hình theo từng tenant (đạt). ⚠️ *lịch sử KH cập nhật từ sự kiện bán/cấp phát*
+**hoãn sang Sprint 7** (sếp chốt hoãn — cross-module riêng, không chặn đóng Sprint 6).
+
+> **Đóng Sprint 6:** 372 test xanh · import-linter 12/0 · mypy strict 178 file · migration `0008`..`0012` live/reversible. Nợ mang
+> sang Sprint 7: `MedicationHistoryEntry` từ event, dị ứng OTC, gộp lô (PA B), outbox bền, API resolve reconciliation.
 
 ---
 

@@ -6,7 +6,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import DateTime, Numeric, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pharmacy_os.core.db.base import Base, PkUuidMixin, TenantScopedMixin, TimestampMixin
@@ -52,3 +52,20 @@ class StockBalanceORM(PkUuidMixin, TenantScopedMixin, Base):
     drug_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
     batch_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
     quantity: Mapped[Decimal] = mapped_column(_QTY, nullable=False, default=Decimal("0"))
+
+
+class StockReconciliationNeededORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
+    """Audit-only: a confirmed GRN whose inventory stock-in didn't fully land.
+
+    ``grn_id``/``po_item_id`` are cross-module references to procurement, kept as
+    plain UUIDs (no FK) so inventory stays independent of procurement. No resolve
+    workflow yet — ``resolved`` defaults ``False``.
+    """
+
+    __tablename__ = "stock_reconciliation_needed"
+
+    grn_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
+    po_item_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    resolved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

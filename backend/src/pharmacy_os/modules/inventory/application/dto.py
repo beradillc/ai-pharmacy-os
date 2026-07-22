@@ -43,6 +43,25 @@ class SaleDispenseItem:
 
 
 @dataclass(slots=True)
+class GoodsReceiptLine:
+    """One received line from a confirmed goods-receipt note (cross-module input).
+
+    ``inventory``'s own shape for a receipt line — the composition-root handler
+    maps ``procurement``'s ``ReceivedItem`` onto this, so inventory never imports
+    procurement. ``po_item_id`` is carried through only so a skipped line can be
+    named in a reconciliation flag.
+    """
+
+    drug_id: UUID
+    lot_no: str
+    expiry_date: date
+    unit_cost: Decimal
+    quantity: Decimal
+    po_item_id: UUID | None = None
+    mfg_date: date | None = None
+
+
+@dataclass(slots=True)
 class AllocationOutput:
     batch_id: UUID
     quantity: Decimal

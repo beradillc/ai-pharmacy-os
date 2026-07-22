@@ -24,6 +24,10 @@ class PurchaseOrdered(DomainEvent):
 class ReceivedItem:
     """A received drug line, carried on :class:`GoodsReceived` — the shape a
     composition-root handler needs to create an ``inventory.ProductBatch``.
+
+    ``po_item_id`` traces the line back to its ``PurchaseOrderItem`` so a
+    downstream reaction that can't create the batch (e.g. a lot collision) can
+    record *which* line was affected, not just the GRN.
     """
 
     drug_id: UUID
@@ -31,6 +35,7 @@ class ReceivedItem:
     expiry_date: date
     unit_cost: Decimal
     quantity: Decimal
+    po_item_id: UUID
     mfg_date: date | None = None
 
 

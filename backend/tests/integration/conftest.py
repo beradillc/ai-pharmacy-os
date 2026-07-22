@@ -42,6 +42,7 @@ from pharmacy_os.modules.inventory.infrastructure import (
     SqlAlchemyBalanceRepository,
     SqlAlchemyBatchRepository,
     SqlAlchemyMovementRepository,
+    SqlAlchemyStockReconciliationRepository,
 )
 from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.infrastructure import SqlAlchemyPrescriptionRepository
@@ -153,6 +154,7 @@ def inventory_service(
         lambda uow, c: SqlAlchemyBatchRepository(uow.session, c),
         lambda uow, c: SqlAlchemyMovementRepository(uow.session, c),
         lambda uow, c: SqlAlchemyBalanceRepository(uow.session, c),
+        lambda uow, c: SqlAlchemyStockReconciliationRepository(uow.session, c),
     )
 
 

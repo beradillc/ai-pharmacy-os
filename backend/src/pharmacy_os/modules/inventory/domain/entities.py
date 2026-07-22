@@ -1,7 +1,9 @@
-"""Inventory entities: product batches and stock movements.
+"""Inventory entities: product batches, stock movements, and reconciliation flags.
 
 Stock levels are derived from an append-only stream of :class:`StockMovement`
 records (event-sourced); :class:`ProductBatch` holds lot/expiry metadata.
+:class:`StockReconciliationNeeded` is an audit-only flag written when a confirmed
+goods-receipt note cannot be fully turned into stock.
 """
 
 from __future__ import annotations
@@ -58,3 +60,24 @@ class StockMovement:
         if self.type in (MovementType.OUT,):
             return -self.quantity
         return self.quantity
+
+
+@dataclass(slots=True)
+class StockReconciliationNeeded:
+    """Audit flag: a confirmed goods-receipt note whose stock-in didn't fully land.
+
+    Written when a received line couldn't create an inventory batch — a lot-number
+    collision (skipped, not merged) or any unexpected failure — so the discrepancy
+    can be looked up and reconciled by hand later. There is no resolve workflow yet;
+    ``resolved`` defaults ``False``. ``po_item_id`` is ``None`` for whole-GRN
+    failures (e.g. the transaction aborted before any line was reached).
+    """
+
+    tenant_id: UUID
+    branch_id: UUID
+    grn_id: UUID
+    reason: str
+    po_item_id: UUID | None = None
+    resolved: bool = False
+    id: UUID = field(default_factory=uuid4)
+    occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC))

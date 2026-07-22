@@ -14,6 +14,7 @@ from pharmacy_os.api.v1.compliance_cross import wire_compliance_sync
 from pharmacy_os.api.v1.cross_module import (
     CatalogDrugInfoProvider,
     PrescriptionInfoAdapter,
+    wire_goods_receipt_stock_in,
     wire_safety_checks,
     wire_sale_dispensing,
 )
@@ -54,6 +55,9 @@ def build_api_router(container: Container) -> APIRouter:
 
     # Cross-module reactions (both modules' services now registered).
     wire_sale_dispensing(container)
+
+    # A confirmed goods-receipt note (procurement) creates inventory batches.
+    wire_goods_receipt_stock_in(container)
 
     # S6 5.5.4: auto-check clinical safety on a completed sale / dispensed Rx
     # (warn-only). Interactions on both (tenant-gated); allergies on dispensing

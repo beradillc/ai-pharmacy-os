@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-22** · Sprint hiện tại: **Sprint 6 (Procurement & CRM) — ĐANG MỞ, Bước 1 (hoạt chất) + `crm` + feature-flag AI theo tenant (migration `0010`) đều XONG hoàn toàn · `procurement` đủ 4 lớp Hexagonal (router `/suppliers`+`/purchase-orders`+`/goods-receipts`), DỪNG trước cross-module GRN→inventory** · Sprint 5 DONE mức MOCK ✅ song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
+> Cập nhật cuối: **2026-07-22** · Sprint hiện tại: **Sprint 6 (Procurement & CRM) — ✅ ĐÓNG (DoD lõi đạt): `procurement` đủ 4 lớp + cross-module GRN→inventory tạo lô (migration `0012`), `crm`, feature-flag AI theo tenant, hoạt chất — tất cả XONG** · Sprint 5 DONE mức MOCK ✅ song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**. Kế tiếp: **Sprint 7 (Analytics & báo cáo)** — chưa mở.
 
 > ⚠️ **Lưu ý vận hành — trạng thái docker/hạ tầng trong tài liệu này là ảnh chụp tại thời điểm ghi, KHÔNG phải trạng thái sống.**
 > Container có thể tự `Exited` giữa các phiên dù tài liệu ghi "đang chạy"/"healthy" (đã xảy ra 2026-07-22: postgres Exited 5h,
@@ -15,15 +15,15 @@
 | Hạng mục          | Trạng thái                                                                                            |
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Giai đoạn         | Giai đoạn 2 — Bán hàng · (Compliance kéo sớm từ Giai đoạn 3)                                          |
-| Sprint            | Sprint 6 — Procurement & CRM (backend, đang mở) · Sprint 5 (Prescription & Clinical AI) DONE mức mock · **+ Compliance (docs/13, kéo sớm từ Sprint 7)** |
-| Tình trạng Sprint | 🔄 Sprint 6 **Bước 1 (hoạt chất) XONG hoàn toàn**. ✅ **`crm` XONG hoàn toàn** (domain + app+infra+migration `0009` + interface HTTP `/customers/*`). ✅ **Sprint 6 Bước 2 XONG** (5.5.4 auto-check + nối dị ứng KH vào clinical, cross-module). ✅ **Feature flag AI theo tenant XONG** (`clinical.TenantAiSettings`, migration `0010`, `/clinical/*` gate theo tenant, mặc định TẮT). 🔄 **`procurement` đủ 4 lớp Hexagonal** (domain+app+infra+migration `0011` + interface HTTP `/suppliers`+`/purchase-orders`+`/goods-receipts`) — **chỉ còn thiếu cross-module GRN→inventory, DỪNG báo cáo chờ duyệt (Opus, phiên riêng)**. ✅ Sprint 5 DONE mức mock. ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng |
+| Sprint            | Sprint 6 — Procurement & CRM (backend) **✅ ĐÓNG** · Sprint 5 (Prescription & Clinical AI) DONE mức mock · **+ Compliance (docs/13, kéo sớm từ Sprint 7)** |
+| Tình trạng Sprint | ✅ **Sprint 6 ĐÓNG (DoD lõi đạt).** Bước 1 (hoạt chất) + **`crm`** (migration `0009`) + **Bước 2** (5.5.4 auto-check + dị ứng KH) + **feature-flag AI theo tenant** (migration `0010`) + **`procurement` đủ 4 lớp** (migration `0011`) + **cross-module GRN xác nhận → inventory tạo lô** (migration `0012`, idempotent theo `grn_id`, va chạm lô/lỗi khác ghi `stock_reconciliation_needed`) — tất cả XONG. ✅ Sprint 5 DONE mức mock. ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng. **Nợ mang sang Sprint 7:** ghi `MedicationHistoryEntry` từ event bán/cấp phát (DoD Sprint 6 nhắc, sếp đã hoãn); dị ứng OTC. |
 | Kernel backend    | ✅ (Sprint 2)                                                                                          |
-| Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp + auto-check tương tác/dị ứng cross-module + `TenantAiSettings` feature-flag theo tenant, router `/clinical/*` + `/clinical/settings`, mock LLM); ✅ `crm` (Hexagonal 4 lớp đủ: `Customer`/`Allergy`(theo hoạt chất, FK `active_ingredients`)/`Condition`/`MedicationHistoryEntry`, `CrmService`, router `/customers/*`, migration `0009`); ✅ `procurement` (Hexagonal 4 lớp đủ: `Supplier`/`PurchaseOrder`+`PurchaseOrderItem`/`GoodsReceiptNote`+`GoodsReceiptItem`, `ProcurementService`, router `/suppliers`+`/purchase-orders`+`/goods-receipts`, migration `0011` — **chưa** cross-module GRN→inventory) |
+| Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp + auto-check tương tác/dị ứng cross-module + `TenantAiSettings` feature-flag theo tenant, router `/clinical/*` + `/clinical/settings`, mock LLM); ✅ `crm` (Hexagonal 4 lớp đủ: `Customer`/`Allergy`(theo hoạt chất, FK `active_ingredients`)/`Condition`/`MedicationHistoryEntry`, `CrmService`, router `/customers/*`, migration `0009`); ✅ `procurement` (Hexagonal 4 lớp đủ: `Supplier`/`PurchaseOrder`+`PurchaseOrderItem`/`GoodsReceiptNote`+`GoodsReceiptItem`, `ProcurementService`, router `/suppliers`+`/purchase-orders`+`/goods-receipts`, migration `0011`; **cross-module GRN confirmed → `inventory` tạo lô** ở composition root, migration `0012` bảng `stock_reconciliation_needed`) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
-| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**12/0**) · ✅ mypy strict (**178 file**) · ✅ pytest (**366**)    |
-| Hạ tầng dev       | ✅ docker compose healthy (`up -d` lại đầu phiên 2026-07-22 — 2 container Exited từ phiên trước); ✅ alembic `0001`..`0011`; ✅ seed ATC + tương tác mẫu idempotent |
-| Sprint kế tiếp    | `procurement`: **đủ 4 lớp Hexagonal, interface HTTP XONG** (§7i) — **chỉ còn 1 hạng mục DoD gốc Sprint 6: cross-module GRN xác nhận → tạo lô `inventory`**. Bước rủi ro cao — **cần Opus, phiên có hạn mức đầy**, dừng chờ duyệt như tiền lệ S4.4/S5.4/C.5/Sprint 6 Bước 2. Compliance C.1–C.5 đã đóng (§7b). |
+| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**12/0**) · ✅ mypy strict (**178 file**) · ✅ pytest (**372**)    |
+| Hạ tầng dev       | ✅ docker compose healthy (xác nhận `docker compose ps` 2026-07-22, up ~1h); ✅ alembic `0001`..`0012` (áp live Postgres, `0012` reversible/no-drift); ✅ seed ATC + tương tác mẫu idempotent |
+| Sprint kế tiếp    | **Sprint 6 ĐÓNG** — kế tiếp **Sprint 7 (Compliance & Analytics)**: `compliance` C.1–C.5 đã kéo sớm & đóng (§7b), nên Sprint 7 còn lại chủ yếu **`analytics`** (dashboard, dự báo nhu cầu, đề xuất nhập → PO nháp) + report. **Chưa mở** — chờ lệnh. Nợ mang sang: `MedicationHistoryEntry` từ event, dị ứng OTC (§7g). |
 
 ---
 
@@ -788,16 +788,43 @@ riêng cuối cùng của Sprint 6, để dành.
 Gate cuối: ruff+format sạch, import-linter **12/0** (không đổi 12 contract, không có cross-module mới), mypy strict
 **178 file**, pytest **366** (+15). **⇒ `procurement` đủ 4 lớp Hexagonal — chỉ còn cross-module GRN→inventory.**
 
-**Bước kế (cross-module GRN→inventory, CHƯA mở — chờ duyệt sếp, đây là hạng mục DoD gốc cuối cùng của Sprint 6):**
-- **⚠️ Điều kiện bắt buộc (giữ như S4.4/S5.4/C.5/Sprint 6 Bước 2):** dùng **Opus 4.8** (không Sonnet), mở vào **phiên có
-  hạn mức còn đầy**, làm từng bước dừng chờ duyệt.
-- Subscribe `GoodsReceived` ở `api/v1/cross_module.py` → với mỗi `ReceivedItem` trong event, gọi `InventoryService` tạo
-  `ProductBatch` (drug_id/branch_id/tenant_id/lot_no/expiry_date/cost_price=unit_cost/quantity_received=quantity) rồi
-  `StockMovement` IN, idempotent theo `grn_id` (`ref_type="grn"`, `ref_id=grn_id` — khuôn `ref_type="sale"` ở S4.4).
-- `procurement` sẽ cần đọc port `InventoryService` qua composition root, adapter kiểu `CatalogDrugInfoProvider`/
-  `PrescriptionInfoAdapter` — hoặc tái dùng thẳng `InventoryService.receive_stock` nếu chữ ký đã đủ (cần xác nhận lại
-  use-case hiện có ở `inventory/application/service.py` trước khi code, không giả định).
-- Sau bước này: **hoàn thành DoD gốc Sprint 6** ("Nhập PO→GRN tạo lô") — đóng Sprint 6, cập nhật ROADMAP.md.
+**Đã làm — cross-module GRN confirmed → inventory tạo lô (2026-07-22, Opus, thiết kế duyệt trước; ĐÓNG Sprint 6):**
+> Thiết kế được sếp duyệt trước khi code, chốt 2 quyết định: **PA A** (va chạm lô → bỏ qua dòng, không gộp — nhất quán với
+> `receive_stock` thủ công + `uq_batch_lot`; gộp lô để dành enhancement riêng cho cả 2 luồng sau) và **bản ghi bù nhẹ** (bảng
+> nhỏ ghi MỌI ca GRN confirmed mà không tạo được lô, không phải outbox/retry đầy đủ).
+- **Trigger:** `wire_goods_receipt_stock_in(container)` ở `api/v1/cross_module.py` subscribe `GoodsReceived` (khuôn
+  `wire_sale_dispensing`), nối trong `build_api_router` ngay sau `wire_sale_dispensing`. Handler map `ReceivedItem` →
+  `inventory.GoodsReceiptLine` (DTO **của inventory**) → `InventoryService.receive_from_goods_receipt(lines, grn_id, ctx)`.
+  Chạy dưới system-ctx `_GRN_STOCK_IN_PERMISSIONS={"inventory.receive"}`, `branch_id` lấy thẳng từ `GoodsReceived` (event
+  mang branch thật). `procurement`/`inventory` KHÔNG import nhau — chỉ `api` import cả hai. **12 contract giữ nguyên.**
+- **Use-case mới `InventoryService.receive_from_goods_receipt`** (bản sao đối xứng `dispense_for_sale`, additive — không đụng
+  `receive_stock` thủ công): 1 transaction cho cả GRN; idempotent đầu vào `exists_for_ref("grn", grn_id)` (mọi IN-movement
+  mang `ref_type="grn"`+`ref_id=grn_id`, chữ thường — **không** va `ref_type="GRN"` hoa + `ref_id` null của receive thủ
+  công); mỗi dòng: **pre-check `BatchRepository.find_by_lot`** (port mới) để tránh `IntegrityError` làm hỏng transaction —
+  trùng `(drug,branch,lot)` → **bỏ qua + ghi `StockReconciliationNeeded`** (kèm `po_item_id` dòng đó), ngược lại tạo
+  `ProductBatch`(cost_price=unit_cost)+`StockMovement` IN+`balances.adjust`+collect `StockMovedIn`. Lỗi bất ngờ (race
+  `IntegrityError`, DB down…) → transaction rollback, **best-effort ghi 1 bản ghi bù toàn-GRN** (`po_item_id=None`) ở
+  transaction riêng + log ERROR, KHÔNG ném ra (bus đã cô lập; degrade có vết thay vì mất tồn im lặng).
+- **Bảng `stock_reconciliation_needed`** (đặt ở **`inventory`** — nơi phát hiện lỗi; `grn_id`/`po_item_id` là UUID trần
+  **không FK** tới procurement → giữ module-independence): `tenant_id`+`branch_id` (TenantScopedMixin), `grn_id`,
+  `po_item_id?`, `reason`, `occurred_at`, `resolved`(default False). **Không API resolve** (đủ cho DoD — chỉ ghi để tra
+  cứu). Domain entity `StockReconciliationNeeded` + port `StockReconciliationRepository` + ORM + repo, đủ 4 lớp.
+- **Thread `po_item_id`:** thêm `po_item_id` vào `procurement.ReceivedItem` (event) → `confirm_goods_receipt` truyền từ
+  `GoodsReceiptItem.po_item_id` → handler → `GoodsReceiptLine` → bản ghi reconciliation (để biết *dòng nào* va chạm).
+- **Migration `0012_stock_reconciliation`** (1 bảng): autogenerate → apply **live Postgres** → `alembic check` sạch →
+  downgrade → upgrade lại → **check sạch lại**. **Constructor `InventoryService` thêm 1 repo factory** (reconciliation) —
+  cập nhật 2 chỗ dựng: `inventory/interface/register.py` + `tests/integration/conftest.py`.
+- Test: `test_cross_module_goods_receipt.py` (+4 service-level: tạo lô/dòng, idempotent theo `grn_id`, va chạm lô → bỏ qua +
+  ghi reconciliation đúng `po_item_id`, dòng qty≤0 bỏ qua) + `test_procurement_inventory_e2e.py` (+2 e2e HTTP thật qua
+  `TestClient`: GRN confirm → on-hand tăng; 2 GRN từng phần lô khác nhau → tồn cộng dồn). **Smoke live Postgres** qua ASGI
+  (tenant tạm, dọn sạch sau) xác nhận on-hand=100 sau confirm.
+- Gate cuối: ruff+format sạch, import-linter **12/0** (không đổi — cross-module ở `api`), mypy strict **178 file**, pytest
+  **372** (+6). **⇒ DoD gốc Sprint 6 "Nhập PO→GRN tạo lô" ĐẠT — Sprint 6 ĐÓNG.**
+
+**Nợ mang sang Sprint 7 (đã biết, không chặn đóng Sprint 6):** (1) enhancement **gộp lô** (PA B) cho cả 2 luồng
+receive_stock + GRN; (2) ghi `MedicationHistoryEntry` từ event `SaleCompleted`/`PrescriptionDispensed` (DoD Sprint 6 có
+nhắc "lịch sử KH", sếp đã hoãn — cross-module riêng); (3) dị ứng OTC (cần `customer_id` trên `SalesOrder`); (4) outbox/retry
+bền thay best-effort reconciliation; (5) API tra cứu/resolve `stock_reconciliation_needed`.
 
 ---
 
@@ -805,6 +832,7 @@ Gate cuối: ruff+format sạch, import-linter **12/0** (không đổi 12 contra
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-22 | **🏁 Cross-module GRN→inventory — ĐÓNG Sprint 6 (Opus, thiết kế duyệt trước, 2 quyết định sếp chốt).** `wire_goods_receipt_stock_in` ở `api/v1/cross_module.py` subscribe `GoodsReceived` (khuôn `wire_sale_dispensing`); map `ReceivedItem`→`inventory.GoodsReceiptLine`→ use-case mới `InventoryService.receive_from_goods_receipt` (đối xứng `dispense_for_sale`, additive). Idempotent theo `grn_id` (`exists_for_ref("grn",grn_id)`, IN-movement `ref_type="grn"`). **QĐ1 (PA A):** va chạm `uq_batch_lot` → **pre-check `find_by_lot`** (port mới, tránh IntegrityError hỏng txn) → bỏ qua dòng + ghi `stock_reconciliation_needed`; gộp lô (PA B) hoãn cho cả 2 luồng. **QĐ2:** bảng bù nhẹ `stock_reconciliation_needed` (đặt ở `inventory`, `grn_id`/`po_item_id` UUID trần không FK → module-independence giữ 12/0) ghi MỌI ca GRN confirmed không tạo được lô — va chạm (dòng cụ thể) hoặc lỗi bất ngờ (best-effort txn riêng, `po_item_id=None`, không ném vì bus cô lập). Thêm `po_item_id` vào `ReceivedItem` để biết dòng va chạm. Entity `StockReconciliationNeeded`+port+ORM+repo đủ 4 lớp; `branch_id` lấy từ event (mang branch thật). Migration `0012_stock_reconciliation`: autogenerate→apply **live Postgres**→check sạch→downgrade→upgrade→check sạch. `InventoryService` +1 repo factory (cập nhật `register.py`+`conftest.py`). Test: `test_cross_module_goods_receipt.py` (+4) + `test_procurement_inventory_e2e.py` (+2 HTTP e2e); smoke live PG (tenant tạm, dọn sạch). Gate: ruff+format sạch, import-linter **12/0**, mypy **178 file**, pytest **372** (+6). **⇒ DoD "Nhập PO→GRN tạo lô" ĐẠT — Sprint 6 ĐÓNG.** Nợ sang S7: gộp lô, `MedicationHistoryEntry` từ event, dị ứng OTC, outbox bền, API resolve reconciliation. |
 | 2026-07-22 | **`procurement` — interface HTTP XONG (DỪNG trước cross-module GRN→inventory, theo lệnh).** Gap phát hiện trước khi code: `create_goods_receipt` không kiểm tra `po_item_id` trước khi insert — FK thật tới `purchase_order_items.id` sẽ vỡ `IntegrityError`/500 thô, đúng dạng bug đã gặp ở `crm.add_allergy`; sửa gọn hơn vì cùng module (PO đã load sẵn): validate `po_item_id ∈ po.items[].id` tường minh, ném lại `UnknownPurchaseOrderItemError` có sẵn từ `apply_receipt` → 422, không cần bắt `IntegrityError`. Schemas: `CreateSupplierRequest`/`SupplierResponse`, `CreatePurchaseOrderRequest`(+items)/`PurchaseOrderResponse`, `CreateGoodsReceiptRequest`(+items)/`GoodsReceiptResponse`, validate ở boundary (`gt=0`/`ge=0`/không rỗng). Router: 3 sub-router gộp 1 `build_router()` (`/suppliers`, `/purchase-orders`, `/goods-receipts` — khác `clinical` 1 prefix vì docs/11 liệt kê 3 nhóm tài nguyên); mở rộng ngoài 3 route tối thiểu docs/11 nêu — thêm route hành động state-machine (`/place`/`/cancel`/`/close`/`/confirm`) theo tiền lệ `/prescriptions/{id}/validate`. Wiring: `register.py` (3 repo factory) + `api/v1/__init__.py` (`register_procurement`, đơn giản không cross-module) + `api/deps.py` thêm quyền dev `procurement.*`. Test: `test_procurement_api_e2e.py` (+14, HTTP thật qua `TestClient` — thay cho script Postgres thủ công dùng ở bước trước) + `test_procurement_flow.py` (+1: po_item_id lạ → 422 không 500). **KHÔNG cross-module** (GRN→inventory) — để dành, đây là hạng mục DoD gốc cuối cùng của Sprint 6. Gate: ruff+format sạch, import-linter **12/0** (không đổi), mypy strict **178 file**, pytest **366** (+15). **DỪNG theo lệnh — CHƯA sang cross-module, cần Opus + phiên riêng.** |
 | 2026-07-22 | **`procurement` — app+infra+migration `0011` XONG (DỪNG trước interface HTTP, theo lệnh).** Thêm `update()` vào `GoodsReceiptRepository` (domain, cùng module — cần để persist `status` sau `confirm()`, không đổi 12 contract). Infra: `SqlAlchemySupplierRepository`/`SqlAlchemyPurchaseOrderRepository`/`SqlAlchemyGoodsReceiptRepository` (tenant-scoped) + ORM `SupplierORM`/`PurchaseOrderORM`+`PurchaseOrderItemORM`/`GoodsReceiptORM`+`GoodsReceiptItemORM`. `GoodsReceiptItemORM.po_item_id` có FK thật tới `purchase_order_items.id` — FK **cùng module** (khác FK xuyên module của `crm.CustomerAllergyORM` trước đây), an toàn tuyệt đối với `module-independence`, không cần lớp dịch lỗi. App: `ProcurementService` (3 repo factory, khuôn `ComplianceService`) — `create_supplier`/`get_supplier`/`list_suppliers`; `create_purchase_order`/`add_po_item`/`mark_ordered`(phát `PurchaseOrdered`)/`cancel_purchase_order`/`close_purchase_order`/`get_purchase_order`; `create_goods_receipt`/`confirm_goods_receipt`(gọi `grn.confirm()` rồi `po.apply_receipt()` cùng transaction, phát `GoodsReceived` sau commit)/`get_goods_receipt`. Quyền mới `procurement.supplier.{create,read}`/`procurement.po.{create,read,write}`/`procurement.grn.{create,read,confirm}` (`grn.confirm` tách riêng khỏi `grn.create`, khuôn `rx.approve`/`rx.create`). Migration `0011_procurement` (5 bảng): autogenerate→apply **live Postgres**→`alembic check` sạch→downgrade→upgrade lại→**check sạch lại**; xác nhận thêm thủ công qua script chạy trực tiếp trên Postgres sống (ngoài SQLite test-harness, vì chưa có router) — full flow supplier→PO→order→GRN→confirm→RECEIVED→CLOSED, `GoodsReceived` đúng 1 lần, dọn dữ liệu demo sau khi xác nhận. Test: `test_procurement_flow.py` (+19). **KHÔNG làm interface HTTP, KHÔNG cross-module** (GRN→inventory) — theo đúng yêu cầu. Gate: ruff+format sạch, import-linter **12/0** (không đổi), mypy strict **175 file**, pytest **351** (+19). **DỪNG theo lệnh — CHƯA sang interface HTTP.** |
 | 2026-07-22 | **`procurement` — domain thuần XONG (DỪNG trước app+infra, theo lệnh).** `procurement/domain/`: `Supplier` (entity đơn giản, guard tên rỗng) + `PurchaseOrder`/`PurchaseOrderItem` (state machine docs/07 §6: DRAFT→ORDERED→(PARTIALLY_RECEIVED\|RECEIVED)→CLOSED, hoặc DRAFT→CANCELLED) + `GoodsReceiptNote`/`GoodsReceiptItem` (aggregate riêng, DRAFT→CONFIRMED, không un-confirm). `PurchaseOrder.apply_receipt(items)` nối 2 aggregate cùng module qua `po_item_id` (không phải cross-module — 2 aggregate cùng `procurement`), tự tính lại status, chặn `OverReceiptError`/`UnknownPurchaseOrderItemError`. Events `PurchaseOrdered`/`GoodsReceived` (mang `tuple[ReceivedItem,...]`, khuôn `SaleCompleted`+`SoldItem`) — `GoodsReceived` là điểm nối cho bước cross-module sau (inventory tạo `ProductBatch`+`StockMovement` IN, `grn_id` làm khoá idempotent). `goods_receipt_items` là mở rộng thiết kế hợp lý ngoài ERD gốc (chỉ liệt kê `goods_receipts`) — cần đủ `lot_no`/`expiry_date`/`unit_cost` theo đúng docs/06 §4. Contract mới `procurement-domain-innermost` + `procurement` vào `module-independence` (11→**12**, không đổi 11 cái cũ). Test: `test_procurement_domain.py` (+28). **KHÔNG đụng catalog/inventory** — cross-module (GRN→lô kho) để dành bước sau theo đúng yêu cầu. Gate: ruff+format sạch, import-linter **12/0**, mypy strict **170 file**, pytest **332** (+28). **DỪNG theo lệnh — CHƯA sang app+infra+migration.** |
@@ -837,13 +865,23 @@ Gate cuối: ruff+format sạch, import-linter **12/0** (không đổi 12 contra
 
 ---
 
-## 9. Tuyên bố kết thúc Sprint 4 (backend)
+## 9. Tuyên bố kết thúc Sprint 6 (backend)
+
+> ✅ **Sprint 6 (Procurement & CRM, backend) đạt Definition of Done lõi.**
+> **Nhập PO → GRN xác nhận → tạo lô inventory** (cross-module, idempotent theo `grn_id`; va chạm lô/lỗi ghi `stock_reconciliation_needed`) · **cờ AI cấu hình theo từng tenant** (`TenantAiSettings`) · nền hoạt chất `catalog` + auto-check tương tác/dị ứng KH (warn-only) · module `crm` đủ 4 lớp · module `procurement` đủ 4 lớp.
+> Commit chính phiên procurement `55d2586`(domain)→`518dafe`(app/infra/migration `0011`)→`7a53457`(interface)→cross-module (commit tiếp) · **372 test xanh** · import-linter **12/0** (mọi cross-module nối ở composition root `api/v1/`, `module-independence` giữ nguyên) · mypy strict **178 file** · migration `0008`..`0012` live/reversible/no-drift.
+> **Còn nợ (sang Sprint 7):** ghi `MedicationHistoryEntry` từ event bán/cấp phát (DoD có nhắc "lịch sử KH" — sếp đã hoãn), dị ứng OTC (cần `customer_id` trên `SalesOrder`), enhancement gộp lô (PA B), outbox/retry bền, API resolve `stock_reconciliation_needed` — xem §7i + [TODO.md](TODO.md).
+> Bước kế tiếp: **Sprint 7 — Compliance & Analytics** (compliance C.1–C.5 đã kéo sớm & đóng; còn lại chủ yếu `analytics`). **Không tự động chuyển sprint** — chờ lệnh mở.
+
+<details><summary>Lịch sử: Tuyên bố kết thúc Sprint 4 (backend)</summary>
 
 > ✅ **Sprint 4 (backend) đạt Definition of Done.**
 > Bán → tồn giảm đúng FEFO · re-sync cùng `client_uuid` **không nhân đôi** tồn/đơn · ETC thiếu đơn bị chặn (422, catalog là thẩm quyền) · bán quá tồn không làm tồn âm (`StockShortfallDetected`).
 > 5 commit `d4e7029`→`85aa6d4` · **94 test xanh** · import-linter **7/0** (2 điểm cross-module nối ở composition root, `module-independence` giữ nguyên) · mypy strict 90 file · migration `0003` không drift/reversible.
 > **Còn nợ:** S4.6 FE (tách đợt sau), persist trả hàng, 3 nợ cũ — xem [TODO.md](TODO.md).
 > Bước kế tiếp: **Sprint 5 — Prescription & Clinical AI**. **Không tự động chuyển sprint** — chờ lệnh mở.
+
+</details>
 
 <details><summary>Lịch sử: Tuyên bố kết thúc Sprint 3</summary>
 
