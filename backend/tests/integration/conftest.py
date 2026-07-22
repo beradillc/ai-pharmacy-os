@@ -33,6 +33,8 @@ from pharmacy_os.modules.compliance.infrastructure import (
     SqlAlchemyControlledLedgerRepository,
     SqlAlchemyTenantComplianceConfigRepository,
 )
+from pharmacy_os.modules.crm.application import CrmService
+from pharmacy_os.modules.crm.infrastructure import SqlAlchemyCustomerRepository
 from pharmacy_os.modules.inventory.application import InventoryService
 from pharmacy_os.modules.inventory.infrastructure import (
     SqlAlchemyBalanceRepository,
@@ -90,6 +92,9 @@ def ctx() -> RequestContext:
                 "compliance.sync.read",
                 "clinical.check",
                 "clinical.accept",
+                "crm.create",
+                "crm.read",
+                "crm.write",
             }
         ),
     )
@@ -177,4 +182,17 @@ def clinical_service(
         lambda uow, c: SqlAlchemyAiRecommendationRepository(uow.session, c),
         MockLLMProvider(),
         min_confidence=0.6,
+    )
+
+
+@pytest.fixture
+def crm_service(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> CrmService:
+    def uow_factory() -> UnitOfWork:
+        return SqlAlchemyUnitOfWork(session_factory, event_bus)
+
+    return CrmService(
+        uow_factory,
+        lambda uow, c: SqlAlchemyCustomerRepository(uow.session, c),
     )

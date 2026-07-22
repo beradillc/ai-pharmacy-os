@@ -122,9 +122,16 @@
       `catalog.ActiveIngredient`) + `Condition` (ICD-10) + `MedicationHistoryEntry` (tối giản, chưa nối event). Đã hỏi sếp
       trước khi code về overlap với `compliance.CustomerDetail` — chốt tách biệt hoàn toàn (xem PROJECT_STATE §7e). Port
       `CustomerRepository` chưa impl. Contract `crm-domain-innermost` (**11/0**). 4 cổng xanh (**258 test**).
-- [ ] **`crm` Bước tiếp — app+infra+migration** — `SqlAlchemyCustomerRepository` + ORM `CustomerORM`/`CustomerAllergyORM`/
-      `CustomerConditionORM`/ (bảng lịch sử dùng thuốc — đặt tên khi làm, ERD docs/03 chưa có tên chính thức) + mapper +
-      migration mới + `interface/schemas.py`+router `/customers/*`.
+- [x] **`crm` — app+infra+migration+interface, XONG hoàn toàn** *(2026-07-22)* — `SqlAlchemyCustomerRepository` (tenant-scoped)
+      + ORM `CustomerORM`/`CustomerAllergyORM`(**FK ingredient_id→active_ingredients**, xuyên module đầu tiên nhưng an toàn
+      với import-linter — xem PROJECT_STATE §7e)/`CustomerConditionORM`/`CustomerMedicationHistoryORM` + mapper. `CrmService`
+      (create_customer/add_allergy/add_condition/get_customer/list_customers). Router `/customers/*` đủ (POST/GET/list +
+      allergies/conditions), wire vào `api/v1`. Migration `0009_crm_customers` live Postgres, `alembic check` sạch,
+      downgrade/upgrade OK. 4 cổng xanh (**272 test**, 11 contract kept/0).
+- [ ] **Nợ mới:** `add_allergy`/`add_condition` không validate ingredient/ICD-10 ở app layer (chỉ dựa FK Postgres — SQLite
+      test không enforce được) → `ingredient_id` sai trả `IntegrityError`/500 thô, chưa phải 404/422 gọn. Cải thiện khi có
+      cross-module thật với catalog. Chưa có use-case ghi `MedicationHistoryEntry` qua HTTP (chờ nối event
+      `SaleCompleted`/`PrescriptionDispensed`).
 - [ ] Nối **dị ứng KH** vào kiểm tra clinical (cross-module, gộp cùng Bước 2/5.5.4 — cần Opus + phiên riêng).
 - [ ] Feature flag AI theo tenant (SaaS) — `enable_clinical_ai` từ toàn cục sang theo tenant.
 - [ ] Module `procurement` (Supplier, PO, GRN → inventory IN).

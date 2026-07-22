@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-22** · Sprint hiện tại: **Sprint 6 (Procurement & CRM) — ĐANG MỞ, Bước 1 (hoạt chất) XONG hoàn toàn · Module `crm` domain thuần XONG** · Sprint 5 DONE mức MOCK ✅ song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
+> Cập nhật cuối: **2026-07-22** · Sprint hiện tại: **Sprint 6 (Procurement & CRM) — ĐANG MỞ, Bước 1 (hoạt chất) XONG hoàn toàn · Module `crm` XONG hoàn toàn (domain + app+infra+migration `0009` + interface HTTP)** · Sprint 5 DONE mức MOCK ✅ song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
 
 > ⚠️ **Lưu ý vận hành — trạng thái docker/hạ tầng trong tài liệu này là ảnh chụp tại thời điểm ghi, KHÔNG phải trạng thái sống.**
 > Container có thể tự `Exited` giữa các phiên dù tài liệu ghi "đang chạy"/"healthy" (đã xảy ra 2026-07-22: postgres Exited 5h,
@@ -16,14 +16,14 @@
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Giai đoạn         | Giai đoạn 2 — Bán hàng · (Compliance kéo sớm từ Giai đoạn 3)                                          |
 | Sprint            | Sprint 6 — Procurement & CRM (backend, đang mở) · Sprint 5 (Prescription & Clinical AI) DONE mức mock · **+ Compliance (docs/13, kéo sớm từ Sprint 7)** |
-| Tình trạng Sprint | 🔄 Sprint 6 **Bước 1 (hoạt chất) XONG hoàn toàn**. 🔄 **`crm` domain thuần XONG** (Customer/Allergy/Condition/MedicationHistoryEntry), app+infra+migration CHƯA làm. ✅ Sprint 5 DONE mức mock. ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng |
+| Tình trạng Sprint | 🔄 Sprint 6 **Bước 1 (hoạt chất) XONG hoàn toàn**. ✅ **`crm` XONG hoàn toàn** (domain + app+infra+migration `0009` + interface HTTP `/customers/*`) — **chưa nối dị ứng KH vào clinical** (cross-module, để dành Bước 2). ✅ Sprint 5 DONE mức mock. ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng |
 | Kernel backend    | ✅ (Sprint 2)                                                                                          |
-| Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp: engine tương tác + AiRecommendation + `ClinicalService` + router `/clinical/*`, mock LLM); 🔄 `crm` (domain thuần: `Customer`/`Allergy`(theo hoạt chất)/`Condition`/`MedicationHistoryEntry`, chưa app/infra/interface) |
+| Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp: engine tương tác + AiRecommendation + `ClinicalService` + router `/clinical/*`, mock LLM); ✅ `crm` (Hexagonal 4 lớp đủ: `Customer`/`Allergy`(theo hoạt chất, FK `active_ingredients`)/`Condition`/`MedicationHistoryEntry`, `CrmService`, router `/customers/*`, migration `0009`) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
-| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**11/0**) · ✅ mypy strict (**150 file**) · ✅ pytest (**258**)    |
-| Hạ tầng dev       | ✅ docker compose healthy (xác nhận lại `docker compose ps` 2026-07-22 — 2 container từng Exited từ phiên trước, đã `up -d` lại); ✅ alembic `0001`..`0008`; ✅ seed ATC + tương tác mẫu idempotent |
-| Sprint kế tiếp    | **`crm` Bước tiếp** (app+infra+migration cho Customer/Allergy/Condition/History) — xem **§7e**. Sau đó Sprint 6 Bước 2 = 5.5.4 auto-check (cần Opus + phiên riêng) → nối dị ứng KH vào clinical → feature flag AI theo tenant (SaaS) → `procurement`. Compliance C.1–C.5 đã đóng (§7b). |
+| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**11/0**) · ✅ mypy strict (**161 file**) · ✅ pytest (**272**)    |
+| Hạ tầng dev       | ✅ docker compose healthy (xác nhận lại `docker compose ps` 2026-07-22 — 2 container từng Exited từ phiên trước, đã `up -d` lại); ✅ alembic `0001`..`0009`; ✅ seed ATC + tương tác mẫu idempotent |
+| Sprint kế tiếp    | **Sprint 6 Bước 2 = 5.5.4 auto-check + nối dị ứng KH vào clinical** (cần Opus + phiên riêng, chưa mở) — xem **§7e**. Sau đó feature flag AI theo tenant (SaaS) → `procurement`. Compliance C.1–C.5 đã đóng (§7b). |
 
 ---
 
@@ -461,7 +461,7 @@ từng bước dừng chờ duyệt.
 
 ---
 
-## 7e. Module `crm` (ĐANG LÀM — domain thuần XONG, 2026-07-22)
+## 7e. Module `crm` (XONG HOÀN TOÀN — domain + app+infra+migration `0009` + interface HTTP, 2026-07-22)
 
 > **Quyết định phạm vi trước khi code (sếp duyệt qua AskUserQuestion):** `crm.Customer` **độc lập hoàn toàn** với
 > `compliance.CustomerDetail` — không tham chiếu/import qua lại, không có contract/port nối 2 module ở bước này. Lý do:
@@ -492,16 +492,52 @@ Exceptions: `InvalidCustomerError`, `DuplicateAllergyError`, `InvalidConditionEr
 domain, **chưa có impl**. Contract mới `crm-domain-innermost` + `crm` vào `module-independence` (10→**11** contract, không
 đổi 10 cái cũ). Test: `tests/unit/test_crm_domain.py` (+9). **KHÔNG cross-module** — không đụng `clinical`/`sales`/`compliance`.
 
-Gate: ruff+format sạch, import-linter **11/0**, mypy strict **150 file**, pytest **258** (+9). **DỪNG theo lệnh — CHƯA làm
-app+infra+migration crm, chờ duyệt tiếp.**
+Gate (domain step): ruff+format sạch, import-linter **11/0**, mypy strict **150 file**, pytest **258** (+9).
 
-**Bước kế (crm — app+infra+migration, CHƯA mở):** `SqlAlchemyCustomerRepository` (tenant-scoped, giống khuôn
-`SqlAlchemyDrugRepository`) + ORM `CustomerORM`/`CustomerAllergyORM`/`CustomerConditionORM`/`CustomerMedicationHistoryORM`
-(theo docs/03 §3.7: `customers`, `customer_allergies` với `ingredient_id`, `customer_conditions`; bảng lịch sử dùng thuốc
-chưa có tên chính thức trong ERD — cần đặt tên khi làm, VD `customer_medication_history`) + mapper + migration mới (live
-Postgres, `alembic check` sạch, downgrade/upgrade) + `interface/schemas.py`+router `/customers/*`. Sau đó mới tới nối
-**dị ứng KH vào kiểm tra clinical** (cross-module, gộp cùng Bước 2/5.5.4 — cần Opus + phiên riêng, theo đúng khuôn
-S4.4/S5.4/C.5).
+**Đã làm tiếp — app+infra+migration+interface (cùng ngày, 2026-07-22):**
+- **Infra:** `SqlAlchemyCustomerRepository` (tenant-scoped, giống khuôn `SqlAlchemyDrugRepository`) — `add`/`get`/
+  `find_by_phone`/`list`/`update`. ORM `CustomerORM` (`customers`, tenant_id không branch — giống `DrugORM`) +
+  `CustomerAllergyORM` (`customer_allergies`) + `CustomerConditionORM` (`customer_conditions`) +
+  `CustomerMedicationHistoryORM` (`customer_medication_history` — tên tự đặt, ERD docs/03 chưa có tên chính thức) + mapper
+  roundtrip đủ 3 collection con. `update()` reconcile theo id-diff (collection con chỉ insert-only, không sửa/xoá — khớp
+  domain), tránh ghi đè dòng đã tồn tại.
+  - **Quyết định kỹ thuật đáng chú ý:** `CustomerAllergyORM.ingredient_id` có **FK thật** tới `active_ingredients.id` (theo
+    đúng yêu cầu) — **lần đầu tiên** trong codebase có FK **xuyên module** (mọi tham chiếu chéo module trước đây, VD
+    `SaleLine.drug_id`/`PrescriptionItem.drug_id`, đều cố tình để UUID trần không FK). Vẫn AN TOÀN với `module-independence`:
+    FK chỉ là tên bảng dạng string trong DDL, **không cần import class ORM của catalog** — import-linter không thấy được
+    (vẫn 11/0). `active_ingredients` là bảng **global** (không tenant_id) nên không có rủi ro xuyên tenant, giống hệt
+    `DrugIngredientORM.ingredient_id` đã làm trong catalog (Bước 1). **Lưu ý vận hành:** SQLite (test harness) KHÔNG enforce
+    FK trừ khi bật `PRAGMA foreign_keys=ON` (dự án chưa bật) — nên constraint này **chỉ thật sự chặn trên Postgres sống**,
+    test unit/integration không kiểm được nhánh "ingredient_id sai" (đã tránh viết test dựa vào việc này). `drug_id` trên
+    `CustomerMedicationHistoryORM` vẫn giữ **không FK** (đúng khuôn cũ — cross-module ref tới dữ liệu tenant-scoped khác).
+- **App:** `CrmService` (`create_customer`/`add_allergy`/`add_condition`/`get_customer`/`list_customers`), theo đúng khuôn
+  `_get_or_404` + mutate-rồi-`repo.update()` của `PrescriptionService`. Quyền `crm.create`/`crm.read`/`crm.write`.
+  `add_allergy`/`add_condition` **không** validate ingredient/mã tồn tại qua service khác — chỉ dựa FK (đã nói ở trên); đây
+  là ranh giới đã nói rõ trong docstring, KHÔNG phải oversight.
+- **Migration `0009_crm_customers`:** autogenerate → apply **live Postgres** → `alembic check` sạch → downgrade → upgrade
+  lại → **check sạch lại**. 4 bảng mới, không đổi bảng cũ.
+- **Interface (đã làm, không chỉ tuỳ chọn schema):** `interface/schemas.py`+`router.py`+`register.py` đủ — router
+  `/customers` (POST tạo mới, GET list, GET theo id), `/customers/{id}/allergies` (POST), `/customers/{id}/conditions`
+  (POST). Wiring: `api/v1/__init__.py` thêm `register_crm` (đơn giản — không cross-module như `register_sales`, không cần
+  adapter/composition-root phức tạp); `api/deps.py` thêm quyền dev `crm.*`; `models_registry.py` đăng ký ORM crm.
+- Test: `tests/unit/test_crm_domain.py` (9, không đổi) + `tests/integration/test_crm_repo.py` (+10: create/get, tenant
+  isolation, permission, 404, allergy roundtrip + trùng bị chặn (422) + customer lạ (404), condition roundtrip + trùng bị
+  chặn, list theo tên, cân nặng ≤0 bị chặn) + `tests/integration/test_crm_api_e2e.py` (+4: HTTP thật qua `TestClient` — tạo
+  KH + thêm dị ứng/bệnh nền roundtrip, list, 404 problem+json, trùng dị ứng → 422). **KHÔNG cross-module** — không đụng
+  `clinical`/`sales`/`compliance`, không tự nối dị ứng KH vào kiểm tra tương tác thuốc.
+
+Gate cuối: ruff+format sạch, import-linter **11/0** (không đổi 10 contract cũ + `crm-domain-innermost`), mypy strict
+**161 file**, pytest **272** (+14 so với domain-only). **⇒ Module `crm` XONG hoàn toàn (Hexagonal 4 lớp đủ).**
+
+**Bước kế (Sprint 6 Bước 2 = 5.5.4 auto-check + nối dị ứng KH vào clinical, CHƯA mở):** nối `clinical.check_interactions`
+vào luồng sale/prescription **và** nối `crm` dị ứng KH vào cùng luồng kiểm tra (composition root, giữ module-independence).
+**Điều kiện bắt buộc trước khi mở (giữ như S5.4/C.5):** dùng **Opus 4.8** (không Sonnet), mở vào **phiên có hạn mức còn
+đầy**, làm từng bước dừng chờ duyệt.
+
+**Nợ/gap ghi nhận:** `add_allergy`/`add_condition` không có validate ingredient/ICD-10 thân thiện ở app layer — dựa hoàn
+toàn vào FK Postgres, lỗi khi `ingredient_id` sai sẽ là `IntegrityError`/500 thô (không phải 404/422 gọn); cải thiện khi
+nối cross-module thật với catalog (Bước 2 trở đi hoặc khi có nhu cầu FE cụ thể). Chưa có use-case ghi `MedicationHistoryEntry`
+qua HTTP (chỉ domain method `record_history_entry` tồn tại, chờ nối event `SaleCompleted`/`PrescriptionDispensed`).
 
 ---
 
@@ -509,6 +545,7 @@ S4.4/S5.4/C.5).
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-22 | **Module `crm` — app+infra+migration `0009`+interface HTTP, XONG hoàn toàn.** `SqlAlchemyCustomerRepository` (tenant-scoped) + ORM `CustomerORM`/`CustomerAllergyORM`/`CustomerConditionORM`/`CustomerMedicationHistoryORM` + mapper (reconcile theo id-diff ở `update()` vì collection con chỉ insert-only). **Quyết định đáng chú ý:** `CustomerAllergyORM.ingredient_id` có FK thật tới `active_ingredients.id` — FK xuyên module đầu tiên trong codebase (khác hẳn `SaleLine.drug_id` không FK), nhưng an toàn với `module-independence` vì FK chỉ là string bảng trong DDL, không cần import ORM catalog; `active_ingredients` là bảng global nên không rủi ro xuyên tenant. Lưu ý: SQLite test harness không enforce FK (không bật `PRAGMA foreign_keys=ON`) nên chỉ Postgres sống mới thật sự chặn `ingredient_id` sai — đã tránh viết test dựa vào nhánh này. `CrmService` (create_customer/add_allergy/add_condition/get_customer/list_customers) theo khuôn `_get_or_404`+mutate-rồi-update() của `PrescriptionService`; quyền `crm.create`/`crm.read`/`crm.write`. Interface đủ: `router.py`/`schemas.py`/`register.py`, `/customers`+`/customers/{id}/allergies`+`/customers/{id}/conditions`, wire vào `api/v1/__init__.py` (đơn giản, không cross-module). Migration `0009_crm_customers`: autogenerate→apply **live Postgres**→`alembic check` sạch→downgrade→upgrade lại→**check sạch lại**. Test: `test_crm_repo.py` (+10) + `test_crm_api_e2e.py` (+4). **KHÔNG cross-module** — không nối dị ứng KH vào clinical (để dành Bước 2, cần Opus). Gate: ruff+format sạch, import-linter **11/0** (không đổi contract), mypy strict **161 file**, pytest **272** (+14). **DỪNG theo lệnh — CHƯA nối dị ứng KH vào clinical.** |
 | 2026-07-22 | **Module `crm` — domain thuần.** Trước khi code: đối chiếu ROADMAP.md §Sprint 6 + docs/13 Phụ lục XXI, phát hiện `compliance.CustomerDetail` (VO bất biến, không id, gắn vào 1 dòng sổ kiểm soát) và `crm.Customer` dự kiến (master data có id) chỉ trùng 2 field tên/địa chỉ — hỏi sếp qua AskUserQuestion trước khi code, **chốt: tách biệt hoàn toàn, không liên kết** (xem §7e). `crm/domain/entities.py`: `Customer` (aggregate root, không tự mang `tenant_id`, giống `Drug`) + `Allergy` (**theo `ingredient_id`**, không phải tên thuốc tự do — khớp `catalog.ActiveIngredient` S6 Bước 1 + kiểu ingredient-based của `clinical.DrugInteraction`; `add_allergy()` chặn trùng hoạt chất) + `Condition` (mã ICD-10, chặn trùng mã) + `MedicationHistoryEntry` (tối giản: `drug_id`+`quantity>0`+`source`(SALE/PRESCRIPTION)+`ref_id`+`occurred_at`, theo khuôn `ref_type`/`ref_id` của `inventory.StockMovement` — chỉ là hình dạng, chưa nối event `SaleCompleted`/`PrescriptionDispensed`). Port `CustomerRepository` khai trong domain, chưa impl. Contract mới `crm-domain-innermost` + `crm` vào `module-independence` (10→**11**, không đổi 10 cái cũ). Test: `test_crm_domain.py` (+9). **KHÔNG cross-module** — không đụng clinical/sales/compliance. Gate: ruff+format sạch, import-linter **11/0**, mypy strict **150 file**, pytest **258** (+9). **DỪNG theo lệnh — CHƯA làm app+infra+migration crm.** |
 | 2026-07-22 | **S6 Bước 1 tiếp · app+infra+migration `0008` hoạt chất — Bước 1 XONG hoàn toàn.** `SqlAlchemyActiveIngredientRepository` (global, session-only, giống khuôn `SqlAlchemyDrugInteractionRepository`) impl `add`/`get`/`find_by_name`/`list`. ORM `ActiveIngredientORM` (`active_ingredients`, **thêm `UniqueConstraint(name)`** — quyết định kỹ thuật để bảo vệ bất biến mà `find_by_name` giả định, không phải yêu cầu spec) + `DrugIngredientORM` (`drug_ingredients`, FK `drugs.id` CASCADE + FK `active_ingredients.id`) + quan hệ `DrugORM.ingredients`. Mapper `Drug` mở rộng roundtrip `ingredients`. `CatalogService` thêm tham số `ingredient_repo_factory`; `create_drug` validate `ingredients[].ingredient_id` tồn tại (else `NotFoundError`) trước khi `add_ingredient()` (bắt `DuplicateIngredientError`/`InvalidIngredientError` → `ValidationError`, giống khuôn `units`). **Interface (tuỳ chọn, đã làm):** `CreateDrugRequest`/`DrugResponse` mở rộng `ingredients` — **không** thêm endpoint CRUD `active_ingredients` riêng (ngoài phạm vi giao; hoạt chất phải có sẵn qua repo/seed trước, ghi TODO). Migration `0008_catalog_ingredients`: autogenerate→apply **live Postgres**→`alembic check` sạch→downgrade→upgrade lại→**check sạch lại**. Test: `test_catalog_repo.py` (+4: roundtrip tạo thuốc kèm hoạt chất thật, 404 khi `ingredient_id` lạ, 422 khi trùng hoạt chất cùng request, `find_by_name`/`list`). Trước khi code: `docker compose ps` phát hiện 2 container Exited dù PROJECT_STATE ghi "đang chạy" — đã `up -d` lại + sửa 4 chỗ trong tài liệu ghi rõ đây là ảnh chụp tại thời điểm, không phải trạng thái sống (xem đầu file). **KHÔNG động clinical/compliance/10 contract.** Gate: ruff+format sạch, import-linter **10/0**, mypy strict **145 file**, pytest **249** (+4). **⇒ Sprint 6 Bước 1 XONG hoàn toàn — điều kiện phụ thuộc Bước 2 (5.5.4) đã đủ. DỪNG — CHƯA sang Bước 2 (cần Opus + phiên riêng).** |
 | 2026-07-22 | **S6 Bước 1 · Mô hình hoạt chất trong `catalog` — domain thuần.** Mở Sprint 6. `catalog/domain/entities.py`: `ActiveIngredient` (hoạt chất — reference toàn cục KHÔNG tenant-scope, `id`+`name`+`name_en?`, guard tên rỗng) + `DrugIngredient` (hàm lượng — `ingredient_id`+`amount: Decimal>0`+`unit`, docs/03 `drug_ingredients`). `Drug` aggregate thêm `ingredients: list[DrugIngredient]` (default `[]`, tương thích ngược, không đổi hành vi/infra hiện có) + `add_ingredient()` chặn trùng `ingredient_id` (1 thuốc nhiều hoạt chất — thuốc phối hợp, VD amoxicillin+acid clavulanic — là bình thường, không phải edge case). Exceptions `InvalidIngredientError`/`DuplicateIngredientError`. Port `ActiveIngredientRepository` khai trong domain (add/get/find_by_name/list), **chưa impl** (infra để bước sau). Đối chiếu docs/13_COMPLIANCE_SPEC.md mục B field 4 (`ten_hoat_chat`, "chỉ ghi khi ≤3 dược chất") xác nhận đúng thực tế đa hoạt chất; **KHÔNG động vào `compliance`/`clinical`** — `ten_hoat_chat` vẫn string tự do (là DTO xuất định dạng theo QĐ540, không phải chỗ cần model quan hệ). Test: `test_catalog_domain.py` (+8). Gate: ruff+format sạch, import-linter **10/0** (không đổi contract), mypy strict **145 file**, pytest **245** (+6). **DỪNG — CHƯA sang app+infra+migration, CHƯA sang Bước 2 (5.5.4).** |

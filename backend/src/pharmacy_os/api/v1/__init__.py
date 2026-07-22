@@ -22,6 +22,7 @@ from pharmacy_os.core.di import Container
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.catalog.interface import register as register_catalog
 from pharmacy_os.modules.clinical.interface import register as register_clinical
+from pharmacy_os.modules.crm.interface import register as register_crm
 from pharmacy_os.modules.inventory.interface import register as register_inventory
 from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.interface import register as register_prescription
@@ -36,6 +37,9 @@ def build_api_router(container: Container) -> APIRouter:
     api.include_router(register_prescription(container, get_context))
     # Clinical: deterministic interaction check + AI-explanation audit (mock LLM).
     api.include_router(register_clinical(container, get_context))
+    # Crm: customer/patient records — single-module, no cross-module wiring yet
+    # (allergy check against clinical is a later step, gated behind Opus).
+    api.include_router(register_crm(container, get_context))
 
     # Catalog is authoritative for a sale's Rx status; prescription for its ref
     # validity (adapters over their services — sales imports neither module).

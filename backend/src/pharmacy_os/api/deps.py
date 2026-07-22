@@ -38,6 +38,9 @@ _DEV_PERMISSIONS = frozenset(
         "rx.dispense",
         "clinical.check",
         "clinical.accept",
+        "crm.create",
+        "crm.read",
+        "crm.write",
     }
 )
 
