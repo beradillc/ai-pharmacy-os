@@ -27,6 +27,7 @@ from pharmacy_os.modules.crm.interface import register as register_crm
 from pharmacy_os.modules.inventory.interface import register as register_inventory
 from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.interface import register as register_prescription
+from pharmacy_os.modules.procurement.interface import register as register_procurement
 from pharmacy_os.modules.sales.interface import register as register_sales
 
 
@@ -41,6 +42,9 @@ def build_api_router(container: Container) -> APIRouter:
     # Crm: customer/patient records — single-module, no cross-module wiring yet
     # (allergy check against clinical is a later step, gated behind Opus).
     api.include_router(register_crm(container, get_context))
+    # Procurement: suppliers/PO/GRN — single-module, no cross-module wiring yet
+    # (GRN confirmed -> inventory batch/stock-in is a later step, gated behind Opus).
+    api.include_router(register_procurement(container, get_context))
 
     # Catalog is authoritative for a sale's Rx status; prescription for its ref
     # validity (adapters over their services — sales imports neither module).

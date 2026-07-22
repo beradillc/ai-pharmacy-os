@@ -32,6 +32,7 @@ from pharmacy_os.modules.procurement.domain import (
     PurchaseOrderItem,
     ReceivedItem,
     Supplier,
+    UnknownPurchaseOrderItemError,
 )
 from pharmacy_os.modules.procurement.domain.ports import (
     GoodsReceiptRepository,
@@ -211,9 +212,17 @@ class ProcurementService:
     async def create_goods_receipt(
         self, data: CreateGoodsReceiptInput, ctx: RequestContext
     ) -> GoodsReceiptOutput:
-        """Create a DRAFT goods receipt note against an existing purchase order."""
+        """Create a DRAFT goods receipt note against an existing purchase order.
+
+        Each line's ``po_item_id`` is checked against the PO's own items here
+        (both in the same module, already loaded) rather than left to surface as
+        a raw FK ``IntegrityError`` on insert or be caught late at
+        :meth:`confirm_goods_receipt` — same failure mode ``apply_receipt``
+        guards against, just reported earlier.
+        """
         require_permission(ctx, "procurement.grn.create")
         po = await self._get_po_or_404(data.po_id, ctx)
+        known_item_ids = {item.id for item in po.items}
         grn = GoodsReceiptNote(
             tenant_id=po.tenant_id,
             branch_id=po.branch_id,
@@ -222,6 +231,10 @@ class ProcurementService:
         )
         try:
             for item in data.items:
+                if item.po_item_id not in known_item_ids:
+                    raise UnknownPurchaseOrderItemError(
+                        f"Dòng hàng {item.po_item_id} không thuộc đơn mua hàng {po.id}"
+                    )
                 grn.add_item(
                     GoodsReceiptItem(
                         po_item_id=item.po_item_id,

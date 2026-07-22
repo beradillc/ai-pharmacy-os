@@ -387,6 +387,44 @@ async def test_create_goods_receipt_unknown_po_404(
         )
 
 
+async def test_create_goods_receipt_unknown_po_item_rejected_not_500(
+    procurement_service: ProcurementService, ctx: RequestContext
+) -> None:
+    """A ``po_item_id`` not belonging to the PO must surface as 422, not a raw FK
+    ``IntegrityError`` on insert — checked against the already-loaded PO's own
+    items before the line is even built (see ``ProcurementService.create_goods_receipt``).
+    """
+    supplier = await procurement_service.create_supplier(CreateSupplierInput(name="NCC L"), ctx)
+    po = await procurement_service.create_purchase_order(
+        CreatePurchaseOrderInput(
+            supplier_id=supplier.id,
+            items=[
+                PurchaseOrderItemInput(
+                    drug_id=uuid4(), quantity_ordered=Decimal("10"), unit_price=Decimal("1000")
+                )
+            ],
+        ),
+        ctx,
+    )
+    with pytest.raises(ValidationError):
+        await procurement_service.create_goods_receipt(
+            CreateGoodsReceiptInput(
+                po_id=po.id,
+                items=[
+                    GoodsReceiptItemInput(
+                        po_item_id=uuid4(),
+                        drug_id=uuid4(),
+                        quantity_received=Decimal("1"),
+                        lot_no="LOT005",
+                        expiry_date=_expiry(),
+                        unit_cost=Decimal("1"),
+                    )
+                ],
+            ),
+            ctx,
+        )
+
+
 async def test_confirm_empty_receipt_rejected(
     procurement_service: ProcurementService, ctx: RequestContext
 ) -> None:

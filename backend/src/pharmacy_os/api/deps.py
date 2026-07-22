@@ -43,6 +43,14 @@ _DEV_PERMISSIONS = frozenset(
         "crm.create",
         "crm.read",
         "crm.write",
+        "procurement.supplier.create",
+        "procurement.supplier.read",
+        "procurement.po.create",
+        "procurement.po.read",
+        "procurement.po.write",
+        "procurement.grn.create",
+        "procurement.grn.read",
+        "procurement.grn.confirm",
     }
 )
 
