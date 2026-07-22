@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-22** · Sprint hiện tại: **Sprint 6 (Procurement & CRM) — ĐANG MỞ, Bước 1 (hoạt chất) + `crm` + feature-flag AI theo tenant (migration `0010`) đều XONG hoàn toàn** · Sprint 5 DONE mức MOCK ✅ song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
+> Cập nhật cuối: **2026-07-22** · Sprint hiện tại: **Sprint 6 (Procurement & CRM) — ĐANG MỞ, Bước 1 (hoạt chất) + `crm` + feature-flag AI theo tenant (migration `0010`) đều XONG hoàn toàn · `procurement` domain thuần XONG, DỪNG trước app+infra** · Sprint 5 DONE mức MOCK ✅ song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**
 
 > ⚠️ **Lưu ý vận hành — trạng thái docker/hạ tầng trong tài liệu này là ảnh chụp tại thời điểm ghi, KHÔNG phải trạng thái sống.**
 > Container có thể tự `Exited` giữa các phiên dù tài liệu ghi "đang chạy"/"healthy" (đã xảy ra 2026-07-22: postgres Exited 5h,
@@ -16,14 +16,14 @@
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Giai đoạn         | Giai đoạn 2 — Bán hàng · (Compliance kéo sớm từ Giai đoạn 3)                                          |
 | Sprint            | Sprint 6 — Procurement & CRM (backend, đang mở) · Sprint 5 (Prescription & Clinical AI) DONE mức mock · **+ Compliance (docs/13, kéo sớm từ Sprint 7)** |
-| Tình trạng Sprint | 🔄 Sprint 6 **Bước 1 (hoạt chất) XONG hoàn toàn**. ✅ **`crm` XONG hoàn toàn** (domain + app+infra+migration `0009` + interface HTTP `/customers/*`) — **chưa nối dị ứng KH vào clinical** (cross-module, để dành Bước 2). ✅ **Feature flag AI theo tenant XONG** (`clinical.TenantAiSettings`, migration `0010`, `/clinical/*` gate theo tenant, mặc định TẮT). ✅ Sprint 5 DONE mức mock. ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng |
+| Tình trạng Sprint | 🔄 Sprint 6 **Bước 1 (hoạt chất) XONG hoàn toàn**. ✅ **`crm` XONG hoàn toàn** (domain + app+infra+migration `0009` + interface HTTP `/customers/*`). ✅ **Sprint 6 Bước 2 XONG** (5.5.4 auto-check + nối dị ứng KH vào clinical, cross-module). ✅ **Feature flag AI theo tenant XONG** (`clinical.TenantAiSettings`, migration `0010`, `/clinical/*` gate theo tenant, mặc định TẮT). 🔄 **`procurement` domain thuần XONG** (Supplier/PurchaseOrder/GoodsReceiptNote, chưa app+infra+migration — DỪNG báo cáo). ✅ Sprint 5 DONE mức mock. ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng |
 | Kernel backend    | ✅ (Sprint 2)                                                                                          |
-| Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp + `TenantAiSettings` feature-flag theo tenant, router `/clinical/*` + `/clinical/settings`, mock LLM); ✅ `crm` (Hexagonal 4 lớp đủ: `Customer`/`Allergy`(theo hoạt chất, FK `active_ingredients`)/`Condition`/`MedicationHistoryEntry`, `CrmService`, router `/customers/*`, migration `0009`) |
+| Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp + auto-check tương tác/dị ứng cross-module + `TenantAiSettings` feature-flag theo tenant, router `/clinical/*` + `/clinical/settings`, mock LLM); ✅ `crm` (Hexagonal 4 lớp đủ: `Customer`/`Allergy`(theo hoạt chất, FK `active_ingredients`)/`Condition`/`MedicationHistoryEntry`, `CrmService`, router `/customers/*`, migration `0009`); 🔄 `procurement` (domain thuần XONG: `Supplier`/`PurchaseOrder`/`GoodsReceiptNote`, chưa infra/interface) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
-| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**11/0**) · ✅ mypy strict (**161 file**) · ✅ pytest (**304**)    |
+| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**12/0**) · ✅ mypy strict (**170 file**) · ✅ pytest (**332**)    |
 | Hạ tầng dev       | ✅ docker compose healthy (xác nhận lại `docker compose ps` 2026-07-22 — 2 container từng Exited từ phiên trước, đã `up -d` lại); ✅ alembic `0001`..`0010`; ✅ seed ATC + tương tác mẫu idempotent |
-| Sprint kế tiếp    | **Chỉ còn `procurement` (Supplier/PO/GRN → inventory IN)** — **Sonnet** làm được ngay, không phụ thuộc crm/clinical, khuôn stepped-commit cũ (xem §7g). Nhánh B (**5.5.4 auto-check + dị ứng KH**) đã **XONG** phiên này (§7h). Compliance C.1–C.5 đã đóng (§7b). |
+| Sprint kế tiếp    | `procurement`: **domain thuần XONG** (§7i) — **DỪNG theo lệnh, chờ duyệt app+infra+migration**. Không phụ thuộc crm/clinical, khuôn stepped-commit cũ, **Sonnet** làm tiếp được (không cần Opus — không phải bước cross-module). Compliance C.1–C.5 đã đóng (§7b). |
 
 ---
 
@@ -665,10 +665,67 @@ prescription, OTC hoãn; (3) dị ứng luôn chạy, không cổng AI, không p
 
 ---
 
+## 7i. `procurement` — domain thuần XONG (2026-07-22, DỪNG trước app+infra)
+
+> **Trạng thái:** chỉ mới **domain thuần** — chưa app/infra/migration/interface. Đây là hạng mục DoD gốc cuối cùng còn lại
+> của Sprint 6 (§7g). Không phải bước cross-module rủi ro cao (khác S4.4/S4.5/S5.4/C.5/Sprint 6 Bước 2) — **Sonnet làm
+> được, không cần Opus** — nhưng vẫn dừng theo đúng khuôn stepped-commit (domain → app+infra+migration → interface, mỗi
+> bước 1 commit) theo yêu cầu tường minh của sếp phiên này.
+
+**Đã làm (`procurement/domain/`):**
+- `Supplier` — entity đơn giản (không state machine), không tự mang `tenant_id` trong chuỗi bất biến quan trọng (giữ khuôn
+  `Drug`/`Customer`: tenant gắn ở ranh giới repository), guard `name` không rỗng, `deactivate()`.
+- `PurchaseOrder` (aggregate root) + `PurchaseOrderItem` — state machine đúng docs/07_UML.md §6: `DRAFT` → `ORDERED` →
+  (`PARTIALLY_RECEIVED` | `RECEIVED`) → `CLOSED`, hoặc `DRAFT` → `CANCELLED`. `add_item()` chỉ khi `DRAFT`; `place_order()`
+  chặn đơn rỗng; `cancel()` chỉ từ `DRAFT`; `close()` chỉ từ `RECEIVED`.
+- `GoodsReceiptNote` (aggregate root **riêng**, không lồng vào `PurchaseOrder`) + `GoodsReceiptItem` — lifecycle
+  `DRAFT`→`CONFIRMED` (không có un-confirm: sửa sai bằng cách lập GRN mới, vì confirm là điểm sẽ kích hoạt bước
+  cross-module tạo lô kho ở bước sau). `GoodsReceiptItem` mang đủ `lot_no`/`expiry_date`/`unit_cost`/`quantity_received`
+  — đúng dữ liệu docs/06_WORKFLOWS.md §4 cần để tạo `product_batches` (ERD chỉ liệt kê bảng `goods_receipts` không có
+  `goods_receipt_items` tường minh — đây là mở rộng thiết kế hợp lý theo đúng workflow, không phải lệch spec).
+- **`PurchaseOrder.apply_receipt(items)`** — nối 2 aggregate qua `po_item_id` (tham chiếu phẳng, giống khuôn
+  `SalesOrder.prescription_ref`), fold số lượng đã nhận vào từng dòng PO, tự tính lại status (`RECEIVED` nếu mọi dòng đủ,
+  ngược lại `PARTIALLY_RECEIVED`). Đây **không phải** cross-module (2 aggregate cùng module `procurement`) — application
+  layer (bước sau) sẽ gọi `grn.confirm()` rồi `po.apply_receipt(grn.items)` trong cùng use-case, lưu cả 2 lại.
+  `OverReceiptError` chặn nhận vượt số đặt hàng; `UnknownPurchaseOrderItemError` chặn dòng GRN trỏ sai PO.
+- Exceptions: `ProcurementError` + 9 lớp con (`InvalidSupplierError`, `InvalidPurchaseOrderItemError`,
+  `EmptyPurchaseOrderError`, `InvalidPurchaseOrderStateError`, `UnknownPurchaseOrderItemError`, `OverReceiptError`,
+  `InvalidGoodsReceiptItemError`, `EmptyGoodsReceiptError`, `InvalidGoodsReceiptStateError`).
+- Events: `PurchaseOrdered` (docs/08 §2.4) + `GoodsReceived` mang `tuple[ReceivedItem, ...]` (đúng khuôn
+  `SaleCompleted`+`SoldItem`) — **`GoodsReceived` là điểm nối cho bước cross-module sau này** (inventory subscribe để tạo
+  `ProductBatch`+`StockMovement` IN, `grn_id` làm khoá idempotent giống `StockMovement.ref_type/ref_id`). Domain **không**
+  tự publish event (giữ khuôn `prescription`/`crm` — publish là việc của application service).
+- Ports: `SupplierRepository` (`add`/`update`/`get`/`list`), `PurchaseOrderRepository` (`add`/`update`/`get`),
+  `GoodsReceiptRepository` (`add`/`get`) — khai trong domain, **chưa impl**.
+
+Contract mới `procurement-domain-innermost` + `procurement` vào `module-independence` (**11 → 12** contract, không đổi 11
+cái cũ). Test: `tests/unit/test_procurement_domain.py` (+28: Supplier guard/deactivate; PurchaseOrderItem guard; PO
+lifecycle đủ nhánh (draft→ordered→partial→received→closed, cancel chỉ từ draft, add_item chặn sau ordered); apply_receipt
+(partial, full, tích luỹ qua nhiều GRN, chặn trước ordered, chặn vượt số đặt, chặn dòng lạ); GoodsReceiptItem guard;
+GoodsReceiptNote lifecycle (draft→confirmed, chặn confirm rỗng/2 lần, chặn add_item sau confirm)). **KHÔNG đụng
+`catalog`/`inventory`/module nào khác** — cross-module (GRN xác nhận → tạo lô inventory) để dành bước sau, theo đúng yêu
+cầu tường minh của sếp phiên này ("đặt ở composition root theo khuôn cũ, giữ module-independence").
+
+Gate: ruff+format sạch, import-linter **12/0**, mypy strict **170 file**, pytest **332** (+28).
+
+**Bước kế (app+infra+migration `procurement`, CHƯA mở — chờ duyệt sếp):**
+- `SupplierRepository`/`PurchaseOrderRepository`/`GoodsReceiptRepository` impl SQLAlchemy (tenant-scoped, theo khuôn
+  `SqlAlchemyCustomerRepository`/`SqlAlchemyPrescriptionRepository`).
+- `ProcurementService`: `create_supplier`, `create_purchase_order`+`place_order`+`cancel_purchase_order`,
+  `create_goods_receipt`+`confirm_goods_receipt` (gọi `grn.confirm()` rồi `po.apply_receipt(grn.items)`, lưu cả 2, phát
+  `GoodsReceived` sau commit) — theo khuôn `PrescriptionService`.
+- Migration mới (3 bảng: `suppliers`, `purchase_orders`+`purchase_order_items`, `goods_receipts`+`goods_receipt_items`) —
+  autogenerate → apply live Postgres → `alembic check` → downgrade/upgrade round-trip, theo đúng khuôn cũ.
+- **Chưa** làm cross-module (GRN confirmed → inventory ProductBatch/StockMovement) ở bước này — đó là bước riêng sau
+  interface, giống tiền lệ S4.4/S5.4/C.5, đặt ở `api/v1/cross_module.py`, dừng chờ duyệt.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-22 | **`procurement` — domain thuần XONG (DỪNG trước app+infra, theo lệnh).** `procurement/domain/`: `Supplier` (entity đơn giản, guard tên rỗng) + `PurchaseOrder`/`PurchaseOrderItem` (state machine docs/07 §6: DRAFT→ORDERED→(PARTIALLY_RECEIVED\|RECEIVED)→CLOSED, hoặc DRAFT→CANCELLED) + `GoodsReceiptNote`/`GoodsReceiptItem` (aggregate riêng, DRAFT→CONFIRMED, không un-confirm). `PurchaseOrder.apply_receipt(items)` nối 2 aggregate cùng module qua `po_item_id` (không phải cross-module — 2 aggregate cùng `procurement`), tự tính lại status, chặn `OverReceiptError`/`UnknownPurchaseOrderItemError`. Events `PurchaseOrdered`/`GoodsReceived` (mang `tuple[ReceivedItem,...]`, khuôn `SaleCompleted`+`SoldItem`) — `GoodsReceived` là điểm nối cho bước cross-module sau (inventory tạo `ProductBatch`+`StockMovement` IN, `grn_id` làm khoá idempotent). `goods_receipt_items` là mở rộng thiết kế hợp lý ngoài ERD gốc (chỉ liệt kê `goods_receipts`) — cần đủ `lot_no`/`expiry_date`/`unit_cost` theo đúng docs/06 §4. Contract mới `procurement-domain-innermost` + `procurement` vào `module-independence` (11→**12**, không đổi 11 cái cũ). Test: `test_procurement_domain.py` (+28). **KHÔNG đụng catalog/inventory** — cross-module (GRN→lô kho) để dành bước sau theo đúng yêu cầu. Gate: ruff+format sạch, import-linter **12/0**, mypy strict **170 file**, pytest **332** (+28). **DỪNG theo lệnh — CHƯA sang app+infra+migration.** |
 | 2026-07-22 | **Sprint 6 Bước 2 — 5.5.4 auto-check tương tác + nối dị ứng KH, XONG HOÀN TOÀN (Opus, phiên riêng, từng bước duyệt).** Cross-module ở composition root `api/v1/cross_module.py`, **cảnh báo không chặn** — cả `SaleCompleted`+`PrescriptionDispensed` đều hậu-commit; chặn-vs-cảnh-báo là quyết định nghiệp vụ/pháp lý, **sếp chốt cảnh báo** (hỏi qua AskUserQuestion trước khi code). 3 quyết định pháp lý đều do sếp chốt, Claude không tự quyết: (1) cảnh báo; (2) dị ứng **chỉ luồng prescription**, bán lẻ OTC hoãn (cần `customer_id` trên `SalesOrder`+migration); (3) dị ứng **luôn chạy, không cổng AI, không persist**. **4 bước con, mỗi bước 4 cổng xanh + 1 commit:** **B1 `68a0d74`** `catalog.get_drug_ingredients(drug_id)->[(ingredient_id,name)]` (hạ tầng chung nội bộ catalog, trả cả UUID+tên vì tương tác khớp tên/dị ứng khớp id; +5 test). **B2 `aeea74d`** `wire_safety_checks` bắt 2 event → resolve hoạt chất qua catalog → `clinical.check_interactions`; audit `AiRecommendation`; tenant-gated (`TenantAiSettings` default OFF, `FeatureDisabledError` nuốt im lặng); bỏ qua giỏ <2 hoạt chất phân biệt; bus đã cô lập lỗi handler; `PrescriptionDispensed` không mang `branch_id`→dùng tenant làm branch (+6 test). **B3a `f0281f2`** `clinical.check_allergies` thuần (domain `AllergyAlert`+`find_allergy_alerts` khớp theo `ingredient_id`; nhận id tường minh nên clinical KHÔNG import crm/catalog; severity truyền dạng str để không kéo enum crm; +4 domain +3 app test). **B3b `2de9d2b`** nối dị ứng vào handler dispense: đọc `crm.get_customer(customer_id).allergies` (tái dùng read có sẵn); log `allergy_warning_raised`; đổi tên `wire_interaction_safety_check`→`wire_safety_checks` + thêm `crm.read`; đổi tên file test→`test_cross_module_safety_checks.py` +3 test dị ứng (`structlog.testing.capture_logs`). **`module-independence` GIỮ NGUYÊN 11/0** (api compose catalog+clinical+crm+prescription; các module không import nhau). Gate cuối: ruff+format sạch, import-linter **11/0**, mypy strict **161 file**, pytest **304** (+21). **Nợ còn treo:** ghi `MedicationHistoryEntry` từ event (chưa); dị ứng OTC (hoãn); UI cảnh báo + audit dị ứng riêng (chờ spec). **⇒ Sprint 6 chỉ còn `procurement`. DỪNG theo lệnh.** |
 | 2026-07-22 | **Feature flag AI theo tenant (SaaS) — XONG hoàn toàn.** `clinical.TenantAiSettings` (entity mới, `tenant_id`+`enable_clinical_ai=False` mặc định) + port `TenantAiSettingsRepository` + ORM `TenantAiSettingsORM`/`SqlAlchemyTenantAiSettingsRepository`. **Tự quyết (báo lý do)** tạo bảng riêng trong `clinical` thay vì tái dùng `compliance.tenant_compliance_configs`: tái dùng sẽ là cross-module thật (vi phạm `module-independence` hoặc cần bước Opus-gated, trái với yêu cầu "không cross-module mới"), và 2 khái niệm không liên quan (mã pháp lý DAV vs cờ tính năng sản phẩm). `ClinicalService.check_interactions` gọi `_ensure_ai_enabled(ctx)` ngay sau `require_permission` — đọc tenant từ `RequestContext` sẵn có, chưa cấu hình → `FeatureDisabledError` (mới, 403). Chỉ `check_interactions` bị chặn, không chặn đọc/duyệt bản ghi AI cũ. Thêm `get_tenant_ai_settings`/`set_tenant_ai_settings` + `GET`/`PUT /clinical/settings`. Xoá `AISettings.enable_clinical_ai` (cờ chết, chưa từng được đọc) khỏi `core/config.py`; giữ `min_confidence` (tham số toàn triển khai, không phải cờ theo tenant). Cập nhật test cũ vỡ do đổi mặc định (autouse fixture bật AI trong `test_clinical_flow.py`; fixture `client_ai_off` mới trong e2e). Migration `0010_clinical_tenant_ai_settings`: autogenerate→apply **live Postgres**→`alembic check` sạch→downgrade→upgrade lại→**check sạch lại**; xác nhận thủ công qua ASGI app (403→200→tắt lại). Gate: ruff+format sạch, import-linter **11/0** (không đổi, không cross-module mới), mypy strict **161 file**, pytest **283** (+9). **DỪNG theo lệnh — CHƯA làm procurement.** |
 | 2026-07-22 | **`crm.add_allergy` — gỡ gap 500→404 khi `ingredient_id` sai.** Sếp yêu cầu validate qua `ActiveIngredientRepository` giống `CatalogService.create_drug` — nhưng đó là cross-module thật (crm phụ thuộc catalog), đúng loại bước quy tắc của sếp bắt Opus+phiên riêng (S4.5/S5.4/C.5); đã hỏi trước (AskUserQuestion), sếp chọn phương án không cross-module: `CrmService.add_allergy` bắt `sqlalchemy.exc.IntegrityError` quanh `repo.update()`, dịch thành `NotFoundError` (404) — an toàn 100% vì `customer_id` đã xác nhận tồn tại trước đó nên FK `ingredient_id` là ràng buộc duy nhất còn có thể vỡ. FK Postgres giữ nguyên làm nguồn enforcement thật. **Sửa kèm bắt buộc:** `core/db/session.build_engine()` bật `PRAGMA foreign_keys=ON` cho SQLite (mặc định tắt) — nếu không test sẽ không bao giờ thấy được bug này (chỉ lộ trên Postgres sống); áp dụng cả app thật lẫn `conftest.py` fixture; chỉ ảnh hưởng dialect SQLite. Xác nhận thủ công qua ASGI app chạy trên Postgres sống: `ingredient_id` ngẫu nhiên → 404 problem+json đúng. Test mới (+2): `test_add_allergy_unknown_ingredient_404_not_500` (repo) + `test_unknown_ingredient_id_rejected_with_404_not_500` (e2e). `add_condition` không có gap tương tự (không có FK). Gate: ruff+format sạch, import-linter **11/0**, mypy strict **161 file**, pytest **274** (+2, chạy lại toàn bộ để xác nhận FK-enforcement mới không phá test nào khác — an toàn vì chưa có use-case xoá Drug/Customer nào). |
