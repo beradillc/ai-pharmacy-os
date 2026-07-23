@@ -19,10 +19,17 @@ class SalesRepository(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class DrugInfo:
-    """The authoritative dispensing facts sales needs about a drug."""
+    """The authoritative dispensing facts sales needs about a drug.
+
+    ``name``/``unit`` default to empty when the caller only cares about the Rx
+    rule (e.g. tests) — a receipt renderer treats an empty ``name`` as "unknown
+    drug" and falls back to the raw id.
+    """
 
     drug_id: UUID
     requires_prescription: bool
+    name: str = ""
+    unit: str = ""
 
 
 class DrugInfoProvider(Protocol):

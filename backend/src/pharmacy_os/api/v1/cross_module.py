@@ -264,7 +264,12 @@ class CatalogDrugInfoProvider:
             drug = await self._catalog.get_drug(drug_id, ctx)
         except NotFoundError:
             return None
-        return DrugInfo(drug_id=drug_id, requires_prescription=drug.prescription_required)
+        return DrugInfo(
+            drug_id=drug_id,
+            requires_prescription=drug.prescription_required,
+            name=drug.name,
+            unit=drug.base_unit,
+        )
 
 
 class PrescriptionInfoAdapter:
