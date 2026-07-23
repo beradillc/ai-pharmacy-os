@@ -1345,6 +1345,58 @@ bộ `frontend/`, không phải nợ riêng của Bước 5.
 
 ---
 
+## 7t. ✅ CHỐT PHIÊN 2026-07-23 (buổi bàn ưu tiên GĐ+Code, 11/11 mục đã duyệt XONG)
+
+> Đóng phiên toàn bộ theo lệnh sếp. Đọc mục này trước khi làm gì ở phiên sau — không cần đọc lại
+> §7n–§7s chi tiết trừ khi cần tra cứu sâu hơn.
+
+**Trạng thái khi đóng phiên (xác nhận bằng lệnh, không tin tài liệu):** `docker compose stop` đã
+chạy — postgres+redis **đã dừng**, không còn tiến trình nền nào chạy (không có `uvicorn`/`next dev`
+sót lại). `git status` sạch ở cả 2 repo (root vault + `AI_Pharmacy_OS`). 13 commit trong phiên.
+
+### 11/11 mục đã duyệt — tất cả XONG
+
+| # | Mục | Commit |
+|---|---|---|
+| C1 | Phân khúc KH: nhà thuốc lẻ trước | `5ae5c83` (root) |
+| A1 | Hồ sơ sức khỏe KH Bước 4/4 | `38b1ec6` |
+| A2 | Mount router `compliance` (6 endpoint) | `92baa56` |
+| A3 | Audit `prescription`+`compliance` (6 action) | `643de5a` |
+| C4 | Bản gộp câu hỏi luật sư | `3eddb19` (root) |
+| A5 | Không xây module `pricing` | `f0fe490` |
+| A4 | FE Dexie offline queue (S4.6 5/5) | `571e578` |
+| A6 | Rà lại `TODO.md` (8 mục lệch) | `3d7a9be`, `372b44f` |
+| C2 | Ghi quyết định BERAS vào `ChienLuoc/` | `0b8c38e` (root) |
+| C3 | Thống nhất tagline README↔docs/16 | `f1f537a` |
+| C5 | Đo lại badge domain coverage: 97%→99% | `d520d61` |
+
+### 🔜 Phiên sau bắt đầu từ đâu
+
+Không còn việc kỹ thuật nào đang dở dang từ danh sách ưu tiên đã duyệt. Việc treo thật sự, không
+phải bỏ sót:
+1. **Chờ sếp gửi bản câu hỏi luật sư** (`BeraLLC/PhapLy/2026-07-23-cau-hoi-luat-su-AI-Pharmacy-OS.md`)
+   và chờ trả lời — đặc biệt Q2 (khử nhận dạng) có thể cần sửa code nếu luật sư kết luận khác hướng
+   đã chọn.
+2. **Sếp tự click-through FE trên trình duyệt thật** — cả S4.6 (POS) lẫn Bước 5 (Dexie offline) mới
+   chỉ kiểm chứng qua code review + curl/`next dev`, chưa có browser tool trong môi trường này.
+3. Nợ kỹ thuật cũ còn nguyên, không đổi: FK `atc_code`, persist trả hàng (`register_return`),
+   endpoint `active_ingredients`, `AnthropicProvider` thật, audit cho 5/9 module còn lại
+   (`sales`/`inventory`/`procurement`/`clinical`/`catalog`).
+4. Đầu phiên sau: `docker compose up -d` (đã dừng khi đóng phiên này) trước khi thử API/FE.
+
+### Quyết định Claude tự chốt trong phiên (kỷ luật full-auto #3)
+
+| # | Tự quyết | Lý do |
+|---|----------|-------|
+| 1 | Sửa thêm 3 test integration (ngoài 1 test đã biết trước) khi cấp quyền `crm.*` cho `cashier` | Bắt bởi pytest full suite, không phải chỉ file định sửa — cùng giả định cũ bị đảo bởi Q4 |
+| 2 | Thiết kế 6 action audit mới (4 prescription + 2 compliance) — tên, target_type, nội dung context | GĐ chỉ đề xuất "cần audit", không nêu action cụ thể; theo đúng khuôn `crm`/`iam` đã có (metadata only, không chép nội dung nhạy cảm) |
+| 3 | Không audit các use-case đọc đơn lẻ (`get_prescription`/`get_ledger_entry`/`get_tenant_config`) | Cùng nguyên tắc đã áp dụng cho `crm.list_customers` — đọc đơn lẻ theo id không phải tra cứu hàng loạt |
+| 4 | Dời `wire_national_sync` lên trước khi mount router `compliance` trong `api/v1/__init__.py` | Để router và cross-module C.5 dùng chung 1 instance `NationalSyncService`, không tạo instance thứ 2 |
+| 5 | Phân biệt lỗi mạng vs lỗi server thật trong `useCheckout` bằng `instanceof ApiError` | Đơn giản, đủ cho MVP; giới hạn đã ghi rõ trong code+README, không giấu |
+| 6 | Đơn bị server từ chối thật trong `flushQueue` thì dequeue ngay, không giữ lại retry vô hạn | Retry vô hạn sẽ chặn mọi đơn xếp sau nó trong cùng hàng đợi |
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
