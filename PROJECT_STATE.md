@@ -917,6 +917,39 @@ bền thay best-effort reconciliation; (5) API tra cứu/resolve `stock_reconcil
 
 ---
 
+## 7m. Hồ sơ sức khỏe khách hàng — qua cổng `docs/14` Bước 0-4, ĐÃ DUYỆT, CHƯA CODE (2026-07-23)
+
+> **Điểm bắt đầu tiếp theo.** Tài liệu đầy đủ: `docs/features/ho-so-suc-khoe-khach-hang/01_DECISIONS.md`
+> (commit `54db5ec`). Bước 0-3 xong, 7/7 câu hỏi mở sếp đã quyết, Bước 4 (ROADMAP+PROJECT_STATE) xong.
+> **Chưa code dòng nào** — chờ sếp cho lệnh bắt đầu.
+
+**2 blocker nền của §7j nay ĐỀU ĐÃ GỠ:** RBAC/IAM (§7k) · văn bản pháp lý (đủ 10 file `docs/legal`).
+Cộng thêm `audit_logs` (§7l) là điều kiện sếp tự đặt thêm — cũng đã thỏa.
+
+| Quyết định | Chốt |
+|-----------|------|
+| Q1 đồng ý | 2 mức `BASIC` (tên/SĐT) + `HEALTH` (dị ứng/bệnh nền/lịch sử) |
+| Q2 rút đồng ý/xóa | **Khử nhận dạng, giữ dòng lịch sử** — không xóa cứng |
+| Q3 audit luồng máy | Có, action riêng `CUSTOMER_SENSITIVE_AUTO_CHECK` |
+| Q4 thu ngân | Được `crm.read` + `crm.create` + `crm.consent.manage` (**đảo D8**, tiền đề đã đổi) |
+| Q5 `SalesOrder.customer_id` | **Ngoài phạm vi**, tách bước riêng sau |
+| Q6 DPIA | Mẫu hồ sơ + endpoint trích xuất metadata; khách tự nộp |
+| Q7 `MedicationHistoryEntry` tự động | **Ngoài phạm vi** (nợ cross-module cũ §7i) |
+
+**3 phát hiện pháp lý đáng nhớ (chi tiết trong tài liệu tính năng):**
+1. **Cơ sở pháp lý để lưu dữ liệu sức khỏe KH là DUY NHẤT một thứ: đồng ý** (Luật 91 Điều 26.1).
+   Không tìm thấy văn bản nào *bắt buộc* nhà thuốc lưu dị ứng/bệnh nền ⇒ rút đồng ý phải thật sự
+   làm được, không viện được "luật bắt tôi giữ". Khác hẳn dữ liệu bán thuốc kê đơn.
+2. **Mâu thuẫn pháp lý thật giữa 2 văn bản còn hiệu lực:** quyền xóa (Luật 91 Điều 13-14) vs nghĩa
+   vụ lưu ≥1 năm (GPP TT02 I-1a.II.4.d). GĐ đề nghị hỏi luật sư; **sếp chọn tự quyết** phương án khử
+   nhận dạng. Hậu quả **không đảo ngược bằng `git revert`** — ghi mốc để rà lại khi có luật sư.
+3. **NĐ356 Điều 41.2:** miễn DPIA cho hộ kinh doanh/DN siêu nhỏ **KHÔNG áp dụng** khi xử lý dữ liệu
+   nhạy cảm ⇒ mọi tenant, kể cả nhà thuốc lẻ nhỏ nhất, đều phát sinh nghĩa vụ DPIA khi bật tính năng.
+
+**Phạm vi 9 hạng mục / kế hoạch 4 bước stepped-commit:** xem tài liệu tính năng.
+
+---
+
 ## 7k-cũ. Thiết kế IAM thật — điểm dừng chờ phiên Opus (lưu lại làm bối cảnh)
 
 > **Lệnh sếp:** thiết kế module `iam` thật (users/roles/JWT) thay `api/deps.py` dev-header, theo

@@ -138,11 +138,23 @@ timeline
 
 ## Sprint 7 — Compliance & Analytics
 
-- [ ] Module `compliance`: sổ thuốc kiểm soát, transactional outbox, audit query.
+- [x] **`iam` — module IAM thật** (users/roles/JWT 2 cấp chuỗi-nhà thuốc, thay dev-header).
+      *Kéo lên trước vì là điều kiện tiên quyết của mọi tính năng chạm dữ liệu nhạy cảm
+      (`docs/14` Bước 1.5). Xong 2026-07-23 — `docs/15_IAM_DESIGN.md`, PROJECT_STATE §7k.*
+- [x] **`audit_logs` persist** (append-only + `GET /audit-logs` mức tối thiểu).
+      *Gỡ nợ F8. Xong 2026-07-23 — PROJECT_STATE §7l. Dashboard/analytics audit vẫn thuộc sprint này.*
+- [ ] **Hồ sơ sức khỏe khách hàng** — ngoài ROADMAP gốc, đã qua cổng `docs/14` Bước 0-4 và được
+      duyệt 2026-07-23: `docs/features/ho-so-suc-khoe-khach-hang/01_DECISIONS.md`.
+      Đồng ý tách 2 mức · tách `crm.sensitive.read` · 6 action audit · export/khử nhận dạng ·
+      endpoint metadata DPIA. **Ngoài phạm vi:** `SalesOrder.customer_id`, ghi
+      `MedicationHistoryEntry` tự động (2 cross-module, tách bước riêng).
+- [ ] Module `compliance`: sổ thuốc kiểm soát, transactional outbox, audit query (dashboard).
 - [ ] Module `analytics`: dashboard, dự báo nhu cầu, đề xuất nhập.
 - [ ] Report xuất khẩu.
 
-**DoD:** Sổ kiểm soát khớp movements; dashboard hiển thị số liệu thật; đề xuất nhập sinh PO nháp.
+**DoD:** Sổ kiểm soát khớp movements; dashboard hiển thị số liệu thật; đề xuất nhập sinh PO nháp;
+**hồ sơ sức khỏe KH trả lời được 6 câu hỏi thanh tra bằng dữ liệu trong hệ thống** (xem Bước 0 của
+tài liệu tính năng), thu ngân không xem được dị ứng/bệnh nền.
 
 ---
 

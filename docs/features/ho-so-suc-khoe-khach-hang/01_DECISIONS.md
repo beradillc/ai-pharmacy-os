@@ -206,7 +206,26 @@ thông tin (loại dữ liệu, mục đích, luồng, biện pháp bảo vệ),
 
 ---
 
-## Câu hỏi mở — cần sếp quyết trước khi code (Bước 4)
+## ✅ QUYẾT ĐỊNH ĐÃ CHỐT (sếp quyết 2026-07-23) — 7/7
+
+| # | Quyết định | Hệ quả thiết kế |
+|---|-----------|-----------------|
+| **Q1** | **2 mức đồng ý**: `BASIC` (tên/SĐT) + `HEALTH` (dị ứng/bệnh nền/lịch sử) | `CustomerConsent.purpose` là enum 2 giá trị. Không có giá trị mặc định `True` |
+| **Q2** | **Khử nhận dạng, giữ dòng lịch sử** — gỡ định danh (tên/SĐT/CCCD hash) + xóa hẳn dị ứng/bệnh nền; giữ dòng bán/cấp phát đã gắn nghĩa vụ lưu trữ nhưng không truy ngược ra người | Use-case `anonymise_customer`, **không** có `delete_customer` xóa cứng. Phát `CUSTOMER_ERASED`. Xem "rủi ro còn lại" bên dưới |
+| **Q3** | **Có ghi audit cho luồng máy, dùng action riêng** `CUSTOMER_SENSITIVE_AUTO_CHECK` | Tách khỏi `CUSTOMER_SENSITIVE_READ` ⇒ báo cáo "ai xem hồ sơ" vẫn sạch. Chấp nhận audit_logs tăng theo số đơn bán có khách |
+| **Q4** | **Thu ngân được `crm.read` + `crm.create` + `crm.consent.manage`** (đảo D8, do chính chỉ đạo của sếp khi mở tính năng) | Cập nhật role `cashier` trong `system_roles.py` |
+| **Q5** | **Tách `SalesOrder.customer_id` ra bước riêng sau** | Sprint này **không có cross-module** và **không có migration sửa bảng đang có dữ liệu**. Chấp nhận: thu ngân tra được khách nhưng chưa gắn được vào đơn |
+| **Q6** | **Mẫu hồ sơ DPIA + endpoint trích xuất metadata**; khách tự nộp, BeraLLC không nộp thay | Thêm hạng mục: tài liệu mẫu DPIA + 1 endpoint xuất metadata xử lý dữ liệu. GĐ xếp đây là **hạng mục sản phẩm**, không phải gánh nặng tuân thủ |
+| **Q7** | **Ghi `MedicationHistoryEntry` tự động — NGOÀI phạm vi** | Vẫn là nợ cross-module cũ (§7i mục 2), không gộp vào sprint này |
+
+**Rủi ro còn lại đã báo cáo, sếp chấp nhận và tự quyết:** GĐ đề nghị hỏi luật sư trước khi chốt Q2
+vì đây là mâu thuẫn giữa hai văn bản còn hiệu lực và hậu quả **không đảo ngược được bằng
+`git revert`** (đã lỡ khử nhận dạng thì dữ liệu gốc không lấy lại được). Sếp chọn quyết ngay, phương
+án khử nhận dạng. Ghi lại đây để khi có luật sư thì có mốc rà lại, không phải để bàn tiếp.
+
+---
+
+## Câu hỏi mở — ĐÃ ĐÓNG (giữ nguyên phần phân tích làm cơ sở cho quyết định trên)
 
 | # | Câu hỏi | Đề xuất của Trợ lý Code | Rủi ro nếu chọn khác |
 |---|---------|------------------------|---------------------|
@@ -220,13 +239,38 @@ thông tin (loại dữ liệu, mục đích, luồng, biện pháp bảo vệ),
 
 ---
 
-## Phạm vi đề xuất (nếu sếp duyệt nguyên trạng)
+## Phạm vi ĐÃ CHỐT
 
-**TRONG:** `CustomerConsent` (domain+bảng+use-case) · tách 4 permission crm · 5 action audit mới ·
-`crm` ghi audit khi đọc/ghi dữ liệu nhạy cảm · `export_customer_data` · `erase_customer` (theo Q2) ·
-cập nhật 5 role hệ thống + `sync_system_roles` trên CSDL thật · tài liệu chính sách lưu trữ.
+**TRONG:**
+1. `CustomerConsent` — domain + bảng `customer_consents` + use-case cấp/rút (2 mức `BASIC`/`HEALTH`)
+2. Tách permission: `crm.read` (cơ bản) · `crm.sensitive.read` · `crm.sensitive.write` ·
+   `crm.consent.manage` · `crm.erase`
+3. **6 action audit mới**: `CUSTOMER_SENSITIVE_READ` · `CUSTOMER_SENSITIVE_WRITE` ·
+   `CUSTOMER_SENSITIVE_AUTO_CHECK` · `CONSENT_GRANTED` · `CONSENT_REVOKED` · `CUSTOMER_ERASED`
+4. `crm` ghi audit ở mọi lượt đọc/ghi dữ liệu sức khỏe (không chép nội dung vào `context`)
+5. `export_customer_data` (Luật 91 Điều 13-14)
+6. `anonymise_customer` — khử nhận dạng theo Q2, **không** xóa cứng
+7. Cập nhật 5 role hệ thống + chạy `sync_system_roles` **trên CSDL đã có dữ liệu** (kỷ luật #7)
+8. Endpoint trích xuất metadata phục vụ DPIA + tài liệu mẫu DPIA (Q6)
+9. Tài liệu chính sách lưu trữ (retention) — GPP II.4.d
 
 **NGOÀI (ghi nợ rõ, không im lặng bỏ):** `SalesOrder.customer_id` (Q5) · ghi
 `MedicationHistoryEntry` tự động (Q7) · luồng "người đại diện" cho bệnh nhân trẻ em (Luật 91 Điều
 24 — chưa có nhu cầu, nhưng nếu nhập KH là trẻ em thì form người lớn dùng chung là **sai luật**) ·
-diễn tập restore · xóa tự động theo hạn lưu trữ.
+diễn tập restore · xóa tự động theo hạn lưu trữ · nộp hồ sơ DPIA thay khách hàng.
+
+---
+
+## Bước 4 — Cập nhật ROADMAP + PROJECT_STATE
+
+✅ Đã làm 2026-07-23: `ROADMAP.md` thêm mục "Hồ sơ sức khỏe KH" vào Sprint 7; `PROJECT_STATE.md`
+§7m ghi phạm vi + 7 quyết định. **Chưa code dòng nào** — chờ sếp cho lệnh bắt đầu.
+
+**Kế hoạch stepped-commit dự kiến (4 bước, 4 cổng xanh mỗi bước):**
+
+| Bước | Nội dung |
+|------|----------|
+| 1 | `crm/domain`: `CustomerConsent` + `ConsentPurpose` + quy tắc "chưa đồng ý `HEALTH` thì không được ghi dị ứng/bệnh nền". `core/audit`: 6 action mới. Unit test thuần |
+| 2 | `crm` application + infrastructure + migration `0015_customer_consents` (**pg_dump trước**) + `crm` gọi `AuditLogger`. Test service-level đọc ngược bảng audit |
+| 3 | Interface: tách `CustomerResponse` theo quyền (ai chỉ có `crm.read` không thấy trường nhạy cảm) + endpoint consent/export/anonymise + endpoint metadata DPIA. Test e2e bằng token thật của từng vai |
+| 4 | Cập nhật 5 role hệ thống + `sync_system_roles`, **kiểm chứng trên CSDL đã có dữ liệu** (kỷ luật #7) + tài liệu retention/DPIA |
