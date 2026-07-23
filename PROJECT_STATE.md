@@ -1799,8 +1799,40 @@ cũ, KHÔNG đảo ngược.
 pg_dump backup trước (`~/backup_pre_migration_20260724_0314.sql`, full-auto rule #6). Test mới:
 `test_cross_module_medication_history.py` (5) + crm use-case (4) + OTC allergy (2).
 
-**Nợ còn lại Sprint 6→7:** outbox/retry bền (hạ tầng lõi event bus), module `analytics` + report (Sprint
-7 mới — cần sếp mô tả yêu cầu "dự báo nhu cầu" tính theo gì trước khi thiết kế).
+**Nợ còn lại Sprint 6→7:** outbox/retry bền (hạ tầng lõi event bus) — **Bước 1/3 (codec) đã XONG, xem
+§7ae** — module `analytics` + report (Sprint 7 mới — cần sếp mô tả yêu cầu "dự báo nhu cầu" tính theo gì
+trước khi thiết kế).
+
+---
+
+## 7ae. Outbox/retry — Bước 1/3: codec serialize/deserialize (domain thuần) — XONG (2026-07-24)
+
+> Phiên bị tắt đột ngột trước đó (không qua nghi thức đóng phiên) sau §7ad. Resume phiên xác nhận theo
+> đúng thứ tự bắt buộc (docker compose ps · process cũ · git status/log) — phát hiện working tree **không
+> sạch**: `core/events/serialization.py` + `test_event_serialization.py` đã viết xong nhưng chưa commit
+> (không có ghi chú "ĐIỂM DỪNG" giải thích tại sao dở dang — suy đoán hợp lý nhất: đây là Bước 1 outbox
+> đang làm dở khi phiên bị cắt). Đã chạy đủ 4 cổng trên phần dở dang trước khi tin tưởng, xanh hết → commit
+> nguyên trạng, không sửa logic.
+
+**Nội dung:** `serialize_event`/`deserialize_event` — codec generic đi qua `dataclasses.fields()` +
+`get_type_hints()` của bất kỳ `DomainEvent` nào, tự xử lý `Decimal`/`UUID`/`date`/`datetime`/tuple lồng
+nhau mà không cần encoder riêng cho từng event. `EventRegistry` map tên `event_type` đã lưu về class —
+sống ở composition root (kernel `core` không được biết business module nào tồn tại). Round-trip identity
+test cho toàn bộ 17 `DomainEvent` hiện có trong hệ thống.
+
+**Vì sao đúng là "domain thuần"/Bước 1:** codec chỉ import `core.events.base` — không đụng infra/DB,
+khớp import-linter contract "Core kernel must not import business modules". Bảng outbox thật + relay
+worker (Bước 2: app/infra/migration) và publish qua bảng đó thay vì `InMemoryEventBus` trực tiếp (Bước 3:
+interface/wiring) **chưa làm** — không overclaim.
+
+**Bằng chứng:** ruff sạch · `mypy --strict` sạch (file mới) · import-linter 13 kept/0 broken · pytest full
+suite xanh (không hồi quy). 2 commit riêng: `a5862d6` (codec) + `c5b01f0` (sửa TODO.md lệch "2/9 module
+chưa audit" — dòng cũ sai, §7y/§7z đã đóng mạch 9/9 từ 2026-07-23, phát hiện khi đối chiếu tài liệu lúc
+resume).
+
+**Tiếp theo (chưa hỏi vì không phải quyết định nghiệp vụ/pháp lý — nhưng SẼ hỏi tại điểm outbox chạm
+migration/bảng mới, đúng kỷ luật cross-module/migration hiện có):** thiết kế bảng outbox (cột, index,
+retention) + relay/retry worker.
 
 ---
 
@@ -1808,6 +1840,7 @@ pg_dump backup trước (`~/backup_pre_migration_20260724_0314.sql`, full-auto r
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-24 | Outbox Bước 1/3: codec serialize/deserialize DomainEvent (domain thuần) — resume phiên sau cắt đột ngột, xem §7ae. |
 | 2026-07-24 | MedicationHistoryEntry tự động + dị ứng OTC (3 bước: customer_id/mig 0016 · use-case · wiring) — phiên Opus full-auto, xem §7ad. |
 | 2026-07-23 | Endpoint HTTP `active_ingredients` (POST/GET) — nợ kỹ thuật đơn module, xem §7u. |
 | 2026-07-23 | Audit `sales` (`SALE_COMPLETED`) — GĐ chọn ưu tiên, xem §7v. |
