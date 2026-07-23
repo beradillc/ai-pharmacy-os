@@ -948,6 +948,52 @@ Cộng thêm `audit_logs` (§7l) là điều kiện sếp tự đặt thêm — 
 
 **Phạm vi 9 hạng mục / kế hoạch 4 bước stepped-commit:** xem tài liệu tính năng.
 
+### ⏸️ ĐIỂM DỪNG (2026-07-23) — sếp cho tạm dừng để bàn UI + thương hiệu trước
+
+> **Dừng ở ranh giới sạch:** Bước 1-3 xong, mỗi bước 1 commit 4 cổng xanh. Working tree **sạch**,
+> không có việc dở dang. Cổng lúc dừng: ruff sạch · mypy strict **210 file** · import-linter **13/0**
+> · pytest **560**. Resume = làm tiếp Bước 4, không cần đọc lại gì ngoài mục này.
+
+| Bước | Commit | Trạng thái |
+|------|--------|-----------|
+| 1 — cổng đồng ý (domain+infra+app, migration `0015`) | `52ab50d` | ✅ (gộp so với kế hoạch, lý do ghi trong commit) |
+| 2 — tách quyền đọc nhạy cảm + wiring 6 action audit | `10f2a73` | ✅ |
+| 3 — xuất/khử nhận dạng + `GET /privacy/processing-record` | `96b5b9b` | ✅ |
+| 4 — cập nhật role + tài liệu | — | ⏸️ **CHƯA LÀM** |
+
+**Bước 4 còn đúng 5 việc, không có thiết kế mới, không migration, không cross-module:**
+1. Cấp `crm.read` + `crm.create` + `crm.consent.manage` cho role `cashier` (Q4) — sửa
+   `_CASHIER_PERMISSIONS` trong `modules/iam/domain/system_roles.py`.
+2. Sửa `tests/integration/test_crm_privacy_api_e2e.py::test_a_cashier_sees_the_person_but_not_the_diagnoses`
+   — **hiện đang khẳng định 403** (đúng trạng thái thật hôm nay), phải đổi thành "thấy tên/SĐT,
+   không thấy dị ứng/bệnh nền". Test có ghi chú sẵn tại chỗ. **Nếu quên, test vẫn xanh** — nên nó
+   nằm ở đây chứ không chỉ trong trí nhớ.
+3. Chạy `sync_system_roles` và **kiểm chứng trên CSDL đã có dữ liệu** (kỷ luật #7): `python -m
+   seeds.run` → xác nhận bằng SQL/API thật rằng `cashier` có quyền mới, không tin dòng log.
+4. Tài liệu chính sách lưu trữ (GPP TT02/2018 I-1a.II.4.d).
+5. Bản nháp **phần kỹ thuật** mẫu DPIA (phần pháp lý do luật sư hoàn thiện — GĐ đề nghị, sếp tự lo).
+
+**Trạng thái audit lúc dừng — 17/17 action đều phát thật, nhưng chỉ 2/9 module có audit:**
+
+| Có audit | Không có audit (việc nhạy cảm chưa để lại dấu vết) |
+|----------|----------------------------------------------------|
+| `iam` (11 action) · `crm` (6 action) | `prescription` (**duyệt đơn, cấp phát thuốc kê đơn**) · `compliance` (**sổ thuốc kiểm soát, liên thông**) · `sales` · `inventory` · `procurement` · `clinical` · `catalog` |
+
+⚠️ **GĐ ghi nhận lệch ưu tiên:** `docs/11` §6 viết "mọi POST/PUT/DELETE nhạy cảm ghi `audit_logs`" —
+hiện thực chưa tới. Chỗ thiếu nặng nhất là **cấp phát thuốc kê đơn** và **sổ thuốc kiểm soát** —
+thanh tra dược hỏi "ai đã bán lô thuốc hướng thần này" trước khi hỏi "ai đã xem dị ứng của khách".
+Hạ tầng đã sẵn, mở rộng là việc cơ học. **GĐ khuyến nghị làm ngay sau Bước 4, trước mọi tính năng
+thương mại khác** — chưa được sếp chốt.
+
+**Cảnh báo xu hướng (chưa cần xử lý):** bộ test từ **1:27 → 4:09** trong một phiên (560 test).
+Nguyên nhân chính: các suite e2e dựng app + bootstrap tenant + bcrypt hash thật cho từng test. Nếu
+giữ nhịp này thêm vài tính năng, mỗi lượt cổng thành 8-10 phút và kỷ luật "4 cổng xanh trước mỗi
+commit" sẽ bắt đầu bị lách. Cách rẻ nhất: hạ vòng bcrypt trong test.
+
+⚠️ **GĐ khuyến nghị vận hành:** **không bật tính năng hồ sơ sức khỏe cho tenant thật cho tới khi
+Bước 4 xong.** Xong Bước 3 nghĩa là quyền của chủ thể dữ liệu đã dùng được, nhưng role `cashier`
+chưa đúng thiết kế nên luồng quầy chưa chạy như dự định. Demo cho khách thì dùng dữ liệu giả.
+
 ---
 
 ## 7k-cũ. Thiết kế IAM thật — điểm dừng chờ phiên Opus (lưu lại làm bối cảnh)
