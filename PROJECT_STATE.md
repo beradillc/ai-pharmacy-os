@@ -1113,10 +1113,56 @@ nhiều đánh đổi:**
 
 ---
 
+## 7o. S4.6 — FE POS tối thiểu, 4/5 bước (2026-07-23, phiên Sonnet)
+
+> **Trạng thái:** `frontend/` mới hoàn toàn, 4 commit (`cb3809e` CORS · `2bcea7f` scaffold ·
+> `c642c34` auth · `ba547c4` POS). Không sửa module backend nào ngoài `main.py`/`config.py` cho
+> CORS — sếp duyệt riêng trước khi làm. **Bước 5 (Dexie offline queue) chưa làm**, tách đợt sau
+> theo đúng đề xuất đã duyệt.
+
+**Đã chạy được:** đăng nhập JWT thật (không dev-header) → chọn chi nhánh nếu nhiều → tra thuốc →
+giỏ hàng → `POST /sales` thanh toán. Theme Eco-Tech (mã hex tạm), mascot placeholder (emoji, có ghi
+chú rõ chưa phải art thật).
+
+**3 phát hiện lệch tài liệu-thực tế khi build (không tự sửa docs, chỉ ghi vào code + báo cáo):**
+1. `docs/11_API_DESIGN.md` mô tả `POST /sales-orders` + `Idempotency-Key` header + endpoint
+   `/payments`/`/complete` riêng — **API thật** là `POST /sales` (1 lệnh gộp), idempotent qua
+   `client_uuid` trong body, không có endpoint tách. FE viết theo code thật.
+2. `docs/11` ghi `GET /drugs?query=&cursor=` — **API thật không có tham số tìm kiếm nào**, chỉ
+   `limit`/`offset`. FE lấy 1 trang rồi lọc phía client.
+3. **Không có nguồn giá bán ở đâu trong backend** — `catalog` không có trường giá, `inventory` chỉ
+   có `cost_price` (giá vốn). Thu ngân phải nhập tay đơn giá từng dòng. Đây là khoảng trống sản
+   phẩm thật, không phải chỗ FE thiếu code — cần quyết định có xây `pricing` hay không.
+
+**Kiểm chứng đã làm (không chỉ build sạch):** `tsc`/`eslint`/`next build` sạch; bootstrap tenant
+thật + tạo thuốc qua CLI; curl mô phỏng đúng request FE gửi (login, CORS preflight, `GET /drugs`,
+`POST /drugs`, `POST /sales`) trên backend live — khớp 100% với type TypeScript đã viết; `next dev`
+thật chạy, 2 route trả 200, không lỗi runtime trong log server.
+
+**⚠️ Giới hạn kiểm chứng — không overclaim:** môi trường không có trình duyệt/công cụ browser. Đã
+xác nhận hợp đồng API đúng và server không crash, **chưa từng click-through UI thật** (focus, resize,
+lỗi hydration chỉ lộ khi chạy JS thật, trải nghiệm nhập liệu...). Sếp cần tự mở `http://localhost:3000`
+kiểm tra trước khi coi tính năng là dùng được.
+
+**Tài khoản demo còn để lại trên Postgres (cố ý không dọn, để sếp login thử ngay):**
+`fe-demo@beral.vn` / `MatKhauFeDemo2026` — tenant "Nhà thuốc FE Demo", 1 thuốc OTC mẫu
+("Paracetamol 500mg"), 1 đơn bán mẫu đã tạo lúc kiểm chứng. Dọn sau khi sếp xem xong.
+
+**Nợ ghi rõ:**
+1. Dexie offline queue (Bước 5) — S4.6 vẫn **chưa thật sự offline-first**.
+2. Chưa có bộ test tự động phía FE (vitest/playwright) — ghi trong `frontend/README.md`.
+3. Mã hex Eco-Tech là tạm, chờ thiết kế chính thức (docs/16 §6).
+4. Luồng đơn thuốc (ETC) chưa xây — bán ETC không kèm `prescription_ref` bị 422, FE chỉ hiện lỗi
+   server trả về, không tự chặn phía client.
+5. `localStorage` cho token (chốt của sếp, đánh đổi XSS đã ghi nhận trong code).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-23 | **S4.6 FE POS tối thiểu — 4/5 bước (phiên Sonnet, xem §7o).** Hồi sinh từ nợ ROADMAP Sprint 4. `frontend/` mới hoàn toàn (Next.js+TS+TanStack Query+Zustand), theo `docs/04` §3 + `docs/16` brand guide. 4 commit: CORS (`cb3809e`, ngoại lệ backend duy nhất, xin phép trước) → scaffold (`2bcea7f`) → auth JWT thật (`c642c34`) → tra thuốc/giỏ hàng/thanh toán (`ba547c4`). **3 phát hiện lệch docs/11-thực tế**: API `sales` thật là `POST /sales` gộp 1 lệnh (không phải `/sales-orders`+`/payments`+`/complete` như doc); `GET /drugs` không có tham số tìm kiếm; **không nguồn giá bán nào trong backend** (chỉ có `inventory.cost_price` — giá vốn) nên thu ngân nhập tay giá — khoảng trống sản phẩm thật. Kiểm chứng bằng curl mô phỏng đúng request FE trên backend live (không chỉ đọc code) — khớp 100% type đã viết; `next dev` thật chạy sạch. **Giới hạn: không có trình duyệt trong môi trường, chưa từng click-through UI thật** — chỉ xác nhận hợp đồng API + server không crash. **Bước 5 (Dexie offline) chưa làm.** Để lại tài khoản demo `fe-demo@beral.vn`/`MatKhauFeDemo2026` trên Postgres để sếp login thử ngay. |
 | 2026-07-23 | **CHỐT PHIÊN — 20 commit, xem §7n.** Phiên Opus dài: `iam` thật (4 bước) → `audit_logs` persist (3 bước) → Hồ sơ sức khỏe KH qua cổng docs/14 (Bước 0-3, còn Bước 4) → thương hiệu **BERAS** + `docs/16_BRAND_UI_GUIDE.md`. Cổng cuối: ruff sạch · mypy strict 210 file · import-linter 13/0 · pytest **560** · alembic `0015` (head) · git sạch. **5 bug thật** phát hiện và vá (nặng nhất: lỗ hổng `X-Branch-Id` đang chạy; role hệ thống không cập nhật khi nâng cấp mà 505 test vẫn xanh). **14 quyết định Claude tự chốt trong full-auto** liệt kê đủ ở §7n để sếp đọc lướt. Phiên sau bắt đầu: đóng Bước 4 → mount router `compliance` → audit cho `prescription`+`compliance`. |
 | 2026-07-23 | **Thương hiệu BERAS + nguyên tắc UI.** Sếp chốt tên/mascot/tagline/tông màu Eco-Tech/3 trụ cột (`sales`/`compliance`/`clinical`)/2 nguyên tắc UI → `docs/16_BRAND_UI_GUIDE.md`. README đổi định vị từ "Hệ điều hành nghiệp vụ AI-native" sang "Sổ điện tử quản lý nhà thuốc chuẩn Cloud/SaaS thế hệ mới", H1 mang tên BERAS, dọn tàn dư "lấy AI làm lõi" ở §1, bổ sung docs 13-16 vào bản đồ tài liệu, sửa 2 badge sai (Sprint 3→7, tests 46→560). Bổ sung vào docs/16 phần **trạng thái backend thật của 3 trụ cột** (kiểm chứng bằng lệnh) để nguyên tắc "không quảng bá tính năng chưa sẵn sàng" có căn cứ dùng được: trụ 1 POS chạy được · trụ 2 tuân thủ **một nửa** (module `compliance` chưa mount router ⇒ chưa có API cho màn sổ kiểm soát) · trụ 3 AI **chưa thật** (`MockLLMProvider`; cảnh báo tương tác/dị ứng chạy thật nhưng bằng engine tất định, không phải AI). Không đụng code. |
 | 2026-07-23 | **Hồ sơ sức khỏe KH — Bước 1-3/4 (`52ab50d`, `10f2a73`, `96b5b9b`).** Cổng đồng ý (đồng ý là cơ sở pháp lý DUY NHẤT nên ràng buộc đặt ở domain, không để caller tự nhớ) → tách `crm.sensitive.read`/`write` + wiring 6 action audit → xuất dữ liệu/khử nhận dạng + `GET /privacy/processing-record` (sinh từ code, trả kèm `known_gaps`). Migration `0015_customer_consents`. pytest 522→536→560. **Bước 4 chưa làm**, 5 việc còn lại ghi ở §7m. |

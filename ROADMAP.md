@@ -88,9 +88,20 @@ timeline
 - [x] Idempotency (`client_uuid`), endpoint `/sync/sales` (upsert 200).
 - [x] Sự kiện `SaleCompleted` → inventory trừ tồn FEFO (nối ở composition root; idempotent cấp đơn; thiếu tồn → `StockShortfallDetected`, không chặn bán).
 - [x] Chặn ETC thiếu đơn — catalog là nguồn thẩm quyền qua port `DrugInfoProvider` + adapter.
-- [ ] FE POS tối thiểu + Dexie offline queue — **tách sang đợt sau** (S4.6, ngoài phạm vi Sprint 4 lần này).
+- [x] FE POS tối thiểu (S4.6, hồi sinh 2026-07-23) — đăng nhập JWT thật, tra thuốc, giỏ hàng,
+      thanh toán `POST /sales`. `frontend/` mới, không sửa module backend nào ngoài CORS
+      (`main.py`, xin phép riêng). Xem `frontend/README.md` mục "Phạm vi hiện tại".
+- [ ] Dexie offline queue (S4.6 Bước 5) — **vẫn tách sang đợt sau**, chưa làm.
 
 **DoD backend:** ✅ Đạt. Bán → tồn giảm đúng FEFO; re-sync cùng `client_uuid` **không nhân đôi** tồn/đơn; ETC thiếu đơn bị chặn (422); bán quá tồn không làm tồn âm.
+
+**DoD FE (S4.6, 4/5 bước):** ✅ Đăng nhập thật + chọn chi nhánh · tra thuốc (lọc client, `GET /drugs`
+không có tham số tìm kiếm — lệch docs/11) · giỏ hàng · `POST /sales` thành công, đã kiểm chứng bằng
+curl mô phỏng đúng request FE gửi trên backend live + `next dev` thật (không chỉ `next build`).
+**Chưa làm:** Dexie offline queue — nghĩa là **chưa thật sự "offline-first"** như tên Sprint, chỉ mới
+POS online. **Chưa test bằng trình duyệt thật** (môi trường không có browser tool) — chỉ xác nhận
+hợp đồng API khớp 100% qua curl và server không lỗi runtime; sếp cần tự mở trình duyệt kiểm tra
+tương tác UI (click, focus, resize...) trước khi coi là xong hẳn.
 - Migration `0003_sales` (unique `tenant_id`+`client_uuid`) apply→`alembic check` không drift→reversible.
 - `import-linter` **7/0** (thêm `sales-domain-innermost`; 2 điểm cross-module nối ở lớp `api`, `module-independence` giữ nguyên); `mypy` strict 90 file; `pytest` **94 passed** (+40 so với 54).
 
