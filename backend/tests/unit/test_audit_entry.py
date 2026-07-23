@@ -82,6 +82,12 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "CONSENT_GRANTED",
         "CONSENT_REVOKED",
         "CUSTOMER_ERASED",
+        "PRESCRIPTION_CREATED",
+        "PRESCRIPTION_APPROVED",
+        "PRESCRIPTION_REJECTED",
+        "PRESCRIPTION_DISPENSED",
+        "CONTROLLED_LEDGER_ENTRY_RECORDED",
+        "TENANT_COMPLIANCE_CONFIG_SET",
     }
     assert {a.value for a in AuditAction} == expected
 

@@ -227,9 +227,10 @@ async def test_token_replay_is_persisted(
     assert entries[0].target_type == "refresh_token"
 
 
-#: Customer-data actions belong to the crm feature and are covered by its own
-#: persistence suite; listing them here keeps the net below honest about what this
-#: file does *not* prove.
+#: Customer-data, prescription and compliance actions belong to their own feature's
+#: persistence suite (test_crm_privacy_api_e2e.py, test_prescription_flow.py,
+#: test_compliance_flow.py); listing them here keeps the net below honest about
+#: what this file does *not* prove.
 _COVERED_ELSEWHERE = {
     AuditAction.CUSTOMER_SENSITIVE_READ,
     AuditAction.CUSTOMER_SENSITIVE_AUTO_CHECK,
@@ -237,6 +238,12 @@ _COVERED_ELSEWHERE = {
     AuditAction.CONSENT_GRANTED,
     AuditAction.CONSENT_REVOKED,
     AuditAction.CUSTOMER_ERASED,
+    AuditAction.PRESCRIPTION_CREATED,
+    AuditAction.PRESCRIPTION_APPROVED,
+    AuditAction.PRESCRIPTION_REJECTED,
+    AuditAction.PRESCRIPTION_DISPENSED,
+    AuditAction.CONTROLLED_LEDGER_ENTRY_RECORDED,
+    AuditAction.TENANT_COMPLIANCE_CONFIG_SET,
 }
 
 

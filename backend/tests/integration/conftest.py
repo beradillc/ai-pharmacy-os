@@ -196,6 +196,7 @@ def prescription_service(
     return PrescriptionService(
         uow_factory,
         lambda uow, c: SqlAlchemyPrescriptionRepository(uow.session, c),
+        AuditLogger(session_factory),
     )
 
 
@@ -210,6 +211,7 @@ def compliance_service(
         uow_factory,
         lambda uow, c: SqlAlchemyControlledLedgerRepository(uow.session, c),
         lambda uow, c: SqlAlchemyTenantComplianceConfigRepository(uow.session, c),
+        AuditLogger(session_factory),
     )
 
 

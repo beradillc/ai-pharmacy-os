@@ -1196,7 +1196,7 @@ kiểm tra trước khi coi tính năng là dùng được.
 | S4.6 FE POS | 4/5 (CORS, scaffold, auth, tra thuốc+giỏ+thanh toán) | Bước 5 — hàng đợi offline Dexie. **Chưa thật sự "offline-first"** dù tên Sprint | §7o |
 | Hồ sơ sức khỏe KH | ✅ **4/4 XONG** (cổng đồng ý, tách quyền+audit, quyền chủ thể dữ liệu+DPIA, cập nhật role+tài liệu) | Không còn — vẫn treo `SalesOrder.customer_id` (Q5, cross-module riêng, không phải nợ Bước 4) | §7m |
 | Module `compliance` | ✅ **Router đã mount 2026-07-23** — 6 endpoint (`controlled-ledger` POST/GET, `tenant-config` PUT/GET, `sync-logs` POST/GET), 5 test e2e mới | Không còn — trụ cột 2 thương hiệu đã có API để UI gọi | §7q |
-| Audit coverage | `iam` (11 action) + `crm` (6 action) | 7/9 module còn lại chưa ghi audit — nặng nhất `prescription` (cấp phát ETC) và `compliance` (sổ kiểm soát) | §7n |
+| Audit coverage | ✅ `iam` (11) + `crm` (6) + `prescription` (4, mới) + `compliance` (2, mới) = **23 action, 4/9 module** | Còn 5/9 module chưa ghi audit: `sales`, `inventory`, `procurement`, `clinical`, `catalog` — không thuộc nhóm ưu tiên đã duyệt phiên này | §7r |
 | Nguồn giá bán (pricing) | — | **Không tồn tại ở đâu trong backend** — `inventory.cost_price` là giá vốn, không phải giá bán. Phát hiện hôm nay khi xây FE, chưa có quyết định có xây module `pricing` hay không | §7o |
 | Test tự động phía FE | — | Chưa có vitest/playwright nào | `frontend/README.md` |
 
@@ -1262,6 +1262,46 @@ rà `docs/11` một lượt riêng (cùng đợt với nợ `TODO.md` ở mục 
 ⚠️ **Chưa có audit cho module này** — đúng như đã ghi ở §7n: `compliance` vẫn thuộc nhóm 7/9 module
 chưa ghi `audit_logs`. Việc mục #4 (audit cho `prescription`+`compliance`) trong danh sách ưu tiên
 đã duyệt vẫn còn nguyên, mount router không tự động thêm audit.
+
+---
+
+## 7r. Audit cho `prescription` + `compliance` — XONG (2026-07-23, mục #4 danh sách ưu tiên đã duyệt)
+
+> GĐ đã đề xuất việc này trước đó (§7n): 2 module chưa có audit lại đúng 2 thứ thanh tra dược hỏi
+> đầu tiên — cấp phát thuốc kê đơn và sổ thuốc kiểm soát. Hạ tầng `AuditLogger`/`AuditEntry` đã có
+> sẵn (§7l), phiên này chỉ mở rộng — không dựng lại, không cross-module (audit gọi `core`, chiều
+> hợp lệ đã xác nhận từ trước ở `01_DECISIONS.md`).
+
+**6 action mới trong `core/audit/entry.py::AuditAction`:**
+
+| Module | Action | Phát khi nào |
+|---|---|---|
+| `prescription` | `PRESCRIPTION_CREATED` | Tiếp nhận đơn (DRAFT) |
+| `prescription` | `PRESCRIPTION_APPROVED` | Dược sĩ duyệt đơn |
+| `prescription` | `PRESCRIPTION_REJECTED` | Dược sĩ từ chối đơn |
+| `prescription` | `PRESCRIPTION_DISPENSED` | Cấp phát thuốc kê đơn — đúng câu hỏi thanh tra hay hỏi nhất |
+| `compliance` | `CONTROLLED_LEDGER_ENTRY_RECORDED` | Ghi 1 dòng sổ thuốc kiểm soát đặc biệt |
+| `compliance` | `TENANT_COMPLIANCE_CONFIG_SET` | Đổi mã cơ sở Cục QLD cấp |
+
+**Không audit đọc (`get_prescription`/`get_ledger_entry`/`get_tenant_config`):** cùng nguyên tắc đã
+áp dụng cho `crm.list_customers` — đọc đơn lẻ theo id không phải tra cứu hàng loạt nhạy cảm ở mức
+cần audit riêng; nếu sau này cần, mở rộng thêm không phải thiết kế lại.
+
+**Nội dung `context` — chỉ metadata, không chép dữ liệu:** đã tự kiểm bằng test riêng — lý do từ
+chối `reject_prescription` và tên/địa chỉ bệnh nhân trong `record_controlled_entry` **không** xuất
+hiện trong `context` (cùng nguyên tắc đã khóa ở §7m cho `crm`).
+
+**Kiểm chứng bằng lệnh thật, không tin việc gọi hàm suông:** thêm test đọc ngược `audit_logs` sau
+khi gọi use-case thật (`test_prescription_flow.py`, `test_compliance_flow.py`) — đúng dạng bài học
+từ §7l: chỉ audit_logs sạch trên giấy không có nghĩa call site thật sự chạy tới. Cập nhật
+`_COVERED_ELSEWHERE`/`expected` trong 2 bộ test đóng ("mọi action đều có test") để bộ test không
+lặng lẽ hết còn đúng nữa.
+
+**4 cổng:** ruff sạch · mypy strict 212 file · import-linter 13/13 · pytest full suite exit 0.
+
+⚠️ **Còn treo, ghi rõ không giấu:** `sales`/`inventory`/`procurement`/`clinical`/`catalog` (5/9
+module) vẫn chưa có audit — không thuộc phạm vi đã duyệt phiên này, để riêng cho lần rà tiếp theo
+nếu sếp/GĐ quyết định mở rộng thêm.
 
 ---
 

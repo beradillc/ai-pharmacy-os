@@ -3,7 +3,9 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pharmacy_os.core.audit import AuditAction, SqlAlchemyAuditLogRepository
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.errors import NotFoundError, ValidationError
 from pharmacy_os.modules.compliance.application import (
@@ -127,3 +129,47 @@ async def test_get_tenant_config_unset_raises(
 ) -> None:
     with pytest.raises(NotFoundError):
         await compliance_service.get_tenant_config(ctx)
+
+
+# --- audit trail: the fact an inspection asks about second -------------------
+
+
+async def test_recording_a_controlled_entry_leaves_an_audit_row(
+    compliance_service: ComplianceService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Does not trust the call site to be wired — reads the table back."""
+    out = await compliance_service.record_controlled_entry(
+        _entry(
+            prescription_code="RX-001",
+            customer=CustomerDetailInput(patient_name="Trần Thị B", patient_address="1 Nguyễn Huệ"),
+        ),
+        ctx,
+    )
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        entries = await repo.list(
+            ctx.tenant_id, action=AuditAction.CONTROLLED_LEDGER_ENTRY_RECORDED
+        )
+        matching = [e for e in entries if e.target_id == str(out.id)]
+        assert len(matching) == 1
+        # The patient's name/address must not leak into the trail.
+        assert "Trần Thị B" not in str(matching[0].context)
+
+
+async def test_setting_tenant_config_leaves_an_audit_row(
+    compliance_service: ComplianceService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    await compliance_service.set_tenant_config(
+        SetTenantComplianceConfigInput(ma_co_so_ban_le="HCM-00123"), ctx
+    )
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        entries = await repo.list(ctx.tenant_id, action=AuditAction.TENANT_COMPLIANCE_CONFIG_SET)
+        matching = [e for e in entries if e.target_id == str(ctx.tenant_id)]
+        assert len(matching) == 1

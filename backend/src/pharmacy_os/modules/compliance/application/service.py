@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from uuid import UUID
 
+from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import NotFoundError, ValidationError
@@ -43,10 +44,12 @@ class ComplianceService:
         uow_factory: UowFactory,
         ledger_repo_factory: LedgerRepoFactory,
         config_repo_factory: ConfigRepoFactory,
+        audit: AuditLogger,
     ) -> None:
         self._uow_factory = uow_factory
         self._ledger_repo_factory = ledger_repo_factory
         self._config_repo_factory = config_repo_factory
+        self._audit = audit
 
     async def record_controlled_entry(
         self, data: RecordControlledEntryInput, ctx: RequestContext
@@ -102,6 +105,9 @@ class ComplianceService:
             await repo.add(entry)
             await uow.commit()
 
+        await self._record(
+            ctx, AuditAction.CONTROLLED_LEDGER_ENTRY_RECORDED, "controlled_ledger_entry", entry.id
+        )
         return ControlledLedgerEntryOutput.of(entry)
 
     async def get_ledger_entry(
@@ -138,6 +144,9 @@ class ComplianceService:
             await repo.upsert(config)
             await uow.commit()
 
+        await self._record(
+            ctx, AuditAction.TENANT_COMPLIANCE_CONFIG_SET, "tenant_compliance_config", ctx.tenant_id
+        )
         return TenantComplianceConfigOutput.of(config)
 
     async def get_tenant_config(self, ctx: RequestContext) -> TenantComplianceConfigOutput:
@@ -149,3 +158,17 @@ class ComplianceService:
         if config is None:
             raise NotFoundError(f"Chưa cấu hình mã cơ sở cho tenant {ctx.tenant_id}")
         return TenantComplianceConfigOutput.of(config)
+
+    async def _record(
+        self, ctx: RequestContext, action: AuditAction, target_type: str, target_id: UUID
+    ) -> None:
+        """Append one audit row — metadata only, never patient name/address content."""
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=action,
+                target_type=target_type,
+                target_id=str(target_id),
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+        )

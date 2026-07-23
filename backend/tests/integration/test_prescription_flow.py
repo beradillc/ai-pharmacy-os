@@ -2,7 +2,9 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pharmacy_os.core.audit import AuditAction, SqlAlchemyAuditLogRepository
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.errors import NotFoundError, ValidationError
 from pharmacy_os.core.events import DomainEvent, InMemoryEventBus
@@ -122,3 +124,46 @@ async def test_get_unknown_prescription_raises(
 ) -> None:
     with pytest.raises(NotFoundError):
         await prescription_service.get_prescription(uuid4(), ctx)
+
+
+# --- audit trail: the fact an inspection asks about first --------------------
+
+
+async def test_create_validate_dispense_each_leave_an_audit_row(
+    prescription_service: PrescriptionService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Does not trust the call sites to be wired — reads the table back."""
+    created = await prescription_service.create_prescription(_intake(), ctx)
+    await prescription_service.validate_prescription(created.id, ctx)
+    await prescription_service.dispense_prescription(created.id, ctx)
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        for action in (
+            AuditAction.PRESCRIPTION_CREATED,
+            AuditAction.PRESCRIPTION_APPROVED,
+            AuditAction.PRESCRIPTION_DISPENSED,
+        ):
+            entries = await repo.list(ctx.tenant_id, action=action)
+            matching = [e for e in entries if e.target_id == str(created.id)]
+            assert len(matching) == 1, f"{action} không thấy trong audit_logs"
+            assert matching[0].actor_user_id == ctx.user_id
+
+
+async def test_reject_leaves_an_audit_row(
+    prescription_service: PrescriptionService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    created = await prescription_service.create_prescription(_intake(), ctx)
+    await prescription_service.reject_prescription(created.id, "Chữ ký không rõ", ctx)
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        entries = await repo.list(ctx.tenant_id, action=AuditAction.PRESCRIPTION_REJECTED)
+        matching = [e for e in entries if e.target_id == str(created.id)]
+        assert len(matching) == 1
+        # The rejection reason itself must not leak into the trail.
+        assert "Chữ ký" not in str(matching[0].context)

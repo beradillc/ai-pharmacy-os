@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from uuid import UUID
 
+from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import NotFoundError, ValidationError
@@ -32,9 +33,12 @@ RepoFactory = Callable[[UnitOfWork, RequestContext], PrescriptionRepository]
 
 
 class PrescriptionService:
-    def __init__(self, uow_factory: UowFactory, repo_factory: RepoFactory) -> None:
+    def __init__(
+        self, uow_factory: UowFactory, repo_factory: RepoFactory, audit: AuditLogger
+    ) -> None:
         self._uow_factory = uow_factory
         self._repo_factory = repo_factory
+        self._audit = audit
 
     async def create_prescription(
         self, data: CreatePrescriptionInput, ctx: RequestContext
@@ -72,6 +76,7 @@ class PrescriptionService:
             await repo.add(rx)
             await uow.commit()
 
+        await self._record(ctx, AuditAction.PRESCRIPTION_CREATED, rx.id)
         return PrescriptionOutput.of(rx)
 
     async def validate_prescription(
@@ -97,6 +102,7 @@ class PrescriptionService:
             )
             await uow.commit()
 
+        await self._record(ctx, AuditAction.PRESCRIPTION_APPROVED, rx.id)
         return PrescriptionOutput.of(rx)
 
     async def reject_prescription(
@@ -118,6 +124,7 @@ class PrescriptionService:
             )
             await uow.commit()
 
+        await self._record(ctx, AuditAction.PRESCRIPTION_REJECTED, rx.id)
         return PrescriptionOutput.of(rx)
 
     async def dispense_prescription(
@@ -137,6 +144,7 @@ class PrescriptionService:
             uow.collect(PrescriptionDispensed(tenant_id=ctx.tenant_id, prescription_id=rx.id))
             await uow.commit()
 
+        await self._record(ctx, AuditAction.PRESCRIPTION_DISPENSED, rx.id)
         return PrescriptionOutput.of(rx)
 
     async def get_prescription(
@@ -154,3 +162,17 @@ class PrescriptionService:
         if rx is None:
             raise NotFoundError(f"Không tìm thấy đơn thuốc {prescription_id}")
         return rx
+
+    async def _record(
+        self, ctx: RequestContext, action: AuditAction, prescription_id: UUID
+    ) -> None:
+        """Append one audit row — metadata only, never diagnosis/dosage content."""
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=action,
+                target_type="prescription",
+                target_id=str(prescription_id),
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+        )

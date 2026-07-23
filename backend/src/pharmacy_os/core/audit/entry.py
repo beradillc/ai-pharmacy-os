@@ -61,6 +61,24 @@ class AuditAction(StrEnum):
     bare UUID with no foreign key.
     """
 
+    # --- prescription (cấp phát thuốc kê đơn — Luật Dược Điều 6.5.h) ---
+    PRESCRIPTION_CREATED = "PRESCRIPTION_CREATED"
+    PRESCRIPTION_APPROVED = "PRESCRIPTION_APPROVED"
+    """Pharmacist validation — the act the statute reserves to a pharmacist."""
+
+    PRESCRIPTION_REJECTED = "PRESCRIPTION_REJECTED"
+    PRESCRIPTION_DISPENSED = "PRESCRIPTION_DISPENSED"
+    """Handover of a prescription-only medicine — the act an inspection asks about
+    first: "ai đã cấp phát đơn thuốc này"."""
+
+    # --- compliance (sổ thuốc kiểm soát đặc biệt — TT20/2017, QĐ540) ---
+    CONTROLLED_LEDGER_ENTRY_RECORDED = "CONTROLLED_LEDGER_ENTRY_RECORDED"
+    """A line written to the sổ thuốc kiểm soát — the second thing an inspection asks
+    about: "ai đã bán lô thuốc hướng thần/gây nghiện này"."""
+
+    TENANT_COMPLIANCE_CONFIG_SET = "TENANT_COMPLIANCE_CONFIG_SET"
+    """Mã cơ sở do Cục QLD cấp changed — a low-frequency admin act worth a trail."""
+
 
 @dataclass(frozen=True, slots=True)
 class AuditEntry:

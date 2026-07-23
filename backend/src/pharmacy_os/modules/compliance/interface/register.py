@@ -11,6 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.di import Container
@@ -40,6 +41,8 @@ def register(container: Container, get_context: ContextDep) -> APIRouter:
     ) -> SqlAlchemyTenantComplianceConfigRepository:
         return SqlAlchemyTenantComplianceConfigRepository(uow.session, ctx)
 
-    service = ComplianceService(uow_factory, ledger_repo_factory, config_repo_factory)
+    service = ComplianceService(
+        uow_factory, ledger_repo_factory, config_repo_factory, container.resolve(AuditLogger)
+    )
     container.register_instance(ComplianceService, service)
     return build_router(get_context)
