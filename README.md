@@ -15,9 +15,9 @@
 
 ---
 
-## 1. AI Pharmacy OS là gì?
+## 1. BERAS là gì?
 
-Một nền tảng quản lý nhà thuốc lấy AI làm lõi, biến mỗi nghiệp vụ (bán hàng, kê đơn, nhập kho, tư vấn) thành luồng có AI hỗ trợ ra quyết định **an toàn dược lý** và **tối ưu vận hành** — trong khi vẫn giữ nguyên tắc **AI khuyến nghị, con người quyết định**.
+Sổ điện tử quản lý nhà thuốc trên nền Cloud/SaaS: mọi nghiệp vụ hằng ngày (bán hàng, kê đơn, nhập kho, tư vấn) được ghi lại thành một sổ sách điện tử **chứng minh được tuân thủ khi thanh tra** — ai đã làm gì, lúc nào, trên căn cứ pháp lý nào. AI tham gia như lớp hỗ trợ **an toàn dược lý** và **tối ưu vận hành** trên nền sổ đó, luôn theo nguyên tắc **AI khuyến nghị, con người quyết định**.
 
 ### Năng lực cốt lõi
 - 🧾 **POS offline-first** — bán hàng nhanh, hoạt động cả khi mất mạng, đồng bộ idempotent.
