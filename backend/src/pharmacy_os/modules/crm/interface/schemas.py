@@ -13,6 +13,7 @@ from pharmacy_os.modules.crm.application.dto import (
     AddConditionInput,
     ConsentOutput,
     CreateCustomerInput,
+    CustomerDataExport,
     CustomerOutput,
     RecordConsentInput,
 )
@@ -85,6 +86,22 @@ class ConsentResponse(BaseModel):
             recorded_at=out.recorded_at,
             actor_user_id=out.actor_user_id,
             client_ip=out.client_ip,
+        )
+
+
+class CustomerExportResponse(BaseModel):
+    """The data-subject export, with the provenance line that makes it traceable."""
+
+    customer: CustomerResponse
+    exported_at: datetime
+    exported_by: UUID
+
+    @classmethod
+    def of(cls, out: CustomerDataExport) -> CustomerExportResponse:
+        return cls(
+            customer=CustomerResponse.of(out.customer),
+            exported_at=out.exported_at,
+            exported_by=out.exported_by,
         )
 
 

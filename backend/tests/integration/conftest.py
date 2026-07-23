@@ -129,6 +129,7 @@ def ctx() -> RequestContext:
                 "crm.consent.manage",
                 "crm.sensitive.read",
                 "crm.sensitive.write",
+                "crm.erase",
                 "procurement.supplier.create",
                 "procurement.supplier.read",
                 "procurement.po.create",

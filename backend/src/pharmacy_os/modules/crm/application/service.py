@@ -33,6 +33,7 @@ from pharmacy_os.modules.crm.application.dto import (
     AddAllergyInput,
     AddConditionInput,
     CreateCustomerInput,
+    CustomerDataExport,
     CustomerOutput,
     RecordConsentInput,
 )
@@ -208,6 +209,55 @@ class CrmService:
             repo = self._repo_factory(uow, ctx)
             customers = await repo.list(limit=limit, offset=offset)
         return [CustomerOutput.of(c, include_sensitive=False) for c in customers]
+
+    async def export_customer_data(
+        self, customer_id: UUID, ctx: RequestContext
+    ) -> CustomerDataExport:
+        """Everything held about one customer (Luật 91/2025 Điều 13-14).
+
+        Guarded by ``crm.sensitive.read`` because the export contains the health data
+        by definition — a right of access exercised at the counter is a pharmacist's
+        job, not a cashier's. Recorded as a sensitive read: handing the file over is
+        at least as reportable as looking at it.
+
+        Withheld consent is **not** a reason to refuse: the right of access is not
+        conditional on consent to processing, and a customer who withdrew is exactly
+        the one likely to ask what is still held. The export therefore always
+        includes the health data, and always leaves an audit row.
+        """
+        require_permission(ctx, SENSITIVE_READ)
+        customer = await self._get_or_404(customer_id, ctx)
+        await self._record(ctx, AuditAction.CUSTOMER_SENSITIVE_READ, customer.id, reason="export")
+        return CustomerDataExport(
+            customer=CustomerOutput.of(customer, include_sensitive=True),
+            exported_at=datetime.now(UTC),
+            exported_by=ctx.user_id,
+        )
+
+    async def anonymise_customer(self, customer_id: UUID, ctx: RequestContext) -> CustomerOutput:
+        """Strip identity and health data, keep the dispensing lines (duyệt Q2).
+
+        This is the erasure request of Luật 91/2025 Điều 13-14, resolved against the
+        GPP TT02/2018 I-1a.II.4.d duty to retain records — see
+        :meth:`Customer.anonymise` for why neither statute is chosen over the other.
+
+        Deliberately a **separate, explicit** use-case rather than a side effect of
+        revoking consent: it cannot be undone, so between "the customer changed their
+        mind" and "the data is gone" there is always someone pressing this.
+        """
+        require_permission(ctx, "crm.erase")
+        customer = await self._get_or_404(customer_id, ctx)
+        if customer.is_anonymised:
+            # Idempotent, and no second audit row: nothing happened this time.
+            return CustomerOutput.of(customer)
+
+        customer.anonymise(datetime.now(UTC))
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            await repo.update(customer)
+            await uow.commit()
+        await self._record(ctx, AuditAction.CUSTOMER_ERASED, customer.id)
+        return CustomerOutput.of(customer)
 
     async def allergy_severities_for_safety_check(
         self, customer_id: UUID, ctx: RequestContext

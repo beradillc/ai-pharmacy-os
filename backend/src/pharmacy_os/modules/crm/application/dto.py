@@ -26,6 +26,21 @@ class CreateCustomerInput:
 
 
 @dataclass(slots=True)
+class CustomerDataExport:
+    """Everything held about one customer, for the data-subject right of access.
+
+    Luật 91/2025 Điều 13-14 gives the subject the right to obtain their data; this is
+    the machine-readable answer. ``exported_by``/``exported_at`` are part of the
+    document on purpose — a copy of someone's medical record circulating without a
+    provenance line is worse than none.
+    """
+
+    customer: CustomerOutput
+    exported_at: datetime
+    exported_by: UUID
+
+
+@dataclass(slots=True)
 class RecordConsentInput:
     """One consent decision taken at the counter on the customer's behalf."""
 

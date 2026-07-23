@@ -38,6 +38,8 @@ CRM_PERMISSIONS = frozenset(
         # touching the customer record (NĐ356 Điều 4.2).
         "crm.sensitive.read",
         "crm.sensitive.write",
+        # Erasure is destructive and irreversible; kept away from branch staff.
+        "crm.erase",
     }
 )
 COMPLIANCE_PERMISSIONS = frozenset(
@@ -63,6 +65,10 @@ PROCUREMENT_PERMISSIONS = frozenset(
     }
 )
 AUDIT_PERMISSIONS = frozenset({"audit.read"})
+PRIVACY_PERMISSIONS = frozenset({"privacy.dpia.read"})
+"""Reading the processing record: the input to a tenant's DPIA filing, so it belongs
+with whoever answers to the regulator, not with counter staff."""
+
 """Reading the trail is itself privileged: it names who touched patient data."""
 
 IAM_PERMISSIONS = frozenset(
@@ -87,6 +93,7 @@ ALL_PERMISSIONS: frozenset[str] = (
     | PROCUREMENT_PERMISSIONS
     | IAM_PERMISSIONS
     | AUDIT_PERMISSIONS
+    | PRIVACY_PERMISSIONS
 )
 
 SYSTEM_ADMIN = "system_admin"
@@ -124,6 +131,7 @@ _CHAIN_PHARMACIST_PERMISSIONS = (
     | COMPLIANCE_PERMISSIONS
     | PROCUREMENT_PERMISSIONS
     | AUDIT_PERMISSIONS
+    | PRIVACY_PERMISSIONS
     | {"iam.user.read", "iam.role.read"}
 )
 
@@ -137,7 +145,9 @@ _BRANCH_PHARMACIST_PERMISSIONS = (
     | SALES_PERMISSIONS
     | RX_PERMISSIONS
     | (CLINICAL_PERMISSIONS - {"clinical.settings.write"})
-    | CRM_PERMISSIONS
+    # Erasure is irreversible and answers a legal request, not a clinical need:
+    # it stays with the chain, like the other business-level switches.
+    | (CRM_PERMISSIONS - {"crm.erase"})
     | (COMPLIANCE_PERMISSIONS - {"compliance.config.write"})
     | (PROCUREMENT_PERMISSIONS - {"procurement.supplier.create"})
 )

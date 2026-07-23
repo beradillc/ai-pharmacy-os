@@ -21,6 +21,7 @@ from pharmacy_os.api.v1.cross_module import (
 )
 from pharmacy_os.api.v1.health import router as health_router
 from pharmacy_os.api.v1.national_sync import wire_national_sync
+from pharmacy_os.api.v1.privacy import router as privacy_router
 from pharmacy_os.core.di import Container
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.catalog.interface import register as register_catalog
@@ -41,8 +42,9 @@ def build_api_router(container: Container) -> APIRouter:
     # module's router depends on the context its tokens carry.
     for iam_router in register_iam(container, get_context):
         api.include_router(iam_router)
-    # Audit trail: kernel infrastructure, owned by no business module.
+    # Audit trail + privacy record: kernel infrastructure, owned by no business module.
     api.include_router(audit_router)
+    api.include_router(privacy_router)
     api.include_router(register_catalog(container, get_context))
     api.include_router(register_inventory(container, get_context))
     api.include_router(register_prescription(container, get_context))

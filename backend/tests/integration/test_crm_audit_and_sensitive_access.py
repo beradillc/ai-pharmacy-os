@@ -25,7 +25,7 @@ from pharmacy_os.modules.crm.application import (
     CrmService,
     RecordConsentInput,
 )
-from pharmacy_os.modules.crm.domain import AllergySeverity, ConsentPurpose
+from pharmacy_os.modules.crm.domain import ANONYMISED_NAME, AllergySeverity, ConsentPurpose
 
 
 @pytest.fixture
@@ -401,3 +401,144 @@ async def test_entries_are_scoped_to_the_acting_tenant(
     await _consented_customer(crm_service, ctx)
     assert await audit_repo.count(uuid4()) == 0
     assert await audit_repo.count(ctx.tenant_id) >= 1
+
+
+# --- data-subject rights (Luật 91/2025 Điều 13-14) ---------------------------
+
+
+async def test_export_returns_everything_with_a_provenance_line(
+    crm_service: CrmService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    ingredient = await _ingredient(session_factory)
+    customer_id = await _consented_customer(crm_service, ctx)
+    await crm_service.add_allergy(
+        customer_id,
+        AddAllergyInput(ingredient_id=ingredient.id, severity=AllergySeverity.SEVERE),
+        ctx,
+    )
+
+    export = await crm_service.export_customer_data(customer_id, ctx)
+
+    assert export.customer.full_name == "Nguyễn Văn A"
+    assert len(export.customer.allergies) == 1
+    assert len(export.customer.consents) == 1
+    assert export.exported_by == ctx.user_id
+    assert export.exported_at.tzinfo is not None
+
+
+async def test_export_is_audited_as_a_sensitive_read(
+    crm_service: CrmService,
+    ctx: RequestContext,
+    audit_repo: SqlAlchemyAuditLogRepository,
+) -> None:
+    customer_id = await _consented_customer(crm_service, ctx)
+    await crm_service.export_customer_data(customer_id, ctx)
+
+    reads = [
+        e
+        for e in await audit_repo.list(ctx.tenant_id)
+        if e.action is AuditAction.CUSTOMER_SENSITIVE_READ
+    ]
+    assert len(reads) == 1
+    assert reads[0].context["reason"] == "export"
+
+
+async def test_export_still_works_after_consent_is_withdrawn(
+    crm_service: CrmService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """The right of access does not depend on consent to processing — and the person
+    who withdrew is exactly the one likely to ask what is still held."""
+    ingredient = await _ingredient(session_factory)
+    customer_id = await _consented_customer(crm_service, ctx)
+    await crm_service.add_allergy(
+        customer_id,
+        AddAllergyInput(ingredient_id=ingredient.id, severity=AllergySeverity.MILD),
+        ctx,
+    )
+    await crm_service.record_consent(
+        customer_id,
+        RecordConsentInput(purpose=ConsentPurpose.HEALTH, granted=False, terms_version="v1"),
+        ctx,
+    )
+
+    export = await crm_service.export_customer_data(customer_id, ctx)
+    assert len(export.customer.allergies) == 1
+
+
+async def test_export_needs_the_sensitive_permission(
+    crm_service: CrmService, ctx: RequestContext
+) -> None:
+    customer_id = await _consented_customer(crm_service, ctx)
+    with pytest.raises(PermissionDeniedError):
+        await crm_service.export_customer_data(customer_id, _ctx_with(ctx, "crm.read"))
+
+
+async def test_anonymise_strips_identity_and_health_data_in_the_database(
+    crm_service: CrmService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    ingredient = await _ingredient(session_factory)
+    customer_id = await _consented_customer(crm_service, ctx)
+    await crm_service.add_allergy(
+        customer_id,
+        AddAllergyInput(ingredient_id=ingredient.id, severity=AllergySeverity.SEVERE),
+        ctx,
+    )
+    await crm_service.add_condition(customer_id, AddConditionInput(condition_code="E11"), ctx)
+
+    await crm_service.anonymise_customer(customer_id, ctx)
+
+    # Read back through a fresh query: the aggregate in memory being clean proves
+    # nothing about the rows, and the id-diff update path is insert-only by default.
+    reloaded = await crm_service.get_customer(customer_id, ctx)
+    assert reloaded.full_name == ANONYMISED_NAME
+    assert reloaded.phone is None
+    assert reloaded.allergies == []
+    assert reloaded.conditions == []
+    assert reloaded.anonymised_at is not None
+
+
+async def test_anonymise_is_audited_and_idempotent(
+    crm_service: CrmService,
+    ctx: RequestContext,
+    audit_repo: SqlAlchemyAuditLogRepository,
+) -> None:
+    customer_id = await _consented_customer(crm_service, ctx)
+    await crm_service.anonymise_customer(customer_id, ctx)
+    await crm_service.anonymise_customer(customer_id, ctx)
+
+    actions = await _actions(audit_repo, ctx.tenant_id)
+    # Second call changed nothing, so it claims nothing happened.
+    assert actions.count(AuditAction.CUSTOMER_ERASED) == 1
+
+
+async def test_anonymise_needs_the_erase_permission(
+    crm_service: CrmService, ctx: RequestContext
+) -> None:
+    """Irreversible, so it is kept away from branch staff."""
+    customer_id = await _consented_customer(crm_service, ctx)
+    weak = _ctx_with(ctx, "crm.read", "crm.sensitive.read", "crm.sensitive.write")
+    with pytest.raises(PermissionDeniedError):
+        await crm_service.anonymise_customer(customer_id, weak)
+
+
+async def test_the_safety_check_finds_nothing_after_anonymisation(
+    crm_service: CrmService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    ingredient = await _ingredient(session_factory)
+    customer_id = await _consented_customer(crm_service, ctx)
+    await crm_service.add_allergy(
+        customer_id,
+        AddAllergyInput(ingredient_id=ingredient.id, severity=AllergySeverity.SEVERE),
+        ctx,
+    )
+    await crm_service.anonymise_customer(customer_id, ctx)
+
+    assert await crm_service.allergy_severities_for_safety_check(customer_id, ctx) == {}

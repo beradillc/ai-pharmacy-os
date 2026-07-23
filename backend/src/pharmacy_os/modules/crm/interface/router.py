@@ -13,6 +13,7 @@ from pharmacy_os.modules.crm.interface.schemas import (
     AddAllergyRequest,
     AddConditionRequest,
     CreateCustomerRequest,
+    CustomerExportResponse,
     CustomerResponse,
     RecordConsentRequest,
 )
@@ -27,6 +28,28 @@ def _service(request: Request) -> CrmService:
 
 def build_router(get_context: ContextDep) -> APIRouter:
     router = APIRouter(prefix="/customers", tags=["crm"])
+
+    @router.get("/{customer_id}/export", response_model=CustomerExportResponse)
+    async def export_customer(
+        customer_id: UUID,
+        service: CrmService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> CustomerExportResponse:
+        """Right of access (Luật 91/2025 Điều 13-14). Requires ``crm.sensitive.read``."""
+        return CustomerExportResponse.of(await service.export_customer_data(customer_id, ctx))
+
+    @router.post("/{customer_id}/anonymise", response_model=CustomerResponse)
+    async def anonymise_customer(
+        customer_id: UUID,
+        service: CrmService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> CustomerResponse:
+        """Right of erasure, resolved as de-identification (duyệt Q2).
+
+        Not ``DELETE``: the row survives, carrying the dispensing lines GPP requires
+        be kept. Calling it ``DELETE`` would promise something the law forbids doing.
+        """
+        return CustomerResponse.of(await service.anonymise_customer(customer_id, ctx))
 
     @router.post(
         "/{customer_id}/consents",
