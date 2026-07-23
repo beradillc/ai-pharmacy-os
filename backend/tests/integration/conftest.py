@@ -183,6 +183,7 @@ def sales_service(
     return SalesService(
         uow_factory,
         lambda uow, c: SqlAlchemySalesRepository(uow.session, c),
+        audit=AuditLogger(session_factory),
     )
 
 

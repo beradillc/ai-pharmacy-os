@@ -9,6 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.di import Container
@@ -34,6 +35,8 @@ def register(
     def repo_factory(uow: UnitOfWork, ctx: RequestContext) -> SqlAlchemySalesRepository:
         return SqlAlchemySalesRepository(uow.session, ctx)
 
-    service = SalesService(uow_factory, repo_factory, drug_info, prescription_info)
+    service = SalesService(
+        uow_factory, repo_factory, drug_info, prescription_info, container.resolve(AuditLogger)
+    )
     container.register_instance(SalesService, service)
     return build_router(get_context)

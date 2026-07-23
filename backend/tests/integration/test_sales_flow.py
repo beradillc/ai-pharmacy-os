@@ -2,7 +2,9 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pharmacy_os.core.audit import AuditAction, SqlAlchemyAuditLogRepository
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.errors import NotFoundError, ValidationError
 from pharmacy_os.core.events import DomainEvent, InMemoryEventBus
@@ -104,3 +106,37 @@ async def test_etc_with_prescription_ref_allowed(
 async def test_get_unknown_sale_raises(sales_service: SalesService, ctx: RequestContext) -> None:
     with pytest.raises(NotFoundError):
         await sales_service.get_sale(uuid4(), ctx)
+
+
+# --- audit trail: the fact an inspection asks about ("ai đã bán thuốc này") ----
+
+
+async def test_complete_sale_leaves_an_audit_row(
+    sales_service: SalesService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Does not trust the call sites to be wired — reads the table back."""
+    out = await sales_service.complete_sale(_sale("audit-1"), ctx)
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        entries = await repo.list(ctx.tenant_id, action=AuditAction.SALE_COMPLETED)
+        matching = [e for e in entries if e.target_id == str(out.id)]
+        assert len(matching) == 1
+        assert matching[0].actor_user_id == ctx.user_id
+
+
+async def test_idempotent_resync_leaves_a_single_audit_row(
+    sales_service: SalesService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    first = await sales_service.complete_sale(_sale("audit-dup"), ctx)
+    await sales_service.complete_sale(_sale("audit-dup"), ctx)  # retried sync
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        entries = await repo.list(ctx.tenant_id, action=AuditAction.SALE_COMPLETED)
+        matching = [e for e in entries if e.target_id == str(first.id)]
+        assert len(matching) == 1

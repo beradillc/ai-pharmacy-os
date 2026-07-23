@@ -79,6 +79,11 @@ class AuditAction(StrEnum):
     TENANT_COMPLIANCE_CONFIG_SET = "TENANT_COMPLIANCE_CONFIG_SET"
     """Mã cơ sở do Cục QLD cấp changed — a low-frequency admin act worth a trail."""
 
+    # --- sales (bán thuốc — Luật Dược Điều 6.5.h, cùng lý do PRESCRIPTION_DISPENSED) ---
+    SALE_COMPLETED = "SALE_COMPLETED"
+    """A sale was finalised — the third thing an inspection asks about: "ai đã bán
+    thuốc này, khi nào". Recorded once per ``client_uuid`` (not on idempotent replay)."""
+
 
 @dataclass(frozen=True, slots=True)
 class AuditEntry:

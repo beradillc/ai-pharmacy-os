@@ -58,6 +58,9 @@
       `POST /sales`, hàng đợi offline Dexie tự đồng bộ khi có mạng lại. Xem `frontend/README.md`. Chưa
       click-through trình duyệt thật (môi trường không có browser tool).
 - [ ] **Nợ Sprint 4:** persist trả hàng (`register_return`) ở tầng use-case + trả tồn (cross-module) — domain đã có, use-case/khôi phục tồn chưa làm (ngoài DoD lần này).
+- [x] Audit cho `sales` (1 action: `SALE_COMPLETED`, ghi 1 lần/`client_uuid`, không nhân đôi khi
+      sync lại) — **XONG 2026-07-23** (PROJECT_STATE §7v). **Còn lại 4/9 module chưa có audit:**
+      `inventory`/`procurement`/`clinical`/`catalog` (GĐ chọn thứ tự tiếp theo).
 
 ### Compliance — kéo sớm từ Sprint 7 *(C.1–C.5 XONG, ĐÃ ĐÓNG — PROJECT_STATE §7b; router mount 2026-07-23 §7q)*
 - [x] Spec pháp lý khóa: [docs/13_COMPLIANCE_SPEC.md](docs/13_COMPLIANCE_SPEC.md) đối chiếu văn bản gốc

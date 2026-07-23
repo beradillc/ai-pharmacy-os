@@ -15,6 +15,7 @@ from collections.abc import Callable
 from decimal import Decimal
 from uuid import UUID
 
+from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import ConflictError, NotFoundError, ValidationError
@@ -54,11 +55,13 @@ class SalesService:
         repo_factory: RepoFactory,
         drug_info: DrugInfoProvider | None = None,
         prescription_info: PrescriptionInfoProvider | None = None,
+        audit: AuditLogger | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._repo_factory = repo_factory
         self._drug_info = drug_info
         self._prescription_info = prescription_info
+        self._audit = audit
 
     async def complete_sale(self, data: CreateSaleInput, ctx: RequestContext) -> SaleOutput:
         """Record and finalise a sale for the caller's tenant/branch.
@@ -129,7 +132,22 @@ class SalesService:
                     return replay
                 raise ConflictError("Không thể ghi nhận đơn bán") from exc
 
+        await self._record_sale_completed(ctx, order.id)
         return SaleOutput.of(order)
+
+    async def _record_sale_completed(self, ctx: RequestContext, order_id: UUID) -> None:
+        """Append one audit row — metadata only, never line items/prices."""
+        if self._audit is None:
+            return
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=AuditAction.SALE_COMPLETED,
+                target_type="sale",
+                target_id=str(order_id),
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+        )
 
     async def _verify_prescription_ref(self, order: SalesOrder, ctx: RequestContext) -> None:
         """Verify an ETC order's ``prescription_ref`` is a real, sale-authorising Rx.
