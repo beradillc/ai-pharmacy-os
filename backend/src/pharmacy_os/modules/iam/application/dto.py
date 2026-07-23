@@ -16,6 +16,11 @@ class LoginInput:
     branch_id: UUID | None = None
     """Omitted when the actor reaches exactly one branch; required otherwise."""
 
+    client_ip: str | None = None
+    """Filled by the API layer, never by the client — recorded on the audit entry so
+    a burst of failed logins can be traced to an origin. Optional so service-level
+    callers (tests, CLI) need not fake one."""
+
 
 @dataclass(slots=True)
 class BranchOutput:

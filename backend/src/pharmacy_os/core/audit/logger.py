@@ -1,55 +1,29 @@
-"""Minimal audit logger (Sprint 2).
+"""Audit logger — emits every recorded action to the structured log stream.
 
-For now audit entries are emitted to the structured log stream. Sprint 7
-persists them to the append-only ``audit_logs`` table (see docs/03).
+Persistence to the append-only ``audit_logs`` table lands in the next step; the
+shape recorded here is already the final one, so wiring the repository in will not
+touch a single call site.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
-from uuid import UUID
-
 import structlog
 
-from pharmacy_os.core.context import RequestContext
+from pharmacy_os.core.audit.entry import AuditEntry
 
 _log = structlog.get_logger("audit")
-
-
-@dataclass(frozen=True, slots=True)
-class AuditEntry:
-    actor_id: UUID
-    tenant_id: UUID
-    action: str
-    entity_type: str
-    entity_id: str
-    before: dict[str, Any] | None = None
-    after: dict[str, Any] | None = None
 
 
 class AuditLogger:
     def record(self, entry: AuditEntry) -> None:
         _log.info(
             "audit",
-            actor_id=str(entry.actor_id),
+            audit_id=str(entry.id),
             tenant_id=str(entry.tenant_id),
-            action=entry.action,
-            entity_type=entry.entity_type,
-            entity_id=entry.entity_id,
-            before=entry.before,
-            after=entry.after,
-        )
-
-    def record_action(
-        self, context: RequestContext, action: str, entity_type: str, entity_id: str
-    ) -> None:
-        self.record(
-            AuditEntry(
-                actor_id=context.user_id,
-                tenant_id=context.tenant_id,
-                action=action,
-                entity_type=entity_type,
-                entity_id=entity_id,
-            )
+            actor_user_id=str(entry.actor_user_id) if entry.actor_user_id else None,
+            action=entry.action.value,
+            target_type=entry.target_type,
+            target_id=entry.target_id,
+            occurred_at=entry.occurred_at.isoformat(),
+            context=entry.context,
         )

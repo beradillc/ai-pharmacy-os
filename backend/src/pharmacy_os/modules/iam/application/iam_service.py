@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from pharmacy_os.core.audit import AuditEntry, AuditLogger
+from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.errors import ConflictError, NotFoundError
 from pharmacy_os.core.errors import ValidationError as AppValidationError
@@ -82,7 +82,7 @@ class IamService:
             uow.collect(UserRegistered(tenant_id=ctx.tenant_id, user_id=user.id, email=user.email))
             await uow.commit()
 
-        self._record(ctx, "user_created", "user", str(user.id))
+        self._record(ctx, AuditAction.USER_CREATED, "user", str(user.id))
         return UserOutput.of(user)
 
     async def list_users(
@@ -124,7 +124,12 @@ class IamService:
                 uow.collect(UserDeactivated(tenant_id=ctx.tenant_id, user_id=user.id))
             await uow.commit()
 
-        self._record(ctx, "user_activated" if active else "user_deactivated", "user", str(user.id))
+        self._record(
+            ctx,
+            AuditAction.USER_ACTIVATED if active else AuditAction.USER_DEACTIVATED,
+            "user",
+            str(user.id),
+        )
         return UserOutput.of(user)
 
     async def reset_password(self, user_id: UUID, new_password: str, ctx: RequestContext) -> None:
@@ -144,7 +149,7 @@ class IamService:
             await repos.users.update(user)
             await repos.sessions.revoke_all_for_user(user.id, now)
             await uow.commit()
-        self._record(ctx, "password_reset", "user", str(user_id))
+        self._record(ctx, AuditAction.PASSWORD_RESET, "user", str(user_id))
 
     # -- roles ---------------------------------------------------------------
 
@@ -204,7 +209,7 @@ class IamService:
             )
             await uow.commit()
 
-        self._record(ctx, "role_granted", "user_role", str(assignment.id))
+        self._record(ctx, AuditAction.ROLE_GRANTED, "user_role", str(assignment.id))
         return RoleAssignmentOutput.of(assignment, role.code)
 
     async def revoke_role(self, user_id: UUID, assignment_id: UUID, ctx: RequestContext) -> None:
@@ -235,7 +240,7 @@ class IamService:
                 )
             )
             await uow.commit()
-        self._record(ctx, "role_revoked", "user_role", str(assignment_id))
+        self._record(ctx, AuditAction.ROLE_REVOKED, "user_role", str(assignment_id))
 
     # -- bootstrap -----------------------------------------------------------
 
@@ -335,13 +340,15 @@ class IamService:
             raise NotFoundError("Không tìm thấy chi nhánh")
         return branch
 
-    def _record(self, ctx: RequestContext, action: str, entity_type: str, entity_id: str) -> None:
+    def _record(
+        self, ctx: RequestContext, action: AuditAction, target_type: str, target_id: str
+    ) -> None:
         self._audit.record(
             AuditEntry(
-                actor_id=ctx.user_id,
+                actor_user_id=ctx.user_id,
                 tenant_id=ctx.tenant_id,
                 action=action,
-                entity_type=entity_type,
-                entity_id=entity_id,
-            )
+                target_type=target_type,
+                target_id=target_id,
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
         )

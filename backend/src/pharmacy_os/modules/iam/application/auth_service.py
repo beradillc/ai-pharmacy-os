@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from pharmacy_os.core.audit import AuditEntry, AuditLogger
+from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.errors import NotFoundError, PermissionDeniedError, UnauthenticatedError
 from pharmacy_os.core.errors import ValidationError as AppValidationError
@@ -113,7 +113,11 @@ class AuthService:
                 locked = user.register_failed_login(now)
                 await repos.users.update(user)
                 await uow.commit()
-                self._record(user, "login_failed_locked" if locked else "login_failed")
+                # Two separate facts: the attempt, and the lock it may have caused.
+                # Emitting only the lock would lose the four attempts before it.
+                self._record(user, AuditAction.LOGIN_FAILED, data.client_ip)
+                if locked:
+                    self._record(user, AuditAction.ACCOUNT_LOCKED, data.client_ip)
                 raise UnauthenticatedError("Email hoặc mật khẩu không đúng")
 
             access = await self._load_access(repos, user)
@@ -127,7 +131,7 @@ class AuthService:
             output, _ = await self._issue(repos, user, branch, permissions, access, now)
             await uow.commit()
 
-        self._record(user, "login_succeeded")
+        self._record(user, AuditAction.LOGIN_SUCCESS, data.client_ip, branch_id=branch.id)
         return output
 
     async def refresh(self, refresh_token: str, *, branch_id: UUID | None = None) -> SessionOutput:
@@ -152,11 +156,12 @@ class AuthService:
                 await uow.commit()
                 self._audit.record(
                     AuditEntry(
-                        actor_id=session.user_id,
+                        actor_user_id=session.user_id,
                         tenant_id=session.tenant_id,
-                        action="refresh_token_reused",
-                        entity_type="refresh_token",
-                        entity_id=str(session.id),
+                        action=AuditAction.TOKEN_REPLAY_DETECTED,
+                        target_type="refresh_token",
+                        target_id=str(session.id),
+                        context={"branch_id": str(session.branch_id)},
                     )
                 )
                 raise UnauthenticatedError("Phiên đăng nhập đã bị thu hồi, vui lòng đăng nhập lại")
@@ -220,7 +225,7 @@ class AuthService:
             await repos.users.update(user)
             await repos.sessions.revoke_all_for_user(user.id, now)
             await uow.commit()
-        self._record(user, "password_changed")
+        self._record(user, AuditAction.PASSWORD_CHANGED, None, branch_id=ctx.branch_id)
 
     # -- helpers -------------------------------------------------------------
 
@@ -306,13 +311,23 @@ class AuthService:
         )
         return output, session
 
-    def _record(self, user: User, action: str) -> None:
+    def _record(
+        self,
+        user: User,
+        action: AuditAction,
+        client_ip: str | None,
+        *,
+        branch_id: UUID | None = None,
+    ) -> None:
         self._audit.record(
             AuditEntry(
-                actor_id=user.id,
+                actor_user_id=user.id,
                 tenant_id=user.tenant_id,
                 action=action,
-                entity_type="user",
-                entity_id=str(user.id),
+                target_type="user",
+                target_id=str(user.id),
+            ).with_context(
+                client_ip=client_ip,
+                branch_id=str(branch_id) if branch_id is not None else None,
             )
         )

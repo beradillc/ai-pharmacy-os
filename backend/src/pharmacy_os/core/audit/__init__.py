@@ -1,5 +1,7 @@
 """Immutable audit logging of sensitive actions."""
 
-from pharmacy_os.core.audit.logger import AuditEntry, AuditLogger
+from pharmacy_os.core.audit.entry import AuditAction, AuditEntry
+from pharmacy_os.core.audit.logger import AuditLogger
+from pharmacy_os.core.audit.ports import AuditLogRepository
 
-__all__ = ["AuditEntry", "AuditLogger"]
+__all__ = ["AuditAction", "AuditEntry", "AuditLogRepository", "AuditLogger"]

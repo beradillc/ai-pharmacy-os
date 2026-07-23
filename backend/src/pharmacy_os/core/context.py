@@ -17,5 +17,13 @@ class RequestContext:
     user_id: UUID
     permissions: frozenset[str] = field(default_factory=frozenset)
 
+    client_ip: str | None = None
+    """Origin of the request, filled by the API layer for the audit trail only.
+
+    Optional and defaulted so service-level callers and tests need not supply one,
+    and so it can never be mistaken for an authorisation input — nothing branches
+    on it.
+    """
+
     def has(self, permission: str) -> bool:
         return permission in self.permissions
