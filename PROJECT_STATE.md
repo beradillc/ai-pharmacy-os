@@ -917,6 +917,84 @@ bền thay best-effort reconciliation; (5) API tra cứu/resolve `stock_reconcil
 
 ---
 
+## 7n. ✅ CHỐT PHIÊN 2026-07-23 (Opus) — ĐỌC MỤC NÀY TRƯỚC KHI LÀM GÌ Ở PHIÊN SAU
+
+> **Trạng thái khi đóng phiên (đã xác nhận bằng lệnh, không tin tài liệu):**
+> `docker compose ps` postgres+redis **healthy** · `alembic current` = **`0015_customer_consents`
+> (head)** · `git status` **sạch** · ruff sạch · mypy strict **210 file** · import-linter **13/0** ·
+> pytest **560 passed**. **20 commit** trong phiên, từ `3bc148f` đến `7ae3947`.
+
+### Phiên này làm được gì
+
+| Việc | Kết quả | Mục chi tiết |
+|------|---------|--------------|
+| **Module `iam` thật** (thay dev-header) | ✅ XONG 4/4 bước | §7k |
+| **`audit_logs` persist** (gỡ nợ F8) | ✅ XONG 3/3 bước | §7l |
+| **Hồ sơ sức khỏe KH** qua cổng `docs/14` | 🟡 Bước 0-3 xong, **Bước 4 còn 5 việc** | §7m |
+| **Thương hiệu BERAS + nguyên tắc UI** | ✅ `docs/16_BRAND_UI_GUIDE.md` | docs/16 |
+
+### 🔜 Phiên sau bắt đầu từ đâu — theo đúng thứ tự này
+
+1. **Đóng Bước 4 của Hồ sơ sức khỏe KH** (§7m có tên file cụ thể cho cả 5 việc). Nhỏ, cơ học,
+   không thiết kế mới, không migration, không cross-module. **Cẩn thận cái bẫy đã ghi ở §7m mục 2:
+   test e2e thu ngân đang khẳng định 403, nếu quên sửa thì test vẫn xanh.**
+2. **Mount router `compliance`** — module đã code xong sổ thuốc kiểm soát + liên thông nhưng chưa
+   có mặt HTTP nào. Đây là việc **vài phút** đang chặn cả một trụ cột thương hiệu (docs/16 §5 trụ 2).
+3. **Audit cho `prescription` + `compliance`** — GĐ khuyến nghị làm trước mọi tính năng thương mại
+   khác. Hiện 2/9 module có audit; thiếu nặng nhất là **cấp phát thuốc kê đơn** và **sổ thuốc kiểm
+   soát**, tức đúng hai thứ thanh tra dược hỏi đầu tiên. Hạ tầng đã sẵn, mở rộng là việc cơ học.
+
+### Quyết định sếp đã chốt trong phiên (không cần hỏi lại)
+
+| Nhóm | Chốt |
+|------|------|
+| IAM (11 điểm, duyệt 1 lượt) | Refresh revocable + xoay vòng · TTL 60 phút · bootstrap bằng CLI · email unique toàn hệ thống · dev-header fail-closed · branch trong token đã ký · 5 role theo chức danh · IAM sở hữu `tenants`+`branches` · sửa contract import-linter |
+| Hồ sơ sức khỏe KH (7 câu) | Đồng ý 2 mức BASIC/HEALTH · **khử nhận dạng** thay xóa cứng · audit luồng máy dùng action riêng · thu ngân được `crm.read`+`create`+`consent.manage` · `SalesOrder.customer_id` **ngoài phạm vi** · DPIA: mẫu + endpoint, khách tự nộp · `MedicationHistoryEntry` tự động **ngoài phạm vi** |
+| Vận hành | Kỷ luật #7 (thử trên CSDL có dữ liệu sẵn) · `CLAUDE.md` vào git · "bấm có là đồng ý" (không dựng cổng văn bản điều khoản) |
+| Thương hiệu | **BERAS** + tagline + tông màu Eco-Tech + 3 trụ cột + 2 nguyên tắc UI |
+
+### Quyết định Claude TỰ CHỐT trong full-auto (theo kỷ luật full-auto #3 — sếp đọc lướt khi rảnh)
+
+| # | Tự quyết | Lý do |
+|---|----------|-------|
+| 1 | Lỗi ghi audit **không bị nuốt**, ném lên | Bảng audit cùng CSDL với dữ liệu nghiệp vụ ⇒ insert audit hỏng nghĩa là ghi nghiệp vụ cũng đang hỏng; nuốt lỗi chỉ giấu việc nhật ký bị thủng |
+| 2 | Audit ghi trên **transaction riêng** | Nhiều điểm gọi nằm sau khi giao dịch nghiệp vụ đã commit |
+| 3 | Gộp Bước 1 Hồ sơ KH (domain+infra+app+1 endpoint) | Ràng buộc đồng ý ở domain làm 9 test đỏ; commit domain-thuần sẽ vi phạm kỷ luật #1 |
+| 4 | Enum audit **11 action** thay vì 9 sếp nêu | Thêm `USER_ACTIVATED` + `PASSWORD_RESET` vì IAM gọi thật; gom lại là mất thông tin |
+| 5 | Thêm `CUSTOMER_SENSITIVE_WRITE` ngoài action sếp giao | `docs/14` mục 4 đòi audit cả ghi/sửa, không chỉ đọc |
+| 6 | Luồng máy đọc dị ứng **không** chắn bằng `crm.sensitive.read` | Chắn lại = cảnh báo dị ứng lặng lẽ ngừng kêu đúng với thu ngân — nhóm ít khả năng tự phát hiện nhất. Trả giá bằng dữ liệu tối thiểu + action audit riêng |
+| 7 | Thiếu quyền nhạy cảm → **giấu trường**, không 403 | Thu ngân gắn khách vào đơn là việc hợp lệ |
+| 8 | `list_customers` **không bao giờ** trả dữ liệu sức khỏe | 50 hồ sơ/trang không phải tra cứu; audit thành 50 lượt đọc sẽ làm ngập nhật ký |
+| 9 | Xuất dữ liệu **không** phụ thuộc đồng ý | Quyền được biết không điều kiện hóa theo đồng ý xử lý |
+| 10 | `POST .../anonymise` chứ không `DELETE` | Dòng dữ liệu vẫn sống vì mang nghĩa vụ lưu trữ GPP |
+| 11 | `granted` **không** có giá trị mặc định (dù sếp chốt "bấm có là xong") | Mặc định = "im lặng là đồng ý", đúng thứ Luật 91 Điều 9 cấm thẳng. Chỉ cho `terms_version` mặc định |
+| 12 | Tạo `backend/.env` (máy này trước đó **không có**) | Phục vụ đúng ý sếp: mở máy demo chạy được |
+| 13 | H1 README đổi thành `BERAS` | "Nhất quán thương hiệu" mà tiêu đề vẫn tên cũ thì mâu thuẫn ngay 3 dòng đầu |
+| 14 | Thêm `docs/16` §5 (trạng thái backend thật) + §4.3 (hệ quả UI) | Nguyên tắc "không quảng bá tính năng chưa sẵn sàng" cần bảng tra mới dùng được |
+
+### Bug thật phát hiện & vá trong phiên (không phải bug vặt)
+
+| # | Bug | Vì sao đáng nhớ |
+|---|-----|-----------------|
+| 1 | `api/deps.py` tin `X-Branch-Id` không kiểm tra ⇒ đổi header là truy cập chi nhánh khác với nguyên bộ quyền | **Lỗ hổng thật đang chạy**. IAM đã đóng bằng cách ký branch vào JWT |
+| 2 | Role hệ thống chỉ seed **một lần**, không bao giờ cập nhật ⇒ deployment cũ mãi thiếu permission mới, admin bị 403 | **505 test đều xanh** trong khi tính năng hỏng trên máy thật. Sinh ra kỷ luật #7 |
+| 3 | `.env.example` còn `AI__ENABLE_CLINICAL_AI` (đã bỏ khỏi `AISettings`) ⇒ làm đúng README (`cp .env.example .env`) là app **không khởi động nổi** | Hướng dẫn cài đặt không ai chạy lại thì mục dần trong im lặng |
+| 4 | `_DEV_PERMISSIONS` lệch còn 26/32 permission | Khiến use-case `compliance` không gọi được trong dev |
+| 5 | `repository.update()` chỉ insert ⇒ dị ứng/bệnh nền **sống sót qua chính lệnh xóa** | Test domain vẫn xanh vì entity trong bộ nhớ đã sạch |
+
+### Việc còn treo chờ sếp (không chặn code)
+
+| Việc | Ghi chú |
+|------|---------|
+| Ghi quyết định thương hiệu BERAS vào `BeraLLC/ChienLuoc/` | Hiện chỉ nằm trong `README`/`docs/16` của thư mục lập trình — sai chỗ theo quy tắc của chính sếp |
+| Bán cho nhà thuốc lẻ hay chuỗi trước · màn hình đầu tiên xây là màn nào | GĐ đã hỏi 2 lần, ảnh hưởng cả UI lẫn thứ tự tính năng |
+| Luật sư: rà lại Q2 (khử nhận dạng) · văn bản điều khoản cho `terms_version` · phần pháp lý mẫu DPIA | Ba việc, gộp một lần hỏi |
+| Tagline README ≠ tagline chính thức `docs/16` | Sếp quyết dùng câu nào ở dòng đầu README |
+| Badge `domain coverage 97%` chưa kiểm chứng lại từ Sprint 3 | Đo lại mất ~5 phút |
+| Bộ test **1:27 → 4:09** trong một phiên | Chưa cần xử lý; cách rẻ nhất là hạ vòng bcrypt trong test |
+
+---
+
 ## 7m. Hồ sơ sức khỏe khách hàng — qua cổng `docs/14` Bước 0-4, ĐÃ DUYỆT, CHƯA CODE (2026-07-23)
 
 > **Điểm bắt đầu tiếp theo.** Tài liệu đầy đủ: `docs/features/ho-so-suc-khoe-khach-hang/01_DECISIONS.md`
@@ -1039,6 +1117,9 @@ nhiều đánh đổi:**
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-23 | **CHỐT PHIÊN — 20 commit, xem §7n.** Phiên Opus dài: `iam` thật (4 bước) → `audit_logs` persist (3 bước) → Hồ sơ sức khỏe KH qua cổng docs/14 (Bước 0-3, còn Bước 4) → thương hiệu **BERAS** + `docs/16_BRAND_UI_GUIDE.md`. Cổng cuối: ruff sạch · mypy strict 210 file · import-linter 13/0 · pytest **560** · alembic `0015` (head) · git sạch. **5 bug thật** phát hiện và vá (nặng nhất: lỗ hổng `X-Branch-Id` đang chạy; role hệ thống không cập nhật khi nâng cấp mà 505 test vẫn xanh). **14 quyết định Claude tự chốt trong full-auto** liệt kê đủ ở §7n để sếp đọc lướt. Phiên sau bắt đầu: đóng Bước 4 → mount router `compliance` → audit cho `prescription`+`compliance`. |
+| 2026-07-23 | **Thương hiệu BERAS + nguyên tắc UI.** Sếp chốt tên/mascot/tagline/tông màu Eco-Tech/3 trụ cột (`sales`/`compliance`/`clinical`)/2 nguyên tắc UI → `docs/16_BRAND_UI_GUIDE.md`. README đổi định vị từ "Hệ điều hành nghiệp vụ AI-native" sang "Sổ điện tử quản lý nhà thuốc chuẩn Cloud/SaaS thế hệ mới", H1 mang tên BERAS, dọn tàn dư "lấy AI làm lõi" ở §1, bổ sung docs 13-16 vào bản đồ tài liệu, sửa 2 badge sai (Sprint 3→7, tests 46→560). Bổ sung vào docs/16 phần **trạng thái backend thật của 3 trụ cột** (kiểm chứng bằng lệnh) để nguyên tắc "không quảng bá tính năng chưa sẵn sàng" có căn cứ dùng được: trụ 1 POS chạy được · trụ 2 tuân thủ **một nửa** (module `compliance` chưa mount router ⇒ chưa có API cho màn sổ kiểm soát) · trụ 3 AI **chưa thật** (`MockLLMProvider`; cảnh báo tương tác/dị ứng chạy thật nhưng bằng engine tất định, không phải AI). Không đụng code. |
+| 2026-07-23 | **Hồ sơ sức khỏe KH — Bước 1-3/4 (`52ab50d`, `10f2a73`, `96b5b9b`).** Cổng đồng ý (đồng ý là cơ sở pháp lý DUY NHẤT nên ràng buộc đặt ở domain, không để caller tự nhớ) → tách `crm.sensitive.read`/`write` + wiring 6 action audit → xuất dữ liệu/khử nhận dạng + `GET /privacy/processing-record` (sinh từ code, trả kèm `known_gaps`). Migration `0015_customer_consents`. pytest 522→536→560. **Bước 4 chưa làm**, 5 việc còn lại ghi ở §7m. |
 | 2026-07-23 | **`audit_logs` XONG 3/3 bước — gỡ nợ F8, mở đường cho Hồ sơ KH.** Sếp lệnh persist `AuditLogger` thay vì chỉ đẩy log stream. 3 commit (`8435b42` hình dạng → `05b7857` persist + migration `0014` → `aa521ec` đọc + vá bug). Bảng append-only (repository KHÔNG có update/delete), `context` chỉ metadata (`client_ip`+`branch_id`, có test khẳng định không lọt mật khẩu/token — chép dữ liệu bị truy cập vào audit là tự tạo kho DLCN thứ hai ít được canh hơn kho nó bảo vệ). Ghi DB **và** structlog song song. `GET /audit-logs` mức tối thiểu + quyền mới `audit.read` (chỉ admin + dược sĩ cấp chuỗi). **2 phát hiện khi kiểm chứng thật:** (1) **role hệ thống chỉ seed 1 lần, không bao giờ cập nhật** ⇒ deployment cũ mãi thiếu permission mới, admin bị 403 dù code đã cấp — **test suite không bắt được vì luôn khởi tạo DB rỗng**, chỉ lộ khi chạy CLI thật trên Postgres đã có dữ liệu; đã sửa thành `sync_system_roles()` + đưa vào `seeds/run.py`, +4 test hồi quy; (2) cổng import-linter bắt vi phạm layers thật (`modules.iam` import `api.deps`) → hạ helper xuống `core/http.py`. **Quyết định tự chốt (full-auto):** lỗi ghi audit KHÔNG bị nuốt, cứ ném lên — bảng audit cùng CSDL với dữ liệu nghiệp vụ nên insert audit hỏng nghĩa là ghi nghiệp vụ cũng đang hỏng; nuốt lỗi không giúp bán được hàng, chỉ giấu việc nhật ký bị thủng (structlog phát TRƯỚC insert nên sự kiện không mất hẳn). Cổng: ruff sạch · mypy strict 208 file · import-linter 13/0 · pytest **505** (+40). **5 nợ ghi rõ ở §7l** — nặng nhất: mới phủ 11 hành vi của `iam`, nghiệp vụ khác (đọc hồ sơ KH) chưa ghi audit. |
 | 2026-07-23 | **Module IAM thật XONG 4/4 bước — blocker RBAC gỡ.** Phiên Opus: đọc §7k, khảo sát code thật, viết `docs/15_IAM_DESIGN.md` (thiết kế + trả lời 5 câu hỏi mở + 11 điểm chờ duyệt), **sếp duyệt trọn 11 điểm 1 lượt**, thi công 4 bước (`3bc148f` domain → `5c3bc08` app+infra+migration `0013_iam` → `4c64a4c` interface+deps+CLI). **6 phát hiện trong lúc khảo sát**: (F1 🔴) `api/deps.py` tin `X-Branch-Id` không kiểm tra → đổi header là truy cập chi nhánh khác trong tenant với nguyên bộ quyền — **đây là lỗ hổng thật đang chạy, IAM đã đóng bằng cách ký branch vào JWT**; (F2) thiếu header thì gán `branch_id = tenant_id`; (F3) `_DEV_PERMISSIONS` chỉ 26/32 permission thật, thiếu đúng 6 `compliance.*`; (F4) module `compliance` chưa mount router (chưa sửa); (F5) `TenantScopedMixin` ép `branch_id NOT NULL` nên iam phải tự khai cột; (F7) `crm.read` gộp cả dữ liệu nhạy cảm, ngược NĐ356 Điều 4.2. **Quyết định đáng nhớ**: refresh token revocable + xoay vòng + phát hiện replay (thay vì stateless — nhà thuốc có luân chuyển nhân sự thật, Luật 44/2024 Điều 47a.1.đ); giữ TTL access token 60 phút thay vì hạ 15 vì POS offline-first (đổi rủi ro lấy rủi ro, ghi nợ thay vì giả vờ giải xong); bootstrap bằng CLI chứ không endpoint (không mở thêm bề mặt tấn công); dev-header giữ nhưng mặc định TẮT (fail-closed); 5 role đặt tên theo chức danh nghiệp vụ bám Luật 44 Điều 17a; thu ngân không có `rx.approve`/`rx.dispense` (Luật Dược Điều 6.5.h) và không có `crm.*` (NĐ356 Điều 4.2 + GPP TT02 I-1a.III.4.a). Cổng cuối: ruff sạch · mypy strict 201 file · import-linter 13/0 (thêm `iam-domain-innermost`, thêm `iam` vào `module-independence` — sếp duyệt sửa contract cũ) · pytest **465** (+51). **8 nợ ghi rõ ở §7k, không overclaim** — nặng nhất: `audit_logs` vẫn chỉ ghi structlog nên chưa chứng minh được ai truy cập gì. |
 | 2026-07-23 | **Mở việc thiết kế IAM thật — DỪNG ngay ở bước khảo sát, chờ phiên Opus (KHÔNG code, KHÔNG thiết kế chi tiết).** Sếp lệnh thiết kế module `iam` (users/roles/JWT) thay dev-header, cross-module ảnh hưởng toàn hệ thống. Hỏi sếp model cho việc này (đúng quy tắc dự án: thiết kế mới hoàn toàn → Opus + phiên hạn mức đầy, phiên hiện tại là Sonnet) — **sếp chọn dừng, mở phiên Opus mới**. Đã khảo sát hạ tầng sẵn có để phiên sau không dò lại: `core/security/{jwt,password,rbac}.py` (JwtService.issue/decode, hash_password/verify_password, require_permission — đều đã chạy được từ Sprint 2), `core/context.py` (`RequestContext` đã có `branch_id` tách biệt `tenant_id`), `core/db/base.py` (`TenantScopedMixin`), 26 permission string thật đang dùng trong `api/deps.py._DEV_PERMISSIONS` trải 6 module, khung endpoint `iam` đã phác ở `docs/11_API_DESIGN.md` §3. Ghi toàn bộ vào §7k kèm 5 câu hỏi thiết kế mở (refresh token, bootstrap admin đầu tiên, có giữ dev-header song song không, mô hình role 2 cấp chuỗi/nhà thuốc, role seed ban đầu) để Opus quyết định có cơ sở, không phải dò từ đầu. |
