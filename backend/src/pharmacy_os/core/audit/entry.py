@@ -84,6 +84,21 @@ class AuditAction(StrEnum):
     """A sale was finalised — the third thing an inspection asks about: "ai đã bán
     thuốc này, khi nào". Recorded once per ``client_uuid`` (not on idempotent replay)."""
 
+    # --- inventory (sổ nhập/xuất kho — chỉ hành vi con người gõ tay qua API) ---
+    INVENTORY_STOCK_RECEIVED = "INVENTORY_STOCK_RECEIVED"
+    """Manual goods receipt (``POST /inventory/receive``) — a person keyed in a batch.
+
+    Deliberately excludes the cross-module reaction ``receive_from_goods_receipt``
+    (GRN confirmed → auto stock-in): that event already has its own audit trail
+    once ``procurement`` gets one — recording it here too would double-count the
+    same real-world fact under two actions.
+    """
+
+    INVENTORY_STOCK_DISPENSED = "INVENTORY_STOCK_DISPENSED"
+    """Manual dispense (``POST /inventory/dispense``) — same exclusion logic as
+    above: ``dispense_for_sale`` (the cross-module reaction to ``SaleCompleted``)
+    is already covered by :attr:`SALE_COMPLETED`, not audited a second time here."""
+
 
 @dataclass(frozen=True, slots=True)
 class AuditEntry:

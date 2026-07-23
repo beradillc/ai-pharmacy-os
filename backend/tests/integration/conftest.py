@@ -170,6 +170,7 @@ def inventory_service(
         lambda uow, c: SqlAlchemyMovementRepository(uow.session, c),
         lambda uow, c: SqlAlchemyBalanceRepository(uow.session, c),
         lambda uow, c: SqlAlchemyStockReconciliationRepository(uow.session, c),
+        AuditLogger(session_factory),
     )
 
 

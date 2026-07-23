@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.di import Container
 from pharmacy_os.core.events import EventBus
@@ -33,6 +34,7 @@ def register(container: Container, get_context: ContextDep) -> APIRouter:
         lambda uow, ctx: SqlAlchemyMovementRepository(uow.session, ctx),
         lambda uow, ctx: SqlAlchemyBalanceRepository(uow.session, ctx),
         lambda uow, ctx: SqlAlchemyStockReconciliationRepository(uow.session, ctx),
+        container.resolve(AuditLogger),
     )
     container.register_instance(InventoryService, service)
 

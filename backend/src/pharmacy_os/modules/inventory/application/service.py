@@ -14,6 +14,7 @@ from uuid import UUID
 
 import structlog
 
+from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import ConflictError, ValidationError
@@ -64,6 +65,7 @@ class InventoryService:
         movement_repo_factory: MovementRepoFactory,
         balance_repo_factory: BalanceRepoFactory,
         reconciliation_repo_factory: ReconciliationRepoFactory,
+        audit: AuditLogger,
         *,
         reorder_point: Decimal = Decimal("0"),
     ) -> None:
@@ -72,6 +74,7 @@ class InventoryService:
         self._movements = movement_repo_factory
         self._balances = balance_repo_factory
         self._reconciliations = reconciliation_repo_factory
+        self._audit = audit
         self._reorder_point = reorder_point
 
     async def receive_stock(self, data: ReceiveStockInput, ctx: RequestContext) -> ReceiptOutput:
@@ -126,6 +129,7 @@ class InventoryService:
             )
             await uow.commit()
 
+        await self._record(ctx, AuditAction.INVENTORY_STOCK_RECEIVED, "batch", batch.id)
         return ReceiptOutput(
             batch_id=batch.id,
             drug_id=batch.drug_id,
@@ -198,6 +202,7 @@ class InventoryService:
                 )
             await uow.commit()
 
+        await self._record(ctx, AuditAction.INVENTORY_STOCK_DISPENSED, "drug", data.drug_id)
         return DispenseOutput(
             drug_id=data.drug_id,
             dispensed=data.quantity,
@@ -412,3 +417,17 @@ class InventoryService:
             )
             for b in found
         ]
+
+    async def _record(
+        self, ctx: RequestContext, action: AuditAction, target_type: str, target_id: UUID
+    ) -> None:
+        """Append one audit row — metadata only, never cost price/lot content."""
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=action,
+                target_type=target_type,
+                target_id=str(target_id),
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+        )

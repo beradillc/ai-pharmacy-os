@@ -3,7 +3,9 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pharmacy_os.core.audit import AuditAction, SqlAlchemyAuditLogRepository
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.errors import ConflictError
 from pharmacy_os.core.events import DomainEvent, InMemoryEventBus
@@ -128,3 +130,33 @@ async def test_events_published_after_commit(
         DispenseInput(drug_id=drug_id, quantity=Decimal("3")), ctx
     )
     assert seen == ["StockMovedIn", "StockMovedOut"]
+
+
+# --- audit trail: manual nhập/xuất kho qua API (không tính phản ứng cross-module) --
+
+
+async def test_receive_and_dispense_each_leave_an_audit_row(
+    inventory_service: InventoryService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Does not trust the call sites to be wired — reads the table back."""
+    drug_id = uuid4()
+    receipt = await inventory_service.receive_stock(
+        ReceiveStockInput(drug_id, "L1", date(2027, 1, 1), Decimal("10"), Decimal("1000")), ctx
+    )
+    await inventory_service.dispense_stock(
+        DispenseInput(drug_id=drug_id, quantity=Decimal("3")), ctx
+    )
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+
+        received = await repo.list(ctx.tenant_id, action=AuditAction.INVENTORY_STOCK_RECEIVED)
+        matching = [e for e in received if e.target_id == str(receipt.batch_id)]
+        assert len(matching) == 1
+        assert matching[0].actor_user_id == ctx.user_id
+
+        dispensed = await repo.list(ctx.tenant_id, action=AuditAction.INVENTORY_STOCK_DISPENSED)
+        matching = [e for e in dispensed if e.target_id == str(drug_id)]
+        assert len(matching) == 1

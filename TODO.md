@@ -22,6 +22,10 @@
 - [x] API v1: `/drugs`, `/inventory/{receive,dispense,on-hand,alerts/near-expiry}`.
 - [x] Migration `0002` (6 bảng) live + reversible; seed ATC idempotent.
 - [x] Contract import-linter: domain-purity + module-independence.
+- [x] Audit cho `inventory` (2 action: `INVENTORY_STOCK_RECEIVED`/`INVENTORY_STOCK_DISPENSED`, chỉ
+      2 endpoint HTTP con người gõ tay — không audit 2 use-case cross-module tự động vì đã có vết ở
+      nơi phát sinh thật) — **XONG 2026-07-23** (PROJECT_STATE §7w). **Còn lại 3/9 module chưa có
+      audit:** `procurement`/`clinical`/`catalog`.
 
 ### Demo & Self-Refine *(2026-07-21)*
 - [x] **`demo_preview.py`** — script độc lập, chạy end-to-end trên SQLite in-memory:
