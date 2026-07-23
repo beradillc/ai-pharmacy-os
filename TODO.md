@@ -1,6 +1,8 @@
 # TODO — AI Pharmacy OS
 
-> Trạng thái công việc theo hạng mục. Cập nhật cuối: **2026-07-22**.
+> Trạng thái công việc theo hạng mục. Cập nhật cuối: **2026-07-23** (rà lại đối chiếu
+> `PROJECT_STATE.md`, mục A6 danh sách ưu tiên đã duyệt — chỉ sửa dòng đã xác nhận lại bằng lệnh
+> thật/PROJECT_STATE, không rà toàn bộ file để tránh sai sót do thiếu bối cảnh phiên cũ hơn).
 > Nguồn sự thật tổng quan: [PROJECT_STATE.md](PROJECT_STATE.md). Lộ trình: [ROADMAP.md](ROADMAP.md).
 
 ---
@@ -37,7 +39,9 @@
 
 ## ⚠️ Nợ kỹ thuật (theo dõi, chưa chặn)
 
-- [ ] `api/deps.py`: request-context **dev-header tạm** — thay bằng JWT thật khi có IAM (Sprint 6). Prod đã chặn unauth.
+- [x] ~~`api/deps.py`: request-context dev-header tạm — thay bằng JWT thật khi có IAM~~ — **module `iam` thật đã XONG
+      (2026-07-23, PROJECT_STATE §7k)**: JWT thật, `branch_id` ký trong token, dev-header fallback mặc định
+      **TẮT** (`SECURITY__ALLOW_DEV_AUTH=false`, fail-closed).
 - [ ] FK `drugs.atc_code → atc_codes` chưa bật (đang lưu string). Cân nhắc bật khi seed ATC là bắt buộc.
 - [x] ~~Uniqueness của `registration_no` (SĐK) chưa enforce~~ — bật `uq_drugs_tenant_registration_no` trong migration `0005_compliance` (Compliance C.2, 2026-07-21). `barcode` vẫn chỉ chặn ở tầng ứng dụng (không phải nợ mới, không đổi).
 - [ ] `StarletteDeprecationWarning` (httpx + TestClient) — không ảnh hưởng, theo dõi khi nâng cấp.
@@ -49,10 +53,13 @@
 - [x] Idempotency `client_uuid` + `/sync/sales` (offline-first, upsert 200).
 - [x] Cross-module: `SaleCompleted` → inventory FEFO dispense (nối ở `api/v1/cross_module.py`; idempotent cấp đơn; thiếu tồn → `StockShortfallDetected`, không chặn bán).
 - [x] Rule chặn ETC thiếu đơn (`ensure_rx_for_etc`) — catalog là nguồn thẩm quyền qua port `DrugInfoProvider` + adapter.
-- [ ] **Nợ Sprint 4 (S4.6, tách đợt sau):** khởi tạo `frontend/` (Next.js + Dexie) POS tối thiểu + hàng đợi offline gọi `/sync/sales`.
+- [x] ~~**Nợ Sprint 4 (S4.6, tách đợt sau):** khởi tạo `frontend/` (Next.js + Dexie) POS tối thiểu + hàng đợi offline gọi `/sync/sales`.~~ —
+      **XONG 5/5 bước (2026-07-23)**: đăng nhập JWT thật+chọn chi nhánh, tra thuốc, giỏ hàng, thanh toán
+      `POST /sales`, hàng đợi offline Dexie tự đồng bộ khi có mạng lại. Xem `frontend/README.md`. Chưa
+      click-through trình duyệt thật (môi trường không có browser tool).
 - [ ] **Nợ Sprint 4:** persist trả hàng (`register_return`) ở tầng use-case + trả tồn (cross-module) — domain đã có, use-case/khôi phục tồn chưa làm (ngoài DoD lần này).
 
-### Compliance — kéo sớm từ Sprint 7 *(C.1–C.4 XONG 2026-07-21, DỪNG chờ lệnh C.5)*
+### Compliance — kéo sớm từ Sprint 7 *(C.1–C.5 XONG, ĐÃ ĐÓNG — PROJECT_STATE §7b; router mount 2026-07-23 §7q)*
 - [x] Spec pháp lý khóa: [docs/13_COMPLIANCE_SPEC.md](docs/13_COMPLIANCE_SPEC.md) đối chiếu văn bản gốc
       (`docs/legal/*.docx`: QĐ540, TT20/2017, QĐ1867) + code thật (`catalog`/`inventory`) — bảng Traceability đầu file.
 - [x] C.1 — domain thuần: `ControlledSubstanceCategory`, `NationalDrugRecord` (23 trường Bảng 1 QĐ540),
@@ -70,10 +77,14 @@
       + `NationalSyncService.push_payload` (idempotent, best-effort) + migration `0006_national_sync_log`.
       `MockNationalDrugDbGateway` ở composition root (`api/v1/national_sync.py`, `# BLOCKER: DAV API spec`,
       KHÔNG endpoint thật) + `wire_national_sync`. Live Postgres, `alembic check` sạch, downgrade/upgrade OK.
-- [ ] C.5 (Opus, từng bước chờ duyệt) — cross-module: `SaleCompleted`/controlled dispense → ghi ledger + enqueue sync log
-      (gọi `NationalSyncService.push_payload`). Cấp `compliance.sync.push`/`compliance.ledger.write` cho system-context.
-- [ ] **Nguồn còn thiếu** (chặn phần liên quan, xem cảnh báo đầu docs/13): TT11/2025, NĐ163/2025, NĐ90/2026,
-      đặc tả API DAV, văn bản kê đơn ngoại trú hiện hành (cho rule C.3.1 ETC).
+- [x] C.5 — cross-module: `SaleCompleted`/controlled dispense → ghi ledger + enqueue sync log XONG (PROJECT_STATE §7b, ĐÃ ĐÓNG).
+- [x] Router HTTP cho `compliance` (ledger/tenant-config/sync-logs) — **mount 2026-07-23** (PROJECT_STATE §7q); trước đó
+      module chỉ có domain/app/infra, không endpoint nào.
+- [x] Audit cho `compliance` (2 action: `CONTROLLED_LEDGER_ENTRY_RECORDED`, `TENANT_COMPLIANCE_CONFIG_SET`) — **XONG
+      2026-07-23** (PROJECT_STATE §7r).
+- [ ] **Nguồn còn thiếu** (chặn phần liên quan, xem cảnh báo đầu docs/13): NĐ163/2025, NĐ90/2026, đặc tả API DAV, văn bản
+      kê đơn ngoại trú hiện hành (cho rule C.3.1 ETC). **TT11/2025 đã có** (`docs/legal/Thông-tư-11-2025-TT-BYT.SUMMARY.md`,
+      xác nhận lại 2026-07-23) — bớt 1/5 so với danh sách gốc.
 
 ### Sprint 5 — Clinical AI (S5.5, mock LLM only)
 - [x] **5.5.1 domain** — `clinical/domain`: `DrugInteraction` (cặp hoạt chất canonical), `AiRecommendation`
@@ -99,11 +110,13 @@
 
 ### Sprint 5 — Prescription (đã có từ S5.1–S5.4)
 - [x] Module `prescription` (đơn thuốc nháp, xác thực, cấp phát) — Hexagonal 4 lớp, migration `0004`.
+- [x] Audit cho `prescription` (4 action: created/approved/rejected/dispensed) — **XONG 2026-07-23**
+      (PROJECT_STATE §7r) — đúng câu hỏi thanh tra dược hay hỏi đầu tiên ("ai đã cấp phát đơn này").
 
 > Điểm tích hợp đã sẵn sàng: `Drug.is_prescription_required()`, `core.ai.LLMProvider` port + `MockLLMProvider`,
 > bảng `drug_interactions` (+seed mẫu). `drug_knowledge_chunks` HOÃN (xem trên).
 
-### Sprint 6 — Procurement & CRM (ĐANG MỞ, 2026-07-22)
+### Sprint 6 — Procurement & CRM (backend ĐÃ ĐÓNG 2026-07-22 — PROJECT_STATE §9, đạt DoD lõi)
 - [x] **Bước 1 — mô hình hoạt chất trong `catalog`, domain thuần** *(2026-07-22)* — `ActiveIngredient` (hoạt chất, global reference,
       không tenant-scope) + `DrugIngredient` (hàm lượng: `ingredient_id`+`amount>0`+`unit`) + `Drug.add_ingredient()` (chặn trùng,
       cho phép nhiều hoạt chất/thuốc — thuốc phối hợp là bình thường); port `ActiveIngredientRepository` (chưa impl). Không đổi
@@ -155,7 +168,8 @@
       `GET`/`PUT /clinical/settings`. Xoá `AISettings.enable_clinical_ai` (cờ chết) khỏi config toàn cục. Migration
       `0010_clinical_tenant_ai_settings` live Postgres, `alembic check` sạch, downgrade/upgrade OK. 4 cổng xanh
       (**283 test**, 11 contract kept/0, không cross-module mới).
-- [ ] Module `procurement` (Supplier, PO, GRN → inventory IN).
+- [x] Module `procurement` (Supplier, PO, GRN → inventory IN) — **XONG đủ 4 lớp** (domain `55d2586` → app/infra/migration
+      `0011` `518dafe` → interface `7a53457`), cross-module GRN xác nhận → tạo lô inventory. Xem PROJECT_STATE §9.
 
 ---
 
