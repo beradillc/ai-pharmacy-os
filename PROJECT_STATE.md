@@ -1204,12 +1204,12 @@ kiểm tra trước khi coi tính năng là dùng được.
 
 | # | Việc | Trạng thái |
 |---|------|-----------|
-| 1 | Ghi quyết định thương hiệu BERAS vào `01-WikiHub/BeraLLC/ChienLuoc/` theo mẫu T-QuyetDinh | Chưa làm — hiện định vị BERAS chỉ nằm trong `README.md`/`docs/16` của thư mục code, sai chỗ theo đúng quy tắc của chính sếp |
+| 1 | Ghi quyết định thương hiệu BERAS vào `01-WikiHub/BeraLLC/ChienLuoc/` theo mẫu T-QuyetDinh | ✅ **XONG 2026-07-23**: `BeraLLC/ChienLuoc/2026-07-23-thuong-hieu-BERAS.md` |
 | 2 | Bán cho nhà thuốc lẻ hay chuỗi trước | ✅ **CHỐT 2026-07-23: nhà thuốc lẻ trước.** Ghi tại `BeraLLC/ChienLuoc/2026-07-23-phan-khuc-khach-hang-le-truoc.md`. Hệ quả: FE Bước 5 Dexie offline queue (A4) ưu tiên cao hơn (mạng yếu ở nhà thuốc lẻ), UI đầu tiên theo luồng 1 điểm bán |
 | 3 | Tagline `README.md` (dòng đầu) ≠ tagline chính thức trong `docs/16_BRAND_UI_GUIDE.md` | ✅ **CHỐT 2026-07-23**: dùng câu định vị dài docs/16 ("BERAS là sổ điện tử quản lý nhà thuốc chuẩn Cloud/SaaS thế hệ mới, tích hợp AI...") cho cả 2 nơi |
 | 4 | Gộp 1 lần hỏi luật sư: (a) rà lại quyết định Q2 khử nhận dạng (mâu thuẫn Luật 91 Điều 13-14 vs GPP II.4.d), (b) soạn văn bản điều khoản thật cho `terms_version` (hiện chỉ có chuỗi `"v1"`, không có nội dung), (c) hoàn thiện phần pháp lý của mẫu DPIA (Claude chỉ soạn được phần kỹ thuật) | Chưa đặt lịch |
 | 5 | Câu hỏi pháp lý cũ hơn, vẫn treo: BeraLLC có cần Giấy chứng nhận kinh doanh dịch vụ xử lý DLCN không (NĐ356 Điều 21-27)? | Ghi từ phiên trước §7j, chưa có kết luận — cần luật sư, không tự suy diễn |
-| 6 | Badge `domain coverage 97%` trong README | Số liệu từ Sprint 3, chưa đo lại — không biết còn đúng không |
+| 6 | Badge `domain coverage 97%` trong README | ✅ **ĐO LẠI 2026-07-23: 99%** (`coverage report --include="*/domain/*"`, 1393 statement, 6 miss — 9 module domain, không tính `infra`/`interface`). Badge cũ thấp hơn thực tế, không phải cao hơn. Cập nhật badge README |
 | 7 | Bộ test backend chậm dần trong phiên (1:27 → 4:09) | Chưa cần xử lý ngay; cách rẻ nhất đã biết là hạ vòng bcrypt trong test |
 
 ### D. `TODO.md` — ✅ ĐÃ RÀ LẠI (2026-07-23, mục A6 danh sách ưu tiên đã duyệt)

@@ -10,7 +10,7 @@
 [![Sprint](https://img.shields.io/badge/Sprint%207-Compliance%20%26%20Analytics-brightgreen)]()
 [![Stage](https://img.shields.io/badge/stage-foundation-blue)]()
 [![Tests](https://img.shields.io/badge/tests-560%20passed-brightgreen)]()
-[![Domain coverage](https://img.shields.io/badge/domain%20coverage-97%25-brightgreen)]()
+[![Domain coverage](https://img.shields.io/badge/domain%20coverage-99%25-brightgreen)]()
 [![Types](https://img.shields.io/badge/mypy-strict-brightgreen)]()
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)]()
 
