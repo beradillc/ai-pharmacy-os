@@ -10,6 +10,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from pharmacy_os import __version__
 from pharmacy_os.api.deps import warn_if_dev_auth_enabled
@@ -43,6 +44,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url="/api/v1/redoc",
         openapi_url="/api/v1/openapi.json",
         lifespan=_lifespan,
+    )
+    # S4.6: the FE POS is a separate browser origin (Next.js dev server), so it
+    # needs the browser's permission to read cross-origin responses. Bearer tokens
+    # aren't cookies, so this widens no attack surface beyond "which origins can
+    # read the JSON" — see AppSettings.cors_origins.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.app.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     app.state.container = build_container(settings)
     register_error_handlers(app)

@@ -21,6 +21,14 @@ _PLACEHOLDER = "__set_me__"
 class AppSettings(BaseSettings):
     env: Literal["dev", "staging", "prod"] = "dev"
     debug: bool = False
+    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    """Browser origins allowed to call the API directly (S4.6 FE POS).
+
+    The backend has no session cookie of its own to protect — auth is a bearer
+    token the client attaches per request — so this only controls which origins the
+    browser lets read the response, not who can reach the API (curl/mobile clients
+    are unaffected either way). Still explicit rather than ``["*"]`` so a stray
+    origin can't silently start reading responses in prod."""
 
 
 class DatabaseSettings(BaseSettings):
