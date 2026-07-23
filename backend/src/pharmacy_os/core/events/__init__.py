@@ -6,5 +6,17 @@ implementation for RabbitMQ/Kafka later requires no domain changes.
 
 from pharmacy_os.core.events.base import DomainEvent
 from pharmacy_os.core.events.bus import EventBus, InMemoryEventBus
+from pharmacy_os.core.events.serialization import (
+    EventRegistry,
+    deserialize_event,
+    serialize_event,
+)
 
-__all__ = ["DomainEvent", "EventBus", "InMemoryEventBus"]
+__all__ = [
+    "DomainEvent",
+    "EventBus",
+    "InMemoryEventBus",
+    "EventRegistry",
+    "deserialize_event",
+    "serialize_event",
+]
