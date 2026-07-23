@@ -1158,10 +1158,65 @@ kiểm tra trước khi coi tính năng là dùng được.
 
 ---
 
+## 7p. ⏸️ ĐIỂM DỪNG TOÀN PHIÊN (2026-07-23) — chờ sếp + GĐ sắp xếp lại ưu tiên
+
+> Sếp yêu cầu dừng để phiên sau bàn thứ tự làm việc với GĐ. Mục này liệt kê **trung lập, không xếp
+> hạng ưu tiên** — mọi quyết định "làm gì trước" để dành cho buổi bàn đó, không phải Claude tự chọn.
+> Đọc cùng §7n (chốt phiên Opus trước) và §7o (S4.6) — mục này chỉ gom lại thành 1 chỗ tra, không
+> lặp lại chi tiết đã có.
+
+### A. Trạng thái kỹ thuật lúc dừng (xác nhận bằng lệnh)
+
+| Hạng mục | Trạng thái |
+|----------|-----------|
+| Git | Sạch, HEAD = `a11ac5a` |
+| Backend 4 cổng | ruff sạch · mypy strict 210 file · import-linter 13/0 · pytest 560 (chưa chạy lại full sau `a11ac5a` vì chỉ sửa `.md`, không sửa code) |
+| Frontend | `tsc`/`eslint`/`next build` sạch lúc commit `ba547c4`; chưa test bằng trình duyệt thật |
+| **Tiến trình nền còn chạy** | `uvicorn` cổng 8000 (PID 236376) · `next dev` cổng 3000 (PID 237023/237036) — do Claude khởi động để kiểm chứng S4.6, **chưa dừng**, sếp tự quyết dừng hay giữ để bấm thử trình duyệt |
+| Dữ liệu demo còn trên Postgres | Tenant "Nhà thuốc FE Demo" (`fe-demo@beral.vn` / `MatKhauFeDemo2026`) + 1 thuốc + 1 đơn bán mẫu — cố ý chưa dọn |
+
+### B. Việc đang dở dang theo tính năng (mở trong phiên này hoặc phiên trước, chưa đóng)
+
+| Tính năng | Bước đã xong | Còn lại | Chi tiết ở |
+|-----------|--------------|---------|-----------|
+| S4.6 FE POS | 4/5 (CORS, scaffold, auth, tra thuốc+giỏ+thanh toán) | Bước 5 — hàng đợi offline Dexie. **Chưa thật sự "offline-first"** dù tên Sprint | §7o |
+| Hồ sơ sức khỏe KH | 3/4 (cổng đồng ý, tách quyền+audit, quyền chủ thể dữ liệu+DPIA) | Bước 4 — 5 việc cụ thể (cấp quyền `cashier`, sửa 1 test e2e đang cố ý sai để chờ, `sync_system_roles` trên CSDL thật, tài liệu retention, nháp kỹ thuật DPIA) | §7m |
+| Module `compliance` | Sổ kiểm soát + liên thông đã code xong | **Chưa mount router** — không có API nào để UI gọi, chặn trụ cột 2 thương hiệu | §7n mục "phiên sau bắt đầu từ đâu" |
+| Audit coverage | `iam` (11 action) + `crm` (6 action) | 7/9 module còn lại chưa ghi audit — nặng nhất `prescription` (cấp phát ETC) và `compliance` (sổ kiểm soát) | §7n |
+| Nguồn giá bán (pricing) | — | **Không tồn tại ở đâu trong backend** — `inventory.cost_price` là giá vốn, không phải giá bán. Phát hiện hôm nay khi xây FE, chưa có quyết định có xây module `pricing` hay không | §7o |
+| Test tự động phía FE | — | Chưa có vitest/playwright nào | `frontend/README.md` |
+
+### C. Việc treo ngoài phạm vi code — cần sếp / GĐ / luật sư, không phải Claude tự quyết
+
+| # | Việc | Trạng thái |
+|---|------|-----------|
+| 1 | Ghi quyết định thương hiệu BERAS vào `01-WikiHub/BeraLLC/ChienLuoc/` theo mẫu T-QuyetDinh | Chưa làm — hiện định vị BERAS chỉ nằm trong `README.md`/`docs/16` của thư mục code, sai chỗ theo đúng quy tắc của chính sếp |
+| 2 | Bán cho nhà thuốc lẻ hay chuỗi trước | GĐ hỏi 2 lần trong phiên trước, chưa có câu trả lời — ảnh hưởng cả UI lẫn thứ tự tính năng |
+| 3 | Tagline `README.md` (dòng đầu) ≠ tagline chính thức trong `docs/16_BRAND_UI_GUIDE.md` | Hai câu khác nhau, chưa thống nhất câu nào dùng ở đâu |
+| 4 | Gộp 1 lần hỏi luật sư: (a) rà lại quyết định Q2 khử nhận dạng (mâu thuẫn Luật 91 Điều 13-14 vs GPP II.4.d), (b) soạn văn bản điều khoản thật cho `terms_version` (hiện chỉ có chuỗi `"v1"`, không có nội dung), (c) hoàn thiện phần pháp lý của mẫu DPIA (Claude chỉ soạn được phần kỹ thuật) | Chưa đặt lịch |
+| 5 | Câu hỏi pháp lý cũ hơn, vẫn treo: BeraLLC có cần Giấy chứng nhận kinh doanh dịch vụ xử lý DLCN không (NĐ356 Điều 21-27)? | Ghi từ phiên trước §7j, chưa có kết luận — cần luật sư, không tự suy diễn |
+| 6 | Badge `domain coverage 97%` trong README | Số liệu từ Sprint 3, chưa đo lại — không biết còn đúng không |
+| 7 | Bộ test backend chậm dần trong phiên (1:27 → 4:09) | Chưa cần xử lý ngay; cách rẻ nhất đã biết là hạ vòng bcrypt trong test |
+
+### D. Nợ cũ hơn, nằm ngoài phạm vi phiên này — CẦN RÀ LẠI RIÊNG, không ghi nhận vội ở đây
+
+`TODO.md` đề ngày cập nhật cuối **2026-07-22** — **đã lỗi thời so với khối lượng việc đã làm trong
+phiên này và phiên trước** (ví dụ dòng 40 vẫn ghi "dev-header tạm, thay bằng JWT thật khi có IAM"
+dù IAM đã xong; mục Sprint 6 vẫn ghi "ĐANG MỞ" dù đã đóng theo ROADMAP/PROJECT_STATE). File này
+cần một lượt rà lại toàn bộ riêng, đối chiếu với `PROJECT_STATE.md` (nguồn sự thật) — **Claude
+không tự sửa hàng loạt ngay bây giờ** vì rủi ro sai do thiếu ngữ cảnh đầy đủ của các phiên cũ hơn
+những gì đã đọc trong phiên này. Còn ít nhất các nợ sau trong đó **chưa được xác nhận lại**:
+FK `drugs.atc_code → atc_codes` chưa bật · persist trả hàng (`register_return`) chưa nối tồn ·
+HTTP endpoint tạo/liệt kê `active_ingredients` · nối `LLMProvider` → Claude thật (`AnthropicProvider`,
+vẫn `# BLOCKER: AI__API_KEY thật`).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-23 | **DỪNG PHIÊN theo yêu cầu sếp — gom điểm dừng toàn phiên vào §7p.** Sếp muốn phiên sau bàn sắp xếp lại ưu tiên với GĐ trước khi tiếp tục code. §7p liệt kê trung lập (không xếp hạng): trạng thái kỹ thuật lúc dừng (2 tiến trình nền còn chạy — uvicorn 8000, next dev 3000; tenant demo còn trên Postgres), 6 việc tính năng đang dở dang, 7 việc treo ngoài phạm vi code (thương hiệu chưa ghi vào `ChienLuoc/`, câu hỏi lẻ-hay-chuỗi, tagline lệch, gộp hỏi luật sư, badge chưa đo lại...), và cảnh báo `TODO.md` đã lỗi thời (đề 2026-07-22, một số dòng sai so với thực tế — cần rà lại riêng, không tự sửa hàng loạt ngay vì thiếu ngữ cảnh phiên cũ). |
 | 2026-07-23 | **S4.6 FE POS tối thiểu — 4/5 bước (phiên Sonnet, xem §7o).** Hồi sinh từ nợ ROADMAP Sprint 4. `frontend/` mới hoàn toàn (Next.js+TS+TanStack Query+Zustand), theo `docs/04` §3 + `docs/16` brand guide. 4 commit: CORS (`cb3809e`, ngoại lệ backend duy nhất, xin phép trước) → scaffold (`2bcea7f`) → auth JWT thật (`c642c34`) → tra thuốc/giỏ hàng/thanh toán (`ba547c4`). **3 phát hiện lệch docs/11-thực tế**: API `sales` thật là `POST /sales` gộp 1 lệnh (không phải `/sales-orders`+`/payments`+`/complete` như doc); `GET /drugs` không có tham số tìm kiếm; **không nguồn giá bán nào trong backend** (chỉ có `inventory.cost_price` — giá vốn) nên thu ngân nhập tay giá — khoảng trống sản phẩm thật. Kiểm chứng bằng curl mô phỏng đúng request FE trên backend live (không chỉ đọc code) — khớp 100% type đã viết; `next dev` thật chạy sạch. **Giới hạn: không có trình duyệt trong môi trường, chưa từng click-through UI thật** — chỉ xác nhận hợp đồng API + server không crash. **Bước 5 (Dexie offline) chưa làm.** Để lại tài khoản demo `fe-demo@beral.vn`/`MatKhauFeDemo2026` trên Postgres để sếp login thử ngay. |
 | 2026-07-23 | **CHỐT PHIÊN — 20 commit, xem §7n.** Phiên Opus dài: `iam` thật (4 bước) → `audit_logs` persist (3 bước) → Hồ sơ sức khỏe KH qua cổng docs/14 (Bước 0-3, còn Bước 4) → thương hiệu **BERAS** + `docs/16_BRAND_UI_GUIDE.md`. Cổng cuối: ruff sạch · mypy strict 210 file · import-linter 13/0 · pytest **560** · alembic `0015` (head) · git sạch. **5 bug thật** phát hiện và vá (nặng nhất: lỗ hổng `X-Branch-Id` đang chạy; role hệ thống không cập nhật khi nâng cấp mà 505 test vẫn xanh). **14 quyết định Claude tự chốt trong full-auto** liệt kê đủ ở §7n để sếp đọc lướt. Phiên sau bắt đầu: đóng Bước 4 → mount router `compliance` → audit cho `prescription`+`compliance`. |
 | 2026-07-23 | **Thương hiệu BERAS + nguyên tắc UI.** Sếp chốt tên/mascot/tagline/tông màu Eco-Tech/3 trụ cột (`sales`/`compliance`/`clinical`)/2 nguyên tắc UI → `docs/16_BRAND_UI_GUIDE.md`. README đổi định vị từ "Hệ điều hành nghiệp vụ AI-native" sang "Sổ điện tử quản lý nhà thuốc chuẩn Cloud/SaaS thế hệ mới", H1 mang tên BERAS, dọn tàn dư "lấy AI làm lõi" ở §1, bổ sung docs 13-16 vào bản đồ tài liệu, sửa 2 badge sai (Sprint 3→7, tests 46→560). Bổ sung vào docs/16 phần **trạng thái backend thật của 3 trụ cột** (kiểm chứng bằng lệnh) để nguyên tắc "không quảng bá tính năng chưa sẵn sàng" có căn cứ dùng được: trụ 1 POS chạy được · trụ 2 tuân thủ **một nửa** (module `compliance` chưa mount router ⇒ chưa có API cho màn sổ kiểm soát) · trụ 3 AI **chưa thật** (`MockLLMProvider`; cảnh báo tương tác/dị ứng chạy thật nhưng bằng engine tất định, không phải AI). Không đụng code. |
