@@ -8,9 +8,9 @@ professional roles (cấp chuỗi vs cấp nhà thuốc), so following the statu
 mapping defensible in an inspection.
 
 ``ALL_PERMISSIONS`` is the audited list of every code passed to
-``core.security.rbac.require_permission`` across the eight business modules (32 as of
-2026-07-23), plus the six ``iam.*`` codes this module introduces. It intentionally
-includes the six ``compliance.*`` codes that ``api/deps.py._DEV_PERMISSIONS`` was
+``core.security.rbac.require_permission`` across the eight business modules (37 as of
+2026-07-23, incl. ``sales.return``), plus the six ``iam.*`` codes this module introduces. It
+intentionally includes the six ``compliance.*`` codes that ``api/deps.py._DEV_PERMISSIONS`` was
 missing (docs/15 §0 F3).
 """
 
@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 CATALOG_PERMISSIONS = frozenset({"catalog.read", "catalog.create"})
 INVENTORY_PERMISSIONS = frozenset({"inventory.read", "inventory.receive", "inventory.dispense"})
-SALES_PERMISSIONS = frozenset({"sales.read", "sales.create"})
+SALES_PERMISSIONS = frozenset({"sales.read", "sales.create", "sales.return"})
 RX_PERMISSIONS = frozenset({"rx.read", "rx.create", "rx.approve", "rx.dispense"})
 CLINICAL_PERMISSIONS = frozenset(
     {"clinical.check", "clinical.accept", "clinical.settings.read", "clinical.settings.write"}

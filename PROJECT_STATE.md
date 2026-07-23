@@ -1599,6 +1599,52 @@ cross-module), `AnthropicProvider` thật (chặn — cần `AI__API_KEY`).
 
 ---
 
+## 7aa. Persist trả hàng (`register_return`) — XONG use-case, KHÔNG auto-restock tồn kho (2026-07-23)
+
+> Sau khi đóng mạch audit 5 module (§7v-§7z), sếp cho phép tiếp tục full-auto không dừng hỏi từng lệnh.
+> Đã kiểm tra FK `atc_code` trước — **quyết định KHÔNG bật**: chỉ 10 mã ATC được seed làm dữ liệu khởi
+> động (`seeds/reference_data.py` tự ghi "small starter set... full import job is a later concern");
+> bật FK bây giờ sẽ chặn tạo bất kỳ thuốc nào có mã ATC thật ngoài 10 mã đó — vẫn là blocker (thiếu
+> nguồn ATC đầy đủ), không phải chỉ là nợ kỹ thuật rẻ để sửa. Chuyển sang việc còn lại: **persist trả
+> hàng**, domain đã có từ Sprint 4 (`SalesOrder.register_return`), chỉ thiếu tầng use-case.
+
+**[GĐ]:** Đây là mục có yếu tố pháp lý cần nêu rõ, không chỉ báo cáo kỹ thuật thuần — **quyết định
+KHÔNG tự động phục hồi tồn kho (auto-restock) khi có trả hàng**, dù kỹ thuật hoàn toàn làm được. Lý
+do: thuốc đã bán ra rồi trả lại (nhất là thuốc kê đơn/kiểm soát) cần dược sĩ kiểm tra tình trạng bao bì/
+chất lượng trước khi quyết định có bán lại được không — tự động cộng lại vào tồn kho bán được ngay khi
+khách trả hàng là rủi ro an toàn dược phẩm thật, có thể vướng quy định GPP về đảm bảo chất lượng thuốc.
+Không tìm thấy đặc tả nghiệp vụ trả hàng nào trong `docs/06_WORKFLOWS.md` để đối chiếu — đây là khoảng
+trống thiết kế từ đầu, không phải tôi bỏ sót. Đề xuất: sếp xác nhận lại chính sách trả hàng thật (có
+cho trả OTC còn nguyên bao bì tự động lên kệ không, ETC/CONTROLLED có luôn cấm resell không) — hiện tại
+hệ thống chỉ ghi nhận **sự kiện trả hàng đã xảy ra** (đơn bán, dòng hàng, số lượng), việc đưa hàng vật
+lý trở lại tồn kho bán được vẫn là thao tác tay qua `POST /inventory/receive` sẵn có, không tự động.
+
+**Đã làm (sales side, an toàn — chỉ ghi nhận sự kiện, không đụng tồn kho):**
+- `domain/events.py`: event mới `SaleReturned` (`return_id`/`order_id`/`branch_id`/`line_id`/`drug_id`/
+  `quantity`) — chưa có subscriber (để sẵn cho sau này nếu sếp chốt chính sách restock tự động).
+- `domain/ports.py` + `infrastructure/repository.py`: thêm `SalesRepository.update()` (trước đây
+  `SalesOrder` chỉ từng được `add()` 1 lần, chưa từng cần sửa lại sau khi tạo).
+- `application/service.py`: `SalesService.register_return(order_id, RegisterReturnInput, ctx)` — gọi
+  domain method có sẵn, `repo.update`, phát `SaleReturned`, ghi audit.
+- `interface`: `POST /sales/{order_id}/returns` (200, trả về đơn đã cập nhật `returned_quantity`/
+  `status`); quyền mới `sales.return` (thêm vào `SALES_PERMISSIONS`, tự động có ở mọi vai đã có quyền
+  bán hàng — cashier/dược sĩ/admin).
+- Audit: action mới `SALE_RETURN_REGISTERED` (`core/audit/entry.py`), ghi kèm `return_id` trong context.
+
+**Test mới:** unit-app (`test_sales_flow.py`: partial→full return, quá số lượng bị chặn 422/
+`ValidationError`, đơn không tồn tại 404, event `SaleReturned` phát đúng, audit ghi đúng 1 dòng) + e2e
+HTTP (`test_sales_api_e2e.py`: partial→full qua API thật, quá số lượng, đơn không tồn tại).
+
+**Bằng chứng:** `ruff` sạch · `mypy --strict` **212 file** · `import-linter` **13/0** (không đổi
+contract — thuần nội bộ `sales`, không cross-module mới) · `pytest` **exit code 0**. Không có migration
+mới (`returned_quantity` đã có cột từ migration `0003_sales`).
+
+**Nợ còn lại:** "trả tồn" (auto-restock) vẫn CHƯA làm — chờ sếp/GĐ chốt chính sách trả hàng thật trước
+khi thiết kế cross-module (nếu chốt có auto-restock, đây sẽ là cross-module thật cần Opus + từng bước
+duyệt, theo đúng tiền lệ S4.4/S4.5/S5.4/C.5).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
@@ -1609,6 +1655,7 @@ cross-module), `AnthropicProvider` thật (chặn — cần `AI__API_KEY`).
 | 2026-07-23 | Audit `procurement` (`PO_ORDERED`/`GRN_CONFIRMED`, chỉ 2/7 use-case) — xem §7x. |
 | 2026-07-23 | Audit `clinical` (`INTERACTION_CHECKED`/`RECOMMENDATION_ACCEPTED`) — xem §7y. |
 | 2026-07-23 | Audit `catalog` (`DRUG_CREATED`) — **mạch 5 module đóng, 9/9 module có audit** — xem §7z. |
+| 2026-07-23 | Persist trả hàng (`register_return`, sales-side only) — GĐ chốt KHÔNG auto-restock tồn kho, xem §7aa. |
 | 2026-07-23 | **DỪNG PHIÊN theo yêu cầu sếp — gom điểm dừng toàn phiên vào §7p.** Sếp muốn phiên sau bàn sắp xếp lại ưu tiên với GĐ trước khi tiếp tục code. §7p liệt kê trung lập (không xếp hạng): trạng thái kỹ thuật lúc dừng (2 tiến trình nền còn chạy — uvicorn 8000, next dev 3000; tenant demo còn trên Postgres), 6 việc tính năng đang dở dang, 7 việc treo ngoài phạm vi code (thương hiệu chưa ghi vào `ChienLuoc/`, câu hỏi lẻ-hay-chuỗi, tagline lệch, gộp hỏi luật sư, badge chưa đo lại...), và cảnh báo `TODO.md` đã lỗi thời (đề 2026-07-22, một số dòng sai so với thực tế — cần rà lại riêng, không tự sửa hàng loạt ngay vì thiếu ngữ cảnh phiên cũ). |
 | 2026-07-23 | **S4.6 FE POS tối thiểu — 4/5 bước (phiên Sonnet, xem §7o).** Hồi sinh từ nợ ROADMAP Sprint 4. `frontend/` mới hoàn toàn (Next.js+TS+TanStack Query+Zustand), theo `docs/04` §3 + `docs/16` brand guide. 4 commit: CORS (`cb3809e`, ngoại lệ backend duy nhất, xin phép trước) → scaffold (`2bcea7f`) → auth JWT thật (`c642c34`) → tra thuốc/giỏ hàng/thanh toán (`ba547c4`). **3 phát hiện lệch docs/11-thực tế**: API `sales` thật là `POST /sales` gộp 1 lệnh (không phải `/sales-orders`+`/payments`+`/complete` như doc); `GET /drugs` không có tham số tìm kiếm; **không nguồn giá bán nào trong backend** (chỉ có `inventory.cost_price` — giá vốn) nên thu ngân nhập tay giá — khoảng trống sản phẩm thật. Kiểm chứng bằng curl mô phỏng đúng request FE trên backend live (không chỉ đọc code) — khớp 100% type đã viết; `next dev` thật chạy sạch. **Giới hạn: không có trình duyệt trong môi trường, chưa từng click-through UI thật** — chỉ xác nhận hợp đồng API + server không crash. **Bước 5 (Dexie offline) chưa làm.** Để lại tài khoản demo `fe-demo@beral.vn`/`MatKhauFeDemo2026` trên Postgres để sếp login thử ngay. |
 | 2026-07-23 | **CHỐT PHIÊN — 20 commit, xem §7n.** Phiên Opus dài: `iam` thật (4 bước) → `audit_logs` persist (3 bước) → Hồ sơ sức khỏe KH qua cổng docs/14 (Bước 0-3, còn Bước 4) → thương hiệu **BERAS** + `docs/16_BRAND_UI_GUIDE.md`. Cổng cuối: ruff sạch · mypy strict 210 file · import-linter 13/0 · pytest **560** · alembic `0015` (head) · git sạch. **5 bug thật** phát hiện và vá (nặng nhất: lỗ hổng `X-Branch-Id` đang chạy; role hệ thống không cập nhật khi nâng cấp mà 505 test vẫn xanh). **14 quyết định Claude tự chốt trong full-auto** liệt kê đủ ở §7n để sếp đọc lướt. Phiên sau bắt đầu: đóng Bước 4 → mount router `compliance` → audit cho `prescription`+`compliance`. |

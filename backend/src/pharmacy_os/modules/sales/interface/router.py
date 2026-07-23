@@ -16,6 +16,7 @@ from pharmacy_os.modules.sales.interface.schemas import (
     CreateSaleRequest,
     ReceiptFormat,
     ReceiptResponse,
+    RegisterReturnRequest,
     SaleResponse,
 )
 
@@ -52,6 +53,15 @@ def build_router(get_context: ContextDep) -> APIRouter:
         ctx: RequestContext = Depends(get_context),
     ) -> SaleResponse:
         return SaleResponse.of(await service.get_sale(order_id, ctx))
+
+    @sales.post("/{order_id}/returns", response_model=SaleResponse)
+    async def register_return(
+        order_id: UUID,
+        body: RegisterReturnRequest,
+        service: SalesService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> SaleResponse:
+        return SaleResponse.of(await service.register_return(order_id, body.to_input(), ctx))
 
     # In bill (S7, rút gọn): không VAT, chữ ký chỉ là khoảng trống trên giấy in.
     @sales.get("/{order_id}/receipt")

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
@@ -25,6 +25,7 @@ from pharmacy_os.modules.sales.application.dto import (
     ReceiptLine,
     ReceiptPayment,
     ReceiptSummaryDTO,
+    RegisterReturnInput,
     SaleLineInput,
     SaleOutput,
 )
@@ -32,6 +33,7 @@ from pharmacy_os.modules.sales.domain import (
     Payment,
     SaleCompleted,
     SaleLine,
+    SaleReturned,
     SalesError,
     SalesOrder,
     SoldItem,
@@ -176,12 +178,76 @@ class SalesService:
     async def get_sale(self, order_id: UUID, ctx: RequestContext) -> SaleOutput:
         """Return one sale by id, scoped to the tenant; 404 if not found."""
         require_permission(ctx, "sales.read")
+        order = await self._get_order_or_404(order_id, ctx)
+        return SaleOutput.of(order)
+
+    async def register_return(
+        self, order_id: UUID, data: RegisterReturnInput, ctx: RequestContext
+    ) -> SaleOutput:
+        """Record a (partial) return of one line on a completed sale.
+
+        Raises :class:`NotFoundError` if the order doesn't exist for the tenant,
+        :class:`ValidationError` on an invalid line/quantity or an order not yet
+        completed. Emits :class:`SaleReturned` after commit — **no cross-module
+        subscriber restocks inventory from this today**: a returned medicine needs
+        a pharmacist to inspect it before it can go back on the shelf, so putting
+        it back into sellable stock is a separate, manual ``POST
+        /inventory/receive`` decision, not an automatic reaction (see
+        PROJECT_STATE for the reasoning).
+        """
+        require_permission(ctx, "sales.return")
+        order = await self._get_order_or_404(order_id, ctx)
+        try:
+            order.register_return(data.line_id, data.quantity)
+        except SalesError as exc:
+            raise ValidationError(str(exc)) from exc
+        # register_return already validated line_id exists, so this always finds it.
+        line = next(ln for ln in order.lines if ln.id == data.line_id)
+
+        return_id = uuid4()
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            await repo.update(order)
+            uow.collect(
+                SaleReturned(
+                    tenant_id=ctx.tenant_id,
+                    return_id=return_id,
+                    order_id=order.id,
+                    branch_id=order.branch_id,
+                    line_id=data.line_id,
+                    drug_id=line.drug_id,
+                    quantity=data.quantity,
+                )
+            )
+            await uow.commit()
+
+        await self._record_return_registered(ctx, return_id, order.id)
+        return SaleOutput.of(order)
+
+    async def _get_order_or_404(self, order_id: UUID, ctx: RequestContext) -> SalesOrder:
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)
             order = await repo.get(order_id)
         if order is None:
             raise NotFoundError(f"Không tìm thấy đơn bán {order_id}")
-        return SaleOutput.of(order)
+        return order
+
+    async def _record_return_registered(
+        self, ctx: RequestContext, return_id: UUID, order_id: UUID
+    ) -> None:
+        """Append one audit row — metadata only, never line items/prices."""
+        if self._audit is None:
+            return
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=AuditAction.SALE_RETURN_REGISTERED,
+                target_type="sale",
+                target_id=str(order_id),
+                context={"return_id": str(return_id)},
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+        )
 
     async def _by_client_uuid(self, client_uuid: str, ctx: RequestContext) -> SaleOutput | None:
         async with self._uow_factory() as uow:

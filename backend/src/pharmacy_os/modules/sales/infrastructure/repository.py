@@ -22,6 +22,18 @@ class SqlAlchemySalesRepository:
         self._session.add(to_orm(order))
         await self._session.flush()
 
+    async def update(self, order: SalesOrder) -> None:
+        stmt = select(SalesOrderORM).where(
+            SalesOrderORM.id == order.id,
+            SalesOrderORM.tenant_id == self._ctx.tenant_id,
+        )
+        row = (await self._session.execute(stmt)).scalar_one()
+        row.status = order.status.value
+        lines_by_id = {ln.id: ln for ln in row.lines}
+        for line in order.lines:
+            lines_by_id[line.id].returned_quantity = line.returned_quantity
+        await self._session.flush()
+
     async def get(self, order_id: UUID) -> SalesOrder | None:
         stmt = select(SalesOrderORM).where(
             SalesOrderORM.id == order_id,

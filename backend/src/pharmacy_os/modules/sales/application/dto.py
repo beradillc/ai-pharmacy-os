@@ -34,6 +34,12 @@ class CreateSaleInput:
 
 
 @dataclass(slots=True)
+class RegisterReturnInput:
+    line_id: UUID
+    quantity: Decimal
+
+
+@dataclass(slots=True)
 class SaleLineOutput:
     id: UUID
     drug_id: UUID

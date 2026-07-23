@@ -84,6 +84,13 @@ class AuditAction(StrEnum):
     """A sale was finalised — the third thing an inspection asks about: "ai đã bán
     thuốc này, khi nào". Recorded once per ``client_uuid`` (not on idempotent replay)."""
 
+    SALE_RETURN_REGISTERED = "SALE_RETURN_REGISTERED"
+    """A (partial) return was registered against a completed sale. Deliberately
+    does **not** trigger an automatic inventory restock — a returned medicine
+    needs a pharmacist to inspect it before it can go back on the shelf, so
+    putting it back into sellable stock is a separate, manual decision (existing
+    ``POST /inventory/receive``), not wired as a cross-module reaction here."""
+
     # --- inventory (sổ nhập/xuất kho — chỉ hành vi con người gõ tay qua API) ---
     INVENTORY_STOCK_RECEIVED = "INVENTORY_STOCK_RECEIVED"
     """Manual goods receipt (``POST /inventory/receive``) — a person keyed in a batch.

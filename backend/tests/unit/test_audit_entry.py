@@ -96,6 +96,7 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "CLINICAL_INTERACTION_CHECKED",
         "CLINICAL_RECOMMENDATION_ACCEPTED",
         "CATALOG_DRUG_CREATED",
+        "SALE_RETURN_REGISTERED",
     }
     assert {a.value for a in AuditAction} == expected
 

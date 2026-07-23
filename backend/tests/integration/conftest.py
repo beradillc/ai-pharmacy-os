@@ -109,6 +109,7 @@ def ctx() -> RequestContext:
                 "inventory.dispense",
                 "sales.read",
                 "sales.create",
+                "sales.return",
                 "rx.read",
                 "rx.create",
                 "rx.approve",

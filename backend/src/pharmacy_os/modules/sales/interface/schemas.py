@@ -13,6 +13,7 @@ from pharmacy_os.modules.sales.application.dto import (
     CreateSaleInput,
     PaymentInput,
     ReceiptSummaryDTO,
+    RegisterReturnInput,
     SaleLineInput,
     SaleOutput,
 )
@@ -54,6 +55,14 @@ class CreateSaleRequest(BaseModel):
             prescription_ref=self.prescription_ref,
             currency=self.currency,
         )
+
+
+class RegisterReturnRequest(BaseModel):
+    line_id: UUID
+    quantity: Decimal = Field(gt=0)
+
+    def to_input(self) -> RegisterReturnInput:
+        return RegisterReturnInput(line_id=self.line_id, quantity=self.quantity)
 
 
 class SaleLineResponse(BaseModel):

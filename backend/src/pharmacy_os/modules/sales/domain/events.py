@@ -29,3 +29,21 @@ class SaleCompleted(DomainEvent):
     branch_id: UUID
     client_uuid: str
     items: tuple[SoldItem, ...]
+
+
+@dataclass(frozen=True, kw_only=True)
+class SaleReturned(DomainEvent):
+    """Emitted after a (partial) return is registered against a completed sale.
+
+    ``return_id`` is a fresh id minted per call — the idempotency key any future
+    cross-module subscriber should key on (there is no subscriber yet: restocking
+    a returned medicine requires a pharmacist to inspect it first, so today this
+    only reaches the audit trail; see PROJECT_STATE for the reasoning).
+    """
+
+    return_id: UUID
+    order_id: UUID
+    branch_id: UUID
+    line_id: UUID
+    drug_id: UUID
+    quantity: Decimal

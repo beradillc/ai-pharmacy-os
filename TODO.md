@@ -48,7 +48,10 @@
 - [x] ~~`api/deps.py`: request-context dev-header tạm — thay bằng JWT thật khi có IAM~~ — **module `iam` thật đã XONG
       (2026-07-23, PROJECT_STATE §7k)**: JWT thật, `branch_id` ký trong token, dev-header fallback mặc định
       **TẮT** (`SECURITY__ALLOW_DEV_AUTH=false`, fail-closed).
-- [ ] FK `drugs.atc_code → atc_codes` chưa bật (đang lưu string). Cân nhắc bật khi seed ATC là bắt buộc.
+- [ ] FK `drugs.atc_code → atc_codes` chưa bật (đang lưu string). **Đã xác nhận lại 2026-07-23:** vẫn
+      là blocker thật, không phải nợ rẻ — chỉ 10 mã ATC được seed làm khởi động
+      (`seeds/reference_data.py`), bật FK bây giờ sẽ chặn tạo thuốc có mã ATC thật ngoài 10 mã đó. Chờ
+      nguồn ATC đầy đủ (full import job) trước khi bật.
 - [x] ~~Uniqueness của `registration_no` (SĐK) chưa enforce~~ — bật `uq_drugs_tenant_registration_no` trong migration `0005_compliance` (Compliance C.2, 2026-07-21). `barcode` vẫn chỉ chặn ở tầng ứng dụng (không phải nợ mới, không đổi).
 - [ ] `StarletteDeprecationWarning` (httpx + TestClient) — không ảnh hưởng, theo dõi khi nâng cấp.
 
@@ -63,7 +66,13 @@
       **XONG 5/5 bước (2026-07-23)**: đăng nhập JWT thật+chọn chi nhánh, tra thuốc, giỏ hàng, thanh toán
       `POST /sales`, hàng đợi offline Dexie tự đồng bộ khi có mạng lại. Xem `frontend/README.md`. Chưa
       click-through trình duyệt thật (môi trường không có browser tool).
-- [ ] **Nợ Sprint 4:** persist trả hàng (`register_return`) ở tầng use-case + trả tồn (cross-module) — domain đã có, use-case/khôi phục tồn chưa làm (ngoài DoD lần này).
+- [x] ~~**Nợ Sprint 4:** persist trả hàng (`register_return`) ở tầng use-case + trả tồn (cross-module)~~
+      — **use-case XONG 2026-07-23** (PROJECT_STATE §7aa): `SalesService.register_return`, event
+      `SaleReturned`, endpoint `POST /sales/{id}/returns`, quyền `sales.return`, audit
+      `SALE_RETURN_REGISTERED`. **"Trả tồn" (auto-restock) CHỦ Ý CHƯA làm** — GĐ chốt cần dược sĩ kiểm
+      tra thuốc trả trước khi bán lại (rủi ro an toàn dược phẩm), không phải thiếu sót; restock hiện
+      vẫn là thao tác tay qua `POST /inventory/receive` có sẵn. Chờ sếp/GĐ chốt chính sách trả hàng
+      thật trước khi thiết kế cross-module tự động (nếu có).
 - [x] Audit cho `sales` (1 action: `SALE_COMPLETED`, ghi 1 lần/`client_uuid`, không nhân đôi khi
       sync lại) — **XONG 2026-07-23** (PROJECT_STATE §7v). **Còn lại 4/9 module chưa có audit:**
       `inventory`/`procurement`/`clinical`/`catalog` (GĐ chọn thứ tự tiếp theo).

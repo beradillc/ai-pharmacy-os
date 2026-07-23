@@ -11,10 +11,16 @@ from pharmacy_os.core.events import DomainEvent, InMemoryEventBus
 from pharmacy_os.modules.sales.application import (
     CreateSaleInput,
     PaymentInput,
+    RegisterReturnInput,
     SaleLineInput,
     SalesService,
 )
-from pharmacy_os.modules.sales.domain import PaymentMethod, SaleCompleted, SaleStatus
+from pharmacy_os.modules.sales.domain import (
+    PaymentMethod,
+    SaleCompleted,
+    SaleReturned,
+    SaleStatus,
+)
 
 
 def _sale(client_uuid: str = "c-1", *, rx: bool = False, rx_ref: object = None) -> CreateSaleInput:
@@ -140,3 +146,79 @@ async def test_idempotent_resync_leaves_a_single_audit_row(
         entries = await repo.list(ctx.tenant_id, action=AuditAction.SALE_COMPLETED)
         matching = [e for e in entries if e.target_id == str(first.id)]
         assert len(matching) == 1
+
+
+# --- returns: đã có domain từ Sprint 4, giờ nối use-case + audit --------------
+
+
+async def test_register_return_partial_then_full(
+    sales_service: SalesService, ctx: RequestContext
+) -> None:
+    sale = await sales_service.complete_sale(_sale("return-1"), ctx)
+    line_id = sale.lines[0].id
+
+    partial = await sales_service.register_return(
+        sale.id, RegisterReturnInput(line_id=line_id, quantity=Decimal("1")), ctx
+    )
+    assert partial.status == SaleStatus.PARTIALLY_RETURNED.value
+    assert partial.lines[0].returned_quantity == Decimal("1")
+
+    full = await sales_service.register_return(
+        sale.id, RegisterReturnInput(line_id=line_id, quantity=Decimal("1")), ctx
+    )
+    assert full.status == SaleStatus.RETURNED.value
+
+
+async def test_register_return_over_quantity_rejected(
+    sales_service: SalesService, ctx: RequestContext
+) -> None:
+    sale = await sales_service.complete_sale(_sale("return-2"), ctx)
+    with pytest.raises(ValidationError):
+        await sales_service.register_return(
+            sale.id,
+            RegisterReturnInput(line_id=sale.lines[0].id, quantity=Decimal("999")),
+            ctx,
+        )
+
+
+async def test_register_return_unknown_order_raises(
+    sales_service: SalesService, ctx: RequestContext
+) -> None:
+    with pytest.raises(NotFoundError):
+        await sales_service.register_return(
+            uuid4(), RegisterReturnInput(line_id=uuid4(), quantity=Decimal("1")), ctx
+        )
+
+
+async def test_register_return_emits_event_and_leaves_an_audit_row(
+    sales_service: SalesService,
+    ctx: RequestContext,
+    event_bus: InMemoryEventBus,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Does not trust the call sites to be wired — reads the table back."""
+    events: list[SaleReturned] = []
+
+    async def record(event: DomainEvent) -> None:
+        assert isinstance(event, SaleReturned)
+        events.append(event)
+
+    event_bus.subscribe(SaleReturned, record)
+
+    sale = await sales_service.complete_sale(_sale("return-3"), ctx)
+    line_id = sale.lines[0].id
+    await sales_service.register_return(
+        sale.id, RegisterReturnInput(line_id=line_id, quantity=Decimal("1")), ctx
+    )
+
+    assert len(events) == 1
+    assert events[0].order_id == sale.id
+    assert events[0].line_id == line_id
+    assert events[0].quantity == Decimal("1")
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        entries = await repo.list(ctx.tenant_id, action=AuditAction.SALE_RETURN_REGISTERED)
+        matching = [e for e in entries if e.target_id == str(sale.id)]
+        assert len(matching) == 1
+        assert matching[0].actor_user_id == ctx.user_id

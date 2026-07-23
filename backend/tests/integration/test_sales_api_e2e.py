@@ -150,3 +150,38 @@ def test_get_receipt_pdf_a5_and_a4(client: TestClient) -> None:
 def test_get_receipt_unknown_order_404(client: TestClient) -> None:
     resp = client.get(f"/api/v1/sales/{uuid4()}/receipt")
     assert resp.status_code == 404
+
+
+def test_register_return_partial_then_full(client: TestClient) -> None:
+    sale = client.post("/api/v1/sales", json=_payload("return-1")).json()
+    line_id = sale["lines"][0]["id"]
+
+    partial = client.post(
+        f"/api/v1/sales/{sale['id']}/returns", json={"line_id": line_id, "quantity": "1"}
+    )
+    assert partial.status_code == 200, partial.text
+    assert partial.json()["status"] == "PARTIALLY_RETURNED"
+    assert partial.json()["lines"][0]["returned_quantity"] == "1.000"
+
+    full = client.post(
+        f"/api/v1/sales/{sale['id']}/returns", json={"line_id": line_id, "quantity": "1"}
+    )
+    assert full.status_code == 200, full.text
+    assert full.json()["status"] == "RETURNED"
+
+
+def test_register_return_over_quantity_rejected(client: TestClient) -> None:
+    sale = client.post("/api/v1/sales", json=_payload("return-2")).json()
+    line_id = sale["lines"][0]["id"]
+
+    resp = client.post(
+        f"/api/v1/sales/{sale['id']}/returns", json={"line_id": line_id, "quantity": "999"}
+    )
+    assert resp.status_code == 422
+
+
+def test_register_return_unknown_order_404(client: TestClient) -> None:
+    resp = client.post(
+        f"/api/v1/sales/{uuid4()}/returns", json={"line_id": str(uuid4()), "quantity": "1"}
+    )
+    assert resp.status_code == 404

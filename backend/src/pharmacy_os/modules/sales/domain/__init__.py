@@ -7,7 +7,7 @@ from pharmacy_os.modules.sales.domain.entities import (
     SalesOrder,
     SaleStatus,
 )
-from pharmacy_os.modules.sales.domain.events import SaleCompleted, SoldItem
+from pharmacy_os.modules.sales.domain.events import SaleCompleted, SaleReturned, SoldItem
 from pharmacy_os.modules.sales.domain.exceptions import (
     EmptyOrderError,
     InvalidOrderStateError,
@@ -36,6 +36,7 @@ __all__ = [
     "SalesOrder",
     "SaleStatus",
     "SaleCompleted",
+    "SaleReturned",
     "SoldItem",
     "EmptyOrderError",
     "InvalidOrderStateError",
