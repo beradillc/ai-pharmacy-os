@@ -835,12 +835,52 @@ bền thay best-effort reconciliation; (5) API tra cứu/resolve `stock_reconcil
 > **Trạng thái tại đây:** Sprint 6 ĐÓNG. **In bill (S7) XONG** đủ 4 lớp (commit `4a5bc0b`→`53e31b3`, xem entry changelog 2026-07-23 đầu). Còn **hồ sơ KH · tích điểm KH** (2/3 tính năng thương mại ngoài ROADMAP) — cả hai vẫn NGOÀI ROADMAP gốc → **bắt buộc đi qua Bước 0-4 của docs/14 trước khi code.**
 
 **2 blocker nền:**
-1. **RBAC/IAM (Bước 1.5) CHƯA THỎA — đang mở thiết kế (xem §7k ngay dưới).**
+1. **RBAC/IAM (Bước 1.5) — ✅ ĐÃ THỎA (2026-07-23).** Module `iam` thật đã xong 4/4 bước, xem §7k.
+   Còn 1 điểm liên quan trực tiếp tới 2 tính năng này: `crm.read` vẫn gộp cả dữ liệu thường lẫn dị
+   ứng/bệnh nền — NĐ356 Điều 4.2 đòi phân quyền riêng cho dữ liệu nhạy cảm. Hiện thu ngân không
+   được cấp quyền crm nào (an toàn), nhưng khi làm **hồ sơ KH** phải tách `crm.sensitive.read`.
 2. **Văn bản pháp lý (Bước 1.1/1.8) — ĐÃ ĐỦ (2026-07-23).** Sếp đã thả đủ **Luật BVDLCN 91/2025/QH15**, **NĐ 356/2025/NĐ-CP**, **GPP** (TT02/2018 + TT11/2025 + TT29/2020), **Luật Dược 105/2016/QH13** + **Luật sửa đổi 44/2024/QH15**. Đã đọc + tóm tắt 10 file `docs/legal/*.SUMMARY.md` (xem `docs/legal/README.md`). **Traceability `docs/13_COMPLIANCE_SPEC.md` đã cập nhật (commit `aedd005`, sếp duyệt)** — dòng 14 (C.3 rule 1 ETC) nay dẫn Luật Dược Điều 2.27-28+6.5.h; dòng 17 (D.1 liên thông) nay có thêm Điều 75.2. Câu hỏi pháp lý mở còn treo (cần luật sư, không chặn IAM): (a) BeraLLC có cần Giấy chứng nhận kinh doanh dịch vụ xử lý DLCN (NĐ356 Điều 21-27) không.
 
 **4 lệch đã báo cáo (sếp chốt sửa SAU khi xong 3 tính năng — vẫn hoãn, chỉ mới 1/3 xong):** demo_preview.py lỗi thời (2 constructor thiếu tham số); TODO:158 procurement chưa tick; TODO:73 C.5 chưa tick; cây rỗng untracked `backend/backend/`.
 
-## 7k. Thiết kế IAM thật (users/roles/JWT) — DỪNG chờ mở phiên Opus (2026-07-23)
+## 7k. Module IAM thật (users/roles/JWT) — ✅ XONG 4/4 bước (2026-07-23)
+
+> **Trạng thái cuối:** sếp duyệt trọn 11 điểm thiết kế (`docs/15_IAM_DESIGN.md` §8) trong 1 lượt,
+> thi công xong 4 bước, mỗi bước 1 commit + 4 cổng xanh: `3bc148f` (domain) → `5c3bc08`
+> (application+infra+migration 0013) → `4c64a4c` (interface + `api/deps.py` + CLI bootstrap).
+> **Blocker RBAC/IAM ở §7j mục 1 nay ĐÃ GỠ.**
+
+| Hạng mục | Kết quả |
+|----------|---------|
+| Lỗ hổng `X-Branch-Id` (F1) | **ĐÃ ĐÓNG** — `branch_id` nằm trong claim JWT đã ký, header bị bỏ qua; có test e2e chốt |
+| Dev-header | Giữ nhưng **fail-closed**: cần `SECURITY__ALLOW_DEV_AUTH=true` (mặc định **false**) + `Settings` từ chối boot nếu prod bật |
+| `_DEV_PERMISSIONS` lệch 26/32 (F3) | **ĐÃ VÁ** — lấy thẳng từ `iam.domain.ALL_PERMISSIONS` (38 = 32 business + 6 `iam.*`) |
+| Refresh token | Revocable + xoay vòng + phát hiện tái sử dụng (replay → thu hồi toàn bộ session của user) |
+| Role 2 cấp | `user_roles.branch_id` NULL = toàn chuỗi; **2 partial unique index** (UNIQUE 3 cột không chặn trùng vì Postgres coi NULL là khác nhau) |
+| Seed role | 5 role: `system_admin` 38 · `chain_pharmacist` 34 · `branch_pharmacist` 28 · `warehouse` 11 · `cashier` 6 (đã xác nhận trên Postgres thật) |
+| Bootstrap | CLI `python -m seeds.bootstrap_tenant`, mật khẩu stdin/env, không mặc định; đã chạy thật rồi dọn tenant thử nghiệm |
+| Cổng cuối | ruff sạch · mypy strict **201 file** · import-linter **13/0** · pytest **465** (+51) |
+
+**Nợ ghi rõ, KHÔNG báo là xong:**
+1. **Thu hồi quyền trễ ≤60 phút** — access token TTL giữ 60 (D2). Refresh mới tính lại quyền. Cần
+   tức thì thì phải vô hiệu hóa user (thu hồi luôn session).
+2. **Auth cho POS offline dài hạn CHƯA GIẢI** — lý do giữ TTL 60 thay vì hạ 15. Bài toán riêng.
+3. **`audit_logs` vẫn chỉ ghi structlog** (F8, nợ Sprint 7). IAM đã gọi audit đúng chỗ (login
+   thành công/thất bại/khóa, tạo/khóa user, gán/thu hồi role, đổi mật khẩu, replay refresh token)
+   nhưng chưa persist ⇒ **chưa chứng minh được ai truy cập gì** khi bị hỏi. GĐ khuyến nghị làm
+   ngay sau IAM, trước hồ sơ KH/tích điểm.
+4. **Tách `crm.read` → `crm.sensitive.read` chưa làm** (D8 chọn phương án a). Thu ngân hiện không
+   có quyền crm nào; khi `SalesOrder` có `customer_id` thì phải quay lại tách.
+5. **Chưa gỡ hẳn dev-header** — 11 file test cũ vẫn opt-in `allow_dev_auth=True`. Chuyển hết e2e
+   sang login thật rồi mới xóa được.
+6. **Chưa có use-case tạo chi nhánh/tenant qua API** (quản lý chuỗi ngoài phạm vi, docs/15 §1) —
+   test hai chi nhánh phải dựng branch thẳng qua repository.
+7. **Module `compliance` vẫn chưa mount router** (F4) — không sửa ở bước này.
+8. Chưa làm: 2FA (`require_2fa_roles` có field nhưng chưa dùng), SSO, hiệu lực role theo thời gian.
+
+---
+
+## 7k-cũ. Thiết kế IAM thật — điểm dừng chờ phiên Opus (lưu lại làm bối cảnh)
 
 > **Lệnh sếp:** thiết kế module `iam` thật (users/roles/JWT) thay `api/deps.py` dev-header, theo
 > khung đã phác ở `docs/02_ARCHITECTURE.md`/`docs/08_MODULES.md` §2.1 (Sprint 1, mới chỉ là
@@ -883,6 +923,7 @@ nhiều đánh đổi:**
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-23 | **Module IAM thật XONG 4/4 bước — blocker RBAC gỡ.** Phiên Opus: đọc §7k, khảo sát code thật, viết `docs/15_IAM_DESIGN.md` (thiết kế + trả lời 5 câu hỏi mở + 11 điểm chờ duyệt), **sếp duyệt trọn 11 điểm 1 lượt**, thi công 4 bước (`3bc148f` domain → `5c3bc08` app+infra+migration `0013_iam` → `4c64a4c` interface+deps+CLI). **6 phát hiện trong lúc khảo sát**: (F1 🔴) `api/deps.py` tin `X-Branch-Id` không kiểm tra → đổi header là truy cập chi nhánh khác trong tenant với nguyên bộ quyền — **đây là lỗ hổng thật đang chạy, IAM đã đóng bằng cách ký branch vào JWT**; (F2) thiếu header thì gán `branch_id = tenant_id`; (F3) `_DEV_PERMISSIONS` chỉ 26/32 permission thật, thiếu đúng 6 `compliance.*`; (F4) module `compliance` chưa mount router (chưa sửa); (F5) `TenantScopedMixin` ép `branch_id NOT NULL` nên iam phải tự khai cột; (F7) `crm.read` gộp cả dữ liệu nhạy cảm, ngược NĐ356 Điều 4.2. **Quyết định đáng nhớ**: refresh token revocable + xoay vòng + phát hiện replay (thay vì stateless — nhà thuốc có luân chuyển nhân sự thật, Luật 44/2024 Điều 47a.1.đ); giữ TTL access token 60 phút thay vì hạ 15 vì POS offline-first (đổi rủi ro lấy rủi ro, ghi nợ thay vì giả vờ giải xong); bootstrap bằng CLI chứ không endpoint (không mở thêm bề mặt tấn công); dev-header giữ nhưng mặc định TẮT (fail-closed); 5 role đặt tên theo chức danh nghiệp vụ bám Luật 44 Điều 17a; thu ngân không có `rx.approve`/`rx.dispense` (Luật Dược Điều 6.5.h) và không có `crm.*` (NĐ356 Điều 4.2 + GPP TT02 I-1a.III.4.a). Cổng cuối: ruff sạch · mypy strict 201 file · import-linter 13/0 (thêm `iam-domain-innermost`, thêm `iam` vào `module-independence` — sếp duyệt sửa contract cũ) · pytest **465** (+51). **8 nợ ghi rõ ở §7k, không overclaim** — nặng nhất: `audit_logs` vẫn chỉ ghi structlog nên chưa chứng minh được ai truy cập gì. |
 | 2026-07-23 | **Mở việc thiết kế IAM thật — DỪNG ngay ở bước khảo sát, chờ phiên Opus (KHÔNG code, KHÔNG thiết kế chi tiết).** Sếp lệnh thiết kế module `iam` (users/roles/JWT) thay dev-header, cross-module ảnh hưởng toàn hệ thống. Hỏi sếp model cho việc này (đúng quy tắc dự án: thiết kế mới hoàn toàn → Opus + phiên hạn mức đầy, phiên hiện tại là Sonnet) — **sếp chọn dừng, mở phiên Opus mới**. Đã khảo sát hạ tầng sẵn có để phiên sau không dò lại: `core/security/{jwt,password,rbac}.py` (JwtService.issue/decode, hash_password/verify_password, require_permission — đều đã chạy được từ Sprint 2), `core/context.py` (`RequestContext` đã có `branch_id` tách biệt `tenant_id`), `core/db/base.py` (`TenantScopedMixin`), 26 permission string thật đang dùng trong `api/deps.py._DEV_PERMISSIONS` trải 6 module, khung endpoint `iam` đã phác ở `docs/11_API_DESIGN.md` §3. Ghi toàn bộ vào §7k kèm 5 câu hỏi thiết kế mở (refresh token, bootstrap admin đầu tiên, có giữ dev-header song song không, mô hình role 2 cấp chuỗi/nhà thuốc, role seed ban đầu) để Opus quyết định có cơ sở, không phải dò từ đầu. |
 | 2026-07-23 | **Đọc + tóm tắt Luật Dược 105/2016/QH13 + Luật sửa đổi 44/2024/QH15 (đợt 2, KHÔNG code).** Sếp bổ sung 2 văn bản còn thiếu từ đợt 1: `Luật-105-2016-QH13.docx`, `Luật-44-2024-QH15.docx`. Đọc toàn văn, viết 2 file `docs/legal/*.SUMMARY.md` + cập nhật `docs/legal/README.md`. **4/4 văn bản pháp lý ban đầu sếp yêu cầu nay đã đủ.** Phát hiện quan trọng: (1) Luật Dược Điều 2.27-28 (định nghĩa thuốc kê đơn/không kê đơn) + Điều 6.5.h (cấm bán lẻ ETC không đơn) — **đây chính là nguồn Luật còn thiếu** mà `docs/13_COMPLIANCE_SPEC.md` dòng 14 đánh dấu "KHÔNG TÌM THẤY" cho rule "mọi thuốc ETC cần prescription_code"; Điều 75.2 (sửa bởi Luật 44/2024) cũng là nguồn Luật cấp cao nhất cho toàn bộ yêu cầu liên thông CSDL Dược (hiện docs/13 chỉ dẫn QĐ1867, chưa có gốc Luật) — **đã báo cáo sếp, chưa tự sửa spec đã khóa**. (2) Luật 44/2024 đưa vào khái niệm pháp lý mới **"chuỗi nhà thuốc"** (Điều 2.48, 17a, 47a): yêu cầu quản lý dữ liệu khách hàng thống nhất toàn chuỗi — **khớp sẵn** với kiến trúc `tenant_id`+`branch_id` đã có (`crm.Customer` scope theo tenant, không branch — đã validate đúng hướng, không cần sửa); nhưng cần role RBAC riêng "chuyên môn cấp chuỗi" vs "cấp nhà thuốc" khi thiết kế IAM. (3) Luật 44/2024 hợp pháp hóa thương mại điện tử dược (chỉ OTC được bán online) — ngoài ROADMAP hiện tại (POS offline-first), chỉ ghi nhận khung pháp lý. **Không code** — blocker RBAC/IAM (§7j mục 1) vẫn còn nguyên, 2 câu hỏi pháp lý mở (giấy phép DLCN, cập nhật docs/13) vẫn chờ sếp/luật sư. |
 | 2026-07-23 | **Đọc + tóm tắt 5 văn bản pháp lý mới sếp bổ sung (KHÔNG code).** Sếp thả vào `docs/legal/`: Luật BVDLCN 91/2025/QH15, NĐ 356/2025/NĐ-CP, TT02/2018/TT-BYT (GPP), TT11/2025/TT-BYT (sửa GPP/GDP/GSP), TT29/2020/TT-BYT (sửa nhiều VB). Đọc toàn văn (convert docx→txt qua `soffice --headless`), viết 8 file `docs/legal/*.SUMMARY.md` (1 file/văn bản, kèm 3 file cũ 540/1867/TT20 trỏ về `docs/13_COMPLIANCE_SPEC.md` đã có sẵn) + `docs/legal/README.md` chỉ mục. Phát hiện đáng chú ý: (1) NĐ356 Điều 41.2 — miễn trừ DPIA cho hộ kinh doanh/DN siêu nhỏ **không áp dụng** khi xử lý dữ liệu nhạy cảm (dị ứng/bệnh nền là nhạy cảm theo Điều 4.1.d) → mọi tenant dù nhỏ vẫn phải DPIA cho tính năng hồ sơ KH; (2) câu hỏi pháp lý mở: BeraLLC có cần Giấy chứng nhận kinh doanh dịch vụ xử lý DLCN không (NĐ356 Điều 21-27) — cần tư vấn luật sư, không tự kết luận; (3) GPP (TT02/2018 II.4.d) là căn cứ cho retention tối thiểu 1 năm kể từ hết hạn dùng thuốc — dùng cho thiết kế retention policy hồ sơ KH sau này; (4) vẫn thiếu bản thân Luật Dược hiện hành (chỉ có văn bản hướng dẫn thi hành). **Không code** — đây là việc đọc/tóm tắt tài liệu, blocker RBAC/IAM (§7j mục 1) vẫn còn nguyên. |

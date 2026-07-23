@@ -51,13 +51,26 @@
 ## 3. Bản đồ endpoint (v1) theo module
 
 ### iam
+> Đã triển khai 2026-07-23 (`docs/15_IAM_DESIGN.md`). `branch_id` nằm trong claim JWT đã ký —
+> header `X-Branch-Id` KHÔNG còn tác dụng trên request đã xác thực.
+
 | Method | Path | Permission |
 |--------|------|-----------|
 | POST | `/auth/login` | public |
-| POST | `/auth/refresh` | public |
+| POST | `/auth/refresh` | public (xoay vòng token) |
+| POST | `/auth/switch-branch` | public (refresh kèm `branch_id`) |
+| POST | `/auth/logout` | public (idempotent) |
+| POST | `/auth/change-password` | đã đăng nhập (tự đổi) |
+| GET | `/auth/me` | đã đăng nhập |
 | GET | `/users` | `iam.user.read` |
 | POST | `/users` | `iam.user.create` |
-| GET/PUT | `/roles`, `/roles/{id}` | `iam.role.*` |
+| GET | `/users/{id}` | `iam.user.read` |
+| PUT | `/users/{id}/active` | `iam.user.write` |
+| POST | `/users/{id}/reset-password` | `iam.user.write` |
+| GET | `/users/{id}/roles` | `iam.user.read` |
+| POST | `/users/{id}/roles` | `iam.role.assign` |
+| DELETE | `/users/{id}/roles/{assignment_id}` | `iam.role.assign` |
+| GET | `/roles` | `iam.role.read` |
 
 ### catalog
 | Method | Path | Permission |
