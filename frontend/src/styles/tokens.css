@@ -1,0 +1,39 @@
+/*
+ * BERAS Eco-Tech theme tokens — docs/16_BRAND_UI_GUIDE.md §2.
+ *
+ * Giá trị hex dưới đây là TẠM (chưa chốt thiết kế chính thức — xem docs/16 §6
+ * "việc còn treo"). Chọn trong đúng 4 họ màu đã duyệt (kem/xanh lá nhạt nền,
+ * xanh lá đậm điểm nhấn, nâu ấm mascot, viền nâu/vàng đồng cho icon) và đã tự
+ * kiểm tra tỉ lệ tương phản văn bản-nền đạt tối thiểu WCAG AA (4.5:1) — vì
+ * màn hình POS thường bị nhìn dưới đèn huỳnh quang, màn rẻ, nhìn lướt (đã ghi
+ * cảnh báo này trong chính docs/16 §2). Thay bằng bảng màu chính thức khi có,
+ * không cần sửa nơi khác vì mọi UI chỉ tham chiếu qua các biến này.
+ */
+
+:root {
+  --beras-bg: #f5f2e8; /* kem */
+  --beras-bg-alt: #e9f0e3; /* xanh lá nhạt */
+  --beras-surface: #ffffff;
+
+  --beras-accent: #2f5233; /* xanh lá đậm (rừng) */
+  --beras-accent-hover: #23401f;
+  --beras-accent-contrast: #ffffff; /* chữ trên nền --beras-accent, ~8.9:1 */
+
+  --beras-brown: #7a4a2b; /* nâu ấm (mascot) */
+  --beras-icon-border: #b08d57; /* viền nâu/vàng đồng cho icon line-art */
+
+  --beras-text: #24291f; /* ~13.8:1 trên --beras-bg */
+  --beras-text-muted: #5b6152;
+
+  --beras-danger: #a3312a;
+  --beras-danger-bg: #fbe9e7;
+
+  --beras-border: #d8d0bd;
+  --beras-radius: 10px;
+
+  --beras-font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Không dùng next/font/google (Geist mặc định): brand Eco-Tech chưa chọn
+     font riêng, và tải font từ Google lúc build/dev đòi mạng — ngược tinh
+     thần "vận hành liên tục cả khi mất kết nối" của chính câu định vị BERAS. */
+}
