@@ -285,9 +285,12 @@ def test_cashier_cannot_approve_or_dispense_prescriptions() -> None:
     assert "rx.read" in cashier
 
 
-def test_cashier_has_no_customer_data_access() -> None:
-    """NĐ356 Điều 4.2 / GPP TT02 I-1a.III.4.a — crm.read still exposes allergies."""
-    assert not any(p.startswith("crm.") for p in SYSTEM_ROLES_BY_CODE[CASHIER].permissions)
+def test_cashier_sees_the_person_but_not_the_health_data() -> None:
+    """docs/15 §7n Q4 — recording consent is a distinct authority from reading it."""
+    cashier = SYSTEM_ROLES_BY_CODE[CASHIER].permissions
+    assert {"crm.read", "crm.create", "crm.consent.manage"} <= cashier
+    guarded = {"crm.sensitive.read", "crm.sensitive.write", "crm.erase", "crm.write"}
+    assert guarded & cashier == set()
 
 
 def test_warehouse_touches_no_patient_or_sales_data() -> None:

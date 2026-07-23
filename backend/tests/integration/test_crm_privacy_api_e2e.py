@@ -192,10 +192,11 @@ def test_a_cashier_sees_the_person_but_not_the_diagnoses(client: TestClient) -> 
     customer_id = _customer_with_allergy(client, admin)
     cashier = _staff_with_role(client, admin, CASHIER, "tn@bera.vn")
 
-    # NOTE: the cashier role does not carry crm.read yet — that lands with the role
-    # mapping step. Until then this asserts the *deny*, which is the safe direction.
     r = client.get(f"/api/v1/customers/{customer_id}", headers=_auth(cashier))
-    assert r.status_code == 403
+    assert r.status_code == 200
+    body = r.json()
+    assert body["full_name"] == "Nguyễn Văn A"
+    assert body["allergies"] == []
 
 
 def test_the_customer_list_never_carries_health_data_over_http(client: TestClient) -> None:

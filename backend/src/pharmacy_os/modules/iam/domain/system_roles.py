@@ -154,13 +154,17 @@ _BRANCH_PHARMACIST_PERMISSIONS = (
 
 #: Counter staff. No ``rx.approve``/``rx.dispense``: validating and handing over a
 #: prescription-only medicine is a pharmacist act (Luật Dược Điều 6.5.h) — a legal
-#: constraint, not a configuration preference. No ``crm.*`` either: today's
-#: ``crm.read`` also exposes allergies and conditions, which NĐ356 Điều 4.2 and GPP
-#: TT02/2018 I-1a.III.4.a require to sit behind their own restricted permission.
-#: Costs nothing right now because ``SalesOrder`` has no ``customer_id`` yet; when it
-#: gains one, split ``crm.read`` from ``crm.sensitive.read`` and revisit (docs/15 D8).
+#: constraint, not a configuration preference. ``crm.read``/``crm.create`` and
+#: ``crm.consent.manage`` are granted (docs/15 §7n Q4, hồ sơ sức khỏe KH Bước 4):
+#: taking a consent decision at the till is a distinct authority from reading what
+#: it unlocks, so cashier can see the person and record consent but never
+#: ``crm.sensitive.read``/``crm.sensitive.write``/``crm.erase`` — those stay
+#: pharmacist-only, split by NĐ356 Điều 4.2 and GPP TT02/2018 I-1a.III.4.a.
 _CASHIER_PERMISSIONS = (
-    {"catalog.read", "inventory.read", "inventory.dispense"} | SALES_PERMISSIONS | {"rx.read"}
+    {"catalog.read", "inventory.read", "inventory.dispense"}
+    | SALES_PERMISSIONS
+    | {"rx.read"}
+    | {"crm.read", "crm.create", "crm.consent.manage"}
 )
 
 #: Stock/purchasing staff: goods in, no selling, no patient data at all.

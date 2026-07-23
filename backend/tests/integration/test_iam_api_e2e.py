@@ -184,7 +184,9 @@ def test_admin_creates_a_cashier_grants_a_branch_role_and_they_log_in(
     assert "sales.create" in staff["permissions"]
     # Legal boundaries from the seeded role survive all the way to the wire.
     assert "rx.dispense" not in staff["permissions"]
-    assert not any(p.startswith("crm.") for p in staff["permissions"])
+    # docs/15 §7n Q4 — cashier records the person and the consent, not the diagnoses.
+    assert "crm.create" in staff["permissions"]
+    assert "crm.sensitive.read" not in staff["permissions"]
 
 
 def test_cashier_is_refused_a_pharmacist_only_endpoint(client: TestClient) -> None:
@@ -203,8 +205,18 @@ def test_cashier_is_refused_a_pharmacist_only_endpoint(client: TestClient) -> No
     )
     staff = _login(client, "tn2@bera.vn", STAFF_PASSWORD)
 
-    # crm.create is deliberately absent from the cashier role (NĐ356 Điều 4.2).
-    r = client.post("/api/v1/customers", headers=_auth(staff), json={"full_name": "Khách lẻ"})
+    created = client.post(
+        "/api/v1/customers", headers=_auth(staff), json={"full_name": "Khách lẻ"}
+    )
+    assert created.status_code == 201
+
+    # crm.sensitive.write is deliberately absent from the cashier role (NĐ356 Điều 4.2):
+    # recording an allergy is a pharmacist act, unlike creating the customer record.
+    r = client.post(
+        f"/api/v1/customers/{created.json()['id']}/allergies",
+        headers=_auth(staff),
+        json={"ingredient_id": str(uuid4()), "severity": "MILD"},
+    )
     assert r.status_code == 403
 
 

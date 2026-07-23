@@ -215,7 +215,8 @@ async def test_branch_scoped_role_grants_only_that_branch(
     assert "sales.create" in session.permissions
     # The legal constraints the seeded role encodes must survive the round trip.
     assert "rx.dispense" not in session.permissions
-    assert not any(p.startswith("crm.") for p in session.permissions)
+    assert "crm.create" in session.permissions
+    assert "crm.sensitive.read" not in session.permissions
 
 
 async def test_login_at_a_branch_the_user_is_not_assigned_to_is_refused(

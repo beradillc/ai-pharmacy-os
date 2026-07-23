@@ -1037,19 +1037,33 @@ Cộng thêm `audit_logs` (§7l) là điều kiện sếp tự đặt thêm — 
 | 1 — cổng đồng ý (domain+infra+app, migration `0015`) | `52ab50d` | ✅ (gộp so với kế hoạch, lý do ghi trong commit) |
 | 2 — tách quyền đọc nhạy cảm + wiring 6 action audit | `10f2a73` | ✅ |
 | 3 — xuất/khử nhận dạng + `GET /privacy/processing-record` | `96b5b9b` | ✅ |
-| 4 — cập nhật role + tài liệu | — | ⏸️ **CHƯA LÀM** |
+| 4 — cập nhật role + tài liệu | `<xem commit kế tiếp>` | ✅ **XONG 2026-07-23** (phiên sau §7p) |
 
-**Bước 4 còn đúng 5 việc, không có thiết kế mới, không migration, không cross-module:**
-1. Cấp `crm.read` + `crm.create` + `crm.consent.manage` cho role `cashier` (Q4) — sửa
+**Bước 4, 5 việc — cả 5 đã xong:**
+1. ✅ Cấp `crm.read` + `crm.create` + `crm.consent.manage` cho role `cashier` (Q4) —
    `_CASHIER_PERMISSIONS` trong `modules/iam/domain/system_roles.py`.
-2. Sửa `tests/integration/test_crm_privacy_api_e2e.py::test_a_cashier_sees_the_person_but_not_the_diagnoses`
-   — **hiện đang khẳng định 403** (đúng trạng thái thật hôm nay), phải đổi thành "thấy tên/SĐT,
-   không thấy dị ứng/bệnh nền". Test có ghi chú sẵn tại chỗ. **Nếu quên, test vẫn xanh** — nên nó
-   nằm ở đây chứ không chỉ trong trí nhớ.
-3. Chạy `sync_system_roles` và **kiểm chứng trên CSDL đã có dữ liệu** (kỷ luật #7): `python -m
-   seeds.run` → xác nhận bằng SQL/API thật rằng `cashier` có quyền mới, không tin dòng log.
-4. Tài liệu chính sách lưu trữ (GPP TT02/2018 I-1a.II.4.d).
-5. Bản nháp **phần kỹ thuật** mẫu DPIA (phần pháp lý do luật sư hoàn thiện — GĐ đề nghị, sếp tự lo).
+2. ✅ Sửa `test_a_cashier_sees_the_person_but_not_the_diagnoses` — nay khẳng định 200 + thấy
+   tên/SĐT + `allergies == []`, không còn 403. **3 test khác cùng lệch giả định** (đã sửa cùng lúc
+   vì cùng nguyên nhân): `test_iam_api_e2e.py::test_admin_creates_a_cashier_...` +
+   `::test_cashier_is_refused_a_pharmacist_only_endpoint` (đổi sang thử `crm.sensitive.write` qua
+   endpoint allergy, vì tạo khách nay hợp lệ) + `test_iam_flow.py::test_branch_scoped_role_grants_only_that_branch`
+   + `test_iam_domain.py::test_cashier_has_no_customer_data_access` (đổi tên +
+   đảo assertion). Không phát hiện trong lúc sửa mục 1 — bị bắt bởi pytest full suite, đúng lý do
+   kỷ luật "4 cổng xanh trước mỗi commit" tồn tại.
+3. ✅ Chạy `python -m seeds.run` trên Postgres dev đang chạy (kỷ luật #7) — **xác nhận bằng SQL
+   thật**: trước khi chạy, `cashier` chỉ có 6 permission cũ; sau khi chạy, có thêm
+   `crm.consent.manage`+`crm.create`+`crm.read` (`system_roles_updated=1`, khớp SQL).
+4. ✅ `docs/features/ho-so-suc-khoe-khach-hang/02_CHINH_SACH_LUU_TRU.md`.
+5. ✅ `docs/features/ho-so-suc-khoe-khach-hang/03_MAU_DPIA_KY_THUAT.md` (phần kỹ thuật; phần pháp
+   lý còn `[TENANT + LUẬT SƯ ĐIỀN]`, xem mục C §7p).
+
+**4 cổng lúc đóng Bước 4:** ruff (scope `src tests`) sạch · mypy strict 210 file (package
+`pharmacy_os`, không tính `tests/`) · import-linter 13/13 · pytest full suite exit 0 (dòng tổng số
+không hiện trong output bị cắt, nhưng exit code xác nhận không có test đỏ).
+
+⚠️ **Vẫn còn treo, không giải quyết ở đây:** role `cashier` giờ có `crm.read` nhưng
+`SalesOrder.customer_id` vẫn ngoài phạm vi (Q5) — thu ngân tra được khách, vẫn **chưa gắn được**
+khách vào đơn bán. Xem mục C.
 
 **Trạng thái audit lúc dừng — 17/17 action đều phát thật, nhưng chỉ 2/9 module có audit:**
 
@@ -1068,9 +1082,9 @@ Nguyên nhân chính: các suite e2e dựng app + bootstrap tenant + bcrypt hash
 giữ nhịp này thêm vài tính năng, mỗi lượt cổng thành 8-10 phút và kỷ luật "4 cổng xanh trước mỗi
 commit" sẽ bắt đầu bị lách. Cách rẻ nhất: hạ vòng bcrypt trong test.
 
-⚠️ **GĐ khuyến nghị vận hành:** **không bật tính năng hồ sơ sức khỏe cho tenant thật cho tới khi
-Bước 4 xong.** Xong Bước 3 nghĩa là quyền của chủ thể dữ liệu đã dùng được, nhưng role `cashier`
-chưa đúng thiết kế nên luồng quầy chưa chạy như dự định. Demo cho khách thì dùng dữ liệu giả.
+✅ **Cảnh báo vận hành ở trên đã hết hạn:** Bước 4 nay đã xong (2026-07-23), role `cashier` đã đúng
+thiết kế Q4. Vẫn còn giới hạn thật: `SalesOrder.customer_id` ngoài phạm vi (Q5) nên thu ngân tra
+được khách nhưng chưa gắn được vào đơn bán — không phải lỗi, là phạm vi đã chốt.
 
 ---
 
@@ -1180,7 +1194,7 @@ kiểm tra trước khi coi tính năng là dùng được.
 | Tính năng | Bước đã xong | Còn lại | Chi tiết ở |
 |-----------|--------------|---------|-----------|
 | S4.6 FE POS | 4/5 (CORS, scaffold, auth, tra thuốc+giỏ+thanh toán) | Bước 5 — hàng đợi offline Dexie. **Chưa thật sự "offline-first"** dù tên Sprint | §7o |
-| Hồ sơ sức khỏe KH | 3/4 (cổng đồng ý, tách quyền+audit, quyền chủ thể dữ liệu+DPIA) | Bước 4 — 5 việc cụ thể (cấp quyền `cashier`, sửa 1 test e2e đang cố ý sai để chờ, `sync_system_roles` trên CSDL thật, tài liệu retention, nháp kỹ thuật DPIA) | §7m |
+| Hồ sơ sức khỏe KH | ✅ **4/4 XONG** (cổng đồng ý, tách quyền+audit, quyền chủ thể dữ liệu+DPIA, cập nhật role+tài liệu) | Không còn — vẫn treo `SalesOrder.customer_id` (Q5, cross-module riêng, không phải nợ Bước 4) | §7m |
 | Module `compliance` | Sổ kiểm soát + liên thông đã code xong | **Chưa mount router** — không có API nào để UI gọi, chặn trụ cột 2 thương hiệu | §7n mục "phiên sau bắt đầu từ đâu" |
 | Audit coverage | `iam` (11 action) + `crm` (6 action) | 7/9 module còn lại chưa ghi audit — nặng nhất `prescription` (cấp phát ETC) và `compliance` (sổ kiểm soát) | §7n |
 | Nguồn giá bán (pricing) | — | **Không tồn tại ở đâu trong backend** — `inventory.cost_price` là giá vốn, không phải giá bán. Phát hiện hôm nay khi xây FE, chưa có quyết định có xây module `pricing` hay không | §7o |
