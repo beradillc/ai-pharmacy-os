@@ -85,6 +85,7 @@ class SalesService:
             client_uuid=data.client_uuid,
             currency=data.currency,
             prescription_ref=data.prescription_ref,
+            customer_id=data.customer_id,
         )
         try:
             for line in data.lines:

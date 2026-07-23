@@ -89,6 +89,10 @@ class SalesOrder:
     client_uuid: str
     currency: str = "VND"
     prescription_ref: UUID | None = None
+    customer_id: UUID | None = None
+    """Optional buyer. A walk-in OTC sale legitimately has none, so this stays
+    nullable forever — it is what lets a sale be linked to a CRM customer for the
+    allergy check and the medication history, not a required field."""
     status: SaleStatus = SaleStatus.DRAFT
     lines: list[SaleLine] = field(default_factory=list)
     payments: list[Payment] = field(default_factory=list)

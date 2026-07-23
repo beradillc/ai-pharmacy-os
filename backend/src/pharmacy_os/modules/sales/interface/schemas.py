@@ -37,6 +37,7 @@ class CreateSaleRequest(BaseModel):
     lines: list[SaleLineRequest] = Field(min_length=1)
     payments: list[PaymentRequest] = Field(default_factory=list)
     prescription_ref: UUID | None = None
+    customer_id: UUID | None = None
     currency: str = "VND"
 
     def to_input(self) -> CreateSaleInput:
@@ -53,6 +54,7 @@ class CreateSaleRequest(BaseModel):
             ],
             payments=[PaymentInput(method=p.method, amount=p.amount) for p in self.payments],
             prescription_ref=self.prescription_ref,
+            customer_id=self.customer_id,
             currency=self.currency,
         )
 
@@ -83,6 +85,7 @@ class SaleResponse(BaseModel):
     subtotal: Decimal
     paid_total: Decimal
     prescription_ref: UUID | None
+    customer_id: UUID | None
     lines: list[SaleLineResponse]
 
     @classmethod
@@ -95,6 +98,7 @@ class SaleResponse(BaseModel):
             subtotal=out.subtotal,
             paid_total=out.paid_total,
             prescription_ref=out.prescription_ref,
+            customer_id=out.customer_id,
             lines=[
                 SaleLineResponse(
                     id=ln.id,

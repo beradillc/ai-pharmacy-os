@@ -30,6 +30,7 @@ class CreateSaleInput:
     lines: list[SaleLineInput] = field(default_factory=list)
     payments: list[PaymentInput] = field(default_factory=list)
     prescription_ref: UUID | None = None
+    customer_id: UUID | None = None
     currency: str = "VND"
 
 
@@ -59,6 +60,7 @@ class SaleOutput:
     subtotal: Decimal
     paid_total: Decimal
     prescription_ref: UUID | None
+    customer_id: UUID | None
     lines: list[SaleLineOutput]
 
     @classmethod
@@ -71,6 +73,7 @@ class SaleOutput:
             subtotal=order.subtotal.amount,
             paid_total=order.paid_total.amount,
             prescription_ref=order.prescription_ref,
+            customer_id=order.customer_id,
             lines=[
                 SaleLineOutput(
                     id=line.id,

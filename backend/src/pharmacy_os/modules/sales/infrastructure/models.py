@@ -19,6 +19,9 @@ class SalesOrderORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
     currency: Mapped[str] = mapped_column(String(8), nullable=False, default="VND")
     status: Mapped[str] = mapped_column(String(24), nullable=False)
     prescription_ref: Mapped[UUID | None] = mapped_column(nullable=True)
+    # Plain UUID, no FK to crm.customers: sales must stay independent of crm
+    # (module-independence), same convention as prescription_ref / drug_id.
+    customer_id: Mapped[UUID | None] = mapped_column(index=True, nullable=True)
 
     lines: Mapped[list[SaleLineORM]] = relationship(
         back_populates="order",
