@@ -44,8 +44,9 @@ from pharmacy_os.modules.crm.application import (
     AddAllergyInput,
     CreateCustomerInput,
     CrmService,
+    RecordConsentInput,
 )
-from pharmacy_os.modules.crm.domain import AllergySeverity
+from pharmacy_os.modules.crm.domain import AllergySeverity, ConsentPurpose
 from pharmacy_os.modules.prescription.application import (
     CreatePrescriptionInput,
     PrescriptionItemInput,
@@ -313,6 +314,12 @@ async def _new_customer_with_allergy(
     crm_service: CrmService, ctx: RequestContext, ingredient_id: UUID, severity: AllergySeverity
 ) -> UUID:
     customer = await crm_service.create_customer(CreateCustomerInput(full_name="KH Test"), ctx)
+    # Health data cannot be recorded without consent (Luật 91/2025 Điều 26.1).
+    await crm_service.record_consent(
+        customer.id,
+        RecordConsentInput(purpose=ConsentPurpose.HEALTH, granted=True, terms_version="v1"),
+        ctx,
+    )
     await crm_service.add_allergy(
         customer.id, AddAllergyInput(ingredient_id=ingredient_id, severity=severity), ctx
     )

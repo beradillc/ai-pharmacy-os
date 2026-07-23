@@ -1,5 +1,5 @@
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -13,8 +13,20 @@ from pharmacy_os.modules.crm.application import (
     AddConditionInput,
     CreateCustomerInput,
     CrmService,
+    RecordConsentInput,
 )
-from pharmacy_os.modules.crm.domain import AllergySeverity
+from pharmacy_os.modules.crm.domain import AllergySeverity, ConsentPurpose
+
+
+async def _grant_health_consent(
+    service: CrmService, customer_id: UUID, ctx: RequestContext
+) -> None:
+    """Health data cannot be recorded without consent (Luật 91/2025 Điều 26.1)."""
+    await service.record_consent(
+        customer_id,
+        RecordConsentInput(purpose=ConsentPurpose.HEALTH, granted=True, terms_version="v1"),
+        ctx,
+    )
 
 
 async def _seed_ingredient(
@@ -74,6 +86,7 @@ async def test_add_allergy_round_trips(
 ) -> None:
     ingredient = await _seed_ingredient(session_factory)
     created = await crm_service.create_customer(CreateCustomerInput(full_name="Z"), ctx)
+    await _grant_health_consent(crm_service, created.id, ctx)
 
     updated = await crm_service.add_allergy(
         created.id,
@@ -98,6 +111,7 @@ async def test_duplicate_allergy_rejected(
 ) -> None:
     ingredient = await _seed_ingredient(session_factory)
     created = await crm_service.create_customer(CreateCustomerInput(full_name="W"), ctx)
+    await _grant_health_consent(crm_service, created.id, ctx)
     await crm_service.add_allergy(
         created.id, AddAllergyInput(ingredient_id=ingredient.id, severity=AllergySeverity.MILD), ctx
     )
@@ -129,6 +143,7 @@ async def test_add_allergy_unknown_ingredient_404_not_500(
     """FK violation (unknown ingredient_id) must surface as 404, not a raw
     IntegrityError/500 — see CrmService.add_allergy."""
     created = await crm_service.create_customer(CreateCustomerInput(full_name="T"), ctx)
+    await _grant_health_consent(crm_service, created.id, ctx)
     with pytest.raises(NotFoundError):
         await crm_service.add_allergy(
             created.id,
@@ -141,6 +156,7 @@ async def test_add_condition_round_trips_and_rejects_duplicate(
     crm_service: CrmService, ctx: RequestContext
 ) -> None:
     created = await crm_service.create_customer(CreateCustomerInput(full_name="V"), ctx)
+    await _grant_health_consent(crm_service, created.id, ctx)
     updated = await crm_service.add_condition(
         created.id, AddConditionInput(condition_code="E11", note="Đái tháo đường type 2"), ctx
     )

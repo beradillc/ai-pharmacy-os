@@ -21,7 +21,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from pharmacy_os.core.db.base import Base, PkUuidMixin, TimestampMixin
@@ -39,6 +39,7 @@ class CustomerORM(PkUuidMixin, TimestampMixin, Base):
     gender: Mapped[str | None] = mapped_column(String(16))
     weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
     national_id_hash: Mapped[str | None] = mapped_column(String(128))
+    anonymised_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     allergies: Mapped[list[CustomerAllergyORM]] = relationship(
         back_populates="customer",
@@ -55,6 +56,35 @@ class CustomerORM(PkUuidMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    consents: Mapped[list[CustomerConsentORM]] = relationship(
+        back_populates="customer",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class CustomerConsentORM(PkUuidMixin, Base):
+    """One consent decision, appended and never updated.
+
+    Deliberately a history table rather than a flag on ``customers``: an inspection
+    asks "was there consent on the day that data was read", which a single boolean
+    cannot answer. Carries the evidence Luật 91/2025 Điều 9 requires — when, which
+    staff account, from which IP, against which version of the terms.
+    """
+
+    __tablename__ = "customer_consents"
+
+    customer_id: Mapped[UUID] = mapped_column(
+        ForeignKey("customers.id", ondelete="CASCADE"), index=True
+    )
+    purpose: Mapped[str] = mapped_column(String(16), nullable=False)
+    granted: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    terms_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    actor_user_id: Mapped[UUID | None] = mapped_column()
+    client_ip: Mapped[str | None] = mapped_column(String(45))
+
+    customer: Mapped[CustomerORM] = relationship(back_populates="consents")
 
 
 class CustomerAllergyORM(PkUuidMixin, Base):

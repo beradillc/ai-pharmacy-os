@@ -7,6 +7,7 @@ injected as factories at composition time (see the module ``register``).
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -20,8 +21,15 @@ from pharmacy_os.modules.crm.application.dto import (
     AddConditionInput,
     CreateCustomerInput,
     CustomerOutput,
+    RecordConsentInput,
 )
-from pharmacy_os.modules.crm.domain import Allergy, Condition, CrmError, Customer
+from pharmacy_os.modules.crm.domain import (
+    Allergy,
+    Condition,
+    CrmError,
+    Customer,
+    CustomerConsent,
+)
 from pharmacy_os.modules.crm.domain.ports import CustomerRepository
 
 UowFactory = Callable[[], UnitOfWork]
@@ -96,6 +104,42 @@ class CrmService:
         customer = await self._get_or_404(customer_id, ctx)
         try:
             customer.add_condition(Condition(condition_code=data.condition_code, note=data.note))
+        except CrmError as exc:
+            raise ValidationError(str(exc)) from exc
+
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            await repo.update(customer)
+            await uow.commit()
+        return CustomerOutput.of(customer)
+
+    async def record_consent(
+        self, customer_id: UUID, data: RecordConsentInput, ctx: RequestContext
+    ) -> CustomerOutput:
+        """Append a consent decision taken at the counter on the customer's behalf.
+
+        Granting and revoking are the same use-case with ``granted`` flipped, because
+        both are the same fact — "on this date, this staff account recorded this
+        decision" — and both must leave a row (Luật 91/2025 Điều 9).
+
+        Revoking ``HEALTH`` deliberately does **not** delete anything: erasure is a
+        separate, explicit act (duyệt Q2), so that between "the customer withdrew
+        consent" and "the data is gone" there is always a human pressing something —
+        anonymisation cannot be undone.
+        """
+        require_permission(ctx, "crm.consent.manage")
+        customer = await self._get_or_404(customer_id, ctx)
+        try:
+            customer.record_consent(
+                CustomerConsent(
+                    purpose=data.purpose,
+                    granted=data.granted,
+                    terms_version=data.terms_version,
+                    recorded_at=datetime.now(UTC),
+                    actor_user_id=ctx.user_id,
+                    client_ip=ctx.client_ip,
+                )
+            )
         except CrmError as exc:
             raise ValidationError(str(exc)) from exc
 

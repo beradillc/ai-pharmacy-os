@@ -5,9 +5,11 @@ from pharmacy_os.modules.crm.application.dto import (
     AddConditionInput,
     AllergyOutput,
     ConditionOutput,
+    ConsentOutput,
     CreateCustomerInput,
     CustomerOutput,
     MedicationHistoryOutput,
+    RecordConsentInput,
 )
 from pharmacy_os.modules.crm.application.service import CrmService
 
@@ -16,8 +18,10 @@ __all__ = [
     "AddConditionInput",
     "AllergyOutput",
     "ConditionOutput",
+    "ConsentOutput",
     "CreateCustomerInput",
+    "CrmService",
     "CustomerOutput",
     "MedicationHistoryOutput",
-    "CrmService",
+    "RecordConsentInput",
 ]

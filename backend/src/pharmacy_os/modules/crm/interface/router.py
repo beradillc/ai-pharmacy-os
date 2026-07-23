@@ -14,6 +14,7 @@ from pharmacy_os.modules.crm.interface.schemas import (
     AddConditionRequest,
     CreateCustomerRequest,
     CustomerResponse,
+    RecordConsentRequest,
 )
 
 ContextDep = Callable[..., RequestContext]
@@ -26,6 +27,26 @@ def _service(request: Request) -> CrmService:
 
 def build_router(get_context: ContextDep) -> APIRouter:
     router = APIRouter(prefix="/customers", tags=["crm"])
+
+    @router.post(
+        "/{customer_id}/consents",
+        response_model=CustomerResponse,
+        status_code=status.HTTP_201_CREATED,
+    )
+    async def record_consent(
+        customer_id: UUID,
+        body: RecordConsentRequest,
+        service: CrmService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> CustomerResponse:
+        """Record a consent decision (grant or revoke) for one purpose.
+
+        Pulled in ahead of the rest of the interface layer: without it the API can
+        create a customer but can never record an allergy, which is not a state worth
+        committing.
+        """
+        out = await service.record_consent(customer_id, body.to_input(), ctx)
+        return CustomerResponse.of(out)
 
     @router.post("", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
     async def create_customer(

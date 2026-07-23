@@ -7,7 +7,12 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pharmacy_os.modules.crm.domain import AllergySeverity, Customer
+from pharmacy_os.modules.crm.domain import (
+    AllergySeverity,
+    ConsentPurpose,
+    Customer,
+    CustomerConsent,
+)
 
 
 @dataclass(slots=True)
@@ -18,6 +23,38 @@ class CreateCustomerInput:
     gender: str | None = None
     weight_kg: Decimal | None = None
     national_id_hash: str | None = None
+
+
+@dataclass(slots=True)
+class RecordConsentInput:
+    """One consent decision taken at the counter on the customer's behalf."""
+
+    purpose: ConsentPurpose
+    granted: bool
+    terms_version: str
+
+
+@dataclass(slots=True)
+class ConsentOutput:
+    id: UUID
+    purpose: str
+    granted: bool
+    terms_version: str
+    recorded_at: datetime
+    actor_user_id: UUID | None
+    client_ip: str | None
+
+    @classmethod
+    def of(cls, consent: CustomerConsent) -> ConsentOutput:
+        return cls(
+            id=consent.id,
+            purpose=consent.purpose.value,
+            granted=consent.granted,
+            terms_version=consent.terms_version,
+            recorded_at=consent.recorded_at,
+            actor_user_id=consent.actor_user_id,
+            client_ip=consent.client_ip,
+        )
 
 
 @dataclass(slots=True)
@@ -70,6 +107,11 @@ class CustomerOutput:
     allergies: list[AllergyOutput]
     conditions: list[ConditionOutput]
     history: list[MedicationHistoryOutput]
+    consents: list[ConsentOutput]
+    anonymised_at: datetime | None
+    health_data_allowed: bool
+    """Whether health data may lawfully be processed right now — the interface layer
+    uses this (together with the caller's permissions) to decide what to return."""
 
     @classmethod
     def of(cls, customer: Customer) -> CustomerOutput:
@@ -105,4 +147,7 @@ class CustomerOutput:
                 )
                 for h in customer.history
             ],
+            consents=[ConsentOutput.of(k) for k in customer.consents],
+            anonymised_at=customer.anonymised_at,
+            health_data_allowed=customer.health_data_allowed,
         )

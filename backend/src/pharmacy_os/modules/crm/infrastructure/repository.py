@@ -13,6 +13,7 @@ from pharmacy_os.modules.crm.infrastructure.mappers import to_domain, to_orm
 from pharmacy_os.modules.crm.infrastructure.models import (
     CustomerAllergyORM,
     CustomerConditionORM,
+    CustomerConsentORM,
     CustomerMedicationHistoryORM,
     CustomerORM,
 )
@@ -68,6 +69,30 @@ class SqlAlchemyCustomerRepository:
         row.gender = customer.gender
         row.weight_kg = customer.weight_kg
         row.national_id_hash = customer.national_id_hash
+        row.anonymised_at = customer.anonymised_at
+
+        # Anonymisation empties these collections; the id-diff below is insert-only,
+        # so the deletions have to be applied explicitly or the rows would survive
+        # the erasure request that removed them from the aggregate.
+        if customer.is_anonymised:
+            row.allergies.clear()
+            row.conditions.clear()
+
+        existing_consent_ids = {k.id for k in row.consents}
+        for k in customer.consents:
+            if k.id not in existing_consent_ids:
+                row.consents.append(
+                    CustomerConsentORM(
+                        id=k.id,
+                        customer_id=customer.id,
+                        purpose=k.purpose.value,
+                        granted=k.granted,
+                        terms_version=k.terms_version,
+                        recorded_at=k.recorded_at,
+                        actor_user_id=k.actor_user_id,
+                        client_ip=k.client_ip,
+                    )
+                )
 
         existing_allergy_ids = {a.id for a in row.allergies}
         for a in customer.allergies:

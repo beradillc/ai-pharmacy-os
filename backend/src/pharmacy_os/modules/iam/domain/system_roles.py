@@ -25,7 +25,17 @@ RX_PERMISSIONS = frozenset({"rx.read", "rx.create", "rx.approve", "rx.dispense"}
 CLINICAL_PERMISSIONS = frozenset(
     {"clinical.check", "clinical.accept", "clinical.settings.read", "clinical.settings.write"}
 )
-CRM_PERMISSIONS = frozenset({"crm.create", "crm.read", "crm.write"})
+CRM_PERMISSIONS = frozenset(
+    {
+        "crm.create",
+        "crm.read",
+        "crm.write",
+        # Recording a consent decision is not the same authority as reading the data
+        # it unlocks: counter staff take the decision at the till, but must not be
+        # able to read what it authorises (Luật 91/2025 Điều 9 · NĐ356 Điều 4.2).
+        "crm.consent.manage",
+    }
+)
 COMPLIANCE_PERMISSIONS = frozenset(
     {
         "compliance.config.read",

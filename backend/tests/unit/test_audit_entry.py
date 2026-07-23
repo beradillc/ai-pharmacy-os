@@ -62,7 +62,7 @@ def test_with_context_overwrites_an_existing_key() -> None:
     assert enriched.context == {"client_ip": "10.0.0.2"}
 
 
-def test_every_action_iam_emits_has_a_member() -> None:
+def test_every_action_the_codebase_emits_has_a_member() -> None:
     """Guards against an action string drifting away from the enum."""
     expected = {
         "LOGIN_SUCCESS",
@@ -76,6 +76,12 @@ def test_every_action_iam_emits_has_a_member() -> None:
         "PASSWORD_CHANGED",
         "PASSWORD_RESET",
         "TOKEN_REPLAY_DETECTED",
+        "CUSTOMER_SENSITIVE_READ",
+        "CUSTOMER_SENSITIVE_AUTO_CHECK",
+        "CUSTOMER_SENSITIVE_WRITE",
+        "CONSENT_GRANTED",
+        "CONSENT_REVOKED",
+        "CUSTOMER_ERASED",
     }
     assert {a.value for a in AuditAction} == expected
 

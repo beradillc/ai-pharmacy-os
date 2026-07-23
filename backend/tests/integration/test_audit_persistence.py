@@ -227,8 +227,21 @@ async def test_token_replay_is_persisted(
     assert entries[0].target_type == "refresh_token"
 
 
+#: Customer-data actions belong to the crm feature and are covered by its own
+#: persistence suite; listing them here keeps the net below honest about what this
+#: file does *not* prove.
+_COVERED_ELSEWHERE = {
+    AuditAction.CUSTOMER_SENSITIVE_READ,
+    AuditAction.CUSTOMER_SENSITIVE_AUTO_CHECK,
+    AuditAction.CUSTOMER_SENSITIVE_WRITE,
+    AuditAction.CONSENT_GRANTED,
+    AuditAction.CONSENT_REVOKED,
+    AuditAction.CUSTOMER_ERASED,
+}
+
+
 async def test_every_action_emitted_by_iam_reaches_the_table() -> None:
-    """Sanity net: the actions the tests above assert on cover the enum.
+    """Sanity net: the actions the tests above assert on cover every iam action.
 
     Anything added to :class:`AuditAction` without a persistence test shows up here
     rather than being noticed months later during an inspection.
@@ -246,7 +259,7 @@ async def test_every_action_emitted_by_iam_reaches_the_table() -> None:
         AuditAction.PASSWORD_RESET,
         AuditAction.TOKEN_REPLAY_DETECTED,
     }
-    assert covered == set(AuditAction)
+    assert covered == set(AuditAction) - _COVERED_ELSEWHERE
 
 
 # --- the trail's own properties ---------------------------------------------

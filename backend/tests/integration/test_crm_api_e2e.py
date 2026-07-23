@@ -41,12 +41,22 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
         yield c
 
 
+def _grant_health_consent(client: TestClient, customer_id: str) -> None:
+    """Health data cannot be recorded without consent (Luật 91/2025 Điều 26.1)."""
+    r = client.post(
+        f"/api/v1/customers/{customer_id}/consents",
+        json={"purpose": "HEALTH", "granted": True, "terms_version": "v1"},
+    )
+    assert r.status_code == 201, r.text
+
+
 def test_create_customer_add_allergy_and_condition_round_trip(client: TestClient) -> None:
     created = client.post(
         "/api/v1/customers", json={"full_name": "Nguyễn Văn A", "phone": "0900000000"}
     )
     assert created.status_code == 201, created.text
     customer_id = created.json()["id"]
+    _grant_health_consent(client, customer_id)
 
     with_allergy = client.post(
         f"/api/v1/customers/{customer_id}/allergies",
@@ -90,6 +100,7 @@ def test_get_unknown_customer_404(client: TestClient) -> None:
 def test_duplicate_allergy_rejected_with_422(client: TestClient) -> None:
     created = client.post("/api/v1/customers", json={"full_name": "C"})
     customer_id = created.json()["id"]
+    _grant_health_consent(client, customer_id)
     client.post(
         f"/api/v1/customers/{customer_id}/allergies",
         json={"ingredient_id": str(_PENICILLIN_ID), "severity": "MILD"},
@@ -104,6 +115,7 @@ def test_duplicate_allergy_rejected_with_422(client: TestClient) -> None:
 def test_unknown_ingredient_id_rejected_with_404_not_500(client: TestClient) -> None:
     created = client.post("/api/v1/customers", json={"full_name": "D"})
     customer_id = created.json()["id"]
+    _grant_health_consent(client, customer_id)
     resp = client.post(
         f"/api/v1/customers/{customer_id}/allergies",
         json={"ingredient_id": str(uuid4()), "severity": "MILD"},

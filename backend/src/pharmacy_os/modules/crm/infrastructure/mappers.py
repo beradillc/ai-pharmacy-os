@@ -2,22 +2,33 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from pharmacy_os.modules.crm.domain import (
     Allergy,
     AllergySeverity,
     Condition,
+    ConsentPurpose,
     Customer,
+    CustomerConsent,
     MedicationHistoryEntry,
     MedicationHistorySource,
 )
 from pharmacy_os.modules.crm.infrastructure.models import (
     CustomerAllergyORM,
     CustomerConditionORM,
+    CustomerConsentORM,
     CustomerMedicationHistoryORM,
     CustomerORM,
 )
+
+
+def _as_utc(value: datetime | None) -> datetime | None:
+    """SQLite drops the timezone Postgres keeps; everything is written in UTC."""
+    if value is None or value.tzinfo is not None:
+        return value
+    return value.replace(tzinfo=UTC)
 
 
 def to_domain(row: CustomerORM) -> Customer:
@@ -29,6 +40,7 @@ def to_domain(row: CustomerORM) -> Customer:
         gender=row.gender,
         weight_kg=row.weight_kg,
         national_id_hash=row.national_id_hash,
+        anonymised_at=_as_utc(row.anonymised_at),
     )
     customer.allergies = [
         Allergy(
@@ -53,6 +65,18 @@ def to_domain(row: CustomerORM) -> Customer:
         )
         for h in row.history
     ]
+    customer.consents = [
+        CustomerConsent(
+            id=k.id,
+            purpose=ConsentPurpose(k.purpose),
+            granted=k.granted,
+            terms_version=k.terms_version,
+            recorded_at=_as_utc(k.recorded_at) or k.recorded_at,
+            actor_user_id=k.actor_user_id,
+            client_ip=k.client_ip,
+        )
+        for k in row.consents
+    ]
     return customer
 
 
@@ -66,6 +90,20 @@ def to_orm(customer: Customer, tenant_id: UUID) -> CustomerORM:
         gender=customer.gender,
         weight_kg=customer.weight_kg,
         national_id_hash=customer.national_id_hash,
+        anonymised_at=customer.anonymised_at,
+        consents=[
+            CustomerConsentORM(
+                id=k.id,
+                customer_id=customer.id,
+                purpose=k.purpose.value,
+                granted=k.granted,
+                terms_version=k.terms_version,
+                recorded_at=k.recorded_at,
+                actor_user_id=k.actor_user_id,
+                client_ip=k.client_ip,
+            )
+            for k in customer.consents
+        ],
         allergies=[
             CustomerAllergyORM(
                 id=a.id,

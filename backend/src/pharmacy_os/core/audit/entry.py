@@ -39,6 +39,28 @@ class AuditAction(StrEnum):
     PASSWORD_RESET = "PASSWORD_RESET"
     TOKEN_REPLAY_DETECTED = "TOKEN_REPLAY_DETECTED"
 
+    # --- customer health data (dữ liệu nhạy cảm, NĐ356 Điều 4.2) ---
+    CUSTOMER_SENSITIVE_READ = "CUSTOMER_SENSITIVE_READ"
+    """A person opened a customer's allergies / conditions / medication history."""
+
+    CUSTOMER_SENSITIVE_AUTO_CHECK = "CUSTOMER_SENSITIVE_AUTO_CHECK"
+    """The system read the same data on its own (clinical safety check during a sale).
+
+    Deliberately distinct from :attr:`CUSTOMER_SENSITIVE_READ` (duyệt Q3): machine
+    reads outnumber human ones by orders of magnitude, and a report answering "who
+    looked at this patient's file" is useless if it is buried in them.
+    """
+
+    CUSTOMER_SENSITIVE_WRITE = "CUSTOMER_SENSITIVE_WRITE"
+    CONSENT_GRANTED = "CONSENT_GRANTED"
+    CONSENT_REVOKED = "CONSENT_REVOKED"
+    CUSTOMER_ERASED = "CUSTOMER_ERASED"
+    """Identity stripped from a customer record (khử nhận dạng, duyệt Q2).
+
+    The audit row outlives the data it describes — which is why ``target_id`` is a
+    bare UUID with no foreign key.
+    """
+
 
 @dataclass(frozen=True, slots=True)
 class AuditEntry:

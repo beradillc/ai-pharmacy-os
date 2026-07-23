@@ -11,10 +11,12 @@ from pydantic import BaseModel, Field
 from pharmacy_os.modules.crm.application.dto import (
     AddAllergyInput,
     AddConditionInput,
+    ConsentOutput,
     CreateCustomerInput,
     CustomerOutput,
+    RecordConsentInput,
 )
-from pharmacy_os.modules.crm.domain import AllergySeverity
+from pharmacy_os.modules.crm.domain import AllergySeverity, ConsentPurpose
 
 
 class CreateCustomerRequest(BaseModel):
@@ -33,6 +35,43 @@ class CreateCustomerRequest(BaseModel):
             gender=self.gender,
             weight_kg=self.weight_kg,
             national_id_hash=self.national_id_hash,
+        )
+
+
+class RecordConsentRequest(BaseModel):
+    """Grant or revoke one purpose. ``granted`` has **no default**: Luật 91/2025
+    Điều 9 forbids treating an unspoken answer as agreement, and a default here is
+    exactly that."""
+
+    purpose: ConsentPurpose
+    granted: bool
+    terms_version: str = Field(min_length=1, max_length=32)
+
+    def to_input(self) -> RecordConsentInput:
+        return RecordConsentInput(
+            purpose=self.purpose, granted=self.granted, terms_version=self.terms_version
+        )
+
+
+class ConsentResponse(BaseModel):
+    id: UUID
+    purpose: str
+    granted: bool
+    terms_version: str
+    recorded_at: datetime
+    actor_user_id: UUID | None
+    client_ip: str | None
+
+    @classmethod
+    def of(cls, out: ConsentOutput) -> ConsentResponse:
+        return cls(
+            id=out.id,
+            purpose=out.purpose,
+            granted=out.granted,
+            terms_version=out.terms_version,
+            recorded_at=out.recorded_at,
+            actor_user_id=out.actor_user_id,
+            client_ip=out.client_ip,
         )
 
 
@@ -88,6 +127,9 @@ class CustomerResponse(BaseModel):
     allergies: list[AllergyResponse]
     conditions: list[ConditionResponse]
     history: list[MedicationHistoryResponse]
+    consents: list[ConsentResponse]
+    anonymised_at: datetime | None
+    health_data_allowed: bool
 
     @classmethod
     def of(cls, out: CustomerOutput) -> CustomerResponse:
@@ -120,4 +162,7 @@ class CustomerResponse(BaseModel):
                 )
                 for h in out.history
             ],
+            consents=[ConsentResponse.of(k) for k in out.consents],
+            anonymised_at=out.anonymised_at,
+            health_data_allowed=out.health_data_allowed,
         )
