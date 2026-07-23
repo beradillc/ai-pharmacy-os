@@ -1191,7 +1191,7 @@ kiểm tra trước khi coi tính năng là dùng được.
 | # | Việc | Trạng thái |
 |---|------|-----------|
 | 1 | Ghi quyết định thương hiệu BERAS vào `01-WikiHub/BeraLLC/ChienLuoc/` theo mẫu T-QuyetDinh | Chưa làm — hiện định vị BERAS chỉ nằm trong `README.md`/`docs/16` của thư mục code, sai chỗ theo đúng quy tắc của chính sếp |
-| 2 | Bán cho nhà thuốc lẻ hay chuỗi trước | GĐ hỏi 2 lần trong phiên trước, chưa có câu trả lời — ảnh hưởng cả UI lẫn thứ tự tính năng |
+| 2 | Bán cho nhà thuốc lẻ hay chuỗi trước | ✅ **CHỐT 2026-07-23: nhà thuốc lẻ trước.** Ghi tại `BeraLLC/ChienLuoc/2026-07-23-phan-khuc-khach-hang-le-truoc.md`. Hệ quả: FE Bước 5 Dexie offline queue (A4) ưu tiên cao hơn (mạng yếu ở nhà thuốc lẻ), UI đầu tiên theo luồng 1 điểm bán |
 | 3 | Tagline `README.md` (dòng đầu) ≠ tagline chính thức trong `docs/16_BRAND_UI_GUIDE.md` | Hai câu khác nhau, chưa thống nhất câu nào dùng ở đâu |
 | 4 | Gộp 1 lần hỏi luật sư: (a) rà lại quyết định Q2 khử nhận dạng (mâu thuẫn Luật 91 Điều 13-14 vs GPP II.4.d), (b) soạn văn bản điều khoản thật cho `terms_version` (hiện chỉ có chuỗi `"v1"`, không có nội dung), (c) hoàn thiện phần pháp lý của mẫu DPIA (Claude chỉ soạn được phần kỹ thuật) | Chưa đặt lịch |
 | 5 | Câu hỏi pháp lý cũ hơn, vẫn treo: BeraLLC có cần Giấy chứng nhận kinh doanh dịch vụ xử lý DLCN không (NĐ356 Điều 21-27)? | Ghi từ phiên trước §7j, chưa có kết luận — cần luật sư, không tự suy diễn |
