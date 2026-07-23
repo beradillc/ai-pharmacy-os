@@ -24,7 +24,8 @@ from pharmacy_os.modules.clinical.application import (
     ClinicalService,
 )
 from pharmacy_os.modules.clinical.domain import AiContextType
-from pharmacy_os.modules.crm.application import CrmService
+from pharmacy_os.modules.crm.application import CrmService, MedicationHistoryItemInput
+from pharmacy_os.modules.crm.domain import MedicationHistorySource
 from pharmacy_os.modules.inventory.application import (
     GoodsReceiptLine,
     InventoryService,
@@ -33,6 +34,7 @@ from pharmacy_os.modules.inventory.application import (
 from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.domain import PrescriptionDispensed
 from pharmacy_os.modules.procurement.domain import GoodsReceived
+from pharmacy_os.modules.sales.application import SalesService
 from pharmacy_os.modules.sales.domain import DrugInfo, PrescriptionInfo, SaleCompleted
 
 _log = structlog.get_logger("cross_module.sales_inventory")
@@ -48,9 +50,17 @@ _GRN_STOCK_IN_PERMISSIONS = frozenset({"inventory.receive"})
 
 _safety_log = structlog.get_logger("cross_module.safety_checks")
 
-# Same system identity, but the safety checks only read catalog/prescription/crm
-# and drive the clinical checks — no inventory rights here.
-_SAFETY_PERMISSIONS = frozenset({"catalog.read", "rx.read", "crm.read", "clinical.check"})
+# Same system identity, but the safety checks only read catalog/prescription/crm/
+# sales and drive the clinical checks — no inventory rights here. ``sales.read`` lets
+# the sale handler resolve the buyer (customer_id) for the OTC allergy check.
+_SAFETY_PERMISSIONS = frozenset(
+    {"catalog.read", "rx.read", "crm.read", "sales.read", "clinical.check"}
+)
+
+_medhist_log = structlog.get_logger("cross_module.medication_history")
+# Recording history reads the sale/prescription; the crm write itself is a system
+# reaction (record_medication_history is ungated), so only the reads need rights.
+_MEDHIST_PERMISSIONS = frozenset({"sales.read", "rx.read"})
 
 
 def wire_sale_dispensing(container: Container) -> None:
@@ -138,6 +148,7 @@ def wire_safety_checks(container: Container) -> None:
     catalog = container.resolve(CatalogService)
     crm = container.resolve(CrmService)
     prescription = container.resolve(PrescriptionService)
+    sales = container.resolve(SalesService)
 
     async def resolve_basket(drug_ids: set[UUID], ctx: RequestContext) -> list[tuple[UUID, str]]:
         """Map the basket's drugs to deduplicated ``(ingredient_id, name)`` pairs."""
@@ -219,8 +230,17 @@ def wire_safety_checks(container: Container) -> None:
             permissions=_SAFETY_PERMISSIONS,
         )
         basket = await resolve_basket({it.drug_id for it in event.items}, ctx)
-        # OTC sales carry no customer_id, so only the drug–drug check runs here.
         await run_interaction_check(basket, AiContextType.SALE, event.order_id, ctx)
+        # A sale may now name its buyer (SalesOrder.customer_id, migration 0016). When
+        # it does, the allergy check runs for OTC too — the SaleCompleted contract is
+        # unchanged, so the customer_id is read back from the sale, not carried on the
+        # event.
+        try:
+            sale = await sales.get_sale(event.order_id, ctx)
+        except NotFoundError:
+            return
+        if sale.customer_id is not None:
+            await run_allergy_check(basket, sale.customer_id, event.order_id, ctx)
 
     async def on_prescription_dispensed(event: DomainEvent) -> None:
         assert isinstance(event, PrescriptionDispensed)
@@ -239,6 +259,100 @@ def wire_safety_checks(container: Container) -> None:
         basket = await resolve_basket({it.drug_id for it in rx.items}, ctx)
         await run_interaction_check(basket, AiContextType.RX, event.prescription_id, ctx)
         await run_allergy_check(basket, rx.customer_id, event.prescription_id, ctx)
+
+    event_bus.subscribe(SaleCompleted, on_sale_completed)
+    event_bus.subscribe(PrescriptionDispensed, on_prescription_dispensed)
+
+
+def wire_medication_history(container: Container) -> None:
+    """Fold a customer's dispensed drugs into their CRM medication history.
+
+    Kept separate from :func:`wire_safety_checks` on purpose: that one only reads and
+    warns, this one **writes** to crm, and mixing a write into the warn handler would
+    blur its (read-only) intent and permission set. Both react to the same events but
+    each reads its own source, which is an acceptable cost for a post-commit
+    background reaction.
+
+    Only fires when the transaction names a customer:
+
+    * ``SaleCompleted`` → read the sale for its ``customer_id`` (the event contract is
+      unchanged; the id is read back, not carried) and its sold items.
+    * ``PrescriptionDispensed`` → read the prescription for its ``customer_id`` (always
+      present) and its items.
+
+    ``crm.record_medication_history`` self-limits: it records only with a current
+    ``HEALTH`` consent, is idempotent per ``(source, ref_id)``, and never raises — so a
+    walk-in with no customer, or a customer who didn't opt in, simply builds no history.
+    """
+    event_bus = container.resolve(EventBus)  # type: ignore[type-abstract]
+    crm = container.resolve(CrmService)
+    sales = container.resolve(SalesService)
+    prescription = container.resolve(PrescriptionService)
+
+    async def on_sale_completed(event: DomainEvent) -> None:
+        assert isinstance(event, SaleCompleted)
+        ctx = RequestContext(
+            tenant_id=event.tenant_id,
+            branch_id=event.branch_id,
+            user_id=_SYSTEM_USER,
+            permissions=_MEDHIST_PERMISSIONS,
+        )
+        try:
+            sale = await sales.get_sale(event.order_id, ctx)
+        except NotFoundError:
+            return
+        if sale.customer_id is None:
+            return  # walk-in OTC sale, nobody to attribute the history to
+        items = [
+            MedicationHistoryItemInput(drug_id=it.drug_id, quantity=it.quantity)
+            for it in event.items
+        ]
+        recorded = await crm.record_medication_history(
+            sale.customer_id,
+            items,
+            MedicationHistorySource.SALE,
+            event.order_id,
+            event.occurred_at,
+            ctx,
+        )
+        if recorded:
+            _medhist_log.info(
+                "medication_history_recorded",
+                source="SALE",
+                ref_id=str(event.order_id),
+                entries=recorded,
+            )
+
+    async def on_prescription_dispensed(event: DomainEvent) -> None:
+        assert isinstance(event, PrescriptionDispensed)
+        ctx = RequestContext(
+            tenant_id=event.tenant_id,
+            branch_id=event.tenant_id,
+            user_id=_SYSTEM_USER,
+            permissions=_MEDHIST_PERMISSIONS,
+        )
+        try:
+            rx = await prescription.get_prescription(event.prescription_id, ctx)
+        except NotFoundError:
+            return
+        items = [
+            MedicationHistoryItemInput(drug_id=it.drug_id, quantity=it.quantity) for it in rx.items
+        ]
+        recorded = await crm.record_medication_history(
+            rx.customer_id,
+            items,
+            MedicationHistorySource.PRESCRIPTION,
+            event.prescription_id,
+            event.occurred_at,
+            ctx,
+        )
+        if recorded:
+            _medhist_log.info(
+                "medication_history_recorded",
+                source="PRESCRIPTION",
+                ref_id=str(event.prescription_id),
+                entries=recorded,
+            )
 
     event_bus.subscribe(SaleCompleted, on_sale_completed)
     event_bus.subscribe(PrescriptionDispensed, on_prescription_dispensed)

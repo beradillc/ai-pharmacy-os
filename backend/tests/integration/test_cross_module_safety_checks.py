@@ -53,7 +53,13 @@ from pharmacy_os.modules.prescription.application import (
     PrescriptionService,
 )
 from pharmacy_os.modules.prescription.domain import PrescriptionDispensed
-from pharmacy_os.modules.sales.domain import SaleCompleted, SoldItem
+from pharmacy_os.modules.sales.application import (
+    CreateSaleInput,
+    PaymentInput,
+    SaleLineInput,
+    SalesService,
+)
+from pharmacy_os.modules.sales.domain import PaymentMethod, SaleCompleted, SoldItem
 
 
 @pytest.fixture
@@ -63,6 +69,7 @@ def wired_container(
     clinical_service: ClinicalService,
     crm_service: CrmService,
     prescription_service: PrescriptionService,
+    sales_service: SalesService,
 ) -> Container:
     """A container with the real services + the S6 5.5.4 subscription wired."""
     container = Container()
@@ -71,6 +78,7 @@ def wired_container(
     container.register_instance(ClinicalService, clinical_service)
     container.register_instance(CrmService, crm_service)
     container.register_instance(PrescriptionService, prescription_service)
+    container.register_instance(SalesService, sales_service)
     wire_safety_checks(container)
     return container
 
@@ -392,14 +400,15 @@ async def test_dispense_to_non_allergic_customer_logs_no_allergy_warning(
     assert [e for e in logs if e["event"] == "allergy_warning_raised"] == []
 
 
-async def test_sale_never_runs_allergy_check(
+async def test_sale_without_a_customer_runs_no_allergy_check(
     wired_container: Container,
     event_bus: InMemoryEventBus,
     session_factory: async_sessionmaker[AsyncSession],
     catalog_service: CatalogService,
     ctx: RequestContext,
 ) -> None:
-    # A sale carries no customer_id, so the allergy path must not run on SaleCompleted.
+    # A walk-in sale (no persisted SalesOrder → get_sale 404s, or customer_id None)
+    # has nobody to match allergies against, so the allergy path stays silent.
     aspirin = await _new_ingredient(session_factory, "Aspirin")
     drug = await _new_drug(catalog_service, ctx, "Thuốc A", [aspirin.id])
 
@@ -407,3 +416,40 @@ async def test_sale_never_runs_allergy_check(
         await event_bus.publish(_sale(ctx, uuid4(), [drug]))
 
     assert [e for e in logs if e["event"] == "allergy_warning_raised"] == []
+
+
+async def test_sale_to_allergic_customer_logs_allergy_warning(
+    wired_container: Container,
+    session_factory: async_sessionmaker[AsyncSession],
+    catalog_service: CatalogService,
+    crm_service: CrmService,
+    sales_service: SalesService,
+    ctx: RequestContext,
+) -> None:
+    """OTC allergy path: now that a sale can name its buyer (migration 0016), the
+    allergy check runs for a completed sale too, not just a dispensed prescription."""
+    aspirin = await _new_ingredient(session_factory, "Aspirin")
+    drug = await _new_drug(catalog_service, ctx, "Thuốc A", [aspirin.id])
+    customer_id = await _new_customer_with_allergy(
+        crm_service, ctx, aspirin.id, AllergySeverity.SEVERE
+    )
+
+    order_id = uuid4()
+    with capture_logs() as logs:
+        # A real sale (persisted) so the handler can read back its customer_id. The
+        # completion publishes SaleCompleted on the wired bus, firing the handler.
+        await sales_service.complete_sale(
+            CreateSaleInput(
+                client_uuid=str(order_id),
+                customer_id=customer_id,
+                lines=[
+                    SaleLineInput(drug_id=drug, quantity=Decimal("1"), unit_price=Decimal("1000"))
+                ],
+                payments=[PaymentInput(method=PaymentMethod.CASH, amount=Decimal("1000"))],
+            ),
+            ctx,
+        )
+
+    warnings = [e for e in logs if e["event"] == "allergy_warning_raised"]
+    assert len(warnings) == 1
+    assert warnings[0]["alerts"] == 1

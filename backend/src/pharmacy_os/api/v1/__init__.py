@@ -16,6 +16,7 @@ from pharmacy_os.api.v1.cross_module import (
     CatalogDrugInfoProvider,
     PrescriptionInfoAdapter,
     wire_goods_receipt_stock_in,
+    wire_medication_history,
     wire_safety_checks,
     wire_sale_dispensing,
 )
@@ -81,6 +82,11 @@ def build_api_router(container: Container) -> APIRouter:
     # (warn-only). Interactions on both (tenant-gated); allergies on dispensing
     # (reads crm for the customer's allergies). Reads catalog for ingredients.
     wire_safety_checks(container)
+
+    # Fold a named customer's dispensed drugs into their CRM medication history
+    # (consent-gated, idempotent). Separate from the warn-only safety checks: this
+    # one writes to crm. Reads sales/prescription for the customer_id and items.
+    wire_medication_history(container)
 
     # C.5 cross-module reaction: a completed sale enqueues a national-DB sync push
     # (both the event bus and the sync service are now registered).
