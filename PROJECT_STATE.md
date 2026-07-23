@@ -1195,7 +1195,7 @@ kiểm tra trước khi coi tính năng là dùng được.
 |-----------|--------------|---------|-----------|
 | S4.6 FE POS | 4/5 (CORS, scaffold, auth, tra thuốc+giỏ+thanh toán) | Bước 5 — hàng đợi offline Dexie. **Chưa thật sự "offline-first"** dù tên Sprint | §7o |
 | Hồ sơ sức khỏe KH | ✅ **4/4 XONG** (cổng đồng ý, tách quyền+audit, quyền chủ thể dữ liệu+DPIA, cập nhật role+tài liệu) | Không còn — vẫn treo `SalesOrder.customer_id` (Q5, cross-module riêng, không phải nợ Bước 4) | §7m |
-| Module `compliance` | Sổ kiểm soát + liên thông đã code xong | **Chưa mount router** — không có API nào để UI gọi, chặn trụ cột 2 thương hiệu | §7n mục "phiên sau bắt đầu từ đâu" |
+| Module `compliance` | ✅ **Router đã mount 2026-07-23** — 6 endpoint (`controlled-ledger` POST/GET, `tenant-config` PUT/GET, `sync-logs` POST/GET), 5 test e2e mới | Không còn — trụ cột 2 thương hiệu đã có API để UI gọi | §7q |
 | Audit coverage | `iam` (11 action) + `crm` (6 action) | 7/9 module còn lại chưa ghi audit — nặng nhất `prescription` (cấp phát ETC) và `compliance` (sổ kiểm soát) | §7n |
 | Nguồn giá bán (pricing) | — | **Không tồn tại ở đâu trong backend** — `inventory.cost_price` là giá vốn, không phải giá bán. Phát hiện hôm nay khi xây FE, chưa có quyết định có xây module `pricing` hay không | §7o |
 | Test tự động phía FE | — | Chưa có vitest/playwright nào | `frontend/README.md` |
@@ -1223,6 +1223,45 @@ những gì đã đọc trong phiên này. Còn ít nhất các nợ sau trong �
 FK `drugs.atc_code → atc_codes` chưa bật · persist trả hàng (`register_return`) chưa nối tồn ·
 HTTP endpoint tạo/liệt kê `active_ingredients` · nối `LLMProvider` → Claude thật (`AnthropicProvider`,
 vẫn `# BLOCKER: AI__API_KEY thật`).
+
+---
+
+## 7q. Mount router `compliance` — XONG (2026-07-23, phiên bàn ưu tiên GĐ+Code)
+
+> Việc mục #3 trong danh sách ưu tiên §7p đã duyệt. Module `compliance` đã có domain+app+infra
+> đầy đủ từ trước (§3f) nhưng chưa có mặt HTTP nào — phiên này chỉ mount, **không đổi logic
+> nghiệp vụ nào**.
+
+**6 endpoint mới**, `backend/src/pharmacy_os/modules/compliance/interface/{router,register}.py`:
+
+| Endpoint | Quyền | Use-case đã có sẵn |
+|---|---|---|
+| `POST /compliance/controlled-ledger` | `compliance.ledger.write` | `ComplianceService.record_controlled_entry` |
+| `GET /compliance/controlled-ledger/{id}` | `compliance.ledger.read` | `ComplianceService.get_ledger_entry` |
+| `PUT /compliance/tenant-config` | `compliance.config.write` | `ComplianceService.set_tenant_config` |
+| `GET /compliance/tenant-config` | `compliance.config.read` | `ComplianceService.get_tenant_config` |
+| `POST /compliance/sync-logs` | `compliance.sync.push` | `NationalSyncService.push_payload` (đẩy thủ công; luồng chính vẫn tự động qua `SaleCompleted`) |
+| `GET /compliance/sync-logs/{id}` | `compliance.sync.read` | `NationalSyncService.get_sync_log` |
+
+**Quyết định tự chọn khi mount (cơ học, không phải thiết kế mới):** `NationalSyncService` đã được
+`wire_national_sync` đăng ký sẵn trong container cho C.5 (cross-module reaction) — di chuyển lời
+gọi `wire_national_sync(container)` lên trước khi mount router `compliance` trong
+`api/v1/__init__.py`, để router resolve đúng **cùng một instance**, không tạo instance thứ hai.
+
+**Kiểm chứng:** 5 test e2e mới `test_compliance_api_e2e.py` (real token, real DI, cả đường
+allow lẫn deny — thu ngân bị 403 khi ghi sổ). 4 cổng xanh: ruff · mypy strict 212 file ·
+import-linter 13/13 · pytest full suite exit 0.
+
+⚠️ **Lệch tài liệu phát hiện, không tự sửa:** `docs/11_API_DESIGN.md` §compliance ghi permission
+`compliance.read`/`compliance.submit` và endpoint `GET /compliance/controlled-ledger` (không có
+`/{id}`) + `POST /compliance/submissions/retry` — khác tên thật đang chạy
+(`compliance.ledger.*`/`compliance.config.*`/`compliance.sync.*`, path `/sync-logs`). Router mount
+theo đúng permission **thật** đã seed trong `system_roles.py`, không theo docs/11 đã lỗi thời. Cần
+rà `docs/11` một lượt riêng (cùng đợt với nợ `TODO.md` ở mục D phía trên).
+
+⚠️ **Chưa có audit cho module này** — đúng như đã ghi ở §7n: `compliance` vẫn thuộc nhóm 7/9 module
+chưa ghi `audit_logs`. Việc mục #4 (audit cho `prescription`+`compliance`) trong danh sách ưu tiên
+đã duyệt vẫn còn nguyên, mount router không tự động thêm audit.
 
 ---
 

@@ -26,6 +26,7 @@ from pharmacy_os.core.di import Container
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.catalog.interface import register as register_catalog
 from pharmacy_os.modules.clinical.interface import register as register_clinical
+from pharmacy_os.modules.compliance.interface import register as register_compliance
 from pharmacy_os.modules.crm.interface import register as register_crm
 from pharmacy_os.modules.iam.interface import register as register_iam
 from pharmacy_os.modules.inventory.interface import register as register_inventory
@@ -57,6 +58,13 @@ def build_api_router(container: Container) -> APIRouter:
     # (GRN confirmed -> inventory batch/stock-in is a later step, gated behind Opus).
     api.include_router(register_procurement(container, get_context))
 
+    # National drug DB sync service (mock gateway — BLOCKER: DAV API spec). Wired before
+    # the compliance router so its endpoint can resolve the same instance C.5's
+    # cross-module subscriber uses further down.
+    wire_national_sync(container)
+    # Compliance: sổ thuốc kiểm soát đặc biệt + cấu hình tenant + liên thông CSDL Dược.
+    api.include_router(register_compliance(container, get_context))
+
     # Catalog is authoritative for a sale's Rx status; prescription for its ref
     # validity (adapters over their services — sales imports neither module).
     drug_info = CatalogDrugInfoProvider(container.resolve(CatalogService))
@@ -73,10 +81,6 @@ def build_api_router(container: Container) -> APIRouter:
     # (warn-only). Interactions on both (tenant-gated); allergies on dispensing
     # (reads crm for the customer's allergies). Reads catalog for ingredients.
     wire_safety_checks(container)
-
-    # National drug DB sync service (mock gateway — BLOCKER: DAV API spec).
-    # Registered here so C.5's cross-module subscriber can resolve it; no router.
-    wire_national_sync(container)
 
     # C.5 cross-module reaction: a completed sale enqueues a national-DB sync push
     # (both the event bus and the sync service are now registered).
