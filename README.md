@@ -79,6 +79,10 @@ Chi tiết: [docs/02_ARCHITECTURE.md](docs/02_ARCHITECTURE.md).
 | 10 | [Config](docs/10_CONFIG.md) | Cấu hình phân lớp, env, settings động |
 | 11 | [API Design](docs/11_API_DESIGN.md) | REST v1, endpoint map, idempotency, AI streaming |
 | 12 | [AI Integration](docs/12_AI_INTEGRATION.md) | AI Gateway, RAG, guardrails, an toàn |
+| 13 | [Compliance Spec](docs/13_COMPLIANCE_SPEC.md) | Spec pháp lý đã khóa (QĐ540/TT20/QĐ1867) |
+| 14 | [Feature Process](docs/14_FEATURE_PROCESS.md) | Cổng bắt buộc cho tính năng mới (Compliance/Privacy by Design) |
+| 15 | [IAM Design](docs/15_IAM_DESIGN.md) | Users/roles/JWT, vai trò 2 cấp chuỗi–nhà thuốc |
+| 16 | [Brand & UI Guide](docs/16_BRAND_UI_GUIDE.md) | Nhận diện BERAS, tông màu, 3 trụ cột, nguyên tắc UI |
 
 ---
 
