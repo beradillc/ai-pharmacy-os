@@ -91,10 +91,14 @@ async def _run(args: argparse.Namespace, password: str) -> None:
         branch_id=str(out.branch_id),
         admin_user_id=str(out.admin_user_id),
         system_roles_created=out.roles_created,
+        system_roles_updated=out.roles_updated,
     )
+    # The *updated* count is the one an upgrade cares about: it says the deployment
+    # was carrying a stale permission set and has just been brought up to date.
+    # Reporting only "created" made a repaired install look like a no-op.
     print(  # noqa: T201 - operator-facing summary, not application logging
         f"Tenant {out.tenant_id} · chi nhánh {out.branch_id} · admin {out.admin_user_id}\n"
-        f"Vai trò hệ thống tạo mới: {out.roles_created}\n"
+        f"Vai trò hệ thống: tạo mới {out.roles_created}, cập nhật {out.roles_updated}\n"
         "Admin phải đổi mật khẩu ở lần đăng nhập đầu."
     )
 

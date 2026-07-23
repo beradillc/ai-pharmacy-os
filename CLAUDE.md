@@ -14,6 +14,7 @@
 | Mục | Ngày ban hành |
 |-----|---------------|
 | Phạm vi · Tài liệu hiệu lực ngang nhau · Kỷ luật bắt buộc 1-6 · Chọn model · Khi phát hiện gap/lệch · Việc thêm tính năng mới | **Trước 2026-07-23** — ngày chính xác không truy được (file chưa từng vào git). Không suy đoán |
+| Kỷ luật bắt buộc **số 7** (thử trên CSDL có dữ liệu sẵn) | **2026-07-23** (GĐ ban hành sau sự cố role-seeding, sếp duyệt) |
 | CHẾ ĐỘ FULL-AUTO (gồm 6 điều kiện giữ nguyên) | Trước 2026-07-23; điều 6 (pg_dump trước mỗi migration) và mục Quyền hạn công cụ bổ sung **2026-07-23** |
 | Quy tắc trình bày báo cáo/tổng hợp | **2026-07-23** (GĐ ban hành) |
 | Xác thực khi chạy thử cục bộ | **2026-07-23** (cùng module `iam`) |
@@ -51,6 +52,20 @@ multi-tenant).
    thái hạ tầng, luôn xác nhận bằng lệnh thật.
 6. **Không overclaim DoD:** nếu một mục trong DoD gốc bị hoãn/chưa làm,
    ghi rõ là nợ, không báo cáo "xong" khi chưa đủ.
+7. **Thêm/sửa permission hoặc đổi dữ liệu seed → BẮT BUỘC chạy thử trên CSDL
+   ĐÃ CÓ DỮ LIỆU SẴN trước khi commit** (không chỉ pytest dựng từ số không).
+   **Đây là quy tắc cố định, không phải khuyến nghị.** (GĐ ban hành
+   2026-07-23, sếp duyệt cùng ngày.)
+   - *Vì sao:* pytest luôn khởi tạo CSDL rỗng nên luôn đi nhánh "insert",
+     không bao giờ đi nhánh "cập nhật cái đã tồn tại". Thực tế nâng cấp thì
+     ngược lại. Đã có 1 lần lọt thật: role hệ thống chỉ seed 1 lần, permission
+     `audit.read` mới thêm không tới được deployment cũ → admin bị 403 **trong
+     khi cả 505 test đều xanh** (xem PROJECT_STATE §7l).
+   - *Cách chạy:* `python -m seeds.run` hoặc `python -m seeds.bootstrap_tenant`
+     trên Postgres đang chạy, rồi **xác nhận bằng lệnh thật** (truy vấn SQL
+     hoặc gọi API bằng token thật) rằng thay đổi đã áp dụng — không tin số
+     dòng log báo "created: N".
+   - *Dọn sau khi thử:* xóa tenant/dữ liệu thử nghiệm, giữ lại dữ liệu dùng chung.
 
 ## Xác thực khi chạy thử cục bộ (từ 2026-07-23, module `iam`)
 **Nếu API trả 401 hàng loạt hoặc demo "tự nhiên chết" — kiểm tra chỗ này
