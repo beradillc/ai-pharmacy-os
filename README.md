@@ -1,6 +1,7 @@
 # BERAS
 
-> **Sổ điện tử quản lý nhà thuốc chuẩn Cloud/SaaS thế hệ mới.**
+> **BERAS là sổ điện tử quản lý nhà thuốc chuẩn Cloud/SaaS thế hệ mới, tích hợp AI hỗ trợ chuyên
+> sâu nghiệp vụ Dược và đảm bảo vận hành liên tục ngay cả khi mất kết nối Internet.**
 > POS + Kho + Đơn thuốc + Dược sĩ AI, kiến trúc module hóa, tuân thủ quy định Bộ Y tế (DAV).
 
 > Tên kỹ thuật của mã nguồn vẫn là `pharmacy_os` (package, thư mục, migration). Đổi tên kỹ thuật là

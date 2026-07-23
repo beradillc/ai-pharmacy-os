@@ -18,8 +18,7 @@
 |----------|----------|
 | **Tên sản phẩm** | **BERAS** |
 | **Mascot** | Gấu đội áo blouse, kính tròn, cầm tablet |
-| **Tagline** | "Sổ Quản Lý Nhà Thuốc — Sổ ghi chép Nhà Thuốc Chuẩn Cloud/SaaS Thế Hệ Mới" |
-| **Câu định vị dài** | "BERAS là sổ điện tử quản lý nhà thuốc chuẩn Cloud/SaaS thế hệ mới, tích hợp AI hỗ trợ chuyên sâu nghiệp vụ Dược và đảm bảo vận hành liên tục ngay cả khi mất kết nối Internet." |
+| **Tagline** (thống nhất với `README.md`, chốt 2026-07-23) | "BERAS là sổ điện tử quản lý nhà thuốc chuẩn Cloud/SaaS thế hệ mới, tích hợp AI hỗ trợ chuyên sâu nghiệp vụ Dược và đảm bảo vận hành liên tục ngay cả khi mất kết nối Internet." |
 | **Câu kết thương hiệu** | "BERAS & BeraLLC — Đồng hành bền vững, Vận hành thông minh" |
 
 **Tên kỹ thuật của mã nguồn vẫn là `pharmacy_os`** (package, thư mục, migration, tên bảng). Đổi tên
