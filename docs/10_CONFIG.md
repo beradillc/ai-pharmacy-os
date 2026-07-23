@@ -103,9 +103,27 @@ AI__MIN_CONFIDENCE=0.6
 # --- Security ---
 SECURITY__JWT_SECRET=__set_me__
 SECURITY__JWT_TTL_MINUTES=60
+SECURITY__REFRESH_TTL_DAYS=30
+SECURITY__ALLOW_DEV_AUTH=true      # chỉ dev/test — xem cảnh báo bên dưới
 ```
 
 > `.env` **không** được commit. Chỉ commit `.env.example`.
+
+### `SECURITY__ALLOW_DEV_AUTH` (thêm 2026-07-23 cùng module `iam`)
+
+| | |
+|---|---|
+| **Mặc định trong code** | `false` — fail-closed |
+| **Tác dụng khi `true`** | Request không có `Authorization: Bearer` được chấp nhận, danh tính lấy từ header `X-Tenant-Id`/`X-Branch-Id`/`X-User-Id` với **toàn bộ 38 permission** |
+| **Rào chắn** | `APP__ENV=prod` + cờ `true` ⇒ `Settings` ném lỗi, ứng dụng **không khởi động**. Khi bật, khởi động log `dev_auth_enabled` mức warning |
+| **Vì sao mặc định tắt** | Trước `iam`, fallback tự bật ở mọi env khác `prod` — chỉ cần cấu hình sai biến `APP__ENV` trên staging là API mở toang. Xem `docs/15_IAM_DESIGN.md` §5 Q3 |
+
+**Hệ quả cần biết:** thiếu dòng này trong `.env` thì mọi demo/script cũ gọi API bằng header sẽ nhận
+**401**. Đó là chủ đích chứ không phải lỗi cấu hình.
+
+> ⚠️ `AI__ENABLE_CLINICAL_AI` **đã bị bỏ** (bật/tắt AI lâm sàng nay là cờ theo tenant —
+> `clinical.TenantAiSettings`, Sprint 6). Còn sót dòng đó trong `.env` thì `AISettings` báo
+> `extra_forbidden` và ứng dụng **không khởi động được**.
 
 ---
 

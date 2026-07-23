@@ -54,7 +54,7 @@ Chi tiết: [docs/02_ARCHITECTURE.md](docs/02_ARCHITECTURE.md).
 
 ## 3. Module nghiệp vụ
 
-✅ `catalog` · ✅ `inventory` · ⏳ `sales` · ⏳ `prescription` · ⏳ `clinical` · ⏳ `crm` · ⏳ `procurement` · ⏳ `compliance` · ⏳ `analytics` · ⏳ `iam`
+✅ `catalog` · ✅ `inventory` · ✅ `sales` · ✅ `prescription` · ✅ `clinical` · ✅ `crm` · ✅ `procurement` · ✅ `compliance` · ✅ `iam` · ⏳ `analytics`
 
 (✅ = đã hiện thực · ⏳ = đã thiết kế, theo lộ trình). Mỗi module theo Hexagonal (`domain → application → infrastructure → interface`), giao tiếp **chỉ qua domain events / ports** — được ép bằng `import-linter` (domain-purity + module-independence). Xem [docs/08_MODULES.md](docs/08_MODULES.md).
 
@@ -116,11 +116,38 @@ cd backend && pip install -e ".[dev]"
 cp .env.example .env                 # điền AI__API_KEY, SECURITY__JWT_SECRET...
 
 # 3) Migration + seed + chạy API
-alembic upgrade head                 # 0001 (extensions) + 0002 (catalog/inventory)
+alembic upgrade head                 # 0001 (extensions) → 0013 (iam)
 python -m seeds.run                  # seed mã ATC (idempotent)
 uvicorn pharmacy_os.main:app --reload
 # → /api/v1/health · /api/v1/docs · /api/v1/drugs · /api/v1/inventory/*
 ```
+
+### ⚠️ Xác thực — đọc trước khi thắc mắc "sao API trả 401?"
+
+Từ 2026-07-23 (module `iam`), **mọi endpoint nghiệp vụ đòi `Authorization: Bearer`**. Có 2 đường:
+
+| | Dùng khi nào | Cách làm |
+|---|---|---|
+| **Dev nhanh** | Chạy demo/script cũ dùng header `X-Tenant-Id`/`X-Branch-Id` | Đặt `SECURITY__ALLOW_DEV_AUTH=true` trong `.env` (đã có sẵn trong `.env.example`). Khởi động sẽ log `dev_auth_enabled` để nhắc |
+| **Đường thật** | Kiểm thử đúng như production | Tạo tài khoản rồi đăng nhập (bên dưới) |
+
+```bash
+# Tạo tenant + chi nhánh + 5 vai trò hệ thống + tài khoản admin đầu tiên
+BOOTSTRAP_ADMIN_PASSWORD='MatKhauCuaBan2026' python -m seeds.bootstrap_tenant \
+    --tenant-name "Nhà thuốc ABC" --branch-code HQ --branch-name "Chi nhánh chính" \
+    --admin-email admin@abc.vn --admin-full-name "Nguyễn Văn A"
+
+# Lấy token
+curl -X POST localhost:8000/api/v1/auth/login -H 'Content-Type: application/json' \
+     -d '{"email":"admin@abc.vn","password":"MatKhauCuaBan2026"}'
+```
+
+`SECURITY__ALLOW_DEV_AUTH` **mặc định `false` trong code** (fail-closed): thiếu dòng đó trong `.env`
+là mọi request không có token đều 401 — đúng chủ đích, không phải lỗi. `APP__ENV=prod` cộng với cờ
+này bật thì ứng dụng **từ chối khởi động**.
+
+`branch_id` nằm trong claim JWT đã ký; header `X-Branch-Id` **không** đè được trên request đã xác
+thực. Đổi chi nhánh dùng `POST /api/v1/auth/switch-branch`. Chi tiết: [docs/15_IAM_DESIGN.md](docs/15_IAM_DESIGN.md).
 
 Hoặc dùng `make`: `make up` · `make install` · `make migrate` · `make seed` · `make serve` · `make check` (lint+contracts+types+test).
 
