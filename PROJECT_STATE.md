@@ -1197,7 +1197,7 @@ kiểm tra trước khi coi tính năng là dùng được.
 | Hồ sơ sức khỏe KH | ✅ **4/4 XONG** (cổng đồng ý, tách quyền+audit, quyền chủ thể dữ liệu+DPIA, cập nhật role+tài liệu) | Không còn — vẫn treo `SalesOrder.customer_id` (Q5, cross-module riêng, không phải nợ Bước 4) | §7m |
 | Module `compliance` | ✅ **Router đã mount 2026-07-23** — 6 endpoint (`controlled-ledger` POST/GET, `tenant-config` PUT/GET, `sync-logs` POST/GET), 5 test e2e mới | Không còn — trụ cột 2 thương hiệu đã có API để UI gọi | §7q |
 | Audit coverage | ✅ `iam` (11) + `crm` (6) + `prescription` (4, mới) + `compliance` (2, mới) = **23 action, 4/9 module** | Còn 5/9 module chưa ghi audit: `sales`, `inventory`, `procurement`, `clinical`, `catalog` — không thuộc nhóm ưu tiên đã duyệt phiên này | §7r |
-| Nguồn giá bán (pricing) | — | **Không tồn tại ở đâu trong backend** — `inventory.cost_price` là giá vốn, không phải giá bán. Phát hiện hôm nay khi xây FE, chưa có quyết định có xây module `pricing` hay không | §7o |
+| Nguồn giá bán (pricing) | ✅ **CHỐT 2026-07-23: KHÔNG xây module `pricing`.** Giữ nguyên: thu ngân nhập tay đơn giá từng dòng bán, như FE S4.6 đang làm | Quyết định sếp — không phải nợ, là phạm vi đã chọn. Xem lại nếu sau này có yêu cầu bán buôn/giá theo hợp đồng | §7o |
 | Test tự động phía FE | — | Chưa có vitest/playwright nào | `frontend/README.md` |
 
 ### C. Việc treo ngoài phạm vi code — cần sếp / GĐ / luật sư, không phải Claude tự quyết
