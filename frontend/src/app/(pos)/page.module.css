@@ -1,0 +1,183 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 24px;
+  background: var(--beras-accent);
+  color: var(--beras-accent-contrast);
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 18px;
+}
+
+.branchTag {
+  font-size: 13px;
+  opacity: 0.85;
+  flex: 1;
+}
+
+.logout {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: inherit;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  padding: 20px 24px;
+}
+
+.catalog,
+.cart {
+  background: var(--beras-surface);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--beras-radius);
+  padding: 16px;
+}
+
+.search {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--beras-border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.hint {
+  color: var(--beras-text-muted);
+  font-size: 14px;
+  padding: 12px 0;
+}
+
+.drugList,
+.cartList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drugRow,
+.cartRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--beras-border);
+}
+
+.drugName {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rxBadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--beras-brown);
+  border: 1px solid var(--beras-icon-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.drugMeta {
+  font-size: 12px;
+  color: var(--beras-text-muted);
+}
+
+.addButton {
+  background: var(--beras-bg-alt);
+  border: 1px solid var(--beras-icon-border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--beras-accent);
+}
+
+.cartTitle {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.cartLineInfo {
+  flex: 1;
+}
+
+.qtyInput {
+  width: 56px;
+  padding: 6px;
+  border: 1px solid var(--beras-border);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.removeButton {
+  background: none;
+  border: none;
+  color: var(--beras-danger);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 16px 8px;
+  font-size: 16px;
+  border-top: 1px solid var(--beras-border);
+  margin-top: 8px;
+}
+
+.checkoutButton {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--beras-accent);
+  color: var(--beras-accent-contrast);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.checkoutButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  background: var(--beras-danger-bg);
+  color: var(--beras-danger);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.success {
+  background: var(--beras-bg-alt);
+  color: var(--beras-accent);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
