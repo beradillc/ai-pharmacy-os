@@ -14,11 +14,14 @@ from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import ConflictError, NotFoundError, ValidationError
 from pharmacy_os.core.security import require_permission
 from pharmacy_os.modules.catalog.application.dto import (
+    ActiveIngredientOutput,
     CreateDrugInput,
+    CreateIngredientInput,
     DrugIngredientRef,
     DrugOutput,
 )
 from pharmacy_os.modules.catalog.domain import (
+    ActiveIngredient,
     Drug,
     DrugIngredient,
     DrugUnit,
@@ -126,6 +129,32 @@ class CatalogService:
                     raise NotFoundError(f"Không tìm thấy hoạt chất {di.ingredient_id}")
                 refs.append(DrugIngredientRef(ingredient_id=di.ingredient_id, name=ingredient.name))
         return refs
+
+    async def create_ingredient(
+        self, data: CreateIngredientInput, ctx: RequestContext
+    ) -> ActiveIngredientOutput:
+        """Create a global active ingredient. Raises :class:`ConflictError` on duplicate name."""
+        require_permission(ctx, "catalog.create")
+        try:
+            ingredient = ActiveIngredient(name=data.name, name_en=data.name_en)
+        except InvalidIngredientError as exc:
+            raise ValidationError(str(exc)) from exc
+
+        async with self._uow_factory() as uow:
+            ingredient_repo = self._ingredient_repo_factory(uow)
+            if await ingredient_repo.find_by_name(data.name) is not None:
+                raise ConflictError(f"Hoạt chất '{data.name}' đã tồn tại")
+            await ingredient_repo.add(ingredient)
+            await uow.commit()
+        return ActiveIngredientOutput.of(ingredient)
+
+    async def list_ingredients(self, ctx: RequestContext) -> list[ActiveIngredientOutput]:
+        """List all global active ingredients (reference data, not tenant-scoped)."""
+        require_permission(ctx, "catalog.read")
+        async with self._uow_factory() as uow:
+            ingredient_repo = self._ingredient_repo_factory(uow)
+            ingredients = await ingredient_repo.list()
+        return [ActiveIngredientOutput.of(i) for i in ingredients]
 
     async def list_drugs(
         self, ctx: RequestContext, *, limit: int = 50, offset: int = 0

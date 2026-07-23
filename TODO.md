@@ -127,8 +127,9 @@
       validate `ingredient_id` tồn tại khi tạo thuốc (404 nếu không) + `CreateDrugRequest`/`DrugResponse` mở rộng `ingredients`.
       Migration `0008_catalog_ingredients` live Postgres, `alembic check` sạch, downgrade/upgrade OK. 4 cổng xanh (**249 test**,
       10 contract kept/0). **⇒ Bước 1 XONG hoàn toàn — sẵn sàng cho Bước 2.**
-- [ ] **Nợ mới:** chưa có HTTP endpoint tạo/liệt kê `active_ingredients` (chỉ tham chiếu `ingredient_id` có sẵn khi tạo thuốc) —
-      quyết định khi làm `crm`/`procurement` hoặc khi có nhu cầu FE thật.
+- [x] ~~**Nợ mới:** chưa có HTTP endpoint tạo/liệt kê `active_ingredients`~~ — **XONG (2026-07-23)**:
+      `POST`/`GET /api/v1/active-ingredients`, tái dùng quyền `catalog.create`/`catalog.read` có sẵn,
+      không migration mới. Xem PROJECT_STATE §7u.
 - [x] **Bước 2 — 5.5.4 auto-check tương tác + dị ứng, XONG hoàn toàn** *(2026-07-22, Opus, phiên riêng, từng bước duyệt)* —
       cross-module ở composition root (`api/v1/cross_module.py`), **cảnh báo không chặn** (hậu-commit; quyết định pháp lý sếp chốt).
       4 bước con, mỗi bước 4 cổng xanh:

@@ -1397,10 +1397,49 @@ phải bỏ sót:
 
 ---
 
+## 7u. Endpoint HTTP `active_ingredients` — XONG (2026-07-23, nợ kỹ thuật đơn module, tiếp phiên sau §7t)
+
+> Phiên trước (§7t) đóng toàn bộ danh sách ưu tiên đã duyệt, không còn việc dở dang — chỉ còn nợ kỹ
+> thuật chưa ai chọn ưu tiên (TODO.md). Phiên này (full-auto, sếp bận HoSoCongTrinh) tự chọn việc rủi
+> ro thấp nhất trong danh sách đó: `catalog` đã có domain+infra cho `ActiveIngredient` từ Sprint 6
+> Bước 1 nhưng chưa có endpoint HTTP tạo/liệt kê — TODO.md từng ghi "quyết định khi có nhu cầu FE
+> thật"; nay làm vì không cross-module, không migration, đúng khuôn Sonnet.
+
+**Đã làm:** `POST /api/v1/active-ingredients` (201, chặn trùng `name` → 409) + `GET
+/api/v1/active-ingredients` (danh sách, không cross-module, không migration — bảng `active_ingredients`
+đã có từ migration `0008`). Tái dùng đúng 2 quyền có sẵn `catalog.create`/`catalog.read` (giống cách
+`get_drug_ingredients` đã dùng `catalog.read`) — không cần đổi role/permission trong `iam`.
+
+- `application/dto.py`: `CreateIngredientInput`, `ActiveIngredientOutput`.
+- `application/service.py`: `CatalogService.create_ingredient`/`list_ingredients` (dùng
+  `ActiveIngredientRepository` đã có sẵn từ Sprint 6 Bước 1, không đổi port).
+- `interface/schemas.py`: `CreateIngredientRequest`/`ActiveIngredientResponse`.
+- `interface/router.py`: tách `_build_drugs_router`/`_build_ingredients_router`, `build_router` gộp
+  cả 2 qua `include_router` — `register.py`/`api/v1/__init__.py` không đổi (vẫn gọi `build_router`
+  như cũ, ghép router lồng nhau minh bạch với FastAPI).
+- Test mới `test_active_ingredients_crud` (`tests/integration/test_api_e2e.py`): tạo hoạt chất → trùng
+  tên → 409 → liệt kê → tạo thuốc tham chiếu `ingredient_id` vừa tạo → 201.
+
+**Bằng chứng:** `ruff` sạch (check+format) · `mypy --strict` **212 file, không lỗi** · `import-linter`
+**13 kept/0 broken** (không đổi contract nào — thuần interface layer 1 module) · `pytest` **570 test
+collected, exit code 0 (toàn bộ xanh)** — chạy 2 lần độc lập để xác nhận, không chỉ tin 1 lần chạy.
+Không có migration mới (bảng đã tồn tại từ `0008`).
+
+**Quyết định tự chọn trong phiên (full-auto #3):** không thêm audit action cho việc tạo hoạt chất —
+đây là dữ liệu tham chiếu toàn cục (không tenant-scope, giống `atc_codes`), không phải hành vi nghiệp
+vụ của một tenant cụ thể; khớp nguyên tắc audit hiện có (chỉ ghi hành vi tenant-scoped). Nếu sếp muốn
+audit cả thay đổi dữ liệu tham chiếu toàn cục, cần bàn riêng — chưa tự quyết thêm.
+
+**Nợ không đổi:** vẫn còn 5/9 module chưa có audit (`sales`/`inventory`/`procurement`/`clinical`/
+`catalog`), FK `atc_code`, persist trả hàng, `AnthropicProvider` thật — xem §7t mục 3, TODO.md.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-23 | Endpoint HTTP `active_ingredients` (POST/GET) — nợ kỹ thuật đơn module, xem §7u. |
 | 2026-07-23 | **DỪNG PHIÊN theo yêu cầu sếp — gom điểm dừng toàn phiên vào §7p.** Sếp muốn phiên sau bàn sắp xếp lại ưu tiên với GĐ trước khi tiếp tục code. §7p liệt kê trung lập (không xếp hạng): trạng thái kỹ thuật lúc dừng (2 tiến trình nền còn chạy — uvicorn 8000, next dev 3000; tenant demo còn trên Postgres), 6 việc tính năng đang dở dang, 7 việc treo ngoài phạm vi code (thương hiệu chưa ghi vào `ChienLuoc/`, câu hỏi lẻ-hay-chuỗi, tagline lệch, gộp hỏi luật sư, badge chưa đo lại...), và cảnh báo `TODO.md` đã lỗi thời (đề 2026-07-22, một số dòng sai so với thực tế — cần rà lại riêng, không tự sửa hàng loạt ngay vì thiếu ngữ cảnh phiên cũ). |
 | 2026-07-23 | **S4.6 FE POS tối thiểu — 4/5 bước (phiên Sonnet, xem §7o).** Hồi sinh từ nợ ROADMAP Sprint 4. `frontend/` mới hoàn toàn (Next.js+TS+TanStack Query+Zustand), theo `docs/04` §3 + `docs/16` brand guide. 4 commit: CORS (`cb3809e`, ngoại lệ backend duy nhất, xin phép trước) → scaffold (`2bcea7f`) → auth JWT thật (`c642c34`) → tra thuốc/giỏ hàng/thanh toán (`ba547c4`). **3 phát hiện lệch docs/11-thực tế**: API `sales` thật là `POST /sales` gộp 1 lệnh (không phải `/sales-orders`+`/payments`+`/complete` như doc); `GET /drugs` không có tham số tìm kiếm; **không nguồn giá bán nào trong backend** (chỉ có `inventory.cost_price` — giá vốn) nên thu ngân nhập tay giá — khoảng trống sản phẩm thật. Kiểm chứng bằng curl mô phỏng đúng request FE trên backend live (không chỉ đọc code) — khớp 100% type đã viết; `next dev` thật chạy sạch. **Giới hạn: không có trình duyệt trong môi trường, chưa từng click-through UI thật** — chỉ xác nhận hợp đồng API + server không crash. **Bước 5 (Dexie offline) chưa làm.** Để lại tài khoản demo `fe-demo@beral.vn`/`MatKhauFeDemo2026` trên Postgres để sếp login thử ngay. |
 | 2026-07-23 | **CHỐT PHIÊN — 20 commit, xem §7n.** Phiên Opus dài: `iam` thật (4 bước) → `audit_logs` persist (3 bước) → Hồ sơ sức khỏe KH qua cổng docs/14 (Bước 0-3, còn Bước 4) → thương hiệu **BERAS** + `docs/16_BRAND_UI_GUIDE.md`. Cổng cuối: ruff sạch · mypy strict 210 file · import-linter 13/0 · pytest **560** · alembic `0015` (head) · git sạch. **5 bug thật** phát hiện và vá (nặng nhất: lỗ hổng `X-Branch-Id` đang chạy; role hệ thống không cập nhật khi nâng cấp mà 505 test vẫn xanh). **14 quyết định Claude tự chốt trong full-auto** liệt kê đủ ở §7n để sếp đọc lướt. Phiên sau bắt đầu: đóng Bước 4 → mount router `compliance` → audit cho `prescription`+`compliance`. |

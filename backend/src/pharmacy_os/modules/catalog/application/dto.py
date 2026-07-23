@@ -6,7 +6,24 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from uuid import UUID
 
-from pharmacy_os.modules.catalog.domain import Drug, RxClass
+from pharmacy_os.modules.catalog.domain import ActiveIngredient, Drug, RxClass
+
+
+@dataclass(slots=True)
+class CreateIngredientInput:
+    name: str
+    name_en: str | None = None
+
+
+@dataclass(slots=True)
+class ActiveIngredientOutput:
+    id: UUID
+    name: str
+    name_en: str | None
+
+    @classmethod
+    def of(cls, ingredient: ActiveIngredient) -> ActiveIngredientOutput:
+        return cls(id=ingredient.id, name=ingredient.name, name_en=ingredient.name_en)
 
 
 @dataclass(slots=True)

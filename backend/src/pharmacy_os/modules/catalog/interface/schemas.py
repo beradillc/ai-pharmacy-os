@@ -8,12 +8,32 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from pharmacy_os.modules.catalog.application.dto import (
+    ActiveIngredientOutput,
     CreateDrugInput,
+    CreateIngredientInput,
     DrugIngredientInput,
     DrugOutput,
     DrugUnitInput,
 )
 from pharmacy_os.modules.catalog.domain import RxClass
+
+
+class CreateIngredientRequest(BaseModel):
+    name: str
+    name_en: str | None = None
+
+    def to_input(self) -> CreateIngredientInput:
+        return CreateIngredientInput(name=self.name, name_en=self.name_en)
+
+
+class ActiveIngredientResponse(BaseModel):
+    id: UUID
+    name: str
+    name_en: str | None
+
+    @classmethod
+    def of(cls, out: ActiveIngredientOutput) -> ActiveIngredientResponse:
+        return cls(id=out.id, name=out.name, name_en=out.name_en)
 
 
 class DrugUnitSchema(BaseModel):

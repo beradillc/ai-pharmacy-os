@@ -81,3 +81,35 @@ def test_unknown_drug_returns_404(client: TestClient) -> None:
     resp = client.get("/api/v1/drugs/00000000-0000-0000-0000-0000000000ff")
     assert resp.status_code == 404
     assert resp.headers["content-type"].startswith("application/problem+json")
+
+
+def test_active_ingredients_crud(client: TestClient) -> None:
+    resp = client.post(
+        "/api/v1/active-ingredients", json={"name": "Amoxicillin", "name_en": "Amoxicillin"}
+    )
+    assert resp.status_code == 201, resp.text
+    ingredient = resp.json()
+    assert ingredient["name"] == "Amoxicillin"
+
+    # Duplicate name is rejected.
+    dup = client.post("/api/v1/active-ingredients", json={"name": "Amoxicillin"})
+    assert dup.status_code == 409
+
+    listed = client.get("/api/v1/active-ingredients")
+    assert listed.status_code == 200
+    assert any(i["id"] == ingredient["id"] for i in listed.json())
+
+    # A drug can now reference the ingredient by id.
+    drug = client.post(
+        "/api/v1/drugs",
+        json={
+            "name": "Klamentin 500mg",
+            "rx_class": "ETC",
+            "base_unit": "viên",
+            "ingredients": [
+                {"ingredient_id": ingredient["id"], "amount": "500", "unit": "mg"}
+            ],
+        },
+    )
+    assert drug.status_code == 201, drug.text
+    assert drug.json()["ingredients"][0]["ingredient_id"] == ingredient["id"]
