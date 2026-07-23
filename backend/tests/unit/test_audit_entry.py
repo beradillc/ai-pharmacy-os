@@ -93,6 +93,8 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "INVENTORY_STOCK_DISPENSED",
         "PROCUREMENT_PO_ORDERED",
         "PROCUREMENT_GRN_CONFIRMED",
+        "CLINICAL_INTERACTION_CHECKED",
+        "CLINICAL_RECOMMENDATION_ACCEPTED",
     }
     assert {a.value for a in AuditAction} == expected
 

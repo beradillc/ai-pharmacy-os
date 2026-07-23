@@ -16,6 +16,7 @@ from hashlib import sha256
 from uuid import UUID
 
 from pharmacy_os.core.ai import LLMProvider, Message
+from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import ConflictError, FeatureDisabledError, NotFoundError
@@ -80,6 +81,7 @@ class ClinicalService:
         *,
         min_confidence: float,
         model: str | None = None,
+        audit: AuditLogger | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._interaction_repo_factory = interaction_repo_factory
@@ -88,6 +90,7 @@ class ClinicalService:
         self._llm = llm
         self._min_confidence = min_confidence
         self._model = model
+        self._audit = audit
 
     async def check_interactions(
         self, data: CheckInteractionsInput, ctx: RequestContext
@@ -134,6 +137,9 @@ class ClinicalService:
             await repo.add(recommendation)
             await uow.commit()
 
+        await self._record(
+            ctx, AuditAction.CLINICAL_INTERACTION_CHECKED, "ai_recommendation", recommendation.id
+        )
         return InteractionCheckResult(
             findings=[DrugInteractionOutput.of(f) for f in findings],
             recommendation=AiRecommendationOutput.of(recommendation),
@@ -196,6 +202,9 @@ class ClinicalService:
                 raise ConflictError(str(exc)) from exc
             await repo.update(rec)
             await uow.commit()
+        await self._record(
+            ctx, AuditAction.CLINICAL_RECOMMENDATION_ACCEPTED, "ai_recommendation", rec.id
+        )
         return AiRecommendationOutput.of(rec)
 
     async def get_tenant_ai_settings(self, ctx: RequestContext) -> TenantAiSettingsOutput:
@@ -236,3 +245,19 @@ class ClinicalService:
             raise FeatureDisabledError(
                 f"Tính năng AI lâm sàng chưa được bật cho tenant {ctx.tenant_id}"
             )
+
+    async def _record(
+        self, ctx: RequestContext, action: AuditAction, target_type: str, target_id: UUID
+    ) -> None:
+        """Append one audit row — metadata only, never the AI output/findings content."""
+        if self._audit is None:
+            return
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=action,
+                target_type=target_type,
+                target_id=str(target_id),
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+        )

@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pharmacy_os.core.ai import LLMProvider
+from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.config import Settings
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
@@ -51,6 +52,7 @@ def register(container: Container, get_context: ContextDep) -> APIRouter:
         settings_repo_factory,
         llm,
         min_confidence=settings.ai.min_confidence,
+        audit=container.resolve(AuditLogger),
     )
     container.register_instance(ClinicalService, service)
     return build_router(get_context)

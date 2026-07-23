@@ -110,6 +110,19 @@ class AuditAction(StrEnum):
     :attr:`INVENTORY_STOCK_RECEIVED`. The later ``inventory`` batch-creation step
     is a separate cross-module reaction, not re-audited here."""
 
+    # --- clinical (quyết định lâm sàng có AI hỗ trợ — docs/12 mục 7 yêu cầu vết) ---
+    CLINICAL_INTERACTION_CHECKED = "CLINICAL_INTERACTION_CHECKED"
+    """A drug-interaction check ran and wrote an :class:`AiRecommendation`.
+
+    The recommendation row itself already carries model/confidence/output as its
+    own immutable record, but not *who* triggered the check (human via
+    ``/clinical/check-interactions`` or the automatic cross-module safety net) —
+    this fills that gap, same reasoning as :attr:`CONTROLLED_LEDGER_ENTRY_RECORDED`."""
+
+    CLINICAL_RECOMMENDATION_ACCEPTED = "CLINICAL_RECOMMENDATION_ACCEPTED"
+    """Pharmacist human-in-the-loop sign-off on an AI recommendation — the act
+    docs/12 mục 6 requires before a serious finding can be treated as cleared."""
+
 
 @dataclass(frozen=True, slots=True)
 class AuditEntry:

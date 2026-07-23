@@ -231,6 +231,7 @@ def clinical_service(
         lambda uow, c: SqlAlchemyTenantAiSettingsRepository(uow.session, c),
         MockLLMProvider(),
         min_confidence=0.6,
+        audit=AuditLogger(session_factory),
     )
 
 

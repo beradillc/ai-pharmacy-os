@@ -106,6 +106,9 @@
       e2e HTTP thật `test_clinical_api_e2e.py` (6) — response có **nguồn + confidence**, mock (không API). **⇒ Sprint 5 DONE mức MOCK.**
 - [x] **5.5.4 cross-module** — auto-check tương tác ở sale/prescription. Hoãn sang Sprint 6 Bước 2 và **đã XONG ở đó**
       *(2026-07-22)* — xem Sprint 6 › Bước 2 bên dưới (gồm cả nối dị ứng KH).
+- [x] Audit cho `clinical` (2 action: `CLINICAL_INTERACTION_CHECKED`/`CLINICAL_RECOMMENDATION_ACCEPTED`
+      — không audit `check_allergies`/settings vì không có gì để ghi vết hoặc tần suất quá thấp) —
+      **XONG 2026-07-23** (PROJECT_STATE §7y). **Còn lại 1/9 module chưa có audit:** `catalog`.
 
 **Quyết định đã chốt (2026-07-22):**
 - [x] **Catalog thiếu mô hình hoạt chất** → chốt **(b) tách sang Sprint 6**, KHÔNG thêm vội vào catalog trong S5.5. Gộp cùng mạch dị
