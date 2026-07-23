@@ -200,7 +200,7 @@ class SalesService:
             )
         subtotal = order.subtotal.amount
         paid_total = order.paid_total.amount
-        change_amount = paid_total - subtotal if paid_total > subtotal else Decimal("0")
+        change_amount = paid_total - subtotal if paid_total > subtotal else Decimal("0.00")
         return ReceiptSummaryDTO(
             order_id=order.id,
             tenant_id=order.tenant_id,

@@ -113,3 +113,39 @@ def test_etc_with_unknown_prescription_ref_rejected(client: TestClient) -> None:
 def test_empty_lines_rejected_by_schema(client: TestClient) -> None:
     resp = client.post("/api/v1/sales", json={"client_uuid": "x", "lines": [], "payments": []})
     assert resp.status_code == 422
+
+
+def test_get_receipt_json_default(client: TestClient) -> None:
+    sale = client.post("/api/v1/sales", json=_payload("receipt-json-1")).json()
+    resp = client.get(f"/api/v1/sales/{sale['id']}/receipt")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["order_id"] == sale["id"]
+    assert body["subtotal"] == "20000.00"
+    assert body["change_amount"] == "0.00"
+    assert len(body["lines"]) == 1
+
+
+def test_get_receipt_thermal_k80(client: TestClient) -> None:
+    sale = client.post("/api/v1/sales", json=_payload("receipt-thermal-1")).json()
+    resp = client.get(f"/api/v1/sales/{sale['id']}/receipt", params={"format": "thermal_k80"})
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"].startswith("text/plain")
+    text = resp.text
+    assert "Nhà thuốc" in text  # default OrgSettings.pharmacy_name
+    assert "Ký tên:" in text
+    assert "Tổng cộng:" in text
+
+
+def test_get_receipt_pdf_a5_and_a4(client: TestClient) -> None:
+    sale = client.post("/api/v1/sales", json=_payload("receipt-pdf-1")).json()
+    for fmt in ("pdf_a5", "pdf_a4"):
+        resp = client.get(f"/api/v1/sales/{sale['id']}/receipt", params={"format": fmt})
+        assert resp.status_code == 200, resp.text
+        assert resp.headers["content-type"] == "application/pdf"
+        assert resp.content.startswith(b"%PDF")
+
+
+def test_get_receipt_unknown_order_404(client: TestClient) -> None:
+    resp = client.get(f"/api/v1/sales/{uuid4()}/receipt")
+    assert resp.status_code == 404

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -10,6 +12,7 @@ from pydantic import BaseModel, Field
 from pharmacy_os.modules.sales.application.dto import (
     CreateSaleInput,
     PaymentInput,
+    ReceiptSummaryDTO,
     SaleLineInput,
     SaleOutput,
 )
@@ -95,4 +98,73 @@ class SaleResponse(BaseModel):
                 )
                 for ln in out.lines
             ],
+        )
+
+
+class ReceiptFormat(StrEnum):
+    """Delivery formats for ``GET /sales/{id}/receipt``."""
+
+    JSON = "json"
+    THERMAL_K80 = "thermal_k80"
+    PDF_A5 = "pdf_a5"
+    PDF_A4 = "pdf_a4"
+
+
+class ReceiptLineResponse(BaseModel):
+    drug_id: UUID
+    name: str
+    unit: str
+    quantity: Decimal
+    unit_price: Decimal
+    line_total: Decimal
+
+
+class ReceiptPaymentResponse(BaseModel):
+    method: PaymentMethod
+    amount: Decimal
+
+
+class ReceiptResponse(BaseModel):
+    order_id: UUID
+    tenant_id: UUID
+    branch_id: UUID
+    created_at: datetime
+    client_uuid: str
+    currency: str
+    status: str
+    lines: list[ReceiptLineResponse]
+    payments: list[ReceiptPaymentResponse]
+    subtotal: Decimal
+    paid_total: Decimal
+    change_amount: Decimal
+    prescription_ref: UUID | None
+
+    @classmethod
+    def of(cls, receipt: ReceiptSummaryDTO) -> ReceiptResponse:
+        return cls(
+            order_id=receipt.order_id,
+            tenant_id=receipt.tenant_id,
+            branch_id=receipt.branch_id,
+            created_at=receipt.created_at,
+            client_uuid=receipt.client_uuid,
+            currency=receipt.currency,
+            status=receipt.status,
+            lines=[
+                ReceiptLineResponse(
+                    drug_id=ln.drug_id,
+                    name=ln.name,
+                    unit=ln.unit,
+                    quantity=ln.quantity,
+                    unit_price=ln.unit_price,
+                    line_total=ln.line_total,
+                )
+                for ln in receipt.lines
+            ],
+            payments=[
+                ReceiptPaymentResponse(method=p.method, amount=p.amount) for p in receipt.payments
+            ],
+            subtotal=receipt.subtotal,
+            paid_total=receipt.paid_total,
+            change_amount=receipt.change_amount,
+            prescription_ref=receipt.prescription_ref,
         )
