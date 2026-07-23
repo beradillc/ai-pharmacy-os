@@ -154,6 +154,7 @@ def catalog_service(
         uow_factory,
         lambda uow, c: SqlAlchemyDrugRepository(uow.session, c),
         lambda uow: SqlAlchemyActiveIngredientRepository(uow.session),
+        AuditLogger(session_factory),
     )
 
 

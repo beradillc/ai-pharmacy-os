@@ -1555,6 +1555,50 @@ mới.
 
 ---
 
+## 7z. Audit cho `catalog` — XONG (2026-07-23) — **MẠCH 5 MODULE ĐÃ ĐÓNG, 9/9 MODULE CÓ AUDIT**
+
+**Đã làm:** 1 action mới `CATALOG_DRUG_CREATED` (`core/audit/entry.py`). `CatalogService` nhận
+`audit: AuditLogger` bắt buộc (chỉ 1 call site ngoài `register.py`, giống `prescription`/`inventory`/
+`procurement`). `create_drug` ghi `CATALOG_DRUG_CREATED` (target = `drug.id`) — chỉ 1 action vì đây là
+use-case ghi duy nhất của module (chưa có `update_drug`); `rx_class` (OTC/ETC/CONTROLLED) là phân loại
+thẩm quyền mọi luồng kiểm soát downstream (`sales` Rx gate, `compliance` ledger) tin theo, nên "ai đã
+thêm/phân loại thuốc này" đáng ghi vết dù `catalog` bản thân không có rủi ro pháp lý cao như sales/
+inventory.
+
+**Phạm vi đã chọn (tự quyết, full-auto #3):** không audit `create_ingredient`/`list_ingredients` —
+đã quyết định ở §7u (dữ liệu tham chiếu toàn cục, không phải hành vi tenant); không audit `get_drug`/
+`list_drugs`/`get_drug_ingredients` — đọc đơn thuần, cùng nguyên tắc đã áp dụng xuyên suốt các module
+trước (`crm.list_customers`, `prescription.get_prescription`, v.v. — §7t quyết định #3).
+
+**Test mới** (`tests/integration/test_catalog_repo.py`): `test_create_drug_leaves_an_audit_row` (đọc
+lại bảng `audit_logs`, không tin call site).
+
+**Bằng chứng:** `ruff` sạch · `mypy --strict` **212 file** · `import-linter` **13/0** (không đổi
+contract) · `pytest` **exit code 0** (2 test exhaustiveness cập nhật ngay từ đầu). Không có migration
+mới.
+
+### Tổng kết mạch audit 5 module (GĐ chọn ưu tiên 2026-07-23, §7v→§7z)
+
+| Module | Action mới | Bắt buộc/optional | PROJECT_STATE |
+|---|---|---|---|
+| `sales` | `SALE_COMPLETED` | optional (3 test tự dựng service) | §7v |
+| `inventory` | `INVENTORY_STOCK_RECEIVED`, `INVENTORY_STOCK_DISPENSED` | bắt buộc | §7w |
+| `procurement` | `PROCUREMENT_PO_ORDERED`, `PROCUREMENT_GRN_CONFIRMED` | bắt buộc | §7x |
+| `clinical` | `CLINICAL_INTERACTION_CHECKED`, `CLINICAL_RECOMMENDATION_ACCEPTED` | optional (2 test tự dựng service) | §7y |
+| `catalog` | `CATALOG_DRUG_CREATED` | bắt buộc | §7z |
+
+**9 action mới, 5 commit riêng** (`56fb349`, `6cbe37f`, `5dae48e`, `02232d0`, và commit của §7z) —
+cộng với 6 module đã có audit từ trước (`iam`, `prescription`, `compliance`, `crm` — xem §7l/§7r) ⇒
+**toàn bộ 9/9 module nghiệp vụ nay đều có audit trail** cho ít nhất hành vi cốt lõi nhất của module đó.
+Nguyên tắc xuyên suốt cả 5 module: chỉ audit **sự kiện thật/không đảo ngược** (hoàn tất, xác nhận,
+duyệt) — không audit CRUD hành chính, đọc đơn lẻ, hay dữ liệu tham chiếu toàn cục; không audit trùng
+lặp giữa module gốc phát sinh sự kiện và module phản ứng cross-module (đã nêu rõ ở từng mục §7v-§7z).
+
+**Nợ kỹ thuật còn lại (không đổi, xem §7t mục 3):** FK `atc_code`, persist trả hàng (`register_return`,
+cross-module), `AnthropicProvider` thật (chặn — cần `AI__API_KEY`).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
@@ -1564,6 +1608,7 @@ mới.
 | 2026-07-23 | Audit `inventory` (`INVENTORY_STOCK_RECEIVED`/`DISPENSED`, chỉ 2 endpoint tay) — xem §7w. |
 | 2026-07-23 | Audit `procurement` (`PO_ORDERED`/`GRN_CONFIRMED`, chỉ 2/7 use-case) — xem §7x. |
 | 2026-07-23 | Audit `clinical` (`INTERACTION_CHECKED`/`RECOMMENDATION_ACCEPTED`) — xem §7y. |
+| 2026-07-23 | Audit `catalog` (`DRUG_CREATED`) — **mạch 5 module đóng, 9/9 module có audit** — xem §7z. |
 | 2026-07-23 | **DỪNG PHIÊN theo yêu cầu sếp — gom điểm dừng toàn phiên vào §7p.** Sếp muốn phiên sau bàn sắp xếp lại ưu tiên với GĐ trước khi tiếp tục code. §7p liệt kê trung lập (không xếp hạng): trạng thái kỹ thuật lúc dừng (2 tiến trình nền còn chạy — uvicorn 8000, next dev 3000; tenant demo còn trên Postgres), 6 việc tính năng đang dở dang, 7 việc treo ngoài phạm vi code (thương hiệu chưa ghi vào `ChienLuoc/`, câu hỏi lẻ-hay-chuỗi, tagline lệch, gộp hỏi luật sư, badge chưa đo lại...), và cảnh báo `TODO.md` đã lỗi thời (đề 2026-07-22, một số dòng sai so với thực tế — cần rà lại riêng, không tự sửa hàng loạt ngay vì thiếu ngữ cảnh phiên cũ). |
 | 2026-07-23 | **S4.6 FE POS tối thiểu — 4/5 bước (phiên Sonnet, xem §7o).** Hồi sinh từ nợ ROADMAP Sprint 4. `frontend/` mới hoàn toàn (Next.js+TS+TanStack Query+Zustand), theo `docs/04` §3 + `docs/16` brand guide. 4 commit: CORS (`cb3809e`, ngoại lệ backend duy nhất, xin phép trước) → scaffold (`2bcea7f`) → auth JWT thật (`c642c34`) → tra thuốc/giỏ hàng/thanh toán (`ba547c4`). **3 phát hiện lệch docs/11-thực tế**: API `sales` thật là `POST /sales` gộp 1 lệnh (không phải `/sales-orders`+`/payments`+`/complete` như doc); `GET /drugs` không có tham số tìm kiếm; **không nguồn giá bán nào trong backend** (chỉ có `inventory.cost_price` — giá vốn) nên thu ngân nhập tay giá — khoảng trống sản phẩm thật. Kiểm chứng bằng curl mô phỏng đúng request FE trên backend live (không chỉ đọc code) — khớp 100% type đã viết; `next dev` thật chạy sạch. **Giới hạn: không có trình duyệt trong môi trường, chưa từng click-through UI thật** — chỉ xác nhận hợp đồng API + server không crash. **Bước 5 (Dexie offline) chưa làm.** Để lại tài khoản demo `fe-demo@beral.vn`/`MatKhauFeDemo2026` trên Postgres để sếp login thử ngay. |
 | 2026-07-23 | **CHỐT PHIÊN — 20 commit, xem §7n.** Phiên Opus dài: `iam` thật (4 bước) → `audit_logs` persist (3 bước) → Hồ sơ sức khỏe KH qua cổng docs/14 (Bước 0-3, còn Bước 4) → thương hiệu **BERAS** + `docs/16_BRAND_UI_GUIDE.md`. Cổng cuối: ruff sạch · mypy strict 210 file · import-linter 13/0 · pytest **560** · alembic `0015` (head) · git sạch. **5 bug thật** phát hiện và vá (nặng nhất: lỗ hổng `X-Branch-Id` đang chạy; role hệ thống không cập nhật khi nâng cấp mà 505 test vẫn xanh). **14 quyết định Claude tự chốt trong full-auto** liệt kê đủ ở §7n để sếp đọc lướt. Phiên sau bắt đầu: đóng Bước 4 → mount router `compliance` → audit cho `prescription`+`compliance`. |

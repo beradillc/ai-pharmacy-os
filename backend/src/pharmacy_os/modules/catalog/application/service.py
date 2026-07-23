@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from uuid import UUID
 
+from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import ConflictError, NotFoundError, ValidationError
@@ -43,10 +44,12 @@ class CatalogService:
         uow_factory: UowFactory,
         repo_factory: RepoFactory,
         ingredient_repo_factory: IngredientRepoFactory,
+        audit: AuditLogger,
     ) -> None:
         self._uow_factory = uow_factory
         self._repo_factory = repo_factory
         self._ingredient_repo_factory = ingredient_repo_factory
+        self._audit = audit
 
     async def create_drug(self, data: CreateDrugInput, ctx: RequestContext) -> DrugOutput:
         """Create a drug (with its units and ingredients) for the caller's tenant.
@@ -92,6 +95,7 @@ class CatalogService:
 
             await repo.add(drug)
             await uow.commit()
+        await self._record(ctx, AuditAction.CATALOG_DRUG_CREATED, drug.id)
         return DrugOutput.of(drug)
 
     async def get_drug(self, drug_id: UUID, ctx: RequestContext) -> DrugOutput:
@@ -165,3 +169,15 @@ class CatalogService:
             repo = self._repo_factory(uow, ctx)
             drugs = await repo.list(limit=limit, offset=offset)
         return [DrugOutput.of(d) for d in drugs]
+
+    async def _record(self, ctx: RequestContext, action: AuditAction, drug_id: UUID) -> None:
+        """Append one audit row — metadata only, never drug/pricing content."""
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=action,
+                target_type="drug",
+                target_id=str(drug_id),
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+        )

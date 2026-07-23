@@ -24,8 +24,10 @@
 - [x] Contract import-linter: domain-purity + module-independence.
 - [x] Audit cho `inventory` (2 action: `INVENTORY_STOCK_RECEIVED`/`INVENTORY_STOCK_DISPENSED`, chỉ
       2 endpoint HTTP con người gõ tay — không audit 2 use-case cross-module tự động vì đã có vết ở
-      nơi phát sinh thật) — **XONG 2026-07-23** (PROJECT_STATE §7w). **Còn lại 3/9 module chưa có
-      audit:** `procurement`/`clinical`/`catalog`.
+      nơi phát sinh thật) — **XONG 2026-07-23** (PROJECT_STATE §7w).
+- [x] Audit cho `catalog` (1 action: `CATALOG_DRUG_CREATED`) — **XONG 2026-07-23** (PROJECT_STATE
+      §7z). **⇒ Mạch audit 5 module GĐ chọn đã đóng — 9/9 module nghiệp vụ nay đều có audit trail**
+      (xem bảng tổng kết PROJECT_STATE §7z).
 
 ### Demo & Self-Refine *(2026-07-21)*
 - [x] **`demo_preview.py`** — script độc lập, chạy end-to-end trên SQLite in-memory:

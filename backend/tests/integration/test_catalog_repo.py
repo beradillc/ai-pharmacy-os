@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pharmacy_os.core.audit import AuditAction, SqlAlchemyAuditLogRepository
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.errors import (
     ConflictError,
@@ -259,3 +260,24 @@ async def test_active_ingredient_repository_find_by_name_and_list(
         assert found.name_en == "Ibuprofen"
         assert await repo.find_by_name("Unknown") is None
         assert len(await repo.list()) == 1
+
+
+# --- audit trail: ai đã thêm/phân loại thuốc này vào catalog -------------------
+
+
+async def test_create_drug_leaves_an_audit_row(
+    catalog_service: CatalogService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Does not trust the call sites to be wired — reads the table back."""
+    created = await catalog_service.create_drug(
+        CreateDrugInput(name="Aspirin 81mg", rx_class=RxClass.OTC, base_unit="viên"), ctx
+    )
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        entries = await repo.list(ctx.tenant_id, action=AuditAction.CATALOG_DRUG_CREATED)
+        matching = [e for e in entries if e.target_id == str(created.id)]
+        assert len(matching) == 1
+        assert matching[0].actor_user_id == ctx.user_id

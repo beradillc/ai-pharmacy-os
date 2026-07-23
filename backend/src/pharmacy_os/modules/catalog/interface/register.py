@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.di import Container
@@ -30,6 +31,8 @@ def register(container: Container, get_context: ContextDep) -> APIRouter:
     def ingredient_repo_factory(uow: UnitOfWork) -> SqlAlchemyActiveIngredientRepository:
         return SqlAlchemyActiveIngredientRepository(uow.session)
 
-    service = CatalogService(uow_factory, repo_factory, ingredient_repo_factory)
+    service = CatalogService(
+        uow_factory, repo_factory, ingredient_repo_factory, container.resolve(AuditLogger)
+    )
     container.register_instance(CatalogService, service)
     return build_router(get_context)

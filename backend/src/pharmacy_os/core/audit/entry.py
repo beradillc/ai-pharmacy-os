@@ -123,6 +123,15 @@ class AuditAction(StrEnum):
     """Pharmacist human-in-the-loop sign-off on an AI recommendation — the act
     docs/12 mục 6 requires before a serious finding can be treated as cleared."""
 
+    # --- catalog (phân loại rx_class quyết định toàn bộ luồng kiểm soát downstream) ---
+    CATALOG_DRUG_CREATED = "CATALOG_DRUG_CREATED"
+    """A drug was added to the tenant's catalog — worth a trail because its
+    ``rx_class`` (OTC/ETC/CONTROLLED) is the authoritative classification every
+    downstream rule (sales Rx gate, compliance ledger) trusts; a wrong
+    classification here is a compliance risk traced back to "ai đã thêm/phân
+    loại thuốc này". No update-drug use-case exists yet, so creation is the
+    only mutating action in this module worth auditing."""
+
 
 @dataclass(frozen=True, slots=True)
 class AuditEntry:
