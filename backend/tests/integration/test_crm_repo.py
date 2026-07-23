@@ -1,9 +1,11 @@
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pharmacy_os.core.audit import AuditAction, SqlAlchemyAuditLogRepository
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.errors import NotFoundError, PermissionDeniedError, ValidationError
 from pharmacy_os.modules.catalog.domain import ActiveIngredient
@@ -13,9 +15,14 @@ from pharmacy_os.modules.crm.application import (
     AddConditionInput,
     CreateCustomerInput,
     CrmService,
+    MedicationHistoryItemInput,
     RecordConsentInput,
 )
-from pharmacy_os.modules.crm.domain import AllergySeverity, ConsentPurpose
+from pharmacy_os.modules.crm.domain import (
+    AllergySeverity,
+    ConsentPurpose,
+    MedicationHistorySource,
+)
 
 
 async def _grant_health_consent(
@@ -177,4 +184,87 @@ async def test_non_positive_weight_rejected(crm_service: CrmService, ctx: Reques
     with pytest.raises(ValidationError):
         await crm_service.create_customer(
             CreateCustomerInput(full_name="U", weight_kg=Decimal("0")), ctx
+        )
+
+
+# --- medication history from events (system reaction) ------------------------
+
+
+def _items() -> list[MedicationHistoryItemInput]:
+    return [
+        MedicationHistoryItemInput(drug_id=uuid4(), quantity=Decimal("2")),
+        MedicationHistoryItemInput(drug_id=uuid4(), quantity=Decimal("1")),
+    ]
+
+
+async def test_record_medication_history_records_when_consented(
+    crm_service: CrmService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    created = await crm_service.create_customer(CreateCustomerInput(full_name="Hà"), ctx)
+    await _grant_health_consent(crm_service, created.id, ctx)
+    ref = uuid4()
+
+    n = await crm_service.record_medication_history(
+        created.id, _items(), MedicationHistorySource.SALE, ref, datetime.now(UTC), ctx
+    )
+    assert n == 2
+
+    fetched = await crm_service.get_customer(created.id, ctx)
+    assert len(fetched.history) == 2
+    assert {h.ref_id for h in fetched.history} == {ref}
+    assert all(h.source == MedicationHistorySource.SALE.value for h in fetched.history)
+
+    # One machine-write audit row per call (not per drug), under its own action.
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        entries = await repo.list(
+            ctx.tenant_id, action=AuditAction.CUSTOMER_MEDICATION_HISTORY_RECORDED
+        )
+        matching = [e for e in entries if e.target_id == str(created.id)]
+        assert len(matching) == 1
+
+
+async def test_record_medication_history_skips_without_consent(
+    crm_service: CrmService, ctx: RequestContext
+) -> None:
+    """No HEALTH consent → nothing recorded, no error (Luật 91 Điều 26.1)."""
+    created = await crm_service.create_customer(CreateCustomerInput(full_name="Nam"), ctx)
+
+    n = await crm_service.record_medication_history(
+        created.id, _items(), MedicationHistorySource.SALE, uuid4(), datetime.now(UTC), ctx
+    )
+    assert n == 0
+    fetched = await crm_service.get_customer(created.id, ctx)
+    assert fetched.history == []
+
+
+async def test_record_medication_history_idempotent_on_ref(
+    crm_service: CrmService, ctx: RequestContext
+) -> None:
+    created = await crm_service.create_customer(CreateCustomerInput(full_name="Lan"), ctx)
+    await _grant_health_consent(crm_service, created.id, ctx)
+    ref = uuid4()
+    items = _items()
+
+    first = await crm_service.record_medication_history(
+        created.id, items, MedicationHistorySource.SALE, ref, datetime.now(UTC), ctx
+    )
+    second = await crm_service.record_medication_history(
+        created.id, items, MedicationHistorySource.SALE, ref, datetime.now(UTC), ctx
+    )
+    assert first == 2
+    assert second == 0  # same ref → not folded in twice
+
+    fetched = await crm_service.get_customer(created.id, ctx)
+    assert len(fetched.history) == 2  # not 4
+
+
+async def test_record_medication_history_unknown_customer_404(
+    crm_service: CrmService, ctx: RequestContext
+) -> None:
+    with pytest.raises(NotFoundError):
+        await crm_service.record_medication_history(
+            uuid4(), _items(), MedicationHistorySource.SALE, uuid4(), datetime.now(UTC), ctx
         )

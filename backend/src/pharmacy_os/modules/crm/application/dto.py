@@ -101,6 +101,14 @@ class ConditionOutput:
 
 
 @dataclass(slots=True)
+class MedicationHistoryItemInput:
+    """One dispensed drug + quantity to fold into a customer's history (system-driven)."""
+
+    drug_id: UUID
+    quantity: Decimal
+
+
+@dataclass(slots=True)
 class MedicationHistoryOutput:
     id: UUID
     drug_id: UUID

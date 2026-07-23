@@ -35,6 +35,7 @@ from pharmacy_os.modules.crm.application.dto import (
     CreateCustomerInput,
     CustomerDataExport,
     CustomerOutput,
+    MedicationHistoryItemInput,
     RecordConsentInput,
 )
 from pharmacy_os.modules.crm.domain import (
@@ -43,6 +44,8 @@ from pharmacy_os.modules.crm.domain import (
     CrmError,
     Customer,
     CustomerConsent,
+    MedicationHistoryEntry,
+    MedicationHistorySource,
 )
 from pharmacy_os.modules.crm.domain.ports import CustomerRepository
 
@@ -282,6 +285,66 @@ class CrmService:
             return {}
         await self._record(ctx, AuditAction.CUSTOMER_SENSITIVE_AUTO_CHECK, customer.id)
         return {a.ingredient_id: a.severity.value for a in customer.allergies}
+
+    async def record_medication_history(
+        self,
+        customer_id: UUID,
+        items: list[MedicationHistoryItemInput],
+        source: MedicationHistorySource,
+        ref_id: UUID,
+        occurred_at: datetime,
+        ctx: RequestContext,
+    ) -> int:
+        """Append a customer's medication history from a completed sale/dispense.
+
+        A **system reaction**, driven by ``SaleCompleted``/``PrescriptionDispensed``
+        at the composition root — so, like :meth:`allergy_severities_for_safety_check`,
+        it is deliberately **not** guarded by ``crm.sensitive.write``: the write is
+        triggered by whoever completed the sale (often a cashier who must never write
+        the health file by hand), and the data comes from the transaction itself, not
+        from them typing it.
+
+        Consent is the only lawful basis (Luật 91/2025 Điều 26.1): without a current
+        ``HEALTH`` consent this records **nothing** and returns 0 — it never raises,
+        so a customer who didn't opt in simply has no history built, and the event
+        handler doesn't break. Idempotent on ``(source, ref_id)``: replaying the same
+        sale/dispense doesn't duplicate rows. Returns the number of entries written.
+        """
+        customer = await self._get_or_404(customer_id, ctx)
+        if not customer.health_data_allowed:
+            return 0
+        if any(h.source is source and h.ref_id == ref_id for h in customer.history):
+            return 0  # this sale/dispense was already folded in
+
+        recorded = 0
+        for item in items:
+            if item.quantity <= 0:
+                continue
+            customer.record_history_entry(
+                MedicationHistoryEntry(
+                    drug_id=item.drug_id,
+                    quantity=item.quantity,
+                    source=source,
+                    ref_id=ref_id,
+                    occurred_at=occurred_at,
+                )
+            )
+            recorded += 1
+        if recorded == 0:
+            return 0
+
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            await repo.update(customer)
+            await uow.commit()
+        await self._record(
+            ctx,
+            AuditAction.CUSTOMER_MEDICATION_HISTORY_RECORDED,
+            customer.id,
+            source=source.value,
+            ref_id=str(ref_id),
+        )
+        return recorded
 
     def _may_read_sensitive(self, customer: Customer, ctx: RequestContext) -> bool:
         """Permission **and** a lawful basis — both, or the data stays hidden.

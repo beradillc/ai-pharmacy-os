@@ -52,6 +52,16 @@ class AuditAction(StrEnum):
     """
 
     CUSTOMER_SENSITIVE_WRITE = "CUSTOMER_SENSITIVE_WRITE"
+    CUSTOMER_MEDICATION_HISTORY_RECORDED = "CUSTOMER_MEDICATION_HISTORY_RECORDED"
+    """The system appended a customer's medication history from a completed sale or
+    dispense (not a human writing the file).
+
+    Distinct from :attr:`CUSTOMER_SENSITIVE_WRITE` for the same reason
+    :attr:`CUSTOMER_SENSITIVE_AUTO_CHECK` is distinct from the human read: this fires
+    on every sale/dispense to a consenting known customer, so folding it into the
+    manual-write trail would bury the writes a person actually made. Recorded once
+    per (customer, source, ref_id), never on idempotent replay."""
+
     CONSENT_GRANTED = "CONSENT_GRANTED"
     CONSENT_REVOKED = "CONSENT_REVOKED"
     CUSTOMER_ERASED = "CUSTOMER_ERASED"

@@ -79,6 +79,7 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "CUSTOMER_SENSITIVE_READ",
         "CUSTOMER_SENSITIVE_AUTO_CHECK",
         "CUSTOMER_SENSITIVE_WRITE",
+        "CUSTOMER_MEDICATION_HISTORY_RECORDED",
         "CONSENT_GRANTED",
         "CONSENT_REVOKED",
         "CUSTOMER_ERASED",
