@@ -158,12 +158,17 @@ thật sự.
       (`docs/14` Bước 1.5). Xong 2026-07-23 — `docs/15_IAM_DESIGN.md`, PROJECT_STATE §7k.*
 - [x] **`audit_logs` persist** (append-only + `GET /audit-logs` mức tối thiểu).
       *Gỡ nợ F8. Xong 2026-07-23 — PROJECT_STATE §7l. Dashboard/analytics audit vẫn thuộc sprint này.*
-- [ ] **Hồ sơ sức khỏe khách hàng** — ngoài ROADMAP gốc, đã qua cổng `docs/14` Bước 0-4 và được
+- [x] **Hồ sơ sức khỏe khách hàng** — ngoài ROADMAP gốc, đã qua cổng `docs/14` Bước 0-4 và được
       duyệt 2026-07-23: `docs/features/ho-so-suc-khoe-khach-hang/01_DECISIONS.md`.
       Đồng ý tách 2 mức · tách `crm.sensitive.read` · 6 action audit · export/khử nhận dạng ·
       endpoint metadata DPIA. **Ngoài phạm vi:** `SalesOrder.customer_id`, ghi
       `MedicationHistoryEntry` tự động (2 cross-module, tách bước riêng).
-- [ ] Module `compliance`: sổ thuốc kiểm soát, transactional outbox, audit query (dashboard).
+      *4/4 bước xong 2026-07-23 — PROJECT_STATE §7m/§7t mục A1. (Checkbox cập nhật 2026-07-23, đã
+      xong từ trước — tài liệu lệch với thực tế, phát hiện khi rà soát việc tiếp theo.)*
+- [x] `compliance`: sổ thuốc kiểm soát (C.1–C.5, PROJECT_STATE §7b) + router HTTP (§7q) — **XONG**.
+- [ ] `compliance`: transactional outbox (thay best-effort reconciliation hiện tại), audit query
+      dashboard (nay chỉ có `GET /audit-logs` mức tối thiểu, §7l) — **CHƯA làm**, mang sang khi mở
+      tiếp phần còn lại Sprint 7.
 - [ ] Module `analytics`: dashboard, dự báo nhu cầu, đề xuất nhập.
 - [ ] Report xuất khẩu.
 
