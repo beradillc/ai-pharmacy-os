@@ -1643,6 +1643,24 @@ mới (`returned_quantity` đã có cột từ migration `0003_sales`).
 khi thiết kế cross-module (nếu chốt có auto-restock, đây sẽ là cross-module thật cần Opus + từng bước
 duyệt, theo đúng tiền lệ S4.4/S4.5/S5.4/C.5).
 
+### Chính sách trả hàng — sếp đã DUYỆT khung phân loại (2026-07-23)
+
+GĐ đề xuất, sếp duyệt phần **(a) khung phân loại lý do trả hàng**; phần (b) — thêm trường "lý do trả"
+vào hệ thống — **chưa duyệt**, để ngỏ khi sếp cần.
+
+| Lý do trả | Cho lên kệ bán lại? | Ghi chú |
+|---|---|---|
+| Lỗi từ tiệm (bán nhầm, thiếu/thừa, bấm nhầm) | ✅ Có, nhưng dược sĩ phải xác nhận bao bì nguyên vẹn bằng tay | Trách nhiệm thuộc tiệm, thuốc chưa thật sự rời tầm kiểm soát |
+| Thuốc lỗi từ nhà sản xuất | ❌ Không lên kệ — trả NCC hoặc huỷ | Vấn đề chất lượng, không phải tồn kho |
+| Khách đổi ý | ❌ **Mặc định KHÔNG nhận trả thuốc dạng này** | Ra khỏi tiệm là mất kiểm soát bảo quản — chuẩn ngành các chuỗi lớn |
+| Thuốc kiểm soát đặc biệt (mọi lý do) | ❌ Không bao giờ tự động lên kệ | TT20/2017 — phải qua sổ kiểm soát riêng, không xử lý như thuốc thường |
+
+**Áp dụng vào hệ thống hiện tại:** khớp đúng những gì đã code ở trên (§7aa) — `register_return` chỉ
+ghi nhận sự kiện, không tự động cộng tồn kho; restock (khi đủ điều kiện "lỗi từ tiệm" + bao bì nguyên
+vẹn) vẫn là thao tác tay qua `POST /inventory/receive`, không tự động cho bất kỳ trường hợp nào — **an
+toàn hơn cả khung đã duyệt** (khung cho phép restock tay cho case "lỗi từ tiệm", hệ thống hiện tại đã
+đáp ứng đúng, không cần sửa gì thêm). Không code thêm gì ở bước duyệt này vì (b) chưa được chốt.
+
 ---
 
 ## 8. Nhật ký thay đổi (Changelog)
