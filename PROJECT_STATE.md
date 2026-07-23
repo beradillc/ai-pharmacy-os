@@ -832,19 +832,17 @@ bền thay best-effort reconciliation; (5) API tra cứu/resolve `stock_reconcil
 
 ## 7j. Điểm bắt đầu tiếp theo — tính năng thương mại qua cổng `docs/14` (2026-07-23, resume point)
 
-> **Trạng thái tại đây:** Sprint 6 ĐÓNG (HEAD `82b8fde`, working tree code sạch). Đã **rà soát toàn diện S1→S6** (khớp, 4 lệch nhỏ chưa sửa — xem changelog 2026-07-23) và **neo quy trình thêm tính năng mới** `docs/14_FEATURE_PROCESS.md` + memory `feature_process_gate`. Các tính năng thương mại tiếp theo (**hồ sơ KH · tích điểm KH · in bill**) nằm NGOÀI ROADMAP gốc → **bắt buộc đi qua Bước 0-4 của docs/14 trước khi code.**
+> **Trạng thái tại đây:** Sprint 6 ĐÓNG. **In bill (S7) XONG** đủ 4 lớp (commit `4a5bc0b`→`53e31b3`, xem entry changelog 2026-07-23 đầu). Còn **hồ sơ KH · tích điểm KH** (2/3 tính năng thương mại ngoài ROADMAP) — cả hai vẫn NGOÀI ROADMAP gốc → **bắt buộc đi qua Bước 0-4 của docs/14 trước khi code.**
 
-**Ưu tiên điểm bắt đầu — CHỜ SẾP QUYẾT giữa 2 hướng:**
-- **Hướng 1 — RBAC/IAM thật trước:** dựng module IAM (users/roles/cấp JWT) thay dev-header. Là **điều kiện tiên quyết (Bước 1.5)** mở khóa **hồ sơ KH + tích điểm** (đều chạm PII nhạy cảm). Bản thân IAM cũng chạy qua docs/14.
-- **Hướng 2 — In bill trước:** ít bị chặn hơn (chủ yếu dữ liệu giao dịch, ít PII nhạy cảm) → có thể tiến hành phiên tới. Vẫn cần xác nhận văn bản hóa đơn áp dụng (Bước 1.1) trước khi code.
+**⏸️ QUYẾT ĐỊNH SẾP (2026-07-23, sau khi In bill xong):** **DỪNG — chờ sếp bổ sung văn bản pháp lý còn thiếu** trước khi làm gì tiếp cho hồ sơ KH/tích điểm KH. Không tự chạy IAM, không tự dọn nợ kỹ thuật khác — kể cả trong chế độ full-auto, đây là lựa chọn ưu tiên rõ ràng của sếp giữa nhiều phương án đã đề xuất (RBAC/IAM thật · dọn 4 lệch nợ kỹ thuật · dừng chờ văn bản · việc khác), không phải quyết định Claude tự chốt.
 
-**2 blocker nền (đã kiểm chứng 2026-07-23, chặn phần lớn công việc thực thi):**
-1. **RBAC/IAM (Bước 1.5) CHƯA THỎA** — `api/deps.py` vẫn dev-header cho non-prod, IAM chưa dựng → không xây tính năng PII nhạy cảm trên nền này.
-2. **Văn bản pháp lý thiếu (Bước 1.1/1.8)** — `docs/legal/` mới có QĐ540/QĐ1867/TT20; **cần sếp thả thêm** Luật BVDLCN 91/2025, Luật Dược hiện hành, NĐ 356/2025, GPP — không tự suy diễn.
+**2 blocker nền (đã kiểm chứng 2026-07-23, vẫn còn nguyên):**
+1. **RBAC/IAM (Bước 1.5) CHƯA THỎA** — `api/deps.py` vẫn dev-header cho non-prod, IAM chưa dựng → không xây tính năng PII nhạy cảm trên nền này. Khi được mở: dựng IAM là thiết kế mới hoàn toàn, chưa có khuôn mẫu → theo đúng quy tắc chọn model của dự án, cần **Opus + phiên hạn mức đầy**, không làm ở Sonnet.
+2. **Văn bản pháp lý thiếu (Bước 1.1/1.8) — ĐANG CHỜ SẾP** — `docs/legal/` mới có QĐ540/QĐ1867/TT20; **cần sếp thả thêm** Luật BVDLCN 91/2025, Luật Dược hiện hành, NĐ 356/2025, GPP — không tự suy diễn.
 
-**4 lệch đã báo cáo (sếp chốt sửa SAU khi xong 3 tính năng):** demo_preview.py lỗi thời (2 constructor thiếu tham số); TODO:158 procurement chưa tick; TODO:73 C.5 chưa tick; cây rỗng untracked `backend/backend/`.
+**4 lệch đã báo cáo (sếp chốt sửa SAU khi xong 3 tính năng — vẫn hoãn, chỉ mới 1/3 xong):** demo_preview.py lỗi thời (2 constructor thiếu tham số); TODO:158 procurement chưa tick; TODO:73 C.5 chưa tick; cây rỗng untracked `backend/backend/`.
 
-> **Chưa code, chưa mở sprint** — chờ lệnh sếp. Đầu phiên sau: `docker compose ps` xác nhận hạ tầng thật (đừng tin mục "Hạ tầng dev").
+> **Không code gì thêm cho tới khi có văn bản pháp lý mới** — chờ lệnh sếp. Đầu phiên sau: `docker compose ps` xác nhận hạ tầng thật (đừng tin mục "Hạ tầng dev").
 
 ---
 
