@@ -1749,10 +1749,66 @@ module `analytics` + report (Sprint 7 mới, cần sếp mô tả yêu cầu tr�
 
 ---
 
+## 7ad. MedicationHistoryEntry tự động + dị ứng OTC — XONG (2026-07-24, phiên Opus full-auto, 3 bước)
+
+> Sếp chuyển sang model Opus + "tiếp tục như GĐ cố vấn". Full-auto (§7k CHẾ ĐỘ FULL-AUTO) bao gồm
+> cross-module, nên làm liền không dừng chờ duyệt từng bước, nhưng giữ mỗi bước = 1 commit + 4 cổng
+> xanh + ghi rõ mọi quyết định tự chốt (full-auto rule #3).
+
+**Phát hiện thứ tự bắt buộc (nêu ngay đầu, không tự mở rộng phạm vi):** 2 việc `MedicationHistoryEntry`
+tự động và dị ứng OTC **không độc lập** — cả hai bị chặn bởi cùng 1 thứ: `SalesOrder` không có
+`customer_id` (bằng chứng ngay trong code cũ: comment `cross_module.py` "OTC sales carry no
+customer_id, so only the drug–drug check runs here"). Nên phải làm `customer_id` **trước**. Đây đúng là
+"bước tách riêng sau" mà sếp đã quyết ở **Q5 + Q7 §7m** (hồ sơ sức khỏe KH) — nhất quán với quyết định
+cũ, KHÔNG đảo ngược.
+
+| Bước | Nội dung | Commit |
+|------|----------|--------|
+| 1 | `SalesOrder.customer_id` (nullable) đủ 4 lớp + migration `0016` (add column + index, live/reversible/no-drift) | `05133cd` |
+| 2a | `CrmService.record_medication_history` (use-case, crm-internal, không cross-module) + audit action `CUSTOMER_MEDICATION_HISTORY_RECORDED` | `0f5e352` |
+| 2b | Wiring cross-module: `wire_medication_history` (mới) + dị ứng OTC trong `wire_safety_checks` | `9622bff` |
+
+**Quyết định tự chốt (full-auto #3):**
+1. **`customer_id` nullable vĩnh viễn, UUID trần KHÔNG FK sang `crm.customers`** — khách vãng lai OTC
+   không có người mua là hợp lệ; sales phải độc lập crm (module-independence), cùng quy ước
+   `prescription_ref`/`drug_id`.
+2. **KHÔNG đổi contract `SaleCompleted`** (§7b ghi "cấm") — handler đọc `customer_id` qua
+   `sales.get_sale(order_id)`, không nhét field vào event. Đọc thêm 1 lần/đơn — chấp nhận cho phản ứng
+   nền hậu-commit.
+3. **`record_medication_history` là phản ứng hệ thống, KHÔNG gate `crm.sensitive.write`** — giống
+   `allergy_severities_for_safety_check` (§7m Q3): việc ghi do người hoàn tất đơn (thường thu ngân, không
+   được tự tay ghi hồ sơ sức khỏe) kích hoạt, dữ liệu từ giao dịch chứ không phải họ gõ.
+4. **Consent HEALTH là cơ sở pháp lý DUY NHẤT** (Luật 91/2025 Điều 26.1, §7m phát hiện #1) — không
+   đồng ý → ghi 0 dòng, **không raise**, KH chưa opt-in đơn giản không có lịch sử, handler không vỡ.
+   Domain `record_history_entry` còn enforce consent lần 2 (defense in depth).
+5. **Idempotent theo `(source, ref_id)`** — phát lại cùng đơn/cấp phát không nhân đôi.
+6. **Audit action riêng `CUSTOMER_MEDICATION_HISTORY_RECORDED`** — tách khỏi `CUSTOMER_SENSITIVE_WRITE`
+   cùng lý do `CUSTOMER_SENSITIVE_AUTO_CHECK` tách khỏi read: máy-ghi mỗi đơn sẽ chôn vùi write người
+   thật làm nếu gộp chung. Ghi 1 dòng/lần gọi (không phải mỗi thuốc).
+7. **`wire_medication_history` TÁCH RIÊNG khỏi `wire_safety_checks`** — cái sau chỉ đọc+cảnh báo
+   (warn-only), cái này GHI vào crm; trộn write vào handler read-only sẽ mờ ý định + permission set. Mỗi
+   wire = 1 concern (khớp `wire_sale_dispensing`/`wire_goods_receipt_stock_in`). Đổi lại đọc source 2 lần.
+
+**Dị ứng OTC:** `wire_safety_checks.on_sale_completed` nay đọc sale lấy `customer_id`, nếu có thì chạy
+`run_allergy_check` cho luồng bán lẻ (trước chỉ luồng prescription). Thêm `sales.read` vào
+`_SAFETY_PERMISSIONS`. Test cũ `test_sale_never_runs_allergy_check` đổi tên
+`test_sale_without_a_customer_runs_no_allergy_check` + thêm positive `test_sale_to_allergic_customer_logs_allergy_warning`.
+
+**Bằng chứng tổng:** 3 bước, mỗi bước 4 cổng xanh · `mypy --strict` **212 file** · `import-linter`
+**13/0** (module-independence giữ nguyên — nối ở composition root) · migration `0016` live Postgres,
+pg_dump backup trước (`~/backup_pre_migration_20260724_0314.sql`, full-auto rule #6). Test mới:
+`test_cross_module_medication_history.py` (5) + crm use-case (4) + OTC allergy (2).
+
+**Nợ còn lại Sprint 6→7:** outbox/retry bền (hạ tầng lõi event bus), module `analytics` + report (Sprint
+7 mới — cần sếp mô tả yêu cầu "dự báo nhu cầu" tính theo gì trước khi thiết kế).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-24 | MedicationHistoryEntry tự động + dị ứng OTC (3 bước: customer_id/mig 0016 · use-case · wiring) — phiên Opus full-auto, xem §7ad. |
 | 2026-07-23 | Endpoint HTTP `active_ingredients` (POST/GET) — nợ kỹ thuật đơn module, xem §7u. |
 | 2026-07-23 | Audit `sales` (`SALE_COMPLETED`) — GĐ chọn ưu tiên, xem §7v. |
 | 2026-07-23 | Audit `inventory` (`INVENTORY_STOCK_RECEIVED`/`DISPENSED`, chỉ 2 endpoint tay) — xem §7w. |

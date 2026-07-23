@@ -147,7 +147,8 @@ thật sự.
 **hoãn sang Sprint 7** (sếp chốt hoãn — cross-module riêng, không chặn đóng Sprint 6).
 
 > **Đóng Sprint 6:** 372 test xanh · import-linter 12/0 · mypy strict 178 file · migration `0008`..`0012` live/reversible. Nợ mang
-> sang Sprint 7: `MedicationHistoryEntry` từ event, dị ứng OTC, gộp lô (PA B), outbox bền, API resolve reconciliation.
+> sang Sprint 7: ~~`MedicationHistoryEntry` từ event~~ (XONG 2026-07-24, §7ad), ~~dị ứng OTC~~ (XONG 2026-07-24, §7ad),
+> ~~gộp lô (PA B)~~ (XONG 2026-07-23, §7ac), ~~API resolve reconciliation~~ (XONG 2026-07-23, §7ab). **Còn: outbox bền.**
 
 ---
 
@@ -161,8 +162,11 @@ thật sự.
 - [x] **Hồ sơ sức khỏe khách hàng** — ngoài ROADMAP gốc, đã qua cổng `docs/14` Bước 0-4 và được
       duyệt 2026-07-23: `docs/features/ho-so-suc-khoe-khach-hang/01_DECISIONS.md`.
       Đồng ý tách 2 mức · tách `crm.sensitive.read` · 6 action audit · export/khử nhận dạng ·
-      endpoint metadata DPIA. **Ngoài phạm vi:** `SalesOrder.customer_id`, ghi
-      `MedicationHistoryEntry` tự động (2 cross-module, tách bước riêng).
+      endpoint metadata DPIA. ~~**Ngoài phạm vi:** `SalesOrder.customer_id`, ghi
+      `MedicationHistoryEntry` tự động (2 cross-module, tách bước riêng).~~ **2 việc "tách bước riêng"
+      này nay XONG 2026-07-24** (phiên Opus full-auto, PROJECT_STATE §7ad): `SalesOrder.customer_id`
+      (mig `0016`) + ghi `MedicationHistoryEntry` tự động từ `SaleCompleted`/`PrescriptionDispensed`
+      (consent-gated) + dị ứng OTC.
       *4/4 bước xong 2026-07-23 — PROJECT_STATE §7m/§7t mục A1. (Checkbox cập nhật 2026-07-23, đã
       xong từ trước — tài liệu lệch với thực tế, phát hiện khi rà soát việc tiếp theo.)*
 - [x] `compliance`: sổ thuốc kiểm soát (C.1–C.5, PROJECT_STATE §7b) + router HTTP (§7q) — **XONG**.

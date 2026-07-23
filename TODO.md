@@ -59,9 +59,11 @@
       audit `INVENTORY_RECONCILIATION_RESOLVED`) — **XONG 2026-07-23** (PROJECT_STATE §7ab).
 - [x] Gộp lô (PA B) — cùng `(drug_id, branch_id, lot_no, expiry_date)` thì gộp (giá vốn bình quân gia
       quyền), khác HSD thì không gộp (422 ở nhập tay, flag reconciliation ở GRN như cũ) — **XONG
-      2026-07-23** (PROJECT_STATE §7ac, GĐ tự chốt theo full-auto). **Nợ mang sang Sprint 7 còn lại
-      (cross-module/kiến trúc lớn hơn, đề nghị phiên Opus riêng):** `MedicationHistoryEntry` tự động,
-      dị ứng OTC (+ migration `SalesOrder.customer_id`), outbox bền, module `analytics` + report.
+      2026-07-23** (PROJECT_STATE §7ac, GĐ tự chốt theo full-auto).
+- [x] `SalesOrder.customer_id` (mig `0016`) + ghi `MedicationHistoryEntry` tự động từ event
+      (consent-gated, idempotent) + dị ứng OTC — **XONG 2026-07-24** (phiên Opus full-auto, 3 bước,
+      PROJECT_STATE §7ad). **Nợ mang sang Sprint 7 còn lại:** outbox/retry bền (hạ tầng lõi), module
+      `analytics` + report (cần sếp mô tả yêu cầu trước khi thiết kế).
 
 ---
 
@@ -187,8 +189,10 @@
       cần Opus theo quy tắc S4.5/S5.4/C.5). Sửa kèm: `core/db/session.build_engine()` bật `PRAGMA foreign_keys=ON` cho
       SQLite để test thấy được lỗi này (trước đó SQLite mù, chỉ Postgres sống mới lộ bug). Xác nhận thủ công trên Postgres
       sống. +2 test. 4 cổng xanh (**274 test**).
-- [ ] Chưa có use-case ghi `MedicationHistoryEntry` qua HTTP (chờ nối event `SaleCompleted`/`PrescriptionDispensed`,
-      cross-module, cùng Bước 2).
+- [x] ~~Chưa có use-case ghi `MedicationHistoryEntry`~~ — **XONG 2026-07-24** (phiên Opus, §7ad): ghi
+      **tự động** từ event `SaleCompleted`/`PrescriptionDispensed` ở composition root
+      (`wire_medication_history`), consent-gated + idempotent. Không làm qua HTTP (ghi tự động là đúng
+      nghiệp vụ hơn — lịch sử dùng thuốc sinh ra từ giao dịch, không phải người gõ tay).
 - [x] Nối **dị ứng KH** vào kiểm tra clinical *(2026-07-22)* — XONG cùng Bước 2/5.5.4 ở trên (B3a+B3b). Chỉ luồng prescription;
       bán lẻ OTC hoãn (cần thêm `customer_id` vào `SalesOrder` + migration — sếp chốt hoãn).
 - [x] **Feature flag AI theo tenant (SaaS), XONG hoàn toàn** *(2026-07-22)* — `clinical.TenantAiSettings` (entity mới,
