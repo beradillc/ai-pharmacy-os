@@ -13,9 +13,21 @@ class AppError(Exception):
     error_type: str = "about:blank"
     title: str = "Application error"
 
-    def __init__(self, detail: str) -> None:
+    def __init__(self, detail: str, *, extra: dict[str, object] | None = None) -> None:
         super().__init__(detail)
         self.detail = detail
+        self.extra = extra or {}
+        """Additional problem+json members. RFC 7807 §3.2 allows extensions; used
+        where a plain string cannot carry the answer — e.g. "which branch?" needs the
+        list of branches the caller may pick from."""
+
+
+class UnauthenticatedError(AppError):
+    """No usable credentials — distinct from 403, which means "known but not allowed"."""
+
+    status_code = 401
+    error_type = "https://errors.pharmacy-os/unauthenticated"
+    title = "Chưa xác thực"
 
 
 class NotFoundError(AppError):
@@ -51,16 +63,18 @@ class FeatureDisabledError(AppError):
 
 
 async def _handle_app_error(request: Request, exc: AppError) -> JSONResponse:
+    content: dict[str, object] = {
+        "type": exc.error_type,
+        "title": exc.title,
+        "status": exc.status_code,
+        "detail": exc.detail,
+        "instance": str(request.url.path),
+    }
+    content.update(exc.extra)
     return JSONResponse(
         status_code=exc.status_code,
         media_type="application/problem+json",
-        content={
-            "type": exc.error_type,
-            "title": exc.title,
-            "status": exc.status_code,
-            "detail": exc.detail,
-            "instance": str(request.url.path),
-        },
+        content=content,
     )
 
 

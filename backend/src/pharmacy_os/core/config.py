@@ -64,7 +64,12 @@ class OrgSettings(BaseSettings):
 class SecuritySettings(BaseSettings):
     jwt_secret: SecretStr = SecretStr(_PLACEHOLDER)
     jwt_ttl_minutes: int = 60
+    """Access-token lifetime. Kept at 60 (docs/15 D2): revoking a role therefore takes
+    effect within one hour, which is the accepted trade against an offline-first POS
+    being logged out mid-shift on a shorter window."""
+
     jwt_algorithm: str = "HS256"
+    refresh_ttl_days: int = 30
     require_2fa_roles: list[str] = Field(default_factory=lambda: ["pharmacist", "admin"])
 
 

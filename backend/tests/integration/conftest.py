@@ -15,9 +15,11 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import StaticPool
 
 from pharmacy_os.core.ai import MockLLMProvider
+from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.events import InMemoryEventBus
+from pharmacy_os.core.security import JwtService
 from pharmacy_os.models_registry import Base
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.catalog.infrastructure import (
@@ -37,6 +39,15 @@ from pharmacy_os.modules.compliance.infrastructure import (
 )
 from pharmacy_os.modules.crm.application import CrmService
 from pharmacy_os.modules.crm.infrastructure import SqlAlchemyCustomerRepository
+from pharmacy_os.modules.iam.application import AuthService, IamRepositories, IamService
+from pharmacy_os.modules.iam.infrastructure import (
+    SqlAlchemyBranchRepository,
+    SqlAlchemyRefreshTokenRepository,
+    SqlAlchemyRoleAssignmentRepository,
+    SqlAlchemyRoleRepository,
+    SqlAlchemyTenantRepository,
+    SqlAlchemyUserRepository,
+)
 from pharmacy_os.modules.inventory.application import InventoryService
 from pharmacy_os.modules.inventory.infrastructure import (
     SqlAlchemyBalanceRepository,
@@ -240,4 +251,42 @@ def procurement_service(
         lambda uow, c: SqlAlchemySupplierRepository(uow.session, c),
         lambda uow, c: SqlAlchemyPurchaseOrderRepository(uow.session, c),
         lambda uow, c: SqlAlchemyGoodsReceiptRepository(uow.session, c),
+    )
+
+
+def _iam_repos(uow: UnitOfWork) -> IamRepositories:
+    return IamRepositories(
+        tenants=SqlAlchemyTenantRepository(uow.session),
+        branches=SqlAlchemyBranchRepository(uow.session),
+        users=SqlAlchemyUserRepository(uow.session),
+        roles=SqlAlchemyRoleRepository(uow.session),
+        assignments=SqlAlchemyRoleAssignmentRepository(uow.session),
+        sessions=SqlAlchemyRefreshTokenRepository(uow.session),
+    )
+
+
+@pytest.fixture
+def iam_service(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> IamService:
+    def uow_factory() -> UnitOfWork:
+        return SqlAlchemyUnitOfWork(session_factory, event_bus)
+
+    return IamService(uow_factory, _iam_repos, AuditLogger())
+
+
+@pytest.fixture
+def auth_service(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> AuthService:
+    def uow_factory() -> UnitOfWork:
+        return SqlAlchemyUnitOfWork(session_factory, event_bus)
+
+    return AuthService(
+        uow_factory,
+        _iam_repos,
+        JwtService("test-secret", ttl_minutes=60),
+        AuditLogger(),
+        access_ttl_minutes=60,
+        refresh_ttl_days=30,
     )
