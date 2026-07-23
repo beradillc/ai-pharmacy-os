@@ -10,6 +10,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from pharmacy_os.api.deps import get_context
+from pharmacy_os.api.v1.audit import router as audit_router
 from pharmacy_os.api.v1.compliance_cross import wire_compliance_sync
 from pharmacy_os.api.v1.cross_module import (
     CatalogDrugInfoProvider,
@@ -40,6 +41,8 @@ def build_api_router(container: Container) -> APIRouter:
     # module's router depends on the context its tokens carry.
     for iam_router in register_iam(container, get_context):
         api.include_router(iam_router)
+    # Audit trail: kernel infrastructure, owned by no business module.
+    api.include_router(audit_router)
     api.include_router(register_catalog(container, get_context))
     api.include_router(register_inventory(container, get_context))
     api.include_router(register_prescription(container, get_context))

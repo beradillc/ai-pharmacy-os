@@ -12,6 +12,7 @@ from pharmacy_os.modules.iam.application.dto import (
     RoleAssignmentOutput,
     RoleOutput,
     SessionOutput,
+    SystemRoleSyncOutput,
     UserOutput,
 )
 from pharmacy_os.modules.iam.application.errors import BranchSelectionRequiredError
@@ -38,6 +39,7 @@ __all__ = [
     "RoleAssignmentOutput",
     "RoleOutput",
     "SessionOutput",
+    "SystemRoleSyncOutput",
     "UowFactory",
     "UserOutput",
     "hash_refresh_token",

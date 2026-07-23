@@ -22,6 +22,7 @@ from pharmacy_os.modules.iam.application.dto import (
     CreateUserInput,
     RoleAssignmentOutput,
     RoleOutput,
+    SystemRoleSyncOutput,
     UserOutput,
 )
 from pharmacy_os.modules.iam.application.repositories import (
@@ -273,7 +274,7 @@ class IamService:
 
             await repos.tenants.add(tenant)
             await repos.branches.add(branch)
-            roles_created = await self._ensure_system_roles(repos)
+            roles = await self._sync_system_roles(repos)
             await repos.users.add(admin)
 
             admin_role = await repos.roles.find_by_code(SYSTEM_ADMIN)
@@ -290,29 +291,62 @@ class IamService:
             tenant_id=tenant.id,
             branch_id=branch.id,
             admin_user_id=admin.id,
-            roles_created=roles_created,
+            roles_created=roles.created,
+            roles_updated=roles.updated,
         )
 
-    async def _ensure_system_roles(self, repos: IamRepositories) -> int:
-        """Insert any system role missing from the deployment; returns how many.
+    async def sync_system_roles(self) -> SystemRoleSyncOutput:
+        """Bring the deployment's system roles in line with the code catalogue.
 
-        Idempotent so the second tenant reuses the rows the first one created —
-        system roles are shared (``tenant_id IS NULL``), not duplicated per tenant.
+        Inserts what is missing **and updates what has drifted**. The update half is
+        not optional: system roles are code-owned (``tenant_id IS NULL``), so a
+        permission added to :data:`SYSTEM_ROLES` in a release reaches an
+        already-provisioned deployment only if something rewrites the existing rows.
+        Insert-only seeding silently left every upgraded install one permission short
+        — found by running the real CLI against a database seeded by an earlier
+        version, not by the test suite (which always starts empty).
+
+        Idempotent, and safe to run on every deploy. Tenant-owned roles
+        (``tenant_id IS NOT NULL``) are never touched.
         """
-        created = 0
+        async with self._uow_factory() as uow:
+            repos = self._repos_factory(uow)
+            result = await self._sync_system_roles(repos)
+            await uow.commit()
+        return result
+
+    async def _sync_system_roles(self, repos: IamRepositories) -> SystemRoleSyncOutput:
+        created = updated = 0
         for spec in SYSTEM_ROLES:
-            if await repos.roles.find_by_code(spec.code) is not None:
+            existing = await repos.roles.find_by_code(spec.code)
+            if existing is None:
+                await repos.roles.add(
+                    Role(
+                        code=spec.code,
+                        name=spec.name,
+                        description=spec.description,
+                        permissions=spec.permissions,
+                    )
+                )
+                created += 1
                 continue
-            await repos.roles.add(
+            if (
+                existing.permissions == spec.permissions
+                and existing.name == spec.name
+                and existing.description == spec.description
+            ):
+                continue
+            await repos.roles.update(
                 Role(
-                    code=spec.code,
+                    id=existing.id,
+                    code=existing.code,
                     name=spec.name,
                     description=spec.description,
                     permissions=spec.permissions,
                 )
             )
-            created += 1
-        return created
+            updated += 1
+        return SystemRoleSyncOutput(created=created, updated=updated)
 
     # -- helpers -------------------------------------------------------------
 

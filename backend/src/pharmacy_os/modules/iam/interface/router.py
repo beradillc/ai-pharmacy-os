@@ -13,6 +13,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 
 from pharmacy_os.core.context import RequestContext
+from pharmacy_os.core.http import client_ip_of
 from pharmacy_os.modules.iam.application import AuthService, IamService
 from pharmacy_os.modules.iam.interface.schemas import (
     AssignRoleRequest,
@@ -47,8 +48,14 @@ def build_auth_router(get_context: ContextDep) -> APIRouter:
     router = APIRouter(prefix="/auth", tags=["iam"])
 
     @router.post("/login", response_model=SessionResponse)
-    async def login(body: LoginRequest, service: AuthService = Depends(_auth)) -> SessionResponse:
-        return SessionResponse.of(await service.login(body.to_input()))
+    async def login(
+        request: Request, body: LoginRequest, service: AuthService = Depends(_auth)
+    ) -> SessionResponse:
+        # The IP comes from the socket, never the body: a failed-login burst is only
+        # traceable if the origin cannot be chosen by whoever is causing it.
+        data = body.to_input()
+        data.client_ip = client_ip_of(request)
+        return SessionResponse.of(await service.login(data))
 
     @router.post("/refresh", response_model=SessionResponse)
     async def refresh(

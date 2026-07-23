@@ -155,8 +155,17 @@ class BootstrapTenantInput:
 
 
 @dataclass(slots=True)
+class SystemRoleSyncOutput:
+    """How many system roles the sync inserted and how many it brought up to date."""
+
+    created: int
+    updated: int
+
+
+@dataclass(slots=True)
 class BootstrapTenantOutput:
     tenant_id: UUID
     branch_id: UUID
     admin_user_id: UUID
     roles_created: int
+    roles_updated: int

@@ -30,8 +30,16 @@ from pharmacy_os.modules.iam.application import (
     IamService,
     LoginInput,
     SessionOutput,
+    SystemRoleSyncOutput,
 )
-from pharmacy_os.modules.iam.domain import BRANCH_PHARMACIST, CASHIER, SYSTEM_ADMIN, SYSTEM_ROLES
+from pharmacy_os.modules.iam.domain import (
+    BRANCH_PHARMACIST,
+    CASHIER,
+    SYSTEM_ADMIN,
+    SYSTEM_ROLES,
+    SYSTEM_ROLES_BY_CODE,
+    Role,
+)
 
 ADMIN_PASSWORD = "MatKhauAdmin2026"
 STAFF_PASSWORD = "MatKhauNhanVien26"
@@ -520,3 +528,78 @@ async def test_seeded_roles_are_listed_for_a_fresh_tenant(
     codes = {r.code for r in await iam_service.list_roles(ctx)}
     assert codes == {spec.code for spec in SYSTEM_ROLES}
     assert SYSTEM_ADMIN in codes
+
+
+# --- system-role drift on upgrade -------------------------------------------
+
+
+async def test_sync_system_roles_updates_a_role_that_drifted(
+    iam_service: IamService, auth_service: AuthService
+) -> None:
+    """A permission added to the code catalogue must reach an existing deployment.
+
+    Regression for a real bug: seeding was insert-only, so a database provisioned by
+    an earlier release kept its old permission set forever and the new endpoint
+    answered 403 to an admin. Found by running the CLI against a live database, not
+    by the suite — which always started empty and therefore always took the insert
+    path.
+    """
+    ctx = await _admin_ctx(iam_service, auth_service)
+    admin_role = next(r for r in await iam_service.list_roles(ctx) if r.code == SYSTEM_ADMIN)
+
+    # Simulate the older release: strip a permission straight through the repository.
+    async with iam_service._uow_factory() as uow:  # noqa: SLF001 - test-only shortcut
+        repos = iam_service._repos_factory(uow)  # noqa: SLF001
+        stale = await repos.roles.get(admin_role.id)
+        assert stale is not None
+        await repos.roles.update(
+            Role(
+                id=stale.id,
+                code=stale.code,
+                name=stale.name,
+                description=stale.description,
+                permissions=frozenset(stale.permissions - {"audit.read"}),
+            )
+        )
+        await uow.commit()
+
+    drifted = next(r for r in await iam_service.list_roles(ctx) if r.code == SYSTEM_ADMIN)
+    assert "audit.read" not in drifted.permissions
+
+    result = await iam_service.sync_system_roles()
+    assert (result.created, result.updated) == (0, 1)
+
+    refreshed = next(r for r in await iam_service.list_roles(ctx) if r.code == SYSTEM_ADMIN)
+    assert "audit.read" in refreshed.permissions
+    assert set(refreshed.permissions) == set(SYSTEM_ROLES_BY_CODE[SYSTEM_ADMIN].permissions)
+
+
+async def test_sync_system_roles_is_idempotent(iam_service: IamService) -> None:
+    await iam_service.bootstrap_tenant(_bootstrap_input())
+    assert await iam_service.sync_system_roles() == SystemRoleSyncOutput(created=0, updated=0)
+
+
+async def test_sync_system_roles_seeds_an_empty_deployment(iam_service: IamService) -> None:
+    result = await iam_service.sync_system_roles()
+    assert (result.created, result.updated) == (len(SYSTEM_ROLES), 0)
+
+
+async def test_sync_leaves_tenant_owned_roles_alone(
+    iam_service: IamService, auth_service: AuthService
+) -> None:
+    """Only ``tenant_id IS NULL`` rows are code-owned."""
+    ctx = await _admin_ctx(iam_service, auth_service)
+    custom = Role(
+        code="vai_tro_rieng",
+        name="Vai trò riêng của nhà thuốc",
+        tenant_id=ctx.tenant_id,
+        permissions=frozenset({"sales.read"}),
+    )
+    async with iam_service._uow_factory() as uow:  # noqa: SLF001 - test-only shortcut
+        await iam_service._repos_factory(uow).roles.add(custom)  # noqa: SLF001
+        await uow.commit()
+
+    await iam_service.sync_system_roles()
+
+    kept = next(r for r in await iam_service.list_roles(ctx) if r.code == "vai_tro_rieng")
+    assert kept.permissions == ["sales.read"]

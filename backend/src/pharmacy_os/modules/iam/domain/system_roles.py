@@ -48,6 +48,9 @@ PROCUREMENT_PERMISSIONS = frozenset(
         "procurement.grn.confirm",
     }
 )
+AUDIT_PERMISSIONS = frozenset({"audit.read"})
+"""Reading the trail is itself privileged: it names who touched patient data."""
+
 IAM_PERMISSIONS = frozenset(
     {
         "iam.user.read",
@@ -69,6 +72,7 @@ ALL_PERMISSIONS: frozenset[str] = (
     | COMPLIANCE_PERMISSIONS
     | PROCUREMENT_PERMISSIONS
     | IAM_PERMISSIONS
+    | AUDIT_PERMISSIONS
 )
 
 SYSTEM_ADMIN = "system_admin"
@@ -105,6 +109,7 @@ _CHAIN_PHARMACIST_PERMISSIONS = (
     | CRM_PERMISSIONS
     | COMPLIANCE_PERMISSIONS
     | PROCUREMENT_PERMISSIONS
+    | AUDIT_PERMISSIONS
     | {"iam.user.read", "iam.role.read"}
 )
 

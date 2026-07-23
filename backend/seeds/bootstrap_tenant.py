@@ -70,7 +70,7 @@ async def _run(args: argparse.Namespace, password: str) -> None:
     def uow_factory() -> UnitOfWork:
         return SqlAlchemyUnitOfWork(session_factory, event_bus)
 
-    service = IamService(uow_factory, build_repositories, AuditLogger())
+    service = IamService(uow_factory, build_repositories, AuditLogger(session_factory))
     try:
         out = await service.bootstrap_tenant(
             BootstrapTenantInput(
