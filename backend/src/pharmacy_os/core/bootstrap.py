@@ -35,7 +35,10 @@ def build_container(settings: Settings) -> Container:
     # BLOCKER: AI__API_KEY thật — swap in the AnthropicProvider here (chosen from
     # settings.ai.provider / api_key) once a live key + the vendor SDK are wired.
     container.register_singleton(LLMProvider, lambda _c: MockLLMProvider())  # type: ignore[type-abstract]
-    container.register_singleton(AuditLogger, lambda _c: AuditLogger())
+    container.register_singleton(
+        AuditLogger,
+        lambda c: AuditLogger(c.resolve(async_sessionmaker[AsyncSession])),
+    )
     container.register_singleton(PluginLoader, lambda _c: PluginLoader())
     container.register_singleton(
         JwtService,

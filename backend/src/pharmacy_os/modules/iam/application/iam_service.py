@@ -82,7 +82,7 @@ class IamService:
             uow.collect(UserRegistered(tenant_id=ctx.tenant_id, user_id=user.id, email=user.email))
             await uow.commit()
 
-        self._record(ctx, AuditAction.USER_CREATED, "user", str(user.id))
+        await self._record(ctx, AuditAction.USER_CREATED, "user", str(user.id))
         return UserOutput.of(user)
 
     async def list_users(
@@ -124,7 +124,7 @@ class IamService:
                 uow.collect(UserDeactivated(tenant_id=ctx.tenant_id, user_id=user.id))
             await uow.commit()
 
-        self._record(
+        await self._record(
             ctx,
             AuditAction.USER_ACTIVATED if active else AuditAction.USER_DEACTIVATED,
             "user",
@@ -149,7 +149,7 @@ class IamService:
             await repos.users.update(user)
             await repos.sessions.revoke_all_for_user(user.id, now)
             await uow.commit()
-        self._record(ctx, AuditAction.PASSWORD_RESET, "user", str(user_id))
+        await self._record(ctx, AuditAction.PASSWORD_RESET, "user", str(user_id))
 
     # -- roles ---------------------------------------------------------------
 
@@ -209,7 +209,7 @@ class IamService:
             )
             await uow.commit()
 
-        self._record(ctx, AuditAction.ROLE_GRANTED, "user_role", str(assignment.id))
+        await self._record(ctx, AuditAction.ROLE_GRANTED, "user_role", str(assignment.id))
         return RoleAssignmentOutput.of(assignment, role.code)
 
     async def revoke_role(self, user_id: UUID, assignment_id: UUID, ctx: RequestContext) -> None:
@@ -240,7 +240,7 @@ class IamService:
                 )
             )
             await uow.commit()
-        self._record(ctx, AuditAction.ROLE_REVOKED, "user_role", str(assignment_id))
+        await self._record(ctx, AuditAction.ROLE_REVOKED, "user_role", str(assignment_id))
 
     # -- bootstrap -----------------------------------------------------------
 
@@ -340,10 +340,10 @@ class IamService:
             raise NotFoundError("Không tìm thấy chi nhánh")
         return branch
 
-    def _record(
+    async def _record(
         self, ctx: RequestContext, action: AuditAction, target_type: str, target_id: str
     ) -> None:
-        self._audit.record(
+        await self._audit.record(
             AuditEntry(
                 actor_user_id=ctx.user_id,
                 tenant_id=ctx.tenant_id,

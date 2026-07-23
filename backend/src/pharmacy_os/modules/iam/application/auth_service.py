@@ -115,9 +115,9 @@ class AuthService:
                 await uow.commit()
                 # Two separate facts: the attempt, and the lock it may have caused.
                 # Emitting only the lock would lose the four attempts before it.
-                self._record(user, AuditAction.LOGIN_FAILED, data.client_ip)
+                await self._record(user, AuditAction.LOGIN_FAILED, data.client_ip)
                 if locked:
-                    self._record(user, AuditAction.ACCOUNT_LOCKED, data.client_ip)
+                    await self._record(user, AuditAction.ACCOUNT_LOCKED, data.client_ip)
                 raise UnauthenticatedError("Email hoặc mật khẩu không đúng")
 
             access = await self._load_access(repos, user)
@@ -131,7 +131,7 @@ class AuthService:
             output, _ = await self._issue(repos, user, branch, permissions, access, now)
             await uow.commit()
 
-        self._record(user, AuditAction.LOGIN_SUCCESS, data.client_ip, branch_id=branch.id)
+        await self._record(user, AuditAction.LOGIN_SUCCESS, data.client_ip, branch_id=branch.id)
         return output
 
     async def refresh(self, refresh_token: str, *, branch_id: UUID | None = None) -> SessionOutput:
@@ -154,7 +154,7 @@ class AuthService:
                 # not merely this one.
                 await repos.sessions.revoke_all_for_user(session.user_id, now)
                 await uow.commit()
-                self._audit.record(
+                await self._audit.record(
                     AuditEntry(
                         actor_user_id=session.user_id,
                         tenant_id=session.tenant_id,
@@ -225,7 +225,7 @@ class AuthService:
             await repos.users.update(user)
             await repos.sessions.revoke_all_for_user(user.id, now)
             await uow.commit()
-        self._record(user, AuditAction.PASSWORD_CHANGED, None, branch_id=ctx.branch_id)
+        await self._record(user, AuditAction.PASSWORD_CHANGED, None, branch_id=ctx.branch_id)
 
     # -- helpers -------------------------------------------------------------
 
@@ -311,7 +311,7 @@ class AuthService:
         )
         return output, session
 
-    def _record(
+    async def _record(
         self,
         user: User,
         action: AuditAction,
@@ -319,7 +319,7 @@ class AuthService:
         *,
         branch_id: UUID | None = None,
     ) -> None:
-        self._audit.record(
+        await self._audit.record(
             AuditEntry(
                 actor_user_id=user.id,
                 tenant_id=user.tenant_id,

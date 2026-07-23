@@ -272,7 +272,7 @@ def iam_service(
     def uow_factory() -> UnitOfWork:
         return SqlAlchemyUnitOfWork(session_factory, event_bus)
 
-    return IamService(uow_factory, _iam_repos, AuditLogger())
+    return IamService(uow_factory, _iam_repos, AuditLogger(session_factory))
 
 
 @pytest.fixture
@@ -286,7 +286,7 @@ def auth_service(
         uow_factory,
         _iam_repos,
         JwtService("test-secret", ttl_minutes=60),
-        AuditLogger(),
+        AuditLogger(session_factory),
         access_ttl_minutes=60,
         refresh_ttl_days=30,
     )

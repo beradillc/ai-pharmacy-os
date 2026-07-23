@@ -1,0 +1,363 @@
+"""Every audit call site IAM makes must land a real row in ``audit_logs``.
+
+The point of this suite is that it does **not** trust the code to be calling the
+logger in the right places: each test drives the real use-case and then reads the
+table back. A call that was removed, or one that never fired, fails here.
+"""
+
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
+from uuid import UUID, uuid4
+
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from pharmacy_os.core.audit import AuditAction, AuditEntry, SqlAlchemyAuditLogRepository
+from pharmacy_os.core.context import RequestContext
+from pharmacy_os.core.errors import UnauthenticatedError
+from pharmacy_os.modules.iam.application import (
+    AssignRoleInput,
+    AuthService,
+    BootstrapTenantInput,
+    ChangePasswordInput,
+    CreateUserInput,
+    IamService,
+    LoginInput,
+)
+from pharmacy_os.modules.iam.domain import CASHIER
+
+ADMIN_EMAIL = "admin@bera.vn"
+ADMIN_PASSWORD = "MatKhauAdmin2026"
+STAFF_EMAIL = "thu-ngan@bera.vn"
+STAFF_PASSWORD = "MatKhauNhanVien26"
+
+
+@pytest.fixture
+async def audit_repo(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> AsyncIterator[SqlAlchemyAuditLogRepository]:
+    async with session_factory() as session:
+        yield SqlAlchemyAuditLogRepository(session)
+
+
+async def _bootstrap(iam_service: IamService) -> UUID:
+    out = await iam_service.bootstrap_tenant(
+        BootstrapTenantInput(
+            tenant_name="Nhà thuốc Bera",
+            branch_code="HQ",
+            branch_name="Chi nhánh chính",
+            admin_email=ADMIN_EMAIL,
+            admin_full_name="Nguyễn Quản Trị",
+            admin_password=ADMIN_PASSWORD,
+        )
+    )
+    return out.tenant_id
+
+
+async def _admin_ctx(iam_service: IamService, auth_service: AuthService) -> RequestContext:
+    await _bootstrap(iam_service)
+    session = await auth_service.login(
+        LoginInput(email=ADMIN_EMAIL, password=ADMIN_PASSWORD, client_ip="10.0.0.7")
+    )
+    return RequestContext(
+        tenant_id=session.tenant_id,
+        branch_id=session.branch_id,
+        user_id=session.user_id,
+        permissions=frozenset(session.permissions),
+        client_ip="10.0.0.7",
+    )
+
+
+async def _actions(repo: SqlAlchemyAuditLogRepository, tenant_id: UUID) -> list[AuditAction]:
+    return [e.action for e in await repo.list(tenant_id, limit=200)]
+
+
+# --- one test per action IAM emits ------------------------------------------
+
+
+async def test_login_success_is_persisted_with_ip_and_branch(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    tenant_id = await _bootstrap(iam_service)
+    session = await auth_service.login(
+        LoginInput(email=ADMIN_EMAIL, password=ADMIN_PASSWORD, client_ip="203.0.113.9")
+    )
+
+    entries = await audit_repo.list(tenant_id)
+    logged_in = [e for e in entries if e.action is AuditAction.LOGIN_SUCCESS]
+    assert len(logged_in) == 1
+    entry = logged_in[0]
+    assert entry.actor_user_id == session.user_id
+    assert entry.target_type == "user"
+    assert entry.context == {"client_ip": "203.0.113.9", "branch_id": str(session.branch_id)}
+    assert entry.occurred_at.tzinfo is not None
+
+
+async def test_failed_login_is_persisted(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    tenant_id = await _bootstrap(iam_service)
+    with pytest.raises(UnauthenticatedError):
+        await auth_service.login(
+            LoginInput(email=ADMIN_EMAIL, password="SaiMatKhau123", client_ip="203.0.113.9")
+        )
+
+    entries = [e for e in await audit_repo.list(tenant_id) if e.action is AuditAction.LOGIN_FAILED]
+    assert len(entries) == 1
+    assert entries[0].context["client_ip"] == "203.0.113.9"
+
+
+async def test_lockout_records_both_the_attempt_and_the_lock(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    """Five attempts must leave five LOGIN_FAILED rows plus one ACCOUNT_LOCKED —
+    collapsing them would erase the four tries that led to the lock."""
+    tenant_id = await _bootstrap(iam_service)
+    for _ in range(5):
+        with pytest.raises(UnauthenticatedError):
+            await auth_service.login(LoginInput(email=ADMIN_EMAIL, password="SaiMatKhau123"))
+
+    actions = await _actions(audit_repo, tenant_id)
+    assert actions.count(AuditAction.LOGIN_FAILED) == 5
+    assert actions.count(AuditAction.ACCOUNT_LOCKED) == 1
+
+
+async def test_user_created_is_persisted(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    ctx = await _admin_ctx(iam_service, auth_service)
+    user = await iam_service.create_user(
+        CreateUserInput(email=STAFF_EMAIL, password=STAFF_PASSWORD, full_name="Thu Ngân"), ctx
+    )
+
+    entries = [
+        e for e in await audit_repo.list(ctx.tenant_id) if e.action is AuditAction.USER_CREATED
+    ]
+    assert len(entries) == 1
+    assert entries[0].target_id == str(user.id)
+    assert entries[0].actor_user_id == ctx.user_id
+    assert entries[0].context["client_ip"] == "10.0.0.7"
+
+
+async def test_user_deactivated_and_reactivated_are_separate_rows(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    ctx = await _admin_ctx(iam_service, auth_service)
+    user = await iam_service.create_user(
+        CreateUserInput(email=STAFF_EMAIL, password=STAFF_PASSWORD, full_name="Thu Ngân"), ctx
+    )
+    await iam_service.set_user_active(user.id, active=False, ctx=ctx)
+    await iam_service.set_user_active(user.id, active=True, ctx=ctx)
+
+    actions = await _actions(audit_repo, ctx.tenant_id)
+    assert actions.count(AuditAction.USER_DEACTIVATED) == 1
+    assert actions.count(AuditAction.USER_ACTIVATED) == 1
+
+
+async def test_role_granted_and_revoked_are_persisted(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    ctx = await _admin_ctx(iam_service, auth_service)
+    roles = {r.code: r for r in await iam_service.list_roles(ctx)}
+    user = await iam_service.create_user(
+        CreateUserInput(email=STAFF_EMAIL, password=STAFF_PASSWORD, full_name="Thu Ngân"), ctx
+    )
+    grant = await iam_service.assign_role(
+        user.id, AssignRoleInput(role_id=roles[CASHIER].id, branch_id=ctx.branch_id), ctx
+    )
+    await iam_service.revoke_role(user.id, grant.id, ctx)
+
+    entries = await audit_repo.list(ctx.tenant_id)
+    granted = [e for e in entries if e.action is AuditAction.ROLE_GRANTED]
+    revoked = [e for e in entries if e.action is AuditAction.ROLE_REVOKED]
+    assert len(granted) == len(revoked) == 1
+    assert granted[0].target_type == "user_role" == revoked[0].target_type
+    assert granted[0].target_id == revoked[0].target_id == str(grant.id)
+
+
+async def test_password_changed_is_persisted(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    ctx = await _admin_ctx(iam_service, auth_service)
+    await auth_service.change_password(
+        ctx, ChangePasswordInput(current_password=ADMIN_PASSWORD, new_password="MatKhauMoi2026")
+    )
+
+    entries = [
+        e for e in await audit_repo.list(ctx.tenant_id) if e.action is AuditAction.PASSWORD_CHANGED
+    ]
+    assert len(entries) == 1
+    assert entries[0].actor_user_id == ctx.user_id
+
+
+async def test_admin_password_reset_is_a_distinct_action(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    """An admin resetting somebody else's password is a privileged act and must not
+    be indistinguishable from a user changing their own."""
+    ctx = await _admin_ctx(iam_service, auth_service)
+    user = await iam_service.create_user(
+        CreateUserInput(email=STAFF_EMAIL, password=STAFF_PASSWORD, full_name="Thu Ngân"), ctx
+    )
+    await iam_service.reset_password(user.id, "MatKhauTamThoi26", ctx)
+
+    entries = [
+        e for e in await audit_repo.list(ctx.tenant_id) if e.action is AuditAction.PASSWORD_RESET
+    ]
+    assert len(entries) == 1
+    assert entries[0].actor_user_id == ctx.user_id  # the admin, not the target
+    assert entries[0].target_id == str(user.id)
+
+
+async def test_token_replay_is_persisted(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    tenant_id = await _bootstrap(iam_service)
+    first = await auth_service.login(LoginInput(email=ADMIN_EMAIL, password=ADMIN_PASSWORD))
+    await auth_service.refresh(first.refresh_token)
+    with pytest.raises(UnauthenticatedError):
+        await auth_service.refresh(first.refresh_token)
+
+    entries = [
+        e for e in await audit_repo.list(tenant_id) if e.action is AuditAction.TOKEN_REPLAY_DETECTED
+    ]
+    assert len(entries) == 1
+    assert entries[0].target_type == "refresh_token"
+
+
+async def test_every_action_emitted_by_iam_reaches_the_table() -> None:
+    """Sanity net: the actions the tests above assert on cover the enum.
+
+    Anything added to :class:`AuditAction` without a persistence test shows up here
+    rather than being noticed months later during an inspection.
+    """
+    covered = {
+        AuditAction.LOGIN_SUCCESS,
+        AuditAction.LOGIN_FAILED,
+        AuditAction.ACCOUNT_LOCKED,
+        AuditAction.USER_CREATED,
+        AuditAction.USER_ACTIVATED,
+        AuditAction.USER_DEACTIVATED,
+        AuditAction.ROLE_GRANTED,
+        AuditAction.ROLE_REVOKED,
+        AuditAction.PASSWORD_CHANGED,
+        AuditAction.PASSWORD_RESET,
+        AuditAction.TOKEN_REPLAY_DETECTED,
+    }
+    assert covered == set(AuditAction)
+
+
+# --- the trail's own properties ---------------------------------------------
+
+
+async def test_entries_are_scoped_to_their_tenant(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    tenant_a = await _bootstrap(iam_service)
+    await auth_service.login(LoginInput(email=ADMIN_EMAIL, password=ADMIN_PASSWORD))
+    other = await iam_service.bootstrap_tenant(
+        BootstrapTenantInput(
+            tenant_name="Nhà thuốc Khác",
+            branch_code="HQ",
+            branch_name="CN",
+            admin_email="admin@khac.vn",
+            admin_full_name="Khác",
+            admin_password=ADMIN_PASSWORD,
+        )
+    )
+    await auth_service.login(LoginInput(email="admin@khac.vn", password=ADMIN_PASSWORD))
+
+    assert all(e.tenant_id == tenant_a for e in await audit_repo.list(tenant_a))
+    assert len(await audit_repo.list(other.tenant_id)) == 1
+
+
+async def test_repository_exposes_no_way_to_change_history() -> None:
+    """Append-only enforced structurally, not by convention."""
+    for forbidden in ("update", "delete", "remove", "save", "merge"):
+        assert not hasattr(SqlAlchemyAuditLogRepository, forbidden)
+
+
+async def test_listing_is_newest_first_and_pages(
+    session_factory: async_sessionmaker[AsyncSession],
+    audit_repo: SqlAlchemyAuditLogRepository,
+) -> None:
+    tenant_id = uuid4()
+    base = datetime(2026, 7, 23, 9, 0, tzinfo=UTC)
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        for minute in range(5):
+            await repo.add(
+                AuditEntry(
+                    tenant_id=tenant_id,
+                    action=AuditAction.LOGIN_SUCCESS,
+                    target_type="user",
+                    occurred_at=base + timedelta(minutes=minute),
+                )
+            )
+        await session.commit()
+
+    newest = await audit_repo.list(tenant_id, limit=2)
+    assert [e.occurred_at for e in newest] == [
+        base + timedelta(minutes=4),
+        base + timedelta(minutes=3),
+    ]
+    assert len(await audit_repo.list(tenant_id, limit=2, offset=4)) == 1
+    assert await audit_repo.count(tenant_id) == 5
+
+
+async def test_filters_narrow_by_time_actor_and_action(
+    session_factory: async_sessionmaker[AsyncSession],
+    audit_repo: SqlAlchemyAuditLogRepository,
+) -> None:
+    tenant_id, actor = uuid4(), uuid4()
+    base = datetime(2026, 7, 23, 9, 0, tzinfo=UTC)
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        await repo.add(
+            AuditEntry(
+                tenant_id=tenant_id,
+                action=AuditAction.LOGIN_SUCCESS,
+                target_type="user",
+                actor_user_id=actor,
+                occurred_at=base,
+            )
+        )
+        await repo.add(
+            AuditEntry(
+                tenant_id=tenant_id,
+                action=AuditAction.ROLE_GRANTED,
+                target_type="user_role",
+                actor_user_id=uuid4(),
+                occurred_at=base + timedelta(hours=2),
+            )
+        )
+        await session.commit()
+
+    assert len(await audit_repo.list(tenant_id, actor_user_id=actor)) == 1
+    assert len(await audit_repo.list(tenant_id, action=AuditAction.ROLE_GRANTED)) == 1
+    assert len(await audit_repo.list(tenant_id, occurred_to=base + timedelta(hours=1))) == 1
+    assert len(await audit_repo.list(tenant_id, occurred_from=base + timedelta(hours=1))) == 1
+    assert await audit_repo.count(tenant_id, action=AuditAction.LOGIN_SUCCESS) == 1
+
+
+async def test_context_never_carries_a_password_or_token(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    """Metadata only — the trail must not become a second store of the secrets and
+    personal data it exists to protect (NĐ 356/2025 Điều 4.2)."""
+    tenant_id = await _bootstrap(iam_service)
+    session = await auth_service.login(
+        LoginInput(email=ADMIN_EMAIL, password=ADMIN_PASSWORD, client_ip="203.0.113.9")
+    )
+    with pytest.raises(UnauthenticatedError):
+        await auth_service.login(LoginInput(email=ADMIN_EMAIL, password="SaiMatKhau123"))
+
+    for entry in await audit_repo.list(tenant_id):
+        blob = repr(entry.context)
+        assert ADMIN_PASSWORD not in blob
+        assert "SaiMatKhau123" not in blob
+        assert session.refresh_token not in blob
+        assert session.access_token not in blob
+        assert set(entry.context) <= {"client_ip", "branch_id"}
