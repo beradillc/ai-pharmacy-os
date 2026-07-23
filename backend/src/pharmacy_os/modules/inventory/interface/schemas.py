@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -14,6 +14,7 @@ from pharmacy_os.modules.inventory.application.dto import (
     NearExpiryItem,
     ReceiptOutput,
     ReceiveStockInput,
+    ReconciliationOutput,
 )
 
 
@@ -111,4 +112,26 @@ class NearExpiryResponse(BaseModel):
             lot_no=item.lot_no,
             expiry_date=item.expiry_date,
             quantity_received=item.quantity_received,
+        )
+
+
+class ReconciliationResponse(BaseModel):
+    id: UUID
+    branch_id: UUID
+    grn_id: UUID
+    po_item_id: UUID | None
+    reason: str
+    resolved: bool
+    occurred_at: datetime
+
+    @classmethod
+    def of(cls, out: ReconciliationOutput) -> ReconciliationResponse:
+        return cls(
+            id=out.id,
+            branch_id=out.branch_id,
+            grn_id=out.grn_id,
+            po_item_id=out.po_item_id,
+            reason=out.reason,
+            resolved=out.resolved,
+            occurred_at=out.occurred_at,
         )

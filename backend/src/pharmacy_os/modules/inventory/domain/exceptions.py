@@ -16,3 +16,7 @@ class InsufficientStockError(InventoryError):
         super().__init__(f"Không đủ tồn: cần {requested}, còn {available} (đơn vị cơ sở)")
         self.requested = requested
         self.available = available
+
+
+class ReconciliationAlreadyResolvedError(InventoryError):
+    """Raised when resolving a :class:`StockReconciliationNeeded` already marked resolved."""

@@ -53,7 +53,11 @@
       (`seeds/reference_data.py`), bật FK bây giờ sẽ chặn tạo thuốc có mã ATC thật ngoài 10 mã đó. Chờ
       nguồn ATC đầy đủ (full import job) trước khi bật.
 - [x] ~~Uniqueness của `registration_no` (SĐK) chưa enforce~~ — bật `uq_drugs_tenant_registration_no` trong migration `0005_compliance` (Compliance C.2, 2026-07-21). `barcode` vẫn chỉ chặn ở tầng ứng dụng (không phải nợ mới, không đổi).
-- [ ] `StarletteDeprecationWarning` (httpx + TestClient) — không ảnh hưởng, theo dõi khi nâng cấp.
+- [x] ~~`StarletteDeprecationWarning` (httpx + TestClient)~~ — **XONG 2026-07-23**: thêm `httpx2` vào
+      dev deps, `starlette.testclient` tự ưu tiên dùng, không cần sửa code.
+- [x] API resolve `stock_reconciliation_needed` (`GET`/`POST .../resolve`, quyền `inventory.reconcile`,
+      audit `INVENTORY_RECONCILIATION_RESOLVED`) — **XONG 2026-07-23** (PROJECT_STATE §7ab). Nợ mang
+      sang Sprint 7 còn lại: gộp lô (PA B), `MedicationHistoryEntry` tự động, dị ứng OTC, outbox bền.
 
 ---
 

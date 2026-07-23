@@ -106,6 +106,11 @@ class AuditAction(StrEnum):
     above: ``dispense_for_sale`` (the cross-module reaction to ``SaleCompleted``)
     is already covered by :attr:`SALE_COMPLETED`, not audited a second time here."""
 
+    INVENTORY_RECONCILIATION_RESOLVED = "INVENTORY_RECONCILIATION_RESOLVED"
+    """A ``stock_reconciliation_needed`` flag (GRN lot collision/failure) was marked
+    handled — "ai đã xử lý chênh lệch tồn kho này". The record itself carries no
+    actor/timestamp for the resolve action; this is the only place that does."""
+
     # --- procurement (cam kết tài chính với NCC, xác nhận nhận hàng thật) ---
     PROCUREMENT_PO_ORDERED = "PROCUREMENT_PO_ORDERED"
     """DRAFT -> ORDERED — the moment a purchase order becomes a real financial

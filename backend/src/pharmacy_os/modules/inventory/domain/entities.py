@@ -14,6 +14,8 @@ from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID, uuid4
 
+from pharmacy_os.modules.inventory.domain.exceptions import ReconciliationAlreadyResolvedError
+
 
 class MovementType(StrEnum):
     IN = "IN"
@@ -68,8 +70,9 @@ class StockReconciliationNeeded:
 
     Written when a received line couldn't create an inventory batch — a lot-number
     collision (skipped, not merged) or any unexpected failure — so the discrepancy
-    can be looked up and reconciled by hand later. There is no resolve workflow yet;
-    ``resolved`` defaults ``False``. ``po_item_id`` is ``None`` for whole-GRN
+    can be looked up and reconciled by hand later. ``resolved`` defaults ``False``;
+    :meth:`resolve` is the only transition (append-only otherwise — the reason/
+    grn_id/po_item_id facts never change). ``po_item_id`` is ``None`` for whole-GRN
     failures (e.g. the transaction aborted before any line was reached).
     """
 
@@ -81,3 +84,9 @@ class StockReconciliationNeeded:
     resolved: bool = False
     id: UUID = field(default_factory=uuid4)
     occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    def resolve(self) -> None:
+        """Mark this discrepancy as handled. Who/when is the audit trail's job."""
+        if self.resolved:
+            raise ReconciliationAlreadyResolvedError(f"Mục {self.id} đã được xử lý")
+        self.resolved = True

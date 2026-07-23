@@ -16,6 +16,7 @@ from pharmacy_os.modules.inventory.interface.schemas import (
     OnHandResponse,
     ReceiptResponse,
     ReceiveStockRequest,
+    ReconciliationResponse,
 )
 
 ContextDep = Callable[..., RequestContext]
@@ -62,5 +63,29 @@ def build_router(get_context: ContextDep) -> APIRouter:
     ) -> list[NearExpiryResponse]:
         items = await service.list_near_expiry(ctx, within_days=within_days)
         return [NearExpiryResponse.of(i) for i in items]
+
+    @router.get("/reconciliations", response_model=list[ReconciliationResponse])
+    async def list_reconciliations(
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+        resolved: bool | None = Query(default=None),
+        limit: int = Query(50, ge=1, le=200),
+        offset: int = Query(0, ge=0),
+    ) -> list[ReconciliationResponse]:
+        items = await service.list_reconciliations(
+            ctx, resolved=resolved, limit=limit, offset=offset
+        )
+        return [ReconciliationResponse.of(i) for i in items]
+
+    @router.post(
+        "/reconciliations/{reconciliation_id}/resolve", response_model=ReconciliationResponse
+    )
+    async def resolve_reconciliation(
+        reconciliation_id: UUID,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> ReconciliationResponse:
+        out = await service.resolve_reconciliation(reconciliation_id, ctx)
+        return ReconciliationResponse.of(out)
 
     return router

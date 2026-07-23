@@ -55,5 +55,23 @@ class BalanceRepository(Protocol):
 
 class StockReconciliationRepository(Protocol):
     async def add(self, record: StockReconciliationNeeded) -> None:
-        """Persist a reconciliation flag (append-only audit; no resolve API yet)."""
+        """Persist a reconciliation flag."""
+        ...
+
+    async def get(self, record_id: UUID, tenant_id: UUID) -> StockReconciliationNeeded | None: ...
+
+    async def update(self, record: StockReconciliationNeeded) -> None:
+        """Persist the ``resolved`` transition (the only field :meth:`resolve` changes)."""
+        ...
+
+    async def list(
+        self,
+        tenant_id: UUID,
+        branch_id: UUID,
+        *,
+        resolved: bool | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[StockReconciliationNeeded]:
+        """List a branch's discrepancies, newest first; ``resolved=None`` returns both."""
         ...

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
+
+from pharmacy_os.modules.inventory.domain.entities import StockReconciliationNeeded
 
 
 @dataclass(slots=True)
@@ -82,3 +84,26 @@ class NearExpiryItem:
     lot_no: str
     expiry_date: date
     quantity_received: Decimal
+
+
+@dataclass(slots=True)
+class ReconciliationOutput:
+    id: UUID
+    branch_id: UUID
+    grn_id: UUID
+    po_item_id: UUID | None
+    reason: str
+    resolved: bool
+    occurred_at: datetime
+
+    @classmethod
+    def of(cls, record: StockReconciliationNeeded) -> ReconciliationOutput:
+        return cls(
+            id=record.id,
+            branch_id=record.branch_id,
+            grn_id=record.grn_id,
+            po_item_id=record.po_item_id,
+            reason=record.reason,
+            resolved=record.resolved,
+            occurred_at=record.occurred_at,
+        )

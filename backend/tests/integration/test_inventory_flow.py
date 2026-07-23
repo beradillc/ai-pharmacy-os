@@ -7,14 +7,19 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pharmacy_os.core.audit import AuditAction, SqlAlchemyAuditLogRepository
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.core.errors import ConflictError
+from pharmacy_os.core.errors import ConflictError, NotFoundError
 from pharmacy_os.core.events import DomainEvent, InMemoryEventBus
 from pharmacy_os.modules.inventory.application import (
     DispenseInput,
     InventoryService,
     ReceiveStockInput,
 )
-from pharmacy_os.modules.inventory.domain import StockMovedIn, StockMovedOut
+from pharmacy_os.modules.inventory.domain import (
+    StockMovedIn,
+    StockMovedOut,
+    StockReconciliationNeeded,
+)
+from pharmacy_os.modules.inventory.infrastructure import SqlAlchemyStockReconciliationRepository
 
 
 async def test_receive_reflects_on_hand(
@@ -160,3 +165,85 @@ async def test_receive_and_dispense_each_leave_an_audit_row(
         dispensed = await repo.list(ctx.tenant_id, action=AuditAction.INVENTORY_STOCK_DISPENSED)
         matching = [e for e in dispensed if e.target_id == str(drug_id)]
         assert len(matching) == 1
+
+
+# --- reconciliation: tra cứu + xử lý ca va chạm lô/lỗi GRN --------------------
+
+
+async def _seed_reconciliation(
+    session_factory: async_sessionmaker[AsyncSession],
+    ctx: RequestContext,
+    *,
+    resolved: bool = False,
+) -> StockReconciliationNeeded:
+    record = StockReconciliationNeeded(
+        tenant_id=ctx.tenant_id,
+        branch_id=ctx.branch_id,
+        grn_id=uuid4(),
+        reason="lot_collision: mẫu test",
+        resolved=resolved,
+    )
+    async with session_factory() as session:
+        repo = SqlAlchemyStockReconciliationRepository(session, ctx)
+        await repo.add(record)
+        await session.commit()
+    return record
+
+
+async def test_list_reconciliations_filters_by_resolved(
+    inventory_service: InventoryService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    open_record = await _seed_reconciliation(session_factory, ctx, resolved=False)
+    closed_record = await _seed_reconciliation(session_factory, ctx, resolved=True)
+
+    everything = await inventory_service.list_reconciliations(ctx)
+    assert {r.id for r in everything} == {open_record.id, closed_record.id}
+
+    only_open = await inventory_service.list_reconciliations(ctx, resolved=False)
+    assert [r.id for r in only_open] == [open_record.id]
+
+    only_closed = await inventory_service.list_reconciliations(ctx, resolved=True)
+    assert [r.id for r in only_closed] == [closed_record.id]
+
+
+async def test_resolve_reconciliation_leaves_an_audit_row(
+    inventory_service: InventoryService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Does not trust the call sites to be wired — reads the table back."""
+    record = await _seed_reconciliation(session_factory, ctx)
+
+    resolved = await inventory_service.resolve_reconciliation(record.id, ctx)
+    assert resolved.resolved is True
+
+    fetched = await inventory_service.list_reconciliations(ctx, resolved=True)
+    assert [r.id for r in fetched] == [record.id]
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        entries = await repo.list(
+            ctx.tenant_id, action=AuditAction.INVENTORY_RECONCILIATION_RESOLVED
+        )
+        matching = [e for e in entries if e.target_id == str(record.id)]
+        assert len(matching) == 1
+        assert matching[0].actor_user_id == ctx.user_id
+
+
+async def test_resolve_already_resolved_reconciliation_rejected(
+    inventory_service: InventoryService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    record = await _seed_reconciliation(session_factory, ctx, resolved=True)
+    with pytest.raises(ConflictError):
+        await inventory_service.resolve_reconciliation(record.id, ctx)
+
+
+async def test_resolve_unknown_reconciliation_raises(
+    inventory_service: InventoryService, ctx: RequestContext
+) -> None:
+    with pytest.raises(NotFoundError):
+        await inventory_service.resolve_reconciliation(uuid4(), ctx)

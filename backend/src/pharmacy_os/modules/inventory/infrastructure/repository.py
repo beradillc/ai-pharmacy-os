@@ -189,6 +189,59 @@ class SqlAlchemyStockReconciliationRepository:
         )
         await self._session.flush()
 
+    async def get(self, record_id: UUID, tenant_id: UUID) -> StockReconciliationNeeded | None:
+        stmt = select(StockReconciliationNeededORM).where(
+            StockReconciliationNeededORM.id == record_id,
+            StockReconciliationNeededORM.tenant_id == tenant_id,
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return _reconciliation_to_domain(row) if row is not None else None
+
+    async def update(self, record: StockReconciliationNeeded) -> None:
+        stmt = select(StockReconciliationNeededORM).where(
+            StockReconciliationNeededORM.id == record.id,
+            StockReconciliationNeededORM.tenant_id == record.tenant_id,
+        )
+        row = (await self._session.execute(stmt)).scalar_one()
+        row.resolved = record.resolved
+        await self._session.flush()
+
+    async def list(
+        self,
+        tenant_id: UUID,
+        branch_id: UUID,
+        *,
+        resolved: bool | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[StockReconciliationNeeded]:
+        stmt = select(StockReconciliationNeededORM).where(
+            StockReconciliationNeededORM.tenant_id == tenant_id,
+            StockReconciliationNeededORM.branch_id == branch_id,
+        )
+        if resolved is not None:
+            stmt = stmt.where(StockReconciliationNeededORM.resolved == resolved)
+        stmt = (
+            stmt.order_by(StockReconciliationNeededORM.occurred_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [_reconciliation_to_domain(r) for r in rows]
+
+
+def _reconciliation_to_domain(row: StockReconciliationNeededORM) -> StockReconciliationNeeded:
+    return StockReconciliationNeeded(
+        id=row.id,
+        tenant_id=row.tenant_id,
+        branch_id=row.branch_id,
+        grn_id=row.grn_id,
+        po_item_id=row.po_item_id,
+        reason=row.reason,
+        resolved=row.resolved,
+        occurred_at=row.occurred_at,
+    )
+
 
 def _batch_to_domain(row: ProductBatchORM) -> ProductBatch:
     return ProductBatch(

@@ -107,6 +107,7 @@ def ctx() -> RequestContext:
                 "inventory.read",
                 "inventory.receive",
                 "inventory.dispense",
+                "inventory.reconcile",
                 "sales.read",
                 "sales.create",
                 "sales.return",

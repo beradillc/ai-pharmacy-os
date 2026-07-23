@@ -17,7 +17,7 @@ import structlog
 from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
-from pharmacy_os.core.errors import ConflictError, ValidationError
+from pharmacy_os.core.errors import ConflictError, NotFoundError, ValidationError
 from pharmacy_os.core.security import require_permission
 from pharmacy_os.modules.inventory.application.dto import (
     AllocationOutput,
@@ -27,6 +27,7 @@ from pharmacy_os.modules.inventory.application.dto import (
     NearExpiryItem,
     ReceiptOutput,
     ReceiveStockInput,
+    ReconciliationOutput,
     SaleDispenseItem,
 )
 from pharmacy_os.modules.inventory.domain import (
@@ -34,6 +35,7 @@ from pharmacy_os.modules.inventory.domain import (
     LowStockDetected,
     MovementType,
     ProductBatch,
+    ReconciliationAlreadyResolvedError,
     StockMovedIn,
     StockMovedOut,
     StockMovement,
@@ -417,6 +419,56 @@ class InventoryService:
             )
             for b in found
         ]
+
+    async def list_reconciliations(
+        self,
+        ctx: RequestContext,
+        *,
+        resolved: bool | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[ReconciliationOutput]:
+        """List the caller branch's stock-reconciliation flags, newest first."""
+        require_permission(ctx, "inventory.reconcile")
+        async with self._uow_factory() as uow:
+            reconciliations = self._reconciliations(uow, ctx)
+            found = await reconciliations.list(
+                ctx.tenant_id, ctx.branch_id, resolved=resolved, limit=limit, offset=offset
+            )
+        return [ReconciliationOutput.of(r) for r in found]
+
+    async def resolve_reconciliation(
+        self, reconciliation_id: UUID, ctx: RequestContext
+    ) -> ReconciliationOutput:
+        """Mark a stock-reconciliation flag as handled.
+
+        404 if unknown for the tenant; 409 if already resolved. Who/when is the
+        audit trail's job (:class:`AuditAction.INVENTORY_RECONCILIATION_RESOLVED`),
+        not a new column on the record itself.
+        """
+        require_permission(ctx, "inventory.reconcile")
+        async with self._uow_factory() as uow:
+            reconciliations = self._reconciliations(uow, ctx)
+            record = await reconciliations.get(reconciliation_id, ctx.tenant_id)
+            if record is None:
+                raise NotFoundError(f"Không tìm thấy mục đối soát {reconciliation_id}")
+            try:
+                record.resolve()
+            except ReconciliationAlreadyResolvedError as exc:
+                raise ConflictError(str(exc)) from exc
+            await reconciliations.update(record)
+            await uow.commit()
+
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=AuditAction.INVENTORY_RECONCILIATION_RESOLVED,
+                target_type="stock_reconciliation_needed",
+                target_id=str(record.id),
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+        )
+        return ReconciliationOutput.of(record)
 
     async def _record(
         self, ctx: RequestContext, action: AuditAction, target_type: str, target_id: UUID
