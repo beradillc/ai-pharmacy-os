@@ -1212,14 +1212,12 @@ kiểm tra trước khi coi tính năng là dùng được.
 | 6 | Badge `domain coverage 97%` trong README | Số liệu từ Sprint 3, chưa đo lại — không biết còn đúng không |
 | 7 | Bộ test backend chậm dần trong phiên (1:27 → 4:09) | Chưa cần xử lý ngay; cách rẻ nhất đã biết là hạ vòng bcrypt trong test |
 
-### D. Nợ cũ hơn, nằm ngoài phạm vi phiên này — CẦN RÀ LẠI RIÊNG, không ghi nhận vội ở đây
+### D. `TODO.md` — ✅ ĐÃ RÀ LẠI (2026-07-23, mục A6 danh sách ưu tiên đã duyệt)
 
-`TODO.md` đề ngày cập nhật cuối **2026-07-22** — **đã lỗi thời so với khối lượng việc đã làm trong
-phiên này và phiên trước** (ví dụ dòng 40 vẫn ghi "dev-header tạm, thay bằng JWT thật khi có IAM"
-dù IAM đã xong; mục Sprint 6 vẫn ghi "ĐANG MỞ" dù đã đóng theo ROADMAP/PROJECT_STATE). File này
-cần một lượt rà lại toàn bộ riêng, đối chiếu với `PROJECT_STATE.md` (nguồn sự thật) — **Claude
-không tự sửa hàng loạt ngay bây giờ** vì rủi ro sai do thiếu ngữ cảnh đầy đủ của các phiên cũ hơn
-những gì đã đọc trong phiên này. Còn ít nhất các nợ sau trong đó **chưa được xác nhận lại**:
+8 mục lệch đã sửa (xem commit `3d7a9be`): dev-header/IAM, S4.6 FE 5/5, Compliance C.5+router+audit,
+Sprint 6 backend đóng, audit `prescription`, TT11/2025 đã có trong `docs/legal`. **Không rà toàn
+bộ file** — chỉ sửa dòng xác nhận được bằng lệnh thật hoặc đối chiếu PROJECT_STATE, đúng cảnh báo
+thận trọng đã ghi khi mở mục này. Nợ sau **vẫn còn, đã xác nhận lại còn đúng** (không phải bỏ sót):
 FK `drugs.atc_code → atc_codes` chưa bật · persist trả hàng (`register_return`) chưa nối tồn ·
 HTTP endpoint tạo/liệt kê `active_ingredients` · nối `LLMProvider` → Claude thật (`AnthropicProvider`,
 vẫn `# BLOCKER: AI__API_KEY thật`).
