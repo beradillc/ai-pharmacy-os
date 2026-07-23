@@ -114,7 +114,18 @@ class CustomerOutput:
     uses this (together with the caller's permissions) to decide what to return."""
 
     @classmethod
-    def of(cls, customer: Customer) -> CustomerOutput:
+    def of(cls, customer: Customer, *, include_sensitive: bool = True) -> CustomerOutput:
+        """Build the DTO, optionally withholding the health data.
+
+        ``include_sensitive=False`` returns empty allergy/condition/history lists
+        rather than raising: a cashier looking a customer up to attach them to a sale
+        has a legitimate reason to see the name and phone, and no reason at all to
+        see the diagnoses (NĐ356 Điều 4.2 · GPP TT02 I-1a.III.4.a). Withholding is
+        the whole point of splitting ``crm.read`` from ``crm.sensitive.read``.
+
+        ``consents`` is **not** withheld: knowing whether consent exists is what lets
+        counter staff ask for it, and the record itself carries no health data.
+        """
         return cls(
             id=customer.id,
             full_name=customer.full_name,
@@ -123,7 +134,9 @@ class CustomerOutput:
             gender=customer.gender,
             weight_kg=customer.weight_kg,
             national_id_hash=customer.national_id_hash,
-            allergies=[
+            allergies=[]
+            if not include_sensitive
+            else [
                 AllergyOutput(
                     id=a.id,
                     ingredient_id=a.ingredient_id,
@@ -132,11 +145,15 @@ class CustomerOutput:
                 )
                 for a in customer.allergies
             ],
-            conditions=[
+            conditions=[]
+            if not include_sensitive
+            else [
                 ConditionOutput(id=c.id, condition_code=c.condition_code, note=c.note)
                 for c in customer.conditions
             ],
-            history=[
+            history=[]
+            if not include_sensitive
+            else [
                 MedicationHistoryOutput(
                     id=h.id,
                     drug_id=h.drug_id,

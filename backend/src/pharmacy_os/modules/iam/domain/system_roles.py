@@ -34,6 +34,10 @@ CRM_PERMISSIONS = frozenset(
         # it unlocks: counter staff take the decision at the till, but must not be
         # able to read what it authorises (Luật 91/2025 Điều 9 · NĐ356 Điều 4.2).
         "crm.consent.manage",
+        # Reading and writing the health data itself is a separate authority from
+        # touching the customer record (NĐ356 Điều 4.2).
+        "crm.sensitive.read",
+        "crm.sensitive.write",
     }
 )
 COMPLIANCE_PERMISSIONS = frozenset(

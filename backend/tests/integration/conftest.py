@@ -127,6 +127,8 @@ def ctx() -> RequestContext:
                 "crm.read",
                 "crm.write",
                 "crm.consent.manage",
+                "crm.sensitive.read",
+                "crm.sensitive.write",
                 "procurement.supplier.create",
                 "procurement.supplier.read",
                 "procurement.po.create",
@@ -237,6 +239,7 @@ def crm_service(
     return CrmService(
         uow_factory,
         lambda uow, c: SqlAlchemyCustomerRepository(uow.session, c),
+        AuditLogger(session_factory),
     )
 
 

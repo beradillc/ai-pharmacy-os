@@ -187,10 +187,11 @@ def wire_safety_checks(container: Container) -> None:
         ctx: RequestContext,
     ) -> None:
         try:
-            customer = await crm.get_customer(customer_id, ctx)
+            # A purpose-built read: ingredient ids and severities only, audited as a
+            # machine check rather than as somebody opening the patient's file.
+            severities = await crm.allergy_severities_for_safety_check(customer_id, ctx)
         except NotFoundError:
             return  # customer record gone; nothing to match against
-        severities = {a.ingredient_id: a.severity for a in customer.allergies}
         if not severities:
             return
         result = await clinical.check_allergies(
