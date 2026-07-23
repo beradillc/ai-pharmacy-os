@@ -1193,7 +1193,7 @@ kiểm tra trước khi coi tính năng là dùng được.
 
 | Tính năng | Bước đã xong | Còn lại | Chi tiết ở |
 |-----------|--------------|---------|-----------|
-| S4.6 FE POS | 4/5 (CORS, scaffold, auth, tra thuốc+giỏ+thanh toán) | Bước 5 — hàng đợi offline Dexie. **Chưa thật sự "offline-first"** dù tên Sprint | §7o |
+| S4.6 FE POS | ✅ **5/5 XONG** (CORS, scaffold, auth, tra thuốc+giỏ+thanh toán, hàng đợi offline Dexie) | Chưa click-through trình duyệt thật (môi trường không có browser tool) — sếp tự kiểm trước khi coi "offline-first" là dùng được thật | §7s |
 | Hồ sơ sức khỏe KH | ✅ **4/4 XONG** (cổng đồng ý, tách quyền+audit, quyền chủ thể dữ liệu+DPIA, cập nhật role+tài liệu) | Không còn — vẫn treo `SalesOrder.customer_id` (Q5, cross-module riêng, không phải nợ Bước 4) | §7m |
 | Module `compliance` | ✅ **Router đã mount 2026-07-23** — 6 endpoint (`controlled-ledger` POST/GET, `tenant-config` PUT/GET, `sync-logs` POST/GET), 5 test e2e mới | Không còn — trụ cột 2 thương hiệu đã có API để UI gọi | §7q |
 | Audit coverage | ✅ `iam` (11) + `crm` (6) + `prescription` (4, mới) + `compliance` (2, mới) = **23 action, 4/9 module** | Còn 5/9 module chưa ghi audit: `sales`, `inventory`, `procurement`, `clinical`, `catalog` — không thuộc nhóm ưu tiên đã duyệt phiên này | §7r |
@@ -1302,6 +1302,48 @@ lặng lẽ hết còn đúng nữa.
 ⚠️ **Còn treo, ghi rõ không giấu:** `sales`/`inventory`/`procurement`/`clinical`/`catalog` (5/9
 module) vẫn chưa có audit — không thuộc phạm vi đã duyệt phiên này, để riêng cho lần rà tiếp theo
 nếu sếp/GĐ quyết định mở rộng thêm.
+
+---
+
+## 7s. S4.6 Bước 5 — Dexie offline queue: XONG (2026-07-23, mục #7 danh sách ưu tiên đã duyệt)
+
+> Backend `/sync/sales` đã có sẵn từ Sprint 4 (idempotent theo `client_uuid`) — phiên này chỉ xây
+> phần FE dùng nó. Không sửa module backend nào.
+
+**3 file mới** trong `frontend/src/shared/offline/`:
+
+| File | Vai trò |
+|---|---|
+| `db.ts` | Bảng Dexie `pendingSales`, khóa = chính `client_uuid` của đơn (không thể lưu trùng) |
+| `sync-queue.ts` | `enqueueSale` (lưu khi mất mạng) · `flushQueue` (phát lại qua `POST /sync/sales` theo đúng thứ tự đã lưu) |
+| `use-offline-sync.ts` | Hook tự flush khi mount + khi có sự kiện `online`, gắn ở `(pos)/layout.tsx` nên chạy trên mọi màn POS |
+
+**`useCheckout` sửa để phân 2 loại lỗi:** `ApiError` (server đã trả lời — từ chối thật, VD thiếu
+tồn) → ném lại, hiện lỗi cho thu ngân, **không** lưu vào hàng đợi. Lỗi khác (bản thân `fetch` không
+kết nối được) → lưu vào hàng đợi, trả về "đã lưu tạm, chưa mất". Đơn bị server từ chối trong lúc
+`flushQueue` phát lại thì bị bỏ khỏi hàng đợi ngay — không giữ lại retry vô hạn (sẽ chặn mọi đơn
+xếp sau nó trong cùng hàng đợi).
+
+**UI:** header POS hiện huy hiệu "N đơn chờ đồng bộ" khi hàng đợi không rỗng; thông báo sau thanh
+toán phân biệt rõ "đã bán thành công" (server xác nhận) vs "không có mạng — đã lưu tạm" (đang chờ
+đồng bộ) — không đánh đồng 2 trạng thái để thu ngân khỏi tưởng nhầm.
+
+**Kiểm chứng đã làm:** `tsc`/`eslint`/`next build` sạch; `next dev` thật chạy, `/login` và `/` trả
+200, không lỗi runtime trong log server.
+
+⚠️ **Giới hạn kiểm chứng, không overclaim:** môi trường không có trình duyệt/công cụ browser —
+**chưa từng** tự tay ngắt mạng (DevTools Offline hoặc tắt Wi-Fi thật), gõ đơn, bật mạng lại xem đơn
+có tự đồng bộ đúng không. Logic đã review kỹ (phân biệt `ApiError` vs lỗi mạng, thứ tự phát lại,
+dequeue khi bị từ chối thật) nhưng **hành vi IndexedDB + sự kiện `online` thật trong trình duyệt
+chưa được diễn tập**. Sếp cần tự mở `http://localhost:3000`, tắt mạng thử thanh toán, bật lại mạng
+xem huy hiệu "chờ đồng bộ" có tự về 0 không, trước khi coi Bước 5 là dùng được thật.
+
+**Giới hạn thiết kế đã biết (ghi trong code + README):** phân biệt "mất mạng" vs "lỗi JS khác" chỉ
+dựa vào việc lỗi có phải `ApiError` hay không — đơn giản, đủ cho MVP, nhưng không phân biệt được
+mất mạng thật với các lỗi runtime hiếm khác không phải bị server từ chối.
+
+**Chưa có bộ test tự động (vitest/playwright)** cho luồng offline — cùng nợ đã ghi ở §7o cho toàn
+bộ `frontend/`, không phải nợ riêng của Bước 5.
 
 ---
 

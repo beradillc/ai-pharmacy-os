@@ -8,6 +8,7 @@ import { useCheckout } from "@/features/sales/use-checkout";
 import { useDrugs } from "@/features/sales/use-drugs";
 import { ApiError } from "@/shared/api/errors";
 import type { Drug } from "@/shared/api/types";
+import { useOfflineSync } from "@/shared/offline/use-offline-sync";
 
 import styles from "./page.module.css";
 
@@ -25,7 +26,8 @@ export default function PosPage() {
 
   const checkout = useCheckout();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [lastSaleId, setLastSaleId] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<{ id: string; queued: boolean } | null>(null);
+  const { pendingCount, refreshCount } = useOfflineSync();
 
   const total = cartTotal(lines);
 
@@ -41,8 +43,9 @@ export default function PosPage() {
   async function handleCheckout() {
     setCheckoutError(null);
     try {
-      const sale = await checkout.mutateAsync({ lines, amountPaid: String(total) });
-      setLastSaleId(sale.id);
+      const result = await checkout.mutateAsync({ lines, amountPaid: String(total) });
+      setLastResult({ id: result.sale?.id ?? result.clientUuid, queued: result.queued });
+      if (result.queued) refreshCount();
       clearCart();
     } catch (err) {
       setCheckoutError(err instanceof ApiError ? err.problem.detail : "Thanh toán thất bại");
@@ -54,6 +57,9 @@ export default function PosPage() {
       <header className={styles.header}>
         <span className={styles.brand}>BERAS</span>
         <span className={styles.branchTag}>Chi nhánh: {session?.branch_id.slice(0, 8)}</span>
+        {pendingCount > 0 && (
+          <span className={styles.pendingTag}>{pendingCount} đơn chờ đồng bộ</span>
+        )}
         <button className={styles.logout} onClick={logout}>
           Đăng xuất
         </button>
@@ -133,9 +139,15 @@ export default function PosPage() {
           </div>
 
           {checkoutError && <p className={styles.error}>{checkoutError}</p>}
-          {lastSaleId && (
-            <p className={styles.success}>Đã bán thành công — mã đơn {lastSaleId.slice(0, 8)}</p>
-          )}
+          {lastResult &&
+            (lastResult.queued ? (
+              <p className={styles.hint}>
+                Không có mạng — đã lưu đơn tại máy, sẽ tự đồng bộ khi có mạng lại (mã tạm{" "}
+                {lastResult.id.slice(0, 8)})
+              </p>
+            ) : (
+              <p className={styles.success}>Đã bán thành công — mã đơn {lastResult.id.slice(0, 8)}</p>
+            ))}
 
           <button
             className={styles.checkoutButton}
