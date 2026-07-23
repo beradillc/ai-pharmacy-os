@@ -14,6 +14,7 @@ from pharmacy_os.modules.inventory.domain.events import (
 )
 from pharmacy_os.modules.inventory.domain.exceptions import (
     InsufficientStockError,
+    LotExpiryMismatchError,
     ReconciliationAlreadyResolvedError,
 )
 from pharmacy_os.modules.inventory.domain.fefo import Allocation, BatchAvailability, allocate_fefo
@@ -34,6 +35,7 @@ __all__ = [
     "LowStockDetected",
     "StockShortfallDetected",
     "InsufficientStockError",
+    "LotExpiryMismatchError",
     "ReconciliationAlreadyResolvedError",
     "Allocation",
     "BatchAvailability",

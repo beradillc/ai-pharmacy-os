@@ -56,8 +56,12 @@
 - [x] ~~`StarletteDeprecationWarning` (httpx + TestClient)~~ — **XONG 2026-07-23**: thêm `httpx2` vào
       dev deps, `starlette.testclient` tự ưu tiên dùng, không cần sửa code.
 - [x] API resolve `stock_reconciliation_needed` (`GET`/`POST .../resolve`, quyền `inventory.reconcile`,
-      audit `INVENTORY_RECONCILIATION_RESOLVED`) — **XONG 2026-07-23** (PROJECT_STATE §7ab). Nợ mang
-      sang Sprint 7 còn lại: gộp lô (PA B), `MedicationHistoryEntry` tự động, dị ứng OTC, outbox bền.
+      audit `INVENTORY_RECONCILIATION_RESOLVED`) — **XONG 2026-07-23** (PROJECT_STATE §7ab).
+- [x] Gộp lô (PA B) — cùng `(drug_id, branch_id, lot_no, expiry_date)` thì gộp (giá vốn bình quân gia
+      quyền), khác HSD thì không gộp (422 ở nhập tay, flag reconciliation ở GRN như cũ) — **XONG
+      2026-07-23** (PROJECT_STATE §7ac, GĐ tự chốt theo full-auto). **Nợ mang sang Sprint 7 còn lại
+      (cross-module/kiến trúc lớn hơn, đề nghị phiên Opus riêng):** `MedicationHistoryEntry` tự động,
+      dị ứng OTC (+ migration `SalesOrder.customer_id`), outbox bền, module `analytics` + report.
 
 ---
 

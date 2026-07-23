@@ -32,6 +32,7 @@ from pharmacy_os.modules.inventory.application.dto import (
 )
 from pharmacy_os.modules.inventory.domain import (
     InsufficientStockError,
+    LotExpiryMismatchError,
     LowStockDetected,
     MovementType,
     ProductBatch,
@@ -80,31 +81,46 @@ class InventoryService:
         self._reorder_point = reorder_point
 
     async def receive_stock(self, data: ReceiveStockInput, ctx: RequestContext) -> ReceiptOutput:
-        """Receive a batch: create it, append an IN movement, project the balance.
+        """Receive a batch: create it (or fold into an existing same-lot batch — PA B),
+        append an IN movement, project the balance.
 
-        Emits :class:`StockMovedIn` after commit. Raises :class:`ValidationError`
-        if the received quantity is not strictly positive.
+        Emits :class:`StockMovedIn` after commit. Raises :class:`ValidationError` if
+        the received quantity is not strictly positive, or if ``(drug_id, branch_id,
+        lot_no)`` already exists with a **different** expiry date (a same lot number
+        must carry the same expiry — a mismatch is a data-entry problem, not a
+        legitimate re-delivery, so it is never merged nor silently duplicated).
         """
         require_permission(ctx, "inventory.receive")
         if data.quantity <= 0:
             raise ValidationError("Số lượng nhập phải > 0")
 
-        batch = ProductBatch(
-            drug_id=data.drug_id,
-            branch_id=ctx.branch_id,
-            tenant_id=ctx.tenant_id,
-            lot_no=data.lot_no,
-            expiry_date=data.expiry_date,
-            mfg_date=data.mfg_date,
-            cost_price=data.cost_price,
-            quantity_received=data.quantity,
-        )
         async with self._uow_factory() as uow:
             batches = self._batches(uow, ctx)
             movements = self._movements(uow, ctx)
             balances = self._balances(uow, ctx)
 
-            await batches.add(batch)
+            existing = await batches.find_by_lot(data.drug_id, ctx.branch_id, data.lot_no)
+            if existing is not None:
+                try:
+                    existing.ensure_mergeable_expiry(data.expiry_date)
+                except LotExpiryMismatchError as exc:
+                    raise ValidationError(str(exc)) from exc
+                existing.merge_receipt(data.quantity, data.cost_price)
+                await batches.update(existing)
+                batch = existing
+            else:
+                batch = ProductBatch(
+                    drug_id=data.drug_id,
+                    branch_id=ctx.branch_id,
+                    tenant_id=ctx.tenant_id,
+                    lot_no=data.lot_no,
+                    expiry_date=data.expiry_date,
+                    mfg_date=data.mfg_date,
+                    cost_price=data.cost_price,
+                    quantity_received=data.quantity,
+                )
+                await batches.add(batch)
+
             await movements.add(
                 StockMovement(
                     drug_id=batch.drug_id,
@@ -287,16 +303,19 @@ class InventoryService:
     async def receive_from_goods_receipt(
         self, lines: list[GoodsReceiptLine], grn_id: UUID, ctx: RequestContext
     ) -> None:
-        """React to a confirmed goods-receipt note: create one batch per line.
+        """React to a confirmed goods-receipt note: create one batch per line (or
+        fold into an existing same-lot batch — PA B, same rule as manual receive).
 
         Idempotent on ``grn_id`` (skips entirely if this GRN's stock-in already
         ran — every IN movement it writes carries ``ref_type="grn"``,
         ``ref_id=grn_id``). A line whose ``(drug_id, branch_id, lot_no)`` already
-        exists is **skipped, not merged** (consistent with the ``uq_batch_lot``
-        constraint the manual receive relies on) and flagged in
-        ``stock_reconciliation_needed``. Any unexpected failure aborts the whole
-        transaction and is likewise flagged best-effort in a fresh transaction —
-        the GRN is already confirmed, so a silent stock gap is never left behind.
+        exists **and matches expiry** is merged (:meth:`ProductBatch.merge_receipt`);
+        a mismatch is **skipped, not merged** and flagged in
+        ``stock_reconciliation_needed`` — a confirmed GRN can't be interactively
+        corrected, so a genuine data anomaly still needs a human to look at it. Any
+        unexpected failure aborts the whole transaction and is likewise flagged
+        best-effort in a fresh transaction — the GRN is already confirmed, so a
+        silent stock gap is never left behind.
         """
         require_permission(ctx, "inventory.receive")
         try:
@@ -314,31 +333,39 @@ class InventoryService:
                         continue
                     existing = await batches.find_by_lot(line.drug_id, ctx.branch_id, line.lot_no)
                     if existing is not None:
-                        await reconciliations.add(
-                            StockReconciliationNeeded(
-                                tenant_id=ctx.tenant_id,
-                                branch_id=ctx.branch_id,
-                                grn_id=grn_id,
-                                po_item_id=line.po_item_id,
-                                reason=(
-                                    f"lot_collision: drug={line.drug_id} lot={line.lot_no} "
-                                    f"trùng lô đã có (batch {existing.id}); bỏ qua, không gộp"
-                                ),
+                        try:
+                            existing.ensure_mergeable_expiry(line.expiry_date)
+                        except LotExpiryMismatchError:
+                            await reconciliations.add(
+                                StockReconciliationNeeded(
+                                    tenant_id=ctx.tenant_id,
+                                    branch_id=ctx.branch_id,
+                                    grn_id=grn_id,
+                                    po_item_id=line.po_item_id,
+                                    reason=(
+                                        f"lot_collision: drug={line.drug_id} lot={line.lot_no} "
+                                        f"trùng lô đã có (batch {existing.id}) nhưng khác HSD; "
+                                        f"bỏ qua, không gộp"
+                                    ),
+                                )
                             )
+                            continue
+                        existing.merge_receipt(line.quantity, line.unit_cost)
+                        await batches.update(existing)
+                        batch = existing
+                    else:
+                        batch = ProductBatch(
+                            drug_id=line.drug_id,
+                            branch_id=ctx.branch_id,
+                            tenant_id=ctx.tenant_id,
+                            lot_no=line.lot_no,
+                            expiry_date=line.expiry_date,
+                            mfg_date=line.mfg_date,
+                            cost_price=line.unit_cost,
+                            quantity_received=line.quantity,
                         )
-                        continue
+                        await batches.add(batch)
 
-                    batch = ProductBatch(
-                        drug_id=line.drug_id,
-                        branch_id=ctx.branch_id,
-                        tenant_id=ctx.tenant_id,
-                        lot_no=line.lot_no,
-                        expiry_date=line.expiry_date,
-                        mfg_date=line.mfg_date,
-                        cost_price=line.unit_cost,
-                        quantity_received=line.quantity,
-                    )
-                    await batches.add(batch)
                     await movements.add(
                         StockMovement(
                             drug_id=line.drug_id,

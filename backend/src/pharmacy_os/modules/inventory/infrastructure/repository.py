@@ -45,6 +45,16 @@ class SqlAlchemyBatchRepository:
         )
         await self._session.flush()
 
+    async def update(self, batch: ProductBatch) -> None:
+        stmt = select(ProductBatchORM).where(
+            ProductBatchORM.id == batch.id,
+            ProductBatchORM.tenant_id == self._ctx.tenant_id,
+        )
+        row = (await self._session.execute(stmt)).scalar_one()
+        row.quantity_received = batch.quantity_received
+        row.cost_price = batch.cost_price
+        await self._session.flush()
+
     async def get(self, batch_id: UUID) -> ProductBatch | None:
         stmt = select(ProductBatchORM).where(
             ProductBatchORM.id == batch_id,

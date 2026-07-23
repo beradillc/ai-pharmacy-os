@@ -18,6 +18,10 @@ from pharmacy_os.modules.inventory.domain.fefo import BatchAvailability
 class BatchRepository(Protocol):
     async def add(self, batch: ProductBatch) -> None: ...
 
+    async def update(self, batch: ProductBatch) -> None:
+        """Persist ``quantity_received``/``cost_price`` after :meth:`ProductBatch.merge_receipt`."""
+        ...
+
     async def get(self, batch_id: UUID) -> ProductBatch | None: ...
 
     async def find_by_lot(self, drug_id: UUID, branch_id: UUID, lot_no: str) -> ProductBatch | None:

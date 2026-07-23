@@ -15,7 +15,10 @@ from pharmacy_os.modules.inventory.application import (
     ReceiveStockInput,
 )
 from pharmacy_os.modules.inventory.domain import StockMovedIn
-from pharmacy_os.modules.inventory.infrastructure import StockReconciliationNeededORM
+from pharmacy_os.modules.inventory.infrastructure import (
+    ProductBatchORM,
+    StockReconciliationNeededORM,
+)
 
 _EXPIRY = date(2027, 1, 1)
 
@@ -37,6 +40,16 @@ async def _reconciliations(
     async with session_factory() as session:
         rows = (await session.execute(select(StockReconciliationNeededORM))).scalars().all()
         return list(rows)
+
+
+async def _batch_by_lot(
+    session_factory: async_sessionmaker[AsyncSession], drug_id: UUID, lot_no: str
+) -> ProductBatchORM:
+    async with session_factory() as session:
+        stmt = select(ProductBatchORM).where(
+            ProductBatchORM.drug_id == drug_id, ProductBatchORM.lot_no == lot_no
+        )
+        return (await session.execute(stmt)).scalar_one()
 
 
 async def test_creates_one_batch_per_line(
@@ -74,7 +87,51 @@ async def test_idempotent_on_grn_id(
     assert await inventory_service.on_hand(drug, ctx) == Decimal("20")  # created once
 
 
-async def test_lot_collision_skips_line_and_flags_reconciliation(
+async def test_lot_collision_same_expiry_merges(
+    inventory_service: InventoryService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """PA B: a colliding lot with a matching expiry folds into the existing batch."""
+    drug = uuid4()
+    # A batch for (drug, branch, lot "L1") already exists (manual receive).
+    await inventory_service.receive_stock(
+        ReceiveStockInput(
+            drug_id=drug,
+            lot_no="L1",
+            expiry_date=_EXPIRY,
+            quantity=Decimal("10"),
+            cost_price=Decimal("1000"),
+        ),
+        ctx,
+    )
+
+    await inventory_service.receive_from_goods_receipt(
+        [
+            GoodsReceiptLine(
+                drug_id=drug,
+                lot_no="L1",
+                expiry_date=_EXPIRY,  # same expiry -> merges, not a collision
+                unit_cost=Decimal("1200"),
+                quantity=Decimal("10"),
+            ),
+            _line(drug, lot="L2", qty="7"),  # new lot -> created as its own batch
+        ],
+        uuid4(),
+        ctx,
+    )
+
+    # Merged line landed fully: 10 (pre) + 10 (merged) + 7 (new lot).
+    assert await inventory_service.on_hand(drug, ctx) == Decimal("27")
+    assert await _reconciliations(session_factory) == []  # no discrepancy — it merged cleanly
+
+    merged = await _batch_by_lot(session_factory, drug, "L1")
+    assert merged.quantity_received == Decimal("20")  # 10 + 10, one batch row, not two
+    # Weighted average: (10*1000 + 10*1200) / 20 = 1100.
+    assert merged.cost_price == Decimal("1100.00")
+
+
+async def test_lot_collision_different_expiry_skips_and_flags_reconciliation(
     inventory_service: InventoryService,
     ctx: RequestContext,
     session_factory: async_sessionmaker[AsyncSession],
@@ -95,7 +152,14 @@ async def test_lot_collision_skips_line_and_flags_reconciliation(
     colliding_po_item = uuid4()
     await inventory_service.receive_from_goods_receipt(
         [
-            _line(drug, lot="L1", qty="5", po_item_id=colliding_po_item),  # collides -> skipped
+            GoodsReceiptLine(
+                drug_id=drug,
+                lot_no="L1",
+                expiry_date=date(2027, 6, 1),  # same lot, different HSD -> real anomaly
+                unit_cost=Decimal("1000"),
+                quantity=Decimal("5"),
+                po_item_id=colliding_po_item,
+            ),
             _line(drug, lot="L2", qty="7"),  # new lot -> created
         ],
         uuid4(),

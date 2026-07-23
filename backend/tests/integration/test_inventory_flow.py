@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pharmacy_os.core.audit import AuditAction, SqlAlchemyAuditLogRepository
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.core.errors import ConflictError, NotFoundError
+from pharmacy_os.core.errors import ConflictError, NotFoundError, ValidationError
 from pharmacy_os.core.events import DomainEvent, InMemoryEventBus
 from pharmacy_os.modules.inventory.application import (
     DispenseInput,
@@ -247,3 +247,41 @@ async def test_resolve_unknown_reconciliation_raises(
 ) -> None:
     with pytest.raises(NotFoundError):
         await inventory_service.resolve_reconciliation(uuid4(), ctx)
+
+
+# --- gộp lô (PA B): nhập lại cùng (drug, chi nhánh, lô) -----------------------
+
+
+async def test_receive_same_lot_same_expiry_merges(
+    inventory_service: InventoryService, ctx: RequestContext
+) -> None:
+    drug_id = uuid4()
+    await inventory_service.receive_stock(
+        ReceiveStockInput(drug_id, "L1", date(2027, 1, 1), Decimal("10"), Decimal("1000")), ctx
+    )
+    receipt = await inventory_service.receive_stock(
+        ReceiveStockInput(drug_id, "L1", date(2027, 1, 1), Decimal("10"), Decimal("1200")), ctx
+    )
+
+    # Same batch, not a second one — on-hand reflects both receipts.
+    assert await inventory_service.on_hand(drug_id, ctx) == Decimal("20")
+    first_receipt_batch_id = receipt.batch_id
+    again = await inventory_service.receive_stock(
+        ReceiveStockInput(drug_id, "L1", date(2027, 1, 1), Decimal("5"), Decimal("900")), ctx
+    )
+    assert again.batch_id == first_receipt_batch_id
+
+
+async def test_receive_same_lot_different_expiry_rejected(
+    inventory_service: InventoryService, ctx: RequestContext
+) -> None:
+    drug_id = uuid4()
+    await inventory_service.receive_stock(
+        ReceiveStockInput(drug_id, "L1", date(2027, 1, 1), Decimal("10"), Decimal("1000")), ctx
+    )
+    with pytest.raises(ValidationError):
+        await inventory_service.receive_stock(
+            ReceiveStockInput(drug_id, "L1", date(2027, 6, 1), Decimal("5"), Decimal("1000")), ctx
+        )
+    # Rejected before any write: on-hand untouched.
+    assert await inventory_service.on_hand(drug_id, ctx) == Decimal("10")

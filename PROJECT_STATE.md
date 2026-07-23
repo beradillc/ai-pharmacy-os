@@ -1702,6 +1702,53 @@ dị ứng OTC, outbox/retry bền, module `analytics` + report (Sprint 7 mới)
 
 ---
 
+## 7ac. Gộp lô (PA B) — XONG cho cả 2 luồng (2026-07-23, GĐ tự chốt theo full-auto)
+
+> Sếp: "tiếp tục theo GĐ cố vấn". Full-auto (§7k mục CHẾ ĐỘ FULL-AUTO) liệt kê rõ "Quyết định
+> nghiệp vụ/pháp lý" là loại quyết định Claude được tự chốt khi sếp bận việc khác — kỷ luật #3 gốc
+> của dự án còn nêu đích danh **"gộp lô hay bỏ qua"** làm ví dụ, nay full-auto cho phép tự quyết,
+> ghi rõ ở đây để xem lại.
+
+**Quyết định (tự chốt):** gộp lô khi **cùng** `(drug_id, branch_id, lot_no, expiry_date)` — thêm điều
+kiện HSD khớp so với PA B gốc chỉ nói `(drug_id, branch_id, lot_no)`, vì cùng số lô từ nhà sản xuất
+đương nhiên phải cùng HSD; nếu số lô trùng nhưng HSD khác nhau, đó là bất thường dữ liệu thật (nhập
+nhầm số lô, hoặc 2 lô thật trùng số ngẫu nhiên), **không gộp** — xử lý khác nhau theo luồng:
+- **`receive_stock` (nhập tay):** HSD khác → `ValidationError` (422), từ chối ngay, dược sĩ tự sửa lại
+  ngay tại chỗ (đây là luồng tương tác, sửa được ngay, không cần bảng đối soát).
+- **`receive_from_goods_receipt` (GRN xác nhận):** HSD khác → **giữ nguyên hành vi cũ** (bỏ qua dòng +
+  ghi `stock_reconciliation_needed`) — GRN không sửa được tương tác, cần con người tra lại sau (nay có
+  API resolve từ §7ab).
+
+**Công thức gộp:** `quantity_received` cộng dồn; `cost_price` = bình quân gia quyền theo số lượng
+(`(qty_cũ*giá_cũ + qty_mới*giá_mới) / (qty_cũ+qty_mới)`) — quy ước kế toán tồn kho chuẩn, không phải
+số liệu tự suy đoán. Gộp vào **cùng 1 batch** (không tạo batch mới) — `StockMovement` mới vẫn ghi vào
+đúng `batch_id` đã có, nên FEFO/on-hand không cần đổi gì.
+
+**Đã làm:**
+- Domain: `ProductBatch.merge_receipt(quantity, cost_price)` + `ensure_mergeable_expiry(expiry_date)`
+  (raise `LotExpiryMismatchError` nếu khác HSD).
+- Port `BatchRepository.update()` mới (trước đây chỉ `add`, chưa từng cần sửa batch đã tồn tại).
+- `receive_stock`: kiểm tra `find_by_lot` trước — có rồi + khớp HSD → gộp; có rồi + khác HSD → 422;
+  chưa có → tạo batch mới như cũ. (Trước đây `receive_stock` **không hề kiểm tra trùng lô** — nhập
+  trùng sẽ vỡ ở `uq_batch_lot` thành `IntegrityError` thô 500; nay đã có luồng xử lý tử tế.)
+- `receive_from_goods_receipt`: cùng logic kiểm tra, nhánh khác HSD giữ nguyên hành vi flag cũ.
+
+**Test mới:** `test_inventory_flow.py` (gộp cùng HSD giữ nguyên `batch_id`, khác HSD → 422, không ghi
+gì khi bị từ chối) · `test_cross_module_goods_receipt.py` (đổi tên
+`test_lot_collision_skips_line_and_flags_reconciliation` → 2 test: `..._same_expiry_merges` (xác nhận
+giá vốn bình quân gia quyền đúng công thức) + `..._different_expiry_skips_and_flags_reconciliation`
+(giữ nguyên hành vi cũ, chỉ đổi để dùng HSD thật sự khác thay vì trùng HSD như test cũ — test cũ vô
+tình đặt cùng HSD nên giờ hành vi đổi từ "skip" sang "merge", phải viết lại cho đúng ý nghĩa mới).
+
+**Bằng chứng:** `ruff` sạch (check+format) · `mypy --strict` **212 file** · `import-linter` **13/0**
+(không đổi contract) · `pytest` **exit code 0**. Không có migration mới.
+
+**Nợ còn lại (cross-module/kiến trúc lớn hơn — đề nghị phiên Opus riêng, không tiếp tục Sonnet):**
+`MedicationHistoryEntry` tự động, dị ứng OTC (+ migration `SalesOrder.customer_id`), outbox/retry bền,
+module `analytics` + report (Sprint 7 mới, cần sếp mô tả yêu cầu trước khi thiết kế).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
@@ -1714,6 +1761,7 @@ dị ứng OTC, outbox/retry bền, module `analytics` + report (Sprint 7 mới)
 | 2026-07-23 | Audit `catalog` (`DRUG_CREATED`) — **mạch 5 module đóng, 9/9 module có audit** — xem §7z. |
 | 2026-07-23 | Persist trả hàng (`register_return`, sales-side only) — GĐ chốt KHÔNG auto-restock tồn kho, xem §7aa. |
 | 2026-07-23 | Nhóm rủi ro thấp đã duyệt: httpx2 dep fix, ROADMAP checkbox fix, API resolve `stock_reconciliation_needed` — xem §7ab. |
+| 2026-07-23 | Gộp lô (PA B) cho cả `receive_stock` + GRN — GĐ tự chốt theo full-auto, xem §7ac. |
 | 2026-07-23 | **DỪNG PHIÊN theo yêu cầu sếp — gom điểm dừng toàn phiên vào §7p.** Sếp muốn phiên sau bàn sắp xếp lại ưu tiên với GĐ trước khi tiếp tục code. §7p liệt kê trung lập (không xếp hạng): trạng thái kỹ thuật lúc dừng (2 tiến trình nền còn chạy — uvicorn 8000, next dev 3000; tenant demo còn trên Postgres), 6 việc tính năng đang dở dang, 7 việc treo ngoài phạm vi code (thương hiệu chưa ghi vào `ChienLuoc/`, câu hỏi lẻ-hay-chuỗi, tagline lệch, gộp hỏi luật sư, badge chưa đo lại...), và cảnh báo `TODO.md` đã lỗi thời (đề 2026-07-22, một số dòng sai so với thực tế — cần rà lại riêng, không tự sửa hàng loạt ngay vì thiếu ngữ cảnh phiên cũ). |
 | 2026-07-23 | **S4.6 FE POS tối thiểu — 4/5 bước (phiên Sonnet, xem §7o).** Hồi sinh từ nợ ROADMAP Sprint 4. `frontend/` mới hoàn toàn (Next.js+TS+TanStack Query+Zustand), theo `docs/04` §3 + `docs/16` brand guide. 4 commit: CORS (`cb3809e`, ngoại lệ backend duy nhất, xin phép trước) → scaffold (`2bcea7f`) → auth JWT thật (`c642c34`) → tra thuốc/giỏ hàng/thanh toán (`ba547c4`). **3 phát hiện lệch docs/11-thực tế**: API `sales` thật là `POST /sales` gộp 1 lệnh (không phải `/sales-orders`+`/payments`+`/complete` như doc); `GET /drugs` không có tham số tìm kiếm; **không nguồn giá bán nào trong backend** (chỉ có `inventory.cost_price` — giá vốn) nên thu ngân nhập tay giá — khoảng trống sản phẩm thật. Kiểm chứng bằng curl mô phỏng đúng request FE trên backend live (không chỉ đọc code) — khớp 100% type đã viết; `next dev` thật chạy sạch. **Giới hạn: không có trình duyệt trong môi trường, chưa từng click-through UI thật** — chỉ xác nhận hợp đồng API + server không crash. **Bước 5 (Dexie offline) chưa làm.** Để lại tài khoản demo `fe-demo@beral.vn`/`MatKhauFeDemo2026` trên Postgres để sếp login thử ngay. |
 | 2026-07-23 | **CHỐT PHIÊN — 20 commit, xem §7n.** Phiên Opus dài: `iam` thật (4 bước) → `audit_logs` persist (3 bước) → Hồ sơ sức khỏe KH qua cổng docs/14 (Bước 0-3, còn Bước 4) → thương hiệu **BERAS** + `docs/16_BRAND_UI_GUIDE.md`. Cổng cuối: ruff sạch · mypy strict 210 file · import-linter 13/0 · pytest **560** · alembic `0015` (head) · git sạch. **5 bug thật** phát hiện và vá (nặng nhất: lỗ hổng `X-Branch-Id` đang chạy; role hệ thống không cập nhật khi nâng cấp mà 505 test vẫn xanh). **14 quyết định Claude tự chốt trong full-auto** liệt kê đủ ở §7n để sếp đọc lướt. Phiên sau bắt đầu: đóng Bước 4 → mount router `compliance` → audit cho `prescription`+`compliance`. |

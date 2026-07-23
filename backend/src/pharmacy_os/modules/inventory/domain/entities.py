@@ -14,7 +14,10 @@ from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from pharmacy_os.modules.inventory.domain.exceptions import ReconciliationAlreadyResolvedError
+from pharmacy_os.modules.inventory.domain.exceptions import (
+    LotExpiryMismatchError,
+    ReconciliationAlreadyResolvedError,
+)
 
 
 class MovementType(StrEnum):
@@ -40,6 +43,30 @@ class ProductBatch:
 
     def is_expired(self, on: date | None = None) -> bool:
         return self.expiry_date < (on or date.today())
+
+    def merge_receipt(self, quantity: Decimal, cost_price: Decimal) -> None:
+        """Fold another delivery of the *same physical lot* into this batch (PA B).
+
+        Only valid when the incoming ``expiry_date`` matches this batch's — callers
+        must check that themselves (:class:`LotExpiryMismatchError` otherwise) since
+        this method only has this batch's own data. ``cost_price`` becomes the
+        weighted average of the existing and incoming quantities; ``quantity_received``
+        accumulates. Callers still record the matching ``StockMovement``/balance
+        adjustment against *this* batch's id — merging never creates a new batch row.
+        """
+        if quantity <= 0:
+            raise ValueError("Số lượng gộp lô phải > 0")
+        total = self.quantity_received + quantity
+        self.cost_price = (self.quantity_received * self.cost_price + quantity * cost_price) / total
+        self.quantity_received = total
+
+    def ensure_mergeable_expiry(self, expiry_date: date) -> None:
+        """Raise :class:`LotExpiryMismatchError` if *expiry_date* doesn't match this batch's."""
+        if self.expiry_date != expiry_date:
+            raise LotExpiryMismatchError(
+                f"Lô '{self.lot_no}' đã tồn tại với HSD {self.expiry_date}, "
+                f"không khớp HSD mới {expiry_date} — không thể gộp"
+            )
 
 
 @dataclass(slots=True)

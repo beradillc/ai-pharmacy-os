@@ -20,3 +20,11 @@ class InsufficientStockError(InventoryError):
 
 class ReconciliationAlreadyResolvedError(InventoryError):
     """Raised when resolving a :class:`StockReconciliationNeeded` already marked resolved."""
+
+
+class LotExpiryMismatchError(InventoryError):
+    """Raised when a lot number collides but the expiry date does not match (PA B — gộp lô).
+
+    Same ``lot_no`` from a manufacturer implies the same ``expiry_date``; a mismatch
+    is a data-entry problem, not a legitimate re-delivery, so it is never merged.
+    """
