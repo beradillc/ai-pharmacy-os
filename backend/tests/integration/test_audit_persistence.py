@@ -227,11 +227,11 @@ async def test_token_replay_is_persisted(
     assert entries[0].target_type == "refresh_token"
 
 
-#: Customer-data, prescription, compliance, sales and inventory actions belong to
-#: their own feature's persistence suite (test_crm_privacy_api_e2e.py,
-#: test_prescription_flow.py, test_compliance_flow.py, test_sales_flow.py,
-#: test_inventory_flow.py); listing them here keeps the net below honest about
-#: what this file does *not* prove.
+#: Customer-data, prescription, compliance, sales, inventory and procurement
+#: actions belong to their own feature's persistence suite
+#: (test_crm_privacy_api_e2e.py, test_prescription_flow.py, test_compliance_flow.py,
+#: test_sales_flow.py, test_inventory_flow.py, test_procurement_flow.py); listing
+#: them here keeps the net below honest about what this file does *not* prove.
 _COVERED_ELSEWHERE = {
     AuditAction.CUSTOMER_SENSITIVE_READ,
     AuditAction.CUSTOMER_SENSITIVE_AUTO_CHECK,
@@ -248,6 +248,8 @@ _COVERED_ELSEWHERE = {
     AuditAction.SALE_COMPLETED,
     AuditAction.INVENTORY_STOCK_RECEIVED,
     AuditAction.INVENTORY_STOCK_DISPENSED,
+    AuditAction.PROCUREMENT_PO_ORDERED,
+    AuditAction.PROCUREMENT_GRN_CONFIRMED,
 }
 
 

@@ -260,6 +260,7 @@ def procurement_service(
         lambda uow, c: SqlAlchemySupplierRepository(uow.session, c),
         lambda uow, c: SqlAlchemyPurchaseOrderRepository(uow.session, c),
         lambda uow, c: SqlAlchemyGoodsReceiptRepository(uow.session, c),
+        AuditLogger(session_factory),
     )
 
 

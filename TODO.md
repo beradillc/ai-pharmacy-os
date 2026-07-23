@@ -178,6 +178,9 @@
       (**283 test**, 11 contract kept/0, không cross-module mới).
 - [x] Module `procurement` (Supplier, PO, GRN → inventory IN) — **XONG đủ 4 lớp** (domain `55d2586` → app/infra/migration
       `0011` `518dafe` → interface `7a53457`), cross-module GRN xác nhận → tạo lô inventory. Xem PROJECT_STATE §9.
+- [x] Audit cho `procurement` (2 action: `PROCUREMENT_PO_ORDERED`/`PROCUREMENT_GRN_CONFIRMED`, chỉ
+      2/7 use-case — bỏ qua CRUD hành chính) — **XONG 2026-07-23** (PROJECT_STATE §7x). **Còn lại
+      2/9 module chưa có audit:** `clinical`/`catalog`.
 
 ---
 

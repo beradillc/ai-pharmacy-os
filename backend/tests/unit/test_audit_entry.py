@@ -91,6 +91,8 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "SALE_COMPLETED",
         "INVENTORY_STOCK_RECEIVED",
         "INVENTORY_STOCK_DISPENSED",
+        "PROCUREMENT_PO_ORDERED",
+        "PROCUREMENT_GRN_CONFIRMED",
     }
     assert {a.value for a in AuditAction} == expected
 

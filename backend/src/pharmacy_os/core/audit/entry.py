@@ -99,6 +99,17 @@ class AuditAction(StrEnum):
     above: ``dispense_for_sale`` (the cross-module reaction to ``SaleCompleted``)
     is already covered by :attr:`SALE_COMPLETED`, not audited a second time here."""
 
+    # --- procurement (cam kết tài chính với NCC, xác nhận nhận hàng thật) ---
+    PROCUREMENT_PO_ORDERED = "PROCUREMENT_PO_ORDERED"
+    """DRAFT -> ORDERED — the moment a purchase order becomes a real financial
+    commitment to a supplier ("ai đã đặt đơn mua hàng này")."""
+
+    PROCUREMENT_GRN_CONFIRMED = "PROCUREMENT_GRN_CONFIRMED"
+    """A goods receipt note was confirmed — the fact that triggers real stock-in
+    ("ai đã xác nhận nhận lô hàng này"), same reasoning as
+    :attr:`INVENTORY_STOCK_RECEIVED`. The later ``inventory`` batch-creation step
+    is a separate cross-module reaction, not re-audited here."""
+
 
 @dataclass(frozen=True, slots=True)
 class AuditEntry:

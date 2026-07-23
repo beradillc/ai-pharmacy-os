@@ -3,7 +3,9 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pharmacy_os.core.audit import AuditAction, SqlAlchemyAuditLogRepository
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.errors import NotFoundError, PermissionDeniedError, ValidationError
 from pharmacy_os.core.events import DomainEvent, InMemoryEventBus
@@ -453,3 +455,57 @@ async def test_get_unknown_goods_receipt_404(
 ) -> None:
     with pytest.raises(NotFoundError):
         await procurement_service.get_goods_receipt(uuid4(), ctx)
+
+
+# --- audit trail: cam kết tài chính với NCC + xác nhận nhận hàng thật --------
+
+
+async def test_mark_ordered_and_confirm_receipt_each_leave_an_audit_row(
+    procurement_service: ProcurementService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Does not trust the call sites to be wired — reads the table back."""
+    supplier = await procurement_service.create_supplier(CreateSupplierInput(name="NCC Audit"), ctx)
+    drug_id = uuid4()
+    po = await procurement_service.create_purchase_order(
+        CreatePurchaseOrderInput(
+            supplier_id=supplier.id,
+            items=[
+                PurchaseOrderItemInput(
+                    drug_id=drug_id, quantity_ordered=Decimal("10"), unit_price=Decimal("1000")
+                )
+            ],
+        ),
+        ctx,
+    )
+    ordered = await procurement_service.mark_ordered(po.id, ctx)
+    grn = await procurement_service.create_goods_receipt(
+        CreateGoodsReceiptInput(
+            po_id=ordered.id,
+            items=[
+                GoodsReceiptItemInput(
+                    po_item_id=ordered.items[0].id,
+                    drug_id=drug_id,
+                    quantity_received=Decimal("10"),
+                    lot_no="LOT-AUDIT",
+                    expiry_date=_expiry(),
+                    unit_cost=Decimal("900"),
+                )
+            ],
+        ),
+        ctx,
+    )
+    confirmed = await procurement_service.confirm_goods_receipt(grn.id, ctx)
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+
+        po_entries = await repo.list(ctx.tenant_id, action=AuditAction.PROCUREMENT_PO_ORDERED)
+        matching = [e for e in po_entries if e.target_id == str(ordered.id)]
+        assert len(matching) == 1
+        assert matching[0].actor_user_id == ctx.user_id
+
+        grn_entries = await repo.list(ctx.tenant_id, action=AuditAction.PROCUREMENT_GRN_CONFIRMED)
+        matching = [e for e in grn_entries if e.target_id == str(confirmed.id)]
+        assert len(matching) == 1

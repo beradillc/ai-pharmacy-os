@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from uuid import UUID
 
+from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import NotFoundError, ValidationError
@@ -53,11 +54,13 @@ class ProcurementService:
         supplier_repo_factory: SupplierRepoFactory,
         po_repo_factory: PurchaseOrderRepoFactory,
         grn_repo_factory: GoodsReceiptRepoFactory,
+        audit: AuditLogger,
     ) -> None:
         self._uow_factory = uow_factory
         self._supplier_repo_factory = supplier_repo_factory
         self._po_repo_factory = po_repo_factory
         self._grn_repo_factory = grn_repo_factory
+        self._audit = audit
 
     # --- Supplier ---
 
@@ -170,6 +173,7 @@ class ProcurementService:
                 )
             )
             await uow.commit()
+        await self._record(ctx, AuditAction.PROCUREMENT_PO_ORDERED, "purchase_order", po.id)
         return PurchaseOrderOutput.of(po)
 
     async def cancel_purchase_order(self, po_id: UUID, ctx: RequestContext) -> PurchaseOrderOutput:
@@ -298,6 +302,7 @@ class ProcurementService:
                 )
             )
             await uow.commit()
+        await self._record(ctx, AuditAction.PROCUREMENT_GRN_CONFIRMED, "goods_receipt_note", grn.id)
         return GoodsReceiptOutput.of(grn)
 
     async def get_goods_receipt(self, grn_id: UUID, ctx: RequestContext) -> GoodsReceiptOutput:
@@ -330,3 +335,17 @@ class ProcurementService:
         if grn is None:
             raise NotFoundError(f"Không tìm thấy phiếu nhập kho {grn_id}")
         return grn
+
+    async def _record(
+        self, ctx: RequestContext, action: AuditAction, target_type: str, target_id: UUID
+    ) -> None:
+        """Append one audit row — metadata only, never price/supplier contact content."""
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=action,
+                target_type=target_type,
+                target_id=str(target_id),
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+        )

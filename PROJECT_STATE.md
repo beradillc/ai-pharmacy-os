@@ -1497,6 +1497,33 @@ lại lần 2 như sales — rút kinh nghiệm). Không có migration mới.
 
 ---
 
+## 7x. Audit cho `procurement` — XONG (2026-07-23, tiếp thứ tự GĐ đã chọn sau §7w)
+
+**Đã làm:** 2 action mới `PROCUREMENT_PO_ORDERED`/`PROCUREMENT_GRN_CONFIRMED` (`core/audit/entry.py`).
+`ProcurementService` nhận `audit: AuditLogger` bắt buộc (chỉ 1 call site ngoài `register.py`, giống
+`prescription`/`inventory`). `mark_ordered` (DRAFT→ORDERED, cam kết tài chính thật với NCC) ghi
+`PROCUREMENT_PO_ORDERED` (target = `po.id`); `confirm_goods_receipt` (xác nhận nhận hàng, kích hoạt
+nhập kho thật) ghi `PROCUREMENT_GRN_CONFIRMED` (target = `grn.id`).
+
+**Phạm vi đã chọn (tự quyết, full-auto #3):** chỉ 2/7 use-case của module — bỏ qua CRUD hành chính
+(`create_supplier`/`create_purchase_order` DRAFT/`add_po_item`/`cancel_purchase_order`/
+`close_purchase_order`) vì đây không phải "sự kiện thật không thể đảo ngược" mà thanh tra/kiểm toán
+cần truy vết — cùng logic độ nhạy cảm đã áp dụng cho `inventory` (§7w: chỉ audit hành vi tạo/xác nhận
+sự kiện thật, không audit mọi CRUD). Không audit lại bước cross-module tạo lô tồn kho từ GRN (đã có ở
+phía `inventory` khi làm module đó, tránh nhân đôi — xem §7w).
+
+**Test mới** (`tests/integration/test_procurement_flow.py`):
+`test_mark_ordered_and_confirm_receipt_each_leave_an_audit_row` (đọc lại bảng `audit_logs`, không tin
+call site, xác nhận đúng target_id cho cả 2 action, luồng đầy đủ supplier→PO→ordered→GRN→confirm).
+
+**Bằng chứng:** `ruff` sạch · `mypy --strict` **212 file** · `import-linter` **13/0** (không đổi
+contract) · `pytest` **exit code 0** (2 test exhaustiveness cập nhật ngay từ đầu, xanh ngay lần chạy
+đầu). Không có migration mới.
+
+**Nợ còn lại:** audit cho `clinical`/`catalog` (2/9 module).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
@@ -1504,6 +1531,7 @@ lại lần 2 như sales — rút kinh nghiệm). Không có migration mới.
 | 2026-07-23 | Endpoint HTTP `active_ingredients` (POST/GET) — nợ kỹ thuật đơn module, xem §7u. |
 | 2026-07-23 | Audit `sales` (`SALE_COMPLETED`) — GĐ chọn ưu tiên, xem §7v. |
 | 2026-07-23 | Audit `inventory` (`INVENTORY_STOCK_RECEIVED`/`DISPENSED`, chỉ 2 endpoint tay) — xem §7w. |
+| 2026-07-23 | Audit `procurement` (`PO_ORDERED`/`GRN_CONFIRMED`, chỉ 2/7 use-case) — xem §7x. |
 | 2026-07-23 | **DỪNG PHIÊN theo yêu cầu sếp — gom điểm dừng toàn phiên vào §7p.** Sếp muốn phiên sau bàn sắp xếp lại ưu tiên với GĐ trước khi tiếp tục code. §7p liệt kê trung lập (không xếp hạng): trạng thái kỹ thuật lúc dừng (2 tiến trình nền còn chạy — uvicorn 8000, next dev 3000; tenant demo còn trên Postgres), 6 việc tính năng đang dở dang, 7 việc treo ngoài phạm vi code (thương hiệu chưa ghi vào `ChienLuoc/`, câu hỏi lẻ-hay-chuỗi, tagline lệch, gộp hỏi luật sư, badge chưa đo lại...), và cảnh báo `TODO.md` đã lỗi thời (đề 2026-07-22, một số dòng sai so với thực tế — cần rà lại riêng, không tự sửa hàng loạt ngay vì thiếu ngữ cảnh phiên cũ). |
 | 2026-07-23 | **S4.6 FE POS tối thiểu — 4/5 bước (phiên Sonnet, xem §7o).** Hồi sinh từ nợ ROADMAP Sprint 4. `frontend/` mới hoàn toàn (Next.js+TS+TanStack Query+Zustand), theo `docs/04` §3 + `docs/16` brand guide. 4 commit: CORS (`cb3809e`, ngoại lệ backend duy nhất, xin phép trước) → scaffold (`2bcea7f`) → auth JWT thật (`c642c34`) → tra thuốc/giỏ hàng/thanh toán (`ba547c4`). **3 phát hiện lệch docs/11-thực tế**: API `sales` thật là `POST /sales` gộp 1 lệnh (không phải `/sales-orders`+`/payments`+`/complete` như doc); `GET /drugs` không có tham số tìm kiếm; **không nguồn giá bán nào trong backend** (chỉ có `inventory.cost_price` — giá vốn) nên thu ngân nhập tay giá — khoảng trống sản phẩm thật. Kiểm chứng bằng curl mô phỏng đúng request FE trên backend live (không chỉ đọc code) — khớp 100% type đã viết; `next dev` thật chạy sạch. **Giới hạn: không có trình duyệt trong môi trường, chưa từng click-through UI thật** — chỉ xác nhận hợp đồng API + server không crash. **Bước 5 (Dexie offline) chưa làm.** Để lại tài khoản demo `fe-demo@beral.vn`/`MatKhauFeDemo2026` trên Postgres để sếp login thử ngay. |
 | 2026-07-23 | **CHỐT PHIÊN — 20 commit, xem §7n.** Phiên Opus dài: `iam` thật (4 bước) → `audit_logs` persist (3 bước) → Hồ sơ sức khỏe KH qua cổng docs/14 (Bước 0-3, còn Bước 4) → thương hiệu **BERAS** + `docs/16_BRAND_UI_GUIDE.md`. Cổng cuối: ruff sạch · mypy strict 210 file · import-linter 13/0 · pytest **560** · alembic `0015` (head) · git sạch. **5 bug thật** phát hiện và vá (nặng nhất: lỗ hổng `X-Branch-Id` đang chạy; role hệ thống không cập nhật khi nâng cấp mà 505 test vẫn xanh). **14 quyết định Claude tự chốt trong full-auto** liệt kê đủ ở §7n để sếp đọc lướt. Phiên sau bắt đầu: đóng Bước 4 → mount router `compliance` → audit cho `prescription`+`compliance`. |
