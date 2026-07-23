@@ -25,6 +25,7 @@ from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.catalog.interface import register as register_catalog
 from pharmacy_os.modules.clinical.interface import register as register_clinical
 from pharmacy_os.modules.crm.interface import register as register_crm
+from pharmacy_os.modules.iam.interface import register as register_iam
 from pharmacy_os.modules.inventory.interface import register as register_inventory
 from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.interface import register as register_prescription
@@ -35,6 +36,10 @@ from pharmacy_os.modules.sales.interface import register as register_sales
 def build_api_router(container: Container) -> APIRouter:
     api = APIRouter(prefix="/api/v1")
     api.include_router(health_router)
+    # Iam first: it owns /auth (public) plus /users and /roles, and every other
+    # module's router depends on the context its tokens carry.
+    for iam_router in register_iam(container, get_context):
+        api.include_router(iam_router)
     api.include_router(register_catalog(container, get_context))
     api.include_router(register_inventory(container, get_context))
     api.include_router(register_prescription(container, get_context))

@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from pharmacy_os import __version__
+from pharmacy_os.api.deps import warn_if_dev_auth_enabled
 from pharmacy_os.api.v1 import build_api_router
 from pharmacy_os.core.bootstrap import build_container
 from pharmacy_os.core.config import Settings, get_settings
@@ -33,6 +34,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(debug=settings.app.debug)
+    warn_if_dev_auth_enabled(settings)
 
     app = FastAPI(
         title="AI Pharmacy OS",

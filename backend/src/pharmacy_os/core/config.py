@@ -72,6 +72,14 @@ class SecuritySettings(BaseSettings):
     refresh_ttl_days: int = 30
     require_2fa_roles: list[str] = Field(default_factory=lambda: ["pharmacist", "admin"])
 
+    allow_dev_auth: bool = False
+    """Accept ``X-Tenant-Id``/``X-Branch-Id``/``X-User-Id`` headers with a full
+    permission set when no Bearer token is present (``api.deps.get_context``).
+
+    Defaults to **off** so a misconfigured deployment fails closed: before iam the
+    fallback was on for everything except ``env == "prod"``, which meant one wrong
+    environment variable on staging left the API wide open (docs/15 §5 Q3)."""
+
 
 class Settings(BaseSettings):
     """Root settings object; the single entry point for configuration."""
@@ -92,8 +100,13 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _fail_fast_in_prod(self) -> Settings:
-        """Refuse to boot with placeholder secrets outside development."""
+        """Refuse to boot with placeholder secrets — or dev auth — in production."""
         if self.app.env == "prod":
+            if self.security.allow_dev_auth:
+                raise ValueError(
+                    "SECURITY__ALLOW_DEV_AUTH must be false in prod: it accepts "
+                    "unauthenticated requests with a full permission set"
+                )
             missing = [
                 name
                 for name, secret in (

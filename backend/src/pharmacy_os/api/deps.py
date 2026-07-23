@@ -1,58 +1,44 @@
 """Shared API dependencies: DI container access and request context.
 
-NOTE (interim, Sprint 3): the full IAM module (users/roles/JWT issuance) lands
-in Sprint 6. Until then, in non-production environments the context is
-synthesised from ``X-Tenant-Id`` / ``X-Branch-Id`` / ``X-User-Id`` headers with a
-development permission set. When an ``Authorization: Bearer`` token is present it
-is always decoded for real permissions. Production refuses unauthenticated calls.
+The context comes from the ``Authorization: Bearer`` token and **only** from it.
+Both the tenant and the branch are signed claims: permissions are resolved for one
+specific branch when the token is issued (``iam.AuthService``), so honouring a
+client-supplied ``X-Branch-Id`` on an authenticated request would hand the caller
+every branch of the tenant with the permissions of the one they were granted. That
+was the pre-iam behaviour and it is deliberately gone (docs/15 §0 F1/F2).
+
+A development fallback that synthesises a context from ``X-Tenant-Id`` /
+``X-Branch-Id`` / ``X-User-Id`` headers still exists for local work and the older
+integration tests, but it is now **fail-closed**: it requires
+``SECURITY__ALLOW_DEV_AUTH=true`` *and* a non-production environment, and
+``Settings`` refuses to boot if production ever sets that flag.
 """
 
 from __future__ import annotations
 
 from uuid import UUID
 
+import structlog
 from fastapi import Request
 
 from pharmacy_os.core.config import Settings
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.di import Container
-from pharmacy_os.core.errors import PermissionDeniedError
+from pharmacy_os.core.errors import UnauthenticatedError
 from pharmacy_os.core.security import JwtService
+from pharmacy_os.modules.iam.domain import ALL_PERMISSIONS
+
+_log = structlog.get_logger("api.auth")
 
 # Fixed development identities so balances persist across calls in a dev session.
 _DEV_TENANT = UUID("00000000-0000-0000-0000-0000000a0001")
 _DEV_BRANCH = UUID("00000000-0000-0000-0000-0000000b0001")
 _DEV_USER = UUID("00000000-0000-0000-0000-0000000d0001")
-_DEV_PERMISSIONS = frozenset(
-    {
-        "catalog.read",
-        "catalog.create",
-        "inventory.read",
-        "inventory.receive",
-        "inventory.dispense",
-        "sales.read",
-        "sales.create",
-        "rx.read",
-        "rx.create",
-        "rx.approve",
-        "rx.dispense",
-        "clinical.check",
-        "clinical.accept",
-        "clinical.settings.read",
-        "clinical.settings.write",
-        "crm.create",
-        "crm.read",
-        "crm.write",
-        "procurement.supplier.create",
-        "procurement.supplier.read",
-        "procurement.po.create",
-        "procurement.po.read",
-        "procurement.po.write",
-        "procurement.grn.create",
-        "procurement.grn.read",
-        "procurement.grn.confirm",
-    }
-)
+_DEV_PERMISSIONS = ALL_PERMISSIONS
+"""Every permission the codebase defines, taken from the iam role catalogue rather
+than a hand-maintained copy — the previous literal had drifted to 26 of the 32 codes
+actually used, silently making the compliance use-cases unreachable in dev
+(docs/15 §0 F3)."""
 
 
 def get_container(request: Request) -> Container:
@@ -67,16 +53,19 @@ def get_context(request: Request) -> RequestContext:
     auth = request.headers.get("Authorization")
     if auth and auth.startswith("Bearer "):
         payload = container.resolve(JwtService).decode(auth[len("Bearer ") :])
-        branch_header = request.headers.get("X-Branch-Id")
+        if payload.branch_id is None:
+            # Only tokens minted before the iam module lack the claim; they cannot be
+            # scoped to a branch, so they are no longer usable.
+            raise UnauthenticatedError("Token thiếu thông tin chi nhánh, vui lòng đăng nhập lại")
         return RequestContext(
             tenant_id=payload.tenant_id,
-            branch_id=UUID(branch_header) if branch_header else payload.tenant_id,
+            branch_id=payload.branch_id,
             user_id=payload.user_id,
             permissions=payload.permissions,
         )
 
-    if settings.app.env == "prod":
-        raise PermissionDeniedError("Yêu cầu xác thực")
+    if not settings.security.allow_dev_auth:
+        raise UnauthenticatedError("Yêu cầu xác thực")
 
     return RequestContext(
         tenant_id=UUID(request.headers.get("X-Tenant-Id", str(_DEV_TENANT))),
@@ -84,3 +73,16 @@ def get_context(request: Request) -> RequestContext:
         user_id=UUID(request.headers.get("X-User-Id", str(_DEV_USER))),
         permissions=_DEV_PERMISSIONS,
     )
+
+
+def warn_if_dev_auth_enabled(settings: Settings) -> None:
+    """Log loudly at startup when the header fallback is live."""
+    if settings.security.allow_dev_auth:
+        _log.warning(
+            "dev_auth_enabled",
+            detail=(
+                "SECURITY__ALLOW_DEV_AUTH=true: requests without a Bearer token are "
+                "accepted with full permissions. Never enable outside dev/test."
+            ),
+            env=settings.app.env,
+        )

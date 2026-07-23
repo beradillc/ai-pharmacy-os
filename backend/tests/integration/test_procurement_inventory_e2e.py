@@ -16,7 +16,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 
-from pharmacy_os.core.config import AppSettings, DatabaseSettings, Settings
+from pharmacy_os.core.config import AppSettings, DatabaseSettings, SecuritySettings, Settings
 from pharmacy_os.main import create_app
 from pharmacy_os.models_registry import Base
 
@@ -31,6 +31,7 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
     settings = Settings(
         app=AppSettings(env="dev", debug=True),
         db=DatabaseSettings(url=f"sqlite+aiosqlite:///{db_path}"),
+        security=SecuritySettings(allow_dev_auth=True),
     )
     with TestClient(create_app(settings)) as c:
         yield c
