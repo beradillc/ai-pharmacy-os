@@ -9,7 +9,9 @@
 1. **Versioned**: tiền tố `/api/v1`. Thay đổi phá vỡ → `/api/v2`.
 2. **Resource-oriented**: danh từ số nhiều (`/sales-orders`, `/drugs`).
 3. **Idempotency**: `Idempotency-Key` header (hoặc `client_uuid` body) cho POS offline.
-4. **Tenant/branch**: lấy từ JWT + header `X-Branch-Id`; không nhận từ query tùy tiện.
+4. **Tenant/branch**: **cả hai lấy từ claim JWT đã ký** (từ 2026-07-23, module `iam`). Header
+   `X-Branch-Id` KHÔNG còn được đọc trên request đã xác thực — trước đây có, và đó là lỗ hổng
+   (docs/15 §0 F1). Đổi chi nhánh: `POST /auth/switch-branch`.
 5. **Envelope lỗi chuẩn** RFC 7807 (problem+json).
 6. **Phân trang** cursor-based cho danh sách lớn.
 7. **RBAC**: mỗi endpoint gắn permission code.
@@ -72,6 +74,13 @@
 | DELETE | `/users/{id}/roles/{assignment_id}` | `iam.role.assign` |
 | GET | `/roles` | `iam.role.read` |
 
+### audit (hạ tầng kernel, không thuộc module nghiệp vụ)
+> Triển khai 2026-07-23. Chỉ mức đọc tối thiểu — dashboard/analytics vẫn là việc Sprint 7.
+
+| Method | Path | Permission |
+|--------|------|-----------|
+| GET | `/audit-logs?occurred_from=&occurred_to=&actor_user_id=&action=&limit=&offset=` | `audit.read` |
+
 ### catalog
 | Method | Path | Permission |
 |--------|------|-----------|
@@ -132,7 +141,7 @@
 | Method | Path | Permission |
 |--------|------|-----------|
 | GET | `/compliance/controlled-ledger` | `compliance.read` |
-| GET | `/compliance/audit-logs` | `compliance.audit` |
+| ~~GET~~ | ~~`/compliance/audit-logs`~~ | **ĐÃ THAY** bằng `GET /audit-logs` (`audit.read`) ở mục `audit` phía trên — audit là hạ tầng kernel dùng chung, không thuộc riêng compliance. Không làm 2 endpoint trùng chức năng. |
 | POST | `/compliance/submissions/retry` | `compliance.submit` |
 
 ### analytics
@@ -149,8 +158,7 @@
 **Request**
 ```http
 POST /api/v1/sales-orders
-Authorization: Bearer <jwt>
-X-Branch-Id: <uuid>
+Authorization: Bearer <jwt>          # tenant + branch nằm trong claim đã ký
 Idempotency-Key: 0192f...   # = client_uuid từ POS
 
 {
@@ -196,7 +204,8 @@ WS /api/v1/clinical/assistant
 
 - **Auth**: Bearer JWT (access ngắn hạn) + refresh token.
 - **Rate limit**: theo user + endpoint (Redis).
-- **Audit**: mọi POST/PUT/DELETE nhạy cảm ghi `audit_logs`.
+- **Audit**: ghi vào bảng `audit_logs` (append-only, migration `0014`) **và** log stream — hai đích
+  song song. Hiện phủ 11 hành vi của `iam`; mở rộng sang nghiệp vụ khác là việc tiếp theo.
 - **Validation**: Pydantic ở biên; domain rules ở trong.
 - **CORS**: whitelist origin FE.
 

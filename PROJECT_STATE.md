@@ -865,10 +865,7 @@ bền thay best-effort reconciliation; (5) API tra cứu/resolve `stock_reconcil
 1. **Thu hồi quyền trễ ≤60 phút** — access token TTL giữ 60 (D2). Refresh mới tính lại quyền. Cần
    tức thì thì phải vô hiệu hóa user (thu hồi luôn session).
 2. **Auth cho POS offline dài hạn CHƯA GIẢI** — lý do giữ TTL 60 thay vì hạ 15. Bài toán riêng.
-3. **`audit_logs` vẫn chỉ ghi structlog** (F8, nợ Sprint 7). IAM đã gọi audit đúng chỗ (login
-   thành công/thất bại/khóa, tạo/khóa user, gán/thu hồi role, đổi mật khẩu, replay refresh token)
-   nhưng chưa persist ⇒ **chưa chứng minh được ai truy cập gì** khi bị hỏi. GĐ khuyến nghị làm
-   ngay sau IAM, trước hồ sơ KH/tích điểm.
+3. ~~**`audit_logs` vẫn chỉ ghi structlog**~~ — **ĐÃ GỠ 2026-07-23, xem §7l.**
 4. **Tách `crm.read` → `crm.sensitive.read` chưa làm** (D8 chọn phương án a). Thu ngân hiện không
    có quyền crm nào; khi `SalesOrder` có `customer_id` thì phải quay lại tách.
 5. **Chưa gỡ hẳn dev-header** — 11 file test cũ vẫn opt-in `allow_dev_auth=True`. Chuyển hết e2e
@@ -877,6 +874,46 @@ bền thay best-effort reconciliation; (5) API tra cứu/resolve `stock_reconcil
    test hai chi nhánh phải dựng branch thẳng qua repository.
 7. **Module `compliance` vẫn chưa mount router** (F4) — không sửa ở bước này.
 8. Chưa làm: 2FA (`require_2fa_roles` có field nhưng chưa dùng), SSO, hiệu lực role theo thời gian.
+
+---
+
+## 7l. `audit_logs` — persist nhật ký truy vết (gỡ nợ F8) — ✅ XONG 3/3 bước (2026-07-23)
+
+> **Điều kiện đã chốt để mở `docs/14` cho Hồ sơ KH — nay ĐÃ THỎA.** 3 commit, mỗi bước 4 cổng xanh:
+> `8435b42` (hình dạng) → `05b7857` (persist + migration `0014`) → `aa521ec` (đọc + vá bug drift).
+
+| Hạng mục | Kết quả |
+|----------|---------|
+| Bảng `audit_logs` | `id`, `tenant_id`, `actor_user_id` (nullable), `action`, `target_type`, `target_id` (nullable), `occurred_at`, `context` (JSONB/JSON). 2 index: `(tenant_id, occurred_at)`, `(tenant_id, actor_user_id)` |
+| Append-only | Repository **không có** `update`/`delete` — ràng buộc cấu trúc, không phải quy ước. Có test khẳng định |
+| `AuditAction` | **11** giá trị (9 theo yêu cầu + `USER_ACTIVATED` + `PASSWORD_RESET` — IAM gọi thật, gom lại là mất thông tin) |
+| Ghi | DB (bắt buộc, transaction riêng) **+** structlog song song, không thay thế nhau |
+| `context` | CHỈ `client_ip` + `branch_id`. Có test khẳng định không lọt mật khẩu/token |
+| Đọc | `GET /api/v1/audit-logs` — lọc thời gian/actor/action + phân trang, quyền mới `audit.read` (chỉ `system_admin` + `chain_pharmacist`) |
+| Migration `0014_audit_logs` | up → check sạch → downgrade → up → check sạch lại. pg_dump trước: `~/backup_pre_migration_20260723_1244.sql` |
+| Cổng cuối | ruff sạch · mypy strict **208 file** · import-linter **13/0** · pytest **505** (+40) |
+
+**2 phát hiện khi kiểm chứng thật (không phải bug vặt — ghi lại vì đáng nhớ):**
+1. **Role hệ thống chỉ seed MỘT LẦN, không bao giờ cập nhật.** Deployment cài từ bản trước giữ
+   nguyên bộ permission cũ vĩnh viễn ⇒ admin gọi `/audit-logs` bị **403** dù code đã cấp quyền.
+   **Test suite không bắt được** vì luôn khởi tạo DB rỗng nên luôn đi nhánh insert; chỉ lộ khi chạy
+   CLI thật trên Postgres đã có dữ liệu. Đã sửa: `sync_system_roles()` (thêm mới + **cập nhật cái
+   đã lệch**), gọi trong bootstrap và thêm vào `seeds/run.py` ⇒ `make seed` sau nâng cấp là đủ.
+   Role riêng của tenant không bị đụng. +4 test hồi quy.
+2. **Cổng import-linter bắt vi phạm layers thật**: đặt `client_ip` ở `api/deps.py` khiến router
+   của `iam` import ngược lên tầng `api`. Đã hạ helper xuống `core/http.py`.
+
+**Nợ còn lại của phần audit (ghi rõ, không overclaim):**
+1. **Chỉ phủ 11 hành vi của `iam`.** Nghiệp vụ khác (bán hàng, cấp phát thuốc, đọc hồ sơ KH) **chưa
+   ghi audit** — khi làm Hồ sơ KH phải thêm action cho việc *đọc* dữ liệu nhạy cảm, vì đó mới đúng
+   là thứ NĐ356 Điều 4.2 quan tâm nhất.
+2. **`client_ip` sau reverse proxy sẽ ghi IP của proxy.** Cố ý không đọc `X-Forwarded-For` (client
+   gửi được ⇒ giả mạo được đúng chỗ không được phép giả mạo). Cần danh sách trusted-proxy.
+3. **Không có retention/xóa theo hạn.** GPP TT02/2018 II.4.d nói lưu tối thiểu; chưa có chính sách
+   xóa sau hạn, cũng chưa có ai hỏi.
+4. **Dashboard/analytics audit vẫn là việc Sprint 7** — cố ý chỉ làm mức tối thiểu, tránh trùng công.
+5. `GET /compliance/audit-logs` trong `docs/11` đã bị thay bằng `GET /audit-logs` (không làm 2
+   endpoint trùng chức năng).
 
 ---
 
@@ -923,6 +960,7 @@ nhiều đánh đổi:**
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-23 | **`audit_logs` XONG 3/3 bước — gỡ nợ F8, mở đường cho Hồ sơ KH.** Sếp lệnh persist `AuditLogger` thay vì chỉ đẩy log stream. 3 commit (`8435b42` hình dạng → `05b7857` persist + migration `0014` → `aa521ec` đọc + vá bug). Bảng append-only (repository KHÔNG có update/delete), `context` chỉ metadata (`client_ip`+`branch_id`, có test khẳng định không lọt mật khẩu/token — chép dữ liệu bị truy cập vào audit là tự tạo kho DLCN thứ hai ít được canh hơn kho nó bảo vệ). Ghi DB **và** structlog song song. `GET /audit-logs` mức tối thiểu + quyền mới `audit.read` (chỉ admin + dược sĩ cấp chuỗi). **2 phát hiện khi kiểm chứng thật:** (1) **role hệ thống chỉ seed 1 lần, không bao giờ cập nhật** ⇒ deployment cũ mãi thiếu permission mới, admin bị 403 dù code đã cấp — **test suite không bắt được vì luôn khởi tạo DB rỗng**, chỉ lộ khi chạy CLI thật trên Postgres đã có dữ liệu; đã sửa thành `sync_system_roles()` + đưa vào `seeds/run.py`, +4 test hồi quy; (2) cổng import-linter bắt vi phạm layers thật (`modules.iam` import `api.deps`) → hạ helper xuống `core/http.py`. **Quyết định tự chốt (full-auto):** lỗi ghi audit KHÔNG bị nuốt, cứ ném lên — bảng audit cùng CSDL với dữ liệu nghiệp vụ nên insert audit hỏng nghĩa là ghi nghiệp vụ cũng đang hỏng; nuốt lỗi không giúp bán được hàng, chỉ giấu việc nhật ký bị thủng (structlog phát TRƯỚC insert nên sự kiện không mất hẳn). Cổng: ruff sạch · mypy strict 208 file · import-linter 13/0 · pytest **505** (+40). **5 nợ ghi rõ ở §7l** — nặng nhất: mới phủ 11 hành vi của `iam`, nghiệp vụ khác (đọc hồ sơ KH) chưa ghi audit. |
 | 2026-07-23 | **Module IAM thật XONG 4/4 bước — blocker RBAC gỡ.** Phiên Opus: đọc §7k, khảo sát code thật, viết `docs/15_IAM_DESIGN.md` (thiết kế + trả lời 5 câu hỏi mở + 11 điểm chờ duyệt), **sếp duyệt trọn 11 điểm 1 lượt**, thi công 4 bước (`3bc148f` domain → `5c3bc08` app+infra+migration `0013_iam` → `4c64a4c` interface+deps+CLI). **6 phát hiện trong lúc khảo sát**: (F1 🔴) `api/deps.py` tin `X-Branch-Id` không kiểm tra → đổi header là truy cập chi nhánh khác trong tenant với nguyên bộ quyền — **đây là lỗ hổng thật đang chạy, IAM đã đóng bằng cách ký branch vào JWT**; (F2) thiếu header thì gán `branch_id = tenant_id`; (F3) `_DEV_PERMISSIONS` chỉ 26/32 permission thật, thiếu đúng 6 `compliance.*`; (F4) module `compliance` chưa mount router (chưa sửa); (F5) `TenantScopedMixin` ép `branch_id NOT NULL` nên iam phải tự khai cột; (F7) `crm.read` gộp cả dữ liệu nhạy cảm, ngược NĐ356 Điều 4.2. **Quyết định đáng nhớ**: refresh token revocable + xoay vòng + phát hiện replay (thay vì stateless — nhà thuốc có luân chuyển nhân sự thật, Luật 44/2024 Điều 47a.1.đ); giữ TTL access token 60 phút thay vì hạ 15 vì POS offline-first (đổi rủi ro lấy rủi ro, ghi nợ thay vì giả vờ giải xong); bootstrap bằng CLI chứ không endpoint (không mở thêm bề mặt tấn công); dev-header giữ nhưng mặc định TẮT (fail-closed); 5 role đặt tên theo chức danh nghiệp vụ bám Luật 44 Điều 17a; thu ngân không có `rx.approve`/`rx.dispense` (Luật Dược Điều 6.5.h) và không có `crm.*` (NĐ356 Điều 4.2 + GPP TT02 I-1a.III.4.a). Cổng cuối: ruff sạch · mypy strict 201 file · import-linter 13/0 (thêm `iam-domain-innermost`, thêm `iam` vào `module-independence` — sếp duyệt sửa contract cũ) · pytest **465** (+51). **8 nợ ghi rõ ở §7k, không overclaim** — nặng nhất: `audit_logs` vẫn chỉ ghi structlog nên chưa chứng minh được ai truy cập gì. |
 | 2026-07-23 | **Mở việc thiết kế IAM thật — DỪNG ngay ở bước khảo sát, chờ phiên Opus (KHÔNG code, KHÔNG thiết kế chi tiết).** Sếp lệnh thiết kế module `iam` (users/roles/JWT) thay dev-header, cross-module ảnh hưởng toàn hệ thống. Hỏi sếp model cho việc này (đúng quy tắc dự án: thiết kế mới hoàn toàn → Opus + phiên hạn mức đầy, phiên hiện tại là Sonnet) — **sếp chọn dừng, mở phiên Opus mới**. Đã khảo sát hạ tầng sẵn có để phiên sau không dò lại: `core/security/{jwt,password,rbac}.py` (JwtService.issue/decode, hash_password/verify_password, require_permission — đều đã chạy được từ Sprint 2), `core/context.py` (`RequestContext` đã có `branch_id` tách biệt `tenant_id`), `core/db/base.py` (`TenantScopedMixin`), 26 permission string thật đang dùng trong `api/deps.py._DEV_PERMISSIONS` trải 6 module, khung endpoint `iam` đã phác ở `docs/11_API_DESIGN.md` §3. Ghi toàn bộ vào §7k kèm 5 câu hỏi thiết kế mở (refresh token, bootstrap admin đầu tiên, có giữ dev-header song song không, mô hình role 2 cấp chuỗi/nhà thuốc, role seed ban đầu) để Opus quyết định có cơ sở, không phải dò từ đầu. |
 | 2026-07-23 | **Đọc + tóm tắt Luật Dược 105/2016/QH13 + Luật sửa đổi 44/2024/QH15 (đợt 2, KHÔNG code).** Sếp bổ sung 2 văn bản còn thiếu từ đợt 1: `Luật-105-2016-QH13.docx`, `Luật-44-2024-QH15.docx`. Đọc toàn văn, viết 2 file `docs/legal/*.SUMMARY.md` + cập nhật `docs/legal/README.md`. **4/4 văn bản pháp lý ban đầu sếp yêu cầu nay đã đủ.** Phát hiện quan trọng: (1) Luật Dược Điều 2.27-28 (định nghĩa thuốc kê đơn/không kê đơn) + Điều 6.5.h (cấm bán lẻ ETC không đơn) — **đây chính là nguồn Luật còn thiếu** mà `docs/13_COMPLIANCE_SPEC.md` dòng 14 đánh dấu "KHÔNG TÌM THẤY" cho rule "mọi thuốc ETC cần prescription_code"; Điều 75.2 (sửa bởi Luật 44/2024) cũng là nguồn Luật cấp cao nhất cho toàn bộ yêu cầu liên thông CSDL Dược (hiện docs/13 chỉ dẫn QĐ1867, chưa có gốc Luật) — **đã báo cáo sếp, chưa tự sửa spec đã khóa**. (2) Luật 44/2024 đưa vào khái niệm pháp lý mới **"chuỗi nhà thuốc"** (Điều 2.48, 17a, 47a): yêu cầu quản lý dữ liệu khách hàng thống nhất toàn chuỗi — **khớp sẵn** với kiến trúc `tenant_id`+`branch_id` đã có (`crm.Customer` scope theo tenant, không branch — đã validate đúng hướng, không cần sửa); nhưng cần role RBAC riêng "chuyên môn cấp chuỗi" vs "cấp nhà thuốc" khi thiết kế IAM. (3) Luật 44/2024 hợp pháp hóa thương mại điện tử dược (chỉ OTC được bán online) — ngoài ROADMAP hiện tại (POS offline-first), chỉ ghi nhận khung pháp lý. **Không code** — blocker RBAC/IAM (§7j mục 1) vẫn còn nguyên, 2 câu hỏi pháp lý mở (giấy phép DLCN, cập nhật docs/13) vẫn chờ sếp/luật sư. |
