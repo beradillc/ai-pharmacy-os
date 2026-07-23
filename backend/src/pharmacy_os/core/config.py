@@ -46,6 +46,21 @@ class AISettings(BaseSettings):
     min_confidence: float = 0.6
 
 
+class OrgSettings(BaseSettings):
+    """Pharmacy header printed on receipts (in bill, S7).
+
+    Single global default — there is no per-tenant organisation-profile module
+    yet. Promote to the DB ``settings`` table (docs/10_CONFIG.md §3, scope
+    TENANT) if/when multi-tenant deployments need a distinct header per pharmacy;
+    tracked as a known simplification, not silently assumed.
+    """
+
+    pharmacy_name: str = "Nhà thuốc"
+    address: str = ""
+    phone: str = ""
+    tax_code: str = ""
+
+
 class SecuritySettings(BaseSettings):
     jwt_secret: SecretStr = SecretStr(_PLACEHOLDER)
     jwt_ttl_minutes: int = 60
@@ -68,6 +83,7 @@ class Settings(BaseSettings):
     redis: RedisSettings = Field(default_factory=RedisSettings)
     ai: AISettings = Field(default_factory=AISettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
+    org: OrgSettings = Field(default_factory=OrgSettings)
 
     @model_validator(mode="after")
     def _fail_fast_in_prod(self) -> Settings:

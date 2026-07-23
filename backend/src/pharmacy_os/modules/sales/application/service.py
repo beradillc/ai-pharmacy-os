@@ -12,6 +12,7 @@ result **without** re-processing — so no duplicate order and no duplicate
 from __future__ import annotations
 
 from collections.abc import Callable
+from decimal import Decimal
 from uuid import UUID
 
 from pharmacy_os.core.context import RequestContext
@@ -20,6 +21,9 @@ from pharmacy_os.core.errors import ConflictError, NotFoundError, ValidationErro
 from pharmacy_os.core.security import require_permission
 from pharmacy_os.modules.sales.application.dto import (
     CreateSaleInput,
+    ReceiptLine,
+    ReceiptPayment,
+    ReceiptSummaryDTO,
     SaleLineInput,
     SaleOutput,
 )
@@ -166,3 +170,59 @@ class SalesService:
             repo = self._repo_factory(uow, ctx)
             order = await repo.by_client_uuid(client_uuid)
         return SaleOutput.of(order) if order is not None else None
+
+    async def get_receipt(self, order_id: UUID, ctx: RequestContext) -> ReceiptSummaryDTO:
+        """Build a printable receipt projection for a sale (reuses ``sales.read``).
+
+        Read-only — no new permission, no new mutation, no new persisted data;
+        just a different shape of an already-readable sale (S7 In bill, rút gọn
+        theo docs/14: không VAT, không chiết khấu — không có trong domain).
+        """
+        require_permission(ctx, "sales.read")
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            order = await repo.get(order_id)
+        if order is None:
+            raise NotFoundError(f"Không tìm thấy đơn bán {order_id}")
+
+        lines = []
+        for line in order.lines:
+            name, unit = await self._resolve_drug_display(line.drug_id, ctx)
+            lines.append(
+                ReceiptLine(
+                    drug_id=line.drug_id,
+                    name=name,
+                    unit=unit,
+                    quantity=line.quantity,
+                    unit_price=line.unit_price.amount,
+                    line_total=line.line_total.amount,
+                )
+            )
+        subtotal = order.subtotal.amount
+        paid_total = order.paid_total.amount
+        change_amount = paid_total - subtotal if paid_total > subtotal else Decimal("0")
+        return ReceiptSummaryDTO(
+            order_id=order.id,
+            tenant_id=order.tenant_id,
+            branch_id=order.branch_id,
+            created_at=order.created_at,
+            client_uuid=order.client_uuid,
+            currency=order.currency,
+            status=order.status.value,
+            lines=lines,
+            payments=[
+                ReceiptPayment(method=p.method, amount=p.amount.amount) for p in order.payments
+            ],
+            subtotal=subtotal,
+            paid_total=paid_total,
+            change_amount=change_amount,
+            prescription_ref=order.prescription_ref,
+        )
+
+    async def _resolve_drug_display(self, drug_id: UUID, ctx: RequestContext) -> tuple[str, str]:
+        """Display name/unit for a receipt line; falls back to the raw id."""
+        if self._drug_info is not None:
+            info = await self._drug_info.get(drug_id, ctx.tenant_id)
+            if info is not None and info.name:
+                return info.name, info.unit
+        return str(drug_id), ""

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -77,3 +78,53 @@ class SaleOutput:
                 for line in order.lines
             ],
         )
+
+
+@dataclass(slots=True)
+class ReceiptLine:
+    """One printable line: display facts resolved via ``DrugInfoProvider``.
+
+    ``name`` falls back to the raw ``drug_id`` (as text) when catalog doesn't
+    know the drug — never blank, so a receipt line is always printable.
+    """
+
+    drug_id: UUID
+    name: str
+    unit: str
+    quantity: Decimal
+    unit_price: Decimal
+    line_total: Decimal
+
+
+@dataclass(slots=True)
+class ReceiptPayment:
+    method: PaymentMethod
+    amount: Decimal
+
+
+@dataclass(slots=True)
+class ReceiptSummaryDTO:
+    """Printable projection of a completed sale — no VAT, no discount.
+
+    Neither concept exists in the sales domain today (audited 2026-07-23 for S7
+    In bill): there is no discount field anywhere on ``SalesOrder``/``SaleLine``,
+    and VAT computation was explicitly descoped by the business decision behind
+    this feature. ``change_amount`` is derived, not stored: the domain has no
+    separate tendered/change pair, only ``Payment.amount`` per tender; any
+    excess of ``paid_total`` over ``subtotal`` is treated as change due (floored
+    at 0 — ``SalesOrder.complete()`` already rejects underpayment).
+    """
+
+    order_id: UUID
+    tenant_id: UUID
+    branch_id: UUID
+    created_at: datetime
+    client_uuid: str
+    currency: str
+    status: str
+    lines: list[ReceiptLine]
+    payments: list[ReceiptPayment]
+    subtotal: Decimal
+    paid_total: Decimal
+    change_amount: Decimal
+    prescription_ref: UUID | None
