@@ -34,8 +34,12 @@ class OutboxEventORM(PkUuidMixin, Base):
         # The relay's hot query: "oldest PENDING rows that are due now". Ordering by
         # occurred_at is done separately; this index narrows to the claimable set.
         Index("ix_event_outbox_dispatch", "status", "next_attempt_at"),
-        # Retention / per-tenant inspection.
+        # Per-tenant inspection ("what did this pharmacy emit, when").
         Index("ix_event_outbox_tenant_occurred", "tenant_id", "occurred_at"),
+        # The retention sweep: "finished rows older than X". Leads with status like the
+        # dispatch index but ages on created_at, which that one cannot answer — without
+        # it a sweep scans every delivered row ever written.
+        Index("ix_event_outbox_retention", "status", "created_at"),
         # One row per event: re-collecting the same event (idempotent producer) or a
         # double-insert can never enqueue a duplicate delivery.
         UniqueConstraint("event_id", name="uq_event_outbox_event_id"),

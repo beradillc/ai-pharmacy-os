@@ -8,9 +8,10 @@ transitions round-trip through the table.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -19,6 +20,7 @@ from pharmacy_os.core.outbox import (
     OutboxStatus,
     SqlAlchemyOutboxRepository,
 )
+from pharmacy_os.core.outbox.models import OutboxEventORM
 
 
 def _record(*, occurred_at: datetime, event_type: str = "SampleEvent") -> OutboxRecord:
@@ -140,3 +142,111 @@ async def test_claim_respects_limit(
         claimed = await repo.claim_pending(base + timedelta(hours=1), limit=2)
         assert len(claimed) == 2
         assert claimed[0].status is OutboxStatus.PENDING
+
+
+async def _age_row(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_id: UUID,
+    *,
+    status: OutboxStatus,
+    created_at: datetime,
+) -> None:
+    """Backdate a row. ``created_at`` is a server default, so a test that cares about
+    age has to set it after the fact."""
+    async with session_factory() as session:
+        await session.execute(
+            update(OutboxEventORM)
+            .where(OutboxEventORM.event_id == event_id)
+            .values(status=status.value, created_at=created_at)
+        )
+        await session.commit()
+
+
+async def _surviving_event_ids(session_factory: async_sessionmaker[AsyncSession]) -> set[UUID]:
+    async with session_factory() as session:
+        rows = await session.execute(select(OutboxEventORM.event_id))
+        return set(rows.scalars().all())
+
+
+async def test_purge_deletes_only_finished_rows_past_the_cutoff(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    now = datetime(2026, 7, 24, 12, 0, tzinfo=UTC)
+    old_published = _record(occurred_at=now)
+    recent_published = _record(occurred_at=now)
+    old_pending = _record(occurred_at=now)
+    old_failed = _record(occurred_at=now)
+    async with session_factory() as session:
+        repo = SqlAlchemyOutboxRepository(session)
+        for rec in (old_published, recent_published, old_pending, old_failed):
+            await repo.add(rec)
+        await session.commit()
+
+    await _age_row(
+        session_factory,
+        old_published.event_id,
+        status=OutboxStatus.PUBLISHED,
+        created_at=now - timedelta(days=60),
+    )
+    await _age_row(
+        session_factory,
+        recent_published.event_id,
+        status=OutboxStatus.PUBLISHED,
+        created_at=now - timedelta(days=1),
+    )
+    await _age_row(
+        session_factory,
+        old_pending.event_id,
+        status=OutboxStatus.PENDING,
+        created_at=now - timedelta(days=3650),
+    )
+    await _age_row(
+        session_factory,
+        old_failed.event_id,
+        status=OutboxStatus.FAILED,
+        created_at=now - timedelta(days=3650),
+    )
+
+    async with session_factory() as session:
+        repo = SqlAlchemyOutboxRepository(session)
+        deleted = await repo.purge_terminal(
+            OutboxStatus.PUBLISHED, older_than=now - timedelta(days=30), limit=100
+        )
+        await session.commit()
+
+    assert deleted == 1
+    survivors = await _surviving_event_ids(session_factory)
+    assert old_published.event_id not in survivors
+    # Inside the window, undelivered, and a dead letter: all untouched by this sweep.
+    assert recent_published.event_id in survivors
+    assert old_pending.event_id in survivors
+    assert old_failed.event_id in survivors
+
+
+async def test_purge_respects_its_batch_limit(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    now = datetime(2026, 7, 24, 12, 0, tzinfo=UTC)
+    records = [_record(occurred_at=now) for _ in range(5)]
+    async with session_factory() as session:
+        repo = SqlAlchemyOutboxRepository(session)
+        for rec in records:
+            await repo.add(rec)
+        await session.commit()
+    for rec in records:
+        await _age_row(
+            session_factory,
+            rec.event_id,
+            status=OutboxStatus.PUBLISHED,
+            created_at=now - timedelta(days=60),
+        )
+
+    async with session_factory() as session:
+        repo = SqlAlchemyOutboxRepository(session)
+        deleted = await repo.purge_terminal(
+            OutboxStatus.PUBLISHED, older_than=now - timedelta(days=30), limit=2
+        )
+        await session.commit()
+
+    assert deleted == 2
+    assert len(await _surviving_event_ids(session_factory)) == 3

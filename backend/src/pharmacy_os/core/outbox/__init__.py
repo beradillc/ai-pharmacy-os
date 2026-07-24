@@ -13,6 +13,11 @@ from pharmacy_os.core.outbox.relay import (
     OutboxRelayConfig,
 )
 from pharmacy_os.core.outbox.repository import SqlAlchemyOutboxRepository
+from pharmacy_os.core.outbox.retention import (
+    OutboxRetention,
+    OutboxRetentionConfig,
+    PurgeResult,
+)
 from pharmacy_os.core.outbox.sink import OutboxEventSink
 
 __all__ = [
@@ -22,6 +27,9 @@ __all__ = [
     "OutboxRelay",
     "OutboxRelayConfig",
     "OutboxRepository",
+    "OutboxRetention",
+    "OutboxRetentionConfig",
     "OutboxStatus",
+    "PurgeResult",
     "SqlAlchemyOutboxRepository",
 ]

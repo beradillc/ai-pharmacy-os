@@ -14,10 +14,13 @@ inspection and retention is a separate, explicit sweep (not this port's job).
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Protocol
+from typing import Literal, Protocol
 from uuid import UUID
 
-from pharmacy_os.core.outbox.record import OutboxRecord
+from pharmacy_os.core.outbox.record import OutboxRecord, OutboxStatus
+
+TerminalStatus = Literal[OutboxStatus.PUBLISHED, OutboxStatus.FAILED]
+"""A status a row never leaves — the only kind retention is allowed to delete."""
 
 
 class OutboxRepository(Protocol):
@@ -52,4 +55,16 @@ class OutboxRepository(Protocol):
 
     async def mark_failed(self, record_id: UUID, *, retry_count: int, last_error: str) -> None:
         """Dead-letter: retries exhausted, no further automatic attempts."""
+        ...
+
+    async def purge_terminal(
+        self, status: TerminalStatus, *, older_than: datetime, limit: int
+    ) -> int:
+        """Delete at most *limit* finished rows created before *older_than*; return how many.
+
+        The one destructive operation on this port, and the reason it is typed to
+        :data:`TerminalStatus`: a ``PENDING`` row is undelivered work, and deleting one
+        loses the event for good. The type makes that unexpressible rather than merely
+        discouraged.
+        """
         ...
