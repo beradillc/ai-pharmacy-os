@@ -1836,10 +1836,41 @@ retention) + relay/retry worker.
 
 ---
 
+## 7af. ⏸️ ĐIỂM DỪNG PHIÊN (2026-07-24) — chờ sếp đổi model sang Opus cho outbox Bước 2/3
+
+> Phiên này resume sau khi phiên trước bị tắt đột ngột (không qua nghi thức đóng phiên) ngay sau §7ad.
+> Đóng phiên đúng nghi thức lần này để tránh lặp lại tình huống đó.
+
+**Trạng thái kỹ thuật lúc dừng (xác nhận bằng lệnh):**
+
+| Hạng mục | Trạng thái |
+|----------|-----------|
+| Git | Sạch, HEAD = `19f2778` |
+| Docker | `postgres` + `redis` healthy (Claude khởi động lại đầu phiên vì đã exit 255 từ 3 tiếng trước — nguyên nhân exit chưa điều tra, không phải lỗi phiên này) |
+| Tiến trình nền | Không có `uvicorn`/`next dev` nào đang treo |
+| Backend 4 cổng | ruff sạch · mypy --strict sạch · import-linter 13 kept/0 broken · pytest full suite xanh (chạy lại sau commit `a5862d6`) |
+
+**Quyết định tự chốt trong phiên (full-auto rule #3):**
+1. Phát hiện working tree không sạch lúc resume (codec outbox dở dang từ phiên bị cắt) — chạy đủ 4 cổng
+   trước khi tin tưởng, xanh hết → commit nguyên trạng không sửa logic. Chi tiết §7ae.
+2. Sửa `TODO.md` dòng lệch "còn 2/9 module chưa audit" (sai — §7y/§7z đã đóng mạch 9/9 từ 2026-07-23).
+3. **KHÔNG tự thiết kế outbox Bước 2/3 (bảng + relay) trên Sonnet** — tự nhận đây là "thiết kế mới hoàn
+   toàn chưa có khuôn mẫu" theo CLAUDE.md mục "Chọn model" (rule chỉ định Opus cho loại việc này), dừng
+   hỏi sếp thay vì lặng lẽ làm trên Sonnet dù full-auto miễn bước duyệt thiết kế. Sếp đã chọn: đổi sang
+   Opus.
+
+**Việc tiếp theo khi resume:** sếp `/model` chọn Opus → tiếp tục thiết kế + code outbox Bước 2/3 (bảng
+outbox trong cùng transaction với dữ liệu nghiệp vụ + relay đọc bản ghi PENDING, retry, đánh dấu
+PUBLISHED/FAILED). Không có việc nào khác đang treo giữa chừng. Nợ Sprint 6→7 còn lại đúng như §7ad đã
+ghi: outbox Bước 2-3, module `analytics` (dừng hỏi sếp mô tả yêu cầu trước khi thiết kế — **không tự làm**).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-24 | **DỪNG PHIÊN đúng nghi thức** — outbox Bước 1/3 xong, Bước 2/3 chờ đổi model sang Opus (quy tắc chọn model, thiết kế mới chưa có khuôn mẫu). Xem §7af. |
 | 2026-07-24 | Outbox Bước 1/3: codec serialize/deserialize DomainEvent (domain thuần) — resume phiên sau cắt đột ngột, xem §7ae. |
 | 2026-07-24 | MedicationHistoryEntry tự động + dị ứng OTC (3 bước: customer_id/mig 0016 · use-case · wiring) — phiên Opus full-auto, xem §7ad. |
 | 2026-07-23 | Endpoint HTTP `active_ingredients` (POST/GET) — nợ kỹ thuật đơn module, xem §7u. |
