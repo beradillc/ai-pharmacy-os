@@ -34,6 +34,28 @@ class OrderRevenueRow:
     building rows unchanged."""
 
 
+@dataclass(frozen=True, slots=True)
+class DrugSalesAggRow:
+    """Net quantity a drug sold in one branch over a window, plus its net revenue.
+
+    Line-level aggregation (group by ``drug_id``/``branch_id``), unlike
+    :class:`OrderRevenueRow` which is order-level — this is what the analytics module
+    reads to model demand velocity and rank top sellers (PROJECT_STATE §7am, Q1).
+
+    ``quantity_sold`` is **net of returns** (``quantity - returned_quantity`` summed):
+    a returned item was not consumed, so counting it would over-state demand and lead
+    analytics to over-order. This deliberately differs from the revenue report, which
+    counts gross at sale time (recognised revenue, PROJECT_STATE §7an) — different
+    purpose, different convention, both documented. ``revenue`` is likewise net.
+    Rows whose net quantity is ``0`` (fully returned) are dropped by the query.
+    """
+
+    drug_id: UUID
+    branch_id: UUID
+    quantity_sold: Decimal
+    revenue: Decimal
+
+
 class SalesRepository(Protocol):
     async def add(self, order: SalesOrder) -> None: ...
 
@@ -64,6 +86,24 @@ class SalesRepository(Protocol):
         means "every salesperson", **not** "orders with no salesperson" — the
         unattributed pre-column orders stay in the unfiltered total and cannot be
         isolated on their own."""
+        ...
+
+    async def aggregate_sold_by_drug(
+        self,
+        tenant_id: UUID,
+        *,
+        branch_id: UUID | None,
+        created_from: datetime,
+        created_to: datetime,
+    ) -> list[DrugSalesAggRow]:
+        """Net quantity + revenue sold per ``(drug_id, branch_id)`` over
+        ``[created_from, created_to)``, across completed (post-``DRAFT``) orders,
+        optionally narrowed to one branch.
+
+        Grouped in SQL — the result is bounded by the number of distinct drugs (a
+        pharmacy's catalogue), not by order volume, so a plain list is returned (no
+        paging, unlike :meth:`completed_in_range` which the report streams). Fully
+        returned lines net to ``0`` and are excluded (see :class:`DrugSalesAggRow`)."""
         ...
 
 

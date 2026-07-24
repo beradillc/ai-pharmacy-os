@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.sales.domain import SalesOrder, SaleStatus
-from pharmacy_os.modules.sales.domain.ports import OrderRevenueRow
+from pharmacy_os.modules.sales.domain.ports import DrugSalesAggRow, OrderRevenueRow
 from pharmacy_os.modules.sales.infrastructure.mappers import to_domain, to_orm
 from pharmacy_os.modules.sales.infrastructure.models import SaleLineORM, SalesOrderORM
 
@@ -114,6 +114,46 @@ class SqlAlchemySalesRepository:
                 created_at=r.created_at,
                 subtotal=r.subtotal,
                 sold_by_user_id=r.sold_by_user_id,
+            )
+            for r in rows
+        ]
+
+    async def aggregate_sold_by_drug(
+        self,
+        tenant_id: UUID,
+        *,
+        branch_id: UUID | None,
+        created_from: datetime,
+        created_to: datetime,
+    ) -> list[DrugSalesAggRow]:
+        net_qty = SaleLineORM.quantity - SaleLineORM.returned_quantity
+        stmt = (
+            select(
+                SaleLineORM.drug_id,
+                SalesOrderORM.branch_id,
+                func.sum(net_qty).label("quantity_sold"),
+                func.sum(net_qty * SaleLineORM.unit_price).label("revenue"),
+            )
+            .join(SalesOrderORM, SaleLineORM.order_id == SalesOrderORM.id)
+            .where(
+                SalesOrderORM.tenant_id == tenant_id,
+                SalesOrderORM.status != SaleStatus.DRAFT.value,
+                SalesOrderORM.created_at >= created_from,
+                SalesOrderORM.created_at < created_to,
+            )
+        )
+        if branch_id is not None:
+            stmt = stmt.where(SalesOrderORM.branch_id == branch_id)
+        stmt = stmt.group_by(SaleLineORM.drug_id, SalesOrderORM.branch_id).having(
+            func.sum(net_qty) > 0
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return [
+            DrugSalesAggRow(
+                drug_id=r.drug_id,
+                branch_id=r.branch_id,
+                quantity_sold=r.quantity_sold,
+                revenue=r.revenue,
             )
             for r in rows
         ]

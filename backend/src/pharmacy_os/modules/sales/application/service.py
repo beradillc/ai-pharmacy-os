@@ -44,6 +44,7 @@ from pharmacy_os.modules.sales.domain import (
 )
 from pharmacy_os.modules.sales.domain.ports import (
     DrugInfoProvider,
+    DrugSalesAggRow,
     OrderRevenueRow,
     PrescriptionInfoProvider,
     SalesRepository,
@@ -425,4 +426,36 @@ class SalesService:
                 currency=currency,
                 order_count=order_count,
                 revenue_total=revenue_total,
+            )
+
+    async def aggregate_sold_by_drug(
+        self,
+        ctx: RequestContext,
+        *,
+        date_from: date,
+        date_to: date,
+        branch_id: UUID | None = None,
+    ) -> list[DrugSalesAggRow]:
+        """Net quantity + revenue sold per ``(drug_id, branch_id)`` over
+        ``[date_from, date_to]`` (inclusive both ends).
+
+        A line-level read for the ``analytics`` module — demand velocity and top
+        sellers both derive from it (PROJECT_STATE §7am, Q1: velocity is measured off
+        *sales*). Requires ``sales.read`` (reused, same rationale as the revenue
+        report). ``branch_id`` narrows to one branch; omitted, every branch counts.
+
+        Result is bounded by the number of distinct drugs sold, so it is returned as a
+        plain list — no streaming (contrast :meth:`revenue_report_rows`)."""
+        require_permission(ctx, "sales.read")
+        if date_from > date_to:
+            raise ValidationError("Khoảng thời gian không hợp lệ: 'từ' sau 'đến'")
+        created_from = datetime.combine(date_from, time.min, tzinfo=UTC)
+        created_to = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=UTC)
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            return await repo.aggregate_sold_by_drug(
+                ctx.tenant_id,
+                branch_id=branch_id,
+                created_from=created_from,
+                created_to=created_to,
             )
