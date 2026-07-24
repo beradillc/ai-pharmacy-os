@@ -170,9 +170,14 @@ thật sự.
       *4/4 bước xong 2026-07-23 — PROJECT_STATE §7m/§7t mục A1. (Checkbox cập nhật 2026-07-23, đã
       xong từ trước — tài liệu lệch với thực tế, phát hiện khi rà soát việc tiếp theo.)*
 - [x] `compliance`: sổ thuốc kiểm soát (C.1–C.5, PROJECT_STATE §7b) + router HTTP (§7q) — **XONG**.
-- [ ] `compliance`: transactional outbox (thay best-effort reconciliation hiện tại), audit query
-      dashboard (nay chỉ có `GET /audit-logs` mức tối thiểu, §7l) — **CHƯA làm**, mang sang khi mở
-      tiếp phần còn lại Sprint 7.
+- [x] **Outbox/retry bền** (`event_outbox`, migration `0017`+`0018`) — **XONG 2026-07-24**,
+      PROJECT_STATE §7ag/§7ai. Mọi `UnitOfWork` ghi sự kiện trong chính giao dịch nghiệp vụ; relay
+      giao lại at-least-once. Thay hoàn toàn cơ chế **phát sự kiện** best-effort cũ (publish sau
+      commit — chết giữa chừng là mất hẳn sự kiện).
+      *Phạm vi chưa bao gồm:* vòng retry đẩy DAV của `NationalSyncService` vẫn best-effort riêng —
+      dòng `NationalSyncLog` `FAILED` nằm im tới khi có người gọi push lại, chưa có gì tự re-drive.
+- [ ] Audit query dashboard (`compliance`) — **CHƯA làm**, nay chỉ có `GET /audit-logs` mức tối
+      thiểu (§7l). Mang sang cùng module `analytics` khi mở tiếp phần còn lại Sprint 7.
 - [ ] Module `analytics`: dashboard, dự báo nhu cầu, đề xuất nhập.
 - [ ] Report xuất khẩu.
 
