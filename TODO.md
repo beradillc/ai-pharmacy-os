@@ -64,6 +64,13 @@
       (consent-gated, idempotent) + dị ứng OTC — **XONG 2026-07-24** (phiên Opus full-auto, 3 bước,
       PROJECT_STATE §7ad). **Nợ mang sang Sprint 7 còn lại:** outbox/retry bền (hạ tầng lõi), module
       `analytics` + report (cần sếp mô tả yêu cầu trước khi thiết kế).
+- [ ] **`inventory` — cảnh báo/khoá tồn-âm khi eventual-consistency ở prod** (ghi 2026-07-24, sếp chốt
+      **Sprint sau**, ngoài phạm vi outbox lần này). Bối cảnh: khi outbox chạy chế độ async ở prod, phản
+      ứng cross-module (dispense FEFO sau bán) trừ tồn **trễ vài giây** so với lúc thu ngân bấm bán → 2
+      quầy cùng bán viên cuối có thể cùng thấy "còn hàng" (GĐ nêu khi duyệt thiết kế outbox). Không phải
+      lỗi outbox — `dispense_for_sale` vốn đã là txn riêng từ trước. Cần: cơ chế cảnh báo hoặc khoá tồn-âm
+      ở `inventory` khi số dư xuống dưới 0. **Liên quan Sprint 8 NFR** (p95 POS load test) — gộp xử lý
+      cùng đợt đo tải để có số liệu thực trước khi chọn cảnh-báo-mềm hay khoá-cứng.
 
 ---
 

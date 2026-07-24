@@ -1866,10 +1866,60 @@ ghi: outbox Bước 2-3, module `analytics` (dừng hỏi sếp mô tả yêu c�
 
 ---
 
+## 7ag. Outbox/retry — Bước 2/3: machinery (bảng + repo + relay) NGỦ, flag OFF — XONG (2026-07-24)
+
+> Phiên Opus. Sếp duyệt thiết kế §7af (3 điểm: công tắc sync/async · chia Bước 2 machinery-ngủ /
+> Bước 3 flip-nguyên-tử · cổng idempotency) và **mở rộng cổng #3**: liệt kê TOÀN BỘ subscriber đang
+> nối EventBus, xác nhận idempotent khi nhận event trùng, **không flip** cho tới khi sếp xác nhận danh
+> sách. Bước 2 được phép bắt đầu ngay sau khi có bảng đó.
+
+**Bảng idempotency đầy đủ (10 subscription / 7 handler, xác minh bằng code thật):** tất cả đường ghi dữ
+liệu nghiệp vụ đều đã có khoá idempotent sẵn — dispense `exists_for_ref("sale",order_id)`, GRN
+`exists_for_ref("grn",grn_id)`, medication_history `(source,ref_id)`, national_sync `client_uuid`, 3
+handler nội-inventory chỉ log, allergy check read-only. **DUY NHẤT không idempotent: interaction check
+trong `wire_safety_checks`** — ghi `AiRecommendation` + audit mỗi lần chạy ⇒ event trùng tạo bản ghi/audit
+trùng (không hư tồn/tiền). Đây là điểm phải quyết trước khi flip (Bước 3), **đang chờ sếp xác nhận danh
+sách**.
+
+**Đã xây (machinery NGỦ — chưa đấu vào đường publish, `UoW.commit()` KHÔNG đổi):**
+- `core/outbox/record.py` — `OutboxRecord` (frozen, slots) + `OutboxStatus` (PENDING/PUBLISHED/FAILED),
+  framework-free như `audit/entry.py`; `payload` là dict đã qua codec §7ae, không biết event class.
+- `core/outbox/models.py` — `OutboxEventORM` bảng `event_outbox` (cấp `core` như `audit_logs`, không FK).
+  Unique `event_id`, index `(status,next_attempt_at)` + `(tenant_id,occurred_at)`.
+- `core/outbox/ports.py` + `repository.py` — `add` (ghi PENDING trong txn nghiệp vụ) · `claim_pending`
+  (oldest-first, due-filter, `FOR UPDATE SKIP LOCKED` — no-op trên SQLite) · `mark_published/retry/failed`.
+- `core/outbox/relay.py` — `OutboxRelay.drain_once()`: claim → `deserialize_event` → `event_bus.publish`
+  → stamp; backoff `base*2^(n-1)`, dead-letter khi `retry_count>=max_retries`.
+- Migration `0017_event_outbox` (autogenerate). `models_registry.py` +1 import.
+
+**Ranh giới quan trọng (ghi rõ để Bước 3 không hiểu nhầm):** `InMemoryEventBus.publish` cô lập lỗi
+subscriber (log+nuốt) ⇒ outbox đảm bảo *event tới bus ít nhất 1 lần* (đóng cửa sổ "committed nhưng chưa
+dispatch"), **không** đảm bảo subscriber thành công. Retry/FAILED của relay chỉ kích hoạt khi
+deserialize/unknown-type/lỗi DB, không phải lỗi trong handler.
+
+**Bằng chứng (4 cổng + live migration):** ruff sạch · `mypy --strict` 219 file sạch · import-linter
+**13 kept/0 broken** (không thêm/xóa contract — outbox ở `core` nên không đụng module-independence) ·
+pytest **633 passed** (+13 test outbox: 7 unit relay logic với fake repo, 6 integration repo SQLite).
+Live migration trên Postgres (đã pg_dump backup trước, rule #6): `upgrade`→`alembic check` no-drift→
+`downgrade -1` (xác nhận bảng biến mất bằng `to_regclass` NULL)→`upgrade`→check sạch; `\d event_outbox`
+khớp 100% thiết kế (12 cột, jsonb, 2 index + PK + unique).
+
+**Quyết định tự chốt trong phiên (full-auto rule #3):** không có quyết định nghiệp vụ/pháp lý tự chốt —
+mọi quyết định lớn (sync/async, chia bước, idempotency) đều đã trình sếp duyệt ở §7af. Nợ tồn-âm khi
+eventual-consistency (GĐ nêu) đã ghi vào `TODO.md` mục Nợ kỹ thuật (Sprint sau, gộp p95 NFR Sprint 8).
+
+**Bước 3 (flip) CHƯA làm — CHỜ SẾP xác nhận bảng idempotency.** Khi được duyệt: đổi `UoW.commit()` ghi
+outbox in-txn + công tắc `SYNC_DRAIN` · populate `EventRegistry` 17 event ở composition root · khởi
+`OutboxRelay` nền trong lifespan. **Trước đó phải quyết interaction-check: chặn trùng hay chấp nhận audit
+trùng** (quyết định nghiệp vụ — sẽ hỏi, không tự quyết).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-24 | **Outbox Bước 2/3: machinery NGỦ (bảng `event_outbox` + repo + relay + migration 0017), flag OFF, `UoW` chưa đổi.** Sếp duyệt thiết kế §7af + mở rộng cổng idempotency (liệt kê TOÀN BỘ subscriber). Bảng idempotency đầy đủ: chỉ interaction-check không idempotent. 4 cổng xanh (pytest **633**, +13), live migration 0017 round-trip verified. **Bước 3 (flip) chờ sếp xác nhận danh sách idempotency.** Xem §7ag. |
 | 2026-07-24 | **DỪNG PHIÊN đúng nghi thức** — outbox Bước 1/3 xong, Bước 2/3 chờ đổi model sang Opus (quy tắc chọn model, thiết kế mới chưa có khuôn mẫu). Xem §7af. |
 | 2026-07-24 | Outbox Bước 1/3: codec serialize/deserialize DomainEvent (domain thuần) — resume phiên sau cắt đột ngột, xem §7ae. |
 | 2026-07-24 | MedicationHistoryEntry tự động + dị ứng OTC (3 bước: customer_id/mig 0016 · use-case · wiring) — phiên Opus full-auto, xem §7ad. |
