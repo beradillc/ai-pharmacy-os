@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.modules.procurement.domain import GoodsReceiptNote, PurchaseOrder, Supplier
+from pharmacy_os.modules.procurement.domain import (
+    GoodsReceiptNote,
+    PurchaseOrder,
+    PurchaseOrderStatus,
+    Supplier,
+)
 from pharmacy_os.modules.procurement.infrastructure.mappers import (
     goods_receipt_to_domain,
     goods_receipt_to_orm,
@@ -116,6 +121,33 @@ class SqlAlchemyPurchaseOrderRepository:
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return purchase_order_to_domain(row) if row is not None else None
+
+    async def count_by_status(self, status: PurchaseOrderStatus, branch_id: UUID) -> int:
+        stmt = select(func.count(PurchaseOrderORM.id)).where(
+            PurchaseOrderORM.tenant_id == self._ctx.tenant_id,
+            PurchaseOrderORM.branch_id == branch_id,
+            PurchaseOrderORM.status == status.value,
+        )
+        return int((await self._session.execute(stmt)).scalar_one())
+
+    async def last_supplier_for_drug(self, drug_id: UUID) -> UUID | None:
+        # "Placed" = past DRAFT: a still-draft PO isn't a real supplier relationship.
+        # Most recent by created_at; tenant-wide (a supplier serves the whole chain).
+        stmt = (
+            select(PurchaseOrderORM.supplier_id)
+            .join(
+                PurchaseOrderItemORM,
+                PurchaseOrderItemORM.purchase_order_id == PurchaseOrderORM.id,
+            )
+            .where(
+                PurchaseOrderORM.tenant_id == self._ctx.tenant_id,
+                PurchaseOrderORM.status != PurchaseOrderStatus.DRAFT.value,
+                PurchaseOrderItemORM.drug_id == drug_id,
+            )
+            .order_by(PurchaseOrderORM.created_at.desc())
+            .limit(1)
+        )
+        return (await self._session.execute(stmt)).scalar_one_or_none()
 
 
 class SqlAlchemyGoodsReceiptRepository:

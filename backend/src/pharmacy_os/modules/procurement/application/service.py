@@ -31,6 +31,7 @@ from pharmacy_os.modules.procurement.domain import (
     PurchaseOrder,
     PurchaseOrdered,
     PurchaseOrderItem,
+    PurchaseOrderStatus,
     ReceivedItem,
     Supplier,
     UnknownPurchaseOrderItemError,
@@ -210,6 +211,27 @@ class ProcurementService:
         require_permission(ctx, "procurement.po.read")
         po = await self._get_po_or_404(po_id, ctx)
         return PurchaseOrderOutput.of(po)
+
+    async def count_draft_purchase_orders(
+        self, ctx: RequestContext, *, branch_id: UUID | None = None
+    ) -> int:
+        """How many DRAFT POs await approval at *branch_id* (default: caller's branch)
+        — the analytics dashboard's "PO nháp chờ duyệt" tile (PROJECT_STATE §7am).
+        Requires ``procurement.po.read``."""
+        require_permission(ctx, "procurement.po.read")
+        target = branch_id if branch_id is not None else ctx.branch_id
+        async with self._uow_factory() as uow:
+            repo = self._po_repo_factory(uow, ctx)
+            return await repo.count_by_status(PurchaseOrderStatus.DRAFT, target)
+
+    async def last_supplier_for_drug(self, drug_id: UUID, ctx: RequestContext) -> UUID | None:
+        """Supplier of the most recent placed PO that ordered *drug_id*, or ``None``
+        if never ordered — how an analytics reorder suggestion picks its supplier
+        (PROJECT_STATE §7am, Q3). Requires ``procurement.po.read``."""
+        require_permission(ctx, "procurement.po.read")
+        async with self._uow_factory() as uow:
+            repo = self._po_repo_factory(uow, ctx)
+            return await repo.last_supplier_for_drug(drug_id)
 
     # --- GoodsReceiptNote ---
 
