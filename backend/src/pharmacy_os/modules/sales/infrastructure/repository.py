@@ -57,6 +57,7 @@ class SqlAlchemySalesRepository:
         tenant_id: UUID,
         *,
         branch_id: UUID | None,
+        sold_by_user_id: UUID | None,
         created_from: datetime,
         created_to: datetime,
         limit: int,
@@ -77,6 +78,7 @@ class SqlAlchemySalesRepository:
                 SalesOrderORM.branch_id,
                 SalesOrderORM.currency,
                 SalesOrderORM.created_at,
+                SalesOrderORM.sold_by_user_id,
                 func.sum(SaleLineORM.quantity * SaleLineORM.unit_price).label("subtotal"),
             )
             .join(SaleLineORM, SaleLineORM.order_id == SalesOrderORM.id)
@@ -89,12 +91,15 @@ class SqlAlchemySalesRepository:
         )
         if branch_id is not None:
             stmt = stmt.where(SalesOrderORM.branch_id == branch_id)
+        if sold_by_user_id is not None:
+            stmt = stmt.where(SalesOrderORM.sold_by_user_id == sold_by_user_id)
         stmt = (
             stmt.group_by(
                 SalesOrderORM.id,
                 SalesOrderORM.branch_id,
                 SalesOrderORM.currency,
                 SalesOrderORM.created_at,
+                SalesOrderORM.sold_by_user_id,
             )
             .order_by(SalesOrderORM.created_at, SalesOrderORM.id)
             .limit(limit)
@@ -108,6 +113,7 @@ class SqlAlchemySalesRepository:
                 currency=r.currency,
                 created_at=r.created_at,
                 subtotal=r.subtotal,
+                sold_by_user_id=r.sold_by_user_id,
             )
             for r in rows
         ]

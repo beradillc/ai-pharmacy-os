@@ -22,6 +22,9 @@ class SalesOrderORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
     # Plain UUID, no FK to crm.customers: sales must stay independent of crm
     # (module-independence), same convention as prescription_ref / drug_id.
     customer_id: Mapped[UUID | None] = mapped_column(index=True, nullable=True)
+    # Who completed the sale. Plain UUID, no FK to iam.users for the same
+    # module-independence reason; indexed because the revenue report filters on it.
+    sold_by_user_id: Mapped[UUID | None] = mapped_column(index=True, nullable=True)
 
     lines: Mapped[list[SaleLineORM]] = relationship(
         back_populates="order",

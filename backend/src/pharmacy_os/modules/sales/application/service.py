@@ -95,6 +95,7 @@ class SalesService:
             currency=data.currency,
             prescription_ref=data.prescription_ref,
             customer_id=data.customer_id,
+            sold_by_user_id=ctx.user_id,
         )
         try:
             for line in data.lines:
@@ -341,9 +342,10 @@ class SalesService:
         date_to: date,
         granularity: RevenueGranularity = RevenueGranularity.DAY,
         branch_id: UUID | None = None,
+        sold_by_user_id: UUID | None = None,
     ) -> AsyncIterator[RevenueRow]:
         """Revenue grouped by period/branch/currency over ``[date_from, date_to]``
-        (inclusive both ends), Sprint 7 report (PROJECT_STATE §7am/§7an).
+        (inclusive both ends), Sprint 7 report (PROJECT_STATE §7am/§7an/§7ao).
 
         Requires ``sales.read`` (reused — no new permission, this is not more
         sensitive than what the POS UI already shows). Permission and the date
@@ -359,11 +361,13 @@ class SalesService:
 
         ``branch_id`` filters to one branch; omitted, the report spans every branch
         in the tenant (chain-level view, matching how ``sales.read`` already lets
-        :meth:`get_sale` read across branches — see PROJECT_STATE §7an). There is
-        no "theo nhân viên bán hàng" (salesperson) filter: ``SalesOrder`` persists
-        no actor/cashier column today (only the audit trail records who completed a
-        sale, and that's a compliance-purpose surface, not a general business-data
-        join) — documented gap, PROJECT_STATE §7an.
+        :meth:`get_sale` read across branches — see PROJECT_STATE §7an).
+
+        ``sold_by_user_id`` filters to one salesperson's sales (Chain duyệt PA (a),
+        PROJECT_STATE §7ao); omitted, every salesperson counts. Orders recorded
+        before the ``sold_by_user_id`` column existed carry no salesperson, so they
+        appear only in the unfiltered (every-salesperson) report — a per-salesperson
+        report never sees them, by design.
         """
         require_permission(ctx, "sales.read")
         if date_from > date_to:
@@ -376,6 +380,7 @@ class SalesService:
             created_to=created_to,
             granularity=granularity,
             branch_id=branch_id,
+            sold_by_user_id=sold_by_user_id,
         )
 
     async def _revenue_report_stream(
@@ -386,6 +391,7 @@ class SalesService:
         created_to: datetime,
         granularity: RevenueGranularity,
         branch_id: UUID | None,
+        sold_by_user_id: UUID | None,
     ) -> AsyncIterator[RevenueRow]:
         buckets: dict[tuple[date, UUID, str], tuple[Decimal, int]] = {}
         offset = 0
@@ -395,6 +401,7 @@ class SalesService:
                 batch: list[OrderRevenueRow] = await repo.completed_in_range(
                     ctx.tenant_id,
                     branch_id=branch_id,
+                    sold_by_user_id=sold_by_user_id,
                     created_from=created_from,
                     created_to=created_to,
                     limit=_REVENUE_REPORT_BATCH,

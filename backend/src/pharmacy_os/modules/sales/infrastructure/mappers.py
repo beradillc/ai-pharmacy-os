@@ -26,6 +26,7 @@ def to_domain(row: SalesOrderORM) -> SalesOrder:
         currency=row.currency,
         prescription_ref=row.prescription_ref,
         customer_id=row.customer_id,
+        sold_by_user_id=row.sold_by_user_id,
         status=SaleStatus(row.status),
     )
     order.lines = [
@@ -56,6 +57,7 @@ def to_orm(order: SalesOrder) -> SalesOrderORM:
         status=order.status.value,
         prescription_ref=order.prescription_ref,
         customer_id=order.customer_id,
+        sold_by_user_id=order.sold_by_user_id,
         lines=[
             SaleLineORM(
                 id=ln.id,
