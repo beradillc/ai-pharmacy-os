@@ -1908,10 +1908,43 @@ khớp 100% thiết kế (12 cột, jsonb, 2 index + PK + unique).
 mọi quyết định lớn (sync/async, chia bước, idempotency) đều đã trình sếp duyệt ở §7af. Nợ tồn-âm khi
 eventual-consistency (GĐ nêu) đã ghi vào `TODO.md` mục Nợ kỹ thuật (Sprint sau, gộp p95 NFR Sprint 8).
 
-**Bước 3 (flip) CHƯA làm — CHỜ SẾP xác nhận bảng idempotency.** Khi được duyệt: đổi `UoW.commit()` ghi
-outbox in-txn + công tắc `SYNC_DRAIN` · populate `EventRegistry` 17 event ở composition root · khởi
-`OutboxRelay` nền trong lifespan. **Trước đó phải quyết interaction-check: chặn trùng hay chấp nhận audit
-trùng** (quyết định nghiệp vụ — sẽ hỏi, không tự quyết).
+**Bước 3 (flip) CHƯA làm.** Khi làm: đổi `UoW.commit()` ghi outbox in-txn + công tắc `SYNC_DRAIN` ·
+populate `EventRegistry` 17 event ở composition root · khởi `OutboxRelay` nền trong lifespan.
+
+**SẾP ĐÃ DUYỆT (2026-07-24, cuối phiên §7ag):** (1) xác nhận bảng idempotency đầy đủ ở trên; (2) chọn
+**phương án (a) — CHẶN TRÙNG cho interaction-check** trong `wire_safety_checks`: thêm khoá idempotent
+`(context_type, context_id)` trước khi ghi `AiRecommendation`/audit, để redelivery không tạo bản ghi
+tuân thủ trùng (GĐ khuyến nghị (a): audit/recommendation là bằng chứng NĐ356 + vết quyết định lâm sàng
+docs/12, trùng lặp làm hồ sơ mất tin cậy khi thanh tra; chi phí chỉ 1 khoá idempotent). **Đây là việc
+BẮT BUỘC làm TRƯỚC khi flip** — nếu không, giai đoạn chuyển tiếp at-least-once sẽ phình audit/recommendation.
+
+---
+
+## 7ah. ⏸️ ĐIỂM DỪNG PHIÊN (2026-07-24) — Bước 2 xong, sếp chốt (a), tạm dừng
+
+**Trạng thái kỹ thuật lúc dừng (xác nhận bằng lệnh):**
+
+| Hạng mục | Trạng thái |
+|----------|-----------|
+| Git | Sạch, HEAD = `48e40c0` (outbox machinery Bước 2/3) |
+| Docker | `postgres` + `redis` **Up (healthy)** — Claude bật lại đầu phiên (đã TẮT lúc resume, §7af "healthy" đã lỗi thời) |
+| Tiến trình nền | Không có `uvicorn`/`next dev`/`pytest` treo |
+| 4 cổng | ruff sạch · mypy --strict 219 file · import-linter 13/0 · pytest **633** (chạy 2 lần độc lập, đều exit 0) |
+| Migration | head = `0017_event_outbox`, đã apply live PG (round-trip verified) |
+
+**Việc tiếp theo khi resume (Bước 3 — flip, thiết kế đã duyệt trọn):**
+1. **TRƯỚC TIÊN** vá interaction-check theo **phương án (a)** sếp đã chốt: khoá idempotent
+   `(context_type, context_id)` trong `wire_safety_checks` trước khi ghi `AiRecommendation`/audit
+   (đây là điều kiện tiên quyết của flip — xem §7ag).
+2. Đổi `SqlAlchemyUnitOfWork.commit()`: ghi outbox in-txn (dùng `serialize_event` + `OutboxRecord`) thay
+   vì publish inline; thêm công tắc `SECURITY`/`OUTBOX__SYNC_DRAIN` (test+dev = sync drain giữ 633 test
+   xanh; prod = relay nền async).
+3. Populate `EventRegistry` 17 event ở composition root (`api/v1/__init__.py`), đăng ký vào container.
+4. Khởi `OutboxRelay` nền trong `main.py` `_lifespan` (hủy khi shutdown); đấu sync-drain cho TestClient.
+5. Flip là **1 commit nguyên tử** (rule: 4 cổng xanh mọi commit — sync-drain giữ suite xanh).
+
+Nợ khác không đổi (§7ad): module `analytics` + report (chờ sếp mô tả yêu cầu). Nợ tồn-âm eventual-
+consistency đã ở `TODO.md` (Sprint sau + p95 NFR Sprint 8).
 
 ---
 
@@ -1919,6 +1952,7 @@ trùng** (quyết định nghiệp vụ — sẽ hỏi, không tự quyết).
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-24 | **DỪNG PHIÊN đúng nghi thức (§7ah).** Sếp chốt **phương án (a)** — chặn trùng interaction-check bằng khoá `(context_type, context_id)`, là điều kiện tiên quyết TRƯỚC khi flip Bước 3. HEAD `48e40c0`, 4 cổng xanh, docker healthy, không tiến trình treo. Resume = làm Bước 3 (flip nguyên tử), 5 bước ghi ở §7ah. |
 | 2026-07-24 | **Outbox Bước 2/3: machinery NGỦ (bảng `event_outbox` + repo + relay + migration 0017), flag OFF, `UoW` chưa đổi.** Sếp duyệt thiết kế §7af + mở rộng cổng idempotency (liệt kê TOÀN BỘ subscriber). Bảng idempotency đầy đủ: chỉ interaction-check không idempotent. 4 cổng xanh (pytest **633**, +13), live migration 0017 round-trip verified. **Bước 3 (flip) chờ sếp xác nhận danh sách idempotency.** Xem §7ag. |
 | 2026-07-24 | **DỪNG PHIÊN đúng nghi thức** — outbox Bước 1/3 xong, Bước 2/3 chờ đổi model sang Opus (quy tắc chọn model, thiết kế mới chưa có khuôn mẫu). Xem §7af. |
 | 2026-07-24 | Outbox Bước 1/3: codec serialize/deserialize DomainEvent (domain thuần) — resume phiên sau cắt đột ngột, xem §7ae. |
