@@ -7,7 +7,7 @@ and published only after a successful commit.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from datetime import date, timedelta
 from decimal import Decimal
 from uuid import UUID
@@ -29,6 +29,7 @@ from pharmacy_os.modules.inventory.application.dto import (
     ReceiveStockInput,
     ReconciliationOutput,
     SaleDispenseItem,
+    StockReportItem,
 )
 from pharmacy_os.modules.inventory.domain import (
     InsufficientStockError,
@@ -52,6 +53,11 @@ from pharmacy_os.modules.inventory.domain.ports import (
 )
 
 _log = structlog.get_logger("inventory.goods_receipt")
+
+#: How many batches a stock-report page pulls per round-trip — same idea as the
+#: audit dashboard's export batch (PROJECT_STATE §7al): bounded memory regardless
+#: of how many batches match.
+_STOCK_REPORT_BATCH = 500
 
 UowFactory = Callable[[], UnitOfWork]
 BatchRepoFactory = Callable[[UnitOfWork, RequestContext], BatchRepository]
@@ -510,3 +516,50 @@ class InventoryService:
                 target_id=str(target_id),
             ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
         )
+
+    async def stock_report_rows(
+        self, ctx: RequestContext, *, branch_id: UUID | None = None
+    ) -> AsyncIterator[StockReportItem]:
+        """Current on-hand by lot + expiry — Sprint 7 stock report (PROJECT_STATE
+        §7am/§7an), soonest-expiring first.
+
+        Requires ``inventory.read`` (reused — no new permission). Checked eagerly
+        so a caller lacking it 403s before any streaming begins — same split as
+        :class:`AuditDashboardService.export_rows`. Tenant-wide by default
+        (``branch_id`` narrows to one branch): a deliberate widening from the
+        single-branch scope of :meth:`on_hand`/:meth:`list_near_expiry`, because
+        this is a chain-level report surface, not an operational read bound to the
+        caller's own session branch (documented, PROJECT_STATE §7an).
+
+        Paged in batches of :data:`_STOCK_REPORT_BATCH` (one DB round-trip per
+        batch, held on a single connection for the stream's lifetime) so memory
+        stays flat regardless of how many batches match.
+        """
+        require_permission(ctx, "inventory.read")
+        return self._stock_report_stream(ctx, branch_id=branch_id)
+
+    async def _stock_report_stream(
+        self, ctx: RequestContext, *, branch_id: UUID | None
+    ) -> AsyncIterator[StockReportItem]:
+        offset = 0
+        async with self._uow_factory() as uow:
+            batches = self._batches(uow, ctx)
+            while True:
+                page = await batches.stock_report(
+                    ctx.tenant_id,
+                    branch_id=branch_id,
+                    limit=_STOCK_REPORT_BATCH,
+                    offset=offset,
+                )
+                for row in page:
+                    yield StockReportItem(
+                        batch_id=row.batch_id,
+                        drug_id=row.drug_id,
+                        branch_id=row.branch_id,
+                        lot_no=row.lot_no,
+                        expiry_date=row.expiry_date,
+                        quantity=row.quantity,
+                    )
+                if len(page) < _STOCK_REPORT_BATCH:
+                    return
+                offset += _STOCK_REPORT_BATCH

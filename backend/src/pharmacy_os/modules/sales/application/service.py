@@ -11,7 +11,8 @@ result **without** re-processing — so no duplicate order and no duplicate
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -26,6 +27,8 @@ from pharmacy_os.modules.sales.application.dto import (
     ReceiptPayment,
     ReceiptSummaryDTO,
     RegisterReturnInput,
+    RevenueGranularity,
+    RevenueRow,
     SaleLineInput,
     SaleOutput,
 )
@@ -41,10 +44,16 @@ from pharmacy_os.modules.sales.domain import (
 )
 from pharmacy_os.modules.sales.domain.ports import (
     DrugInfoProvider,
+    OrderRevenueRow,
     PrescriptionInfoProvider,
     SalesRepository,
 )
 from pharmacy_os.shared.value_objects import Money
+
+#: How many orders a revenue-report page pulls per round-trip while bucketing —
+#: same idea as the audit dashboard's export batch (PROJECT_STATE §7al): bounded
+#: memory regardless of how many orders match the date range.
+_REVENUE_REPORT_BATCH = 500
 
 UowFactory = Callable[[], UnitOfWork]
 RepoFactory = Callable[[UnitOfWork, RequestContext], SalesRepository]
@@ -311,3 +320,102 @@ class SalesService:
             if info is not None and info.name:
                 return info.name, info.unit
         return str(drug_id), ""
+
+    @staticmethod
+    def _period_start(when: datetime, granularity: RevenueGranularity) -> date:
+        """Bucket a timestamp to its period's first day (local to the stored value —
+        the project stores ``created_at`` in UTC throughout, so buckets are UTC days).
+        """
+        day = when.date()
+        if granularity is RevenueGranularity.DAY:
+            return day
+        if granularity is RevenueGranularity.WEEK:
+            return day - timedelta(days=day.weekday())  # Monday of that week
+        return day.replace(day=1)  # RevenueGranularity.MONTH
+
+    async def revenue_report_rows(
+        self,
+        ctx: RequestContext,
+        *,
+        date_from: date,
+        date_to: date,
+        granularity: RevenueGranularity = RevenueGranularity.DAY,
+        branch_id: UUID | None = None,
+    ) -> AsyncIterator[RevenueRow]:
+        """Revenue grouped by period/branch/currency over ``[date_from, date_to]``
+        (inclusive both ends), Sprint 7 report (PROJECT_STATE §7am/§7an).
+
+        Requires ``sales.read`` (reused — no new permission, this is not more
+        sensitive than what the POS UI already shows). Permission and the date
+        window are checked **eagerly** so a bad request 422s before any streaming
+        begins — same split as :class:`AuditDashboardService.export_rows`.
+
+        Grouping happens in Python, not SQL ``date_trunc`` (Postgres-only, and the
+        project keeps queries cross-dialect): the repository is paged in batches of
+        :data:`_REVENUE_REPORT_BATCH` orders, each folded into a small in-memory
+        accumulator keyed by ``(period, branch, currency)`` — bounded by the number
+        of distinct buckets in the window, never by the number of orders, so a
+        long/busy range still streams with flat memory on the expensive (row) side.
+
+        ``branch_id`` filters to one branch; omitted, the report spans every branch
+        in the tenant (chain-level view, matching how ``sales.read`` already lets
+        :meth:`get_sale` read across branches — see PROJECT_STATE §7an). There is
+        no "theo nhân viên bán hàng" (salesperson) filter: ``SalesOrder`` persists
+        no actor/cashier column today (only the audit trail records who completed a
+        sale, and that's a compliance-purpose surface, not a general business-data
+        join) — documented gap, PROJECT_STATE §7an.
+        """
+        require_permission(ctx, "sales.read")
+        if date_from > date_to:
+            raise ValidationError("Khoảng thời gian không hợp lệ: 'từ' sau 'đến'")
+        created_from = datetime.combine(date_from, time.min, tzinfo=UTC)
+        created_to = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=UTC)
+        return self._revenue_report_stream(
+            ctx,
+            created_from=created_from,
+            created_to=created_to,
+            granularity=granularity,
+            branch_id=branch_id,
+        )
+
+    async def _revenue_report_stream(
+        self,
+        ctx: RequestContext,
+        *,
+        created_from: datetime,
+        created_to: datetime,
+        granularity: RevenueGranularity,
+        branch_id: UUID | None,
+    ) -> AsyncIterator[RevenueRow]:
+        buckets: dict[tuple[date, UUID, str], tuple[Decimal, int]] = {}
+        offset = 0
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            while True:
+                batch: list[OrderRevenueRow] = await repo.completed_in_range(
+                    ctx.tenant_id,
+                    branch_id=branch_id,
+                    created_from=created_from,
+                    created_to=created_to,
+                    limit=_REVENUE_REPORT_BATCH,
+                    offset=offset,
+                )
+                for order in batch:
+                    key = (
+                        self._period_start(order.created_at, granularity),
+                        order.branch_id,
+                        order.currency,
+                    )
+                    prev_total, prev_count = buckets.get(key, (Decimal("0"), 0))
+                    buckets[key] = (prev_total + order.subtotal, prev_count + 1)
+                if len(batch) < _REVENUE_REPORT_BATCH:
+                    break
+                offset += _REVENUE_REPORT_BATCH
+        for (period_start, b_id, currency), (revenue_total, order_count) in sorted(buckets.items()):
+            yield RevenueRow(
+                period_start=period_start,
+                branch_id=b_id,
+                currency=currency,
+                order_count=order_count,
+                revenue_total=revenue_total,
+            )
