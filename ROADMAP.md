@@ -180,12 +180,17 @@ thật sự.
       endpoint `api/v1/audit-dashboard`), KHÔNG trong `compliance` như phác thảo cũ. Quyền RIÊNG
       `audit.dashboard.read` (admin+chain+branch, không cashier/warehouse) tách khỏi `audit.read`; lọc
       actor+time+`target_type`+action; export CSV. `/audit-logs` mức tối thiểu (§7l) vẫn giữ nguyên.
-- [ ] Module `analytics`: dashboard, dự báo nhu cầu, đề xuất nhập. *(chờ Chain mô tả yêu cầu — §7ak/§7al)*
-- [ ] Report xuất khẩu — **đính chính 2026-07-24 (docs/13 Traceability #21):** KHÔNG phải biểu mẫu
-      pháp lý (Phụ lục X/XI TT20/2017 không áp dụng nhà thuốc bán lẻ, xem docs/13 mục G). Về đúng
-      bản chất Sprint 1 (docs/01_ANALYSIS.md "Báo cáo & Dashboard cơ bản" — doanh thu/tồn kho nội
-      bộ cho quản lý chi nhánh). *Vẫn chờ Chain mô tả nội dung cụ thể (mẫu nào trước, định dạng
-      Excel/PDF/CSV, ai bấm xuất) trước khi code — nhưng rủi ro pháp lý coi như đã gỡ.*
+- [ ] Module `analytics` — **yêu cầu chốt 2026-07-24 (GĐ, xem PROJECT_STATE §7am)**: dự báo v1 =
+      trung bình trượt 90 ngày + mốc tái đặt hàng, cấp **thuốc × chi nhánh**; đề xuất nhập sinh
+      **PO nháp** trong `procurement` (không tự gửi NCC); dashboard đầu = doanh thu/top thuốc/cảnh
+      báo cận date+tồn thấp/số PO nháp chờ duyệt. Hoãn v2: phát hiện bất thường + mùa vụ/dịch bệnh.
+      Giao Opus (thiết kế mới + cross-module `sales`/`inventory`→`procurement`).
+- [ ] Report xuất khẩu — **yêu cầu chốt 2026-07-24 (GĐ, xem PROJECT_STATE §7am)**: KHÔNG phải biểu
+      mẫu pháp lý (đính chính docs/13 #21 — Phụ lục X/XI không áp dụng bán lẻ). Nội dung: doanh thu
+      (ngày/tuần/tháng, theo chi nhánh/nhân viên) + tồn kho theo lô/HSD → sau đó top thuốc bán chạy
+      + xuất `ControlledLedgerEntry`. Định dạng CSV (tái dùng `csv_export.py` từ audit dashboard).
+      Quyền: tái dùng `sales.read`/`inventory.read` hiện có, không tạo quyền mới. Giao Sonnet (tái
+      dùng khuôn CSV vừa dựng, không phải thiết kế mới).
 
 **DoD:** Sổ kiểm soát khớp movements; dashboard hiển thị số liệu thật; đề xuất nhập sinh PO nháp;
 **hồ sơ sức khỏe KH trả lời được 6 câu hỏi thanh tra bằng dữ liệu trong hệ thống** (xem Bước 0 của

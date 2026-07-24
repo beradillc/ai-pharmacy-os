@@ -2224,6 +2224,53 @@ giàu hơn (entity filter + CSV) với quyền riêng, đúng khuôn kernel-infr
 
 ---
 
+## 7am. Yêu cầu `analytics` + `report xuất khẩu` — GĐ chốt (2026-07-24, Chain duyệt)
+
+> Trả lời 2 câu hỏi treo ở §7al, dựa trên: (1) rà lại quy định hiện hành (web, không chỉ `docs/legal/`
+> cũ), (2) tham khảo cách Long Châu/Pharmacity và các phần mềm nhà thuốc phổ biến (MISA eShop, Sapo,
+> VNPT Pharmacy) vận hành thật. Đây LÀ quyết định nghiệp vụ tự chốt dưới full-auto (rule #3), Chain đã
+> duyệt trực tiếp — không phải GĐ tự ý không xin phép.
+
+**Căn cứ pháp lý (đã kiểm chứng, không suy đoán):** TT11/2025 (đã có ở `docs/legal/`) chỉ bắt nhà
+thuốc **kết nối/cập nhật dữ liệu real-time** lên hệ thống thông tin dược (từ 1/1/2026) — đã làm xong
+qua QĐ540/`NationalSyncLog`. **Không có văn bản nào** bắt nhà thuốc bán lẻ lập báo cáo định kỳ hay
+dashboard thống kê nộp cơ quan quản lý (khớp đính chính docs/13 #21 — Phụ lục X/XI TT20/2017 không
+áp dụng bán lẻ). Do đó rủi ro pháp lý của cả 2 module = **0** — thuần túy là công cụ quản trị nội bộ,
+sai thì chỉ tốn công sửa lại, không phải rủi ro tuân thủ.
+
+**Căn cứ thực tiễn ngành:** Long Châu dùng AI/big data dự báo real-time theo khu vực+nhóm sản phẩm
+qua hệ thống USee riêng (giảm stockout >70%) — vượt quá quy mô/hạ tầng hiện tại của dự án này, không
+sao chép nguyên bản. Các phần mềm nhà thuốc phổ biến (MISA eShop, Sapo, VNPT Pharmacy) đều có báo cáo
+doanh thu theo ngày/nhân viên/chi nhánh + cảnh báo cận date + tồn kho theo lô — đây là mức MVP hợp lý
+để bắt đầu.
+
+### Module `analytics` (v1)
+
+| Hạng mục | Quyết định |
+|---|---|
+| Cấp độ dự báo | Theo **thuốc × chi nhánh** (không phải hoạt chất — PO nháp cần trỏ đúng thuốc/NCC) |
+| Phương pháp v1 | Trung bình trượt 90 ngày + mốc tái đặt hàng = (vận tốc bán bình quân/ngày × lead-time NCC) + tồn an toàn. KHÔNG làm AI/ML thật ở v1 |
+| Đề xuất nhập | Sinh **PO nháp** trong `procurement` khi tồn dự kiến < mốc tái đặt — không tự gửi NCC, người duyệt (giữ triết lý "cảnh báo không chặn" đã dùng cho tương tác/dị ứng thuốc) |
+| Dashboard đầu | Doanh thu theo ngày/chi nhánh · top thuốc bán chạy · số cảnh báo cận date+tồn thấp · số PO nháp chờ duyệt |
+| Hoãn v2 | Phát hiện bất thường (doanh thu tụt, tồn quay chậm) + yếu tố mùa vụ/dịch bệnh — cần nhiều dữ liệu lịch sử hơn hệ thống hiện có |
+| Model giao | **Opus** (thiết kế mới hoàn toàn + cross-module thật `sales`/`inventory` → `procurement`) |
+
+### Module `report xuất khẩu`
+
+| Hạng mục | Quyết định |
+|---|---|
+| Nội dung đợt 1 | Doanh thu (ngày/tuần/tháng, theo chi nhánh/nhân viên) + tồn kho hiện tại theo lô/HSD |
+| Nội dung đợt 2 | Top thuốc bán chạy + xuất `ControlledLedgerEntry` (dữ liệu đã có từ Compliance C.1–C.5) |
+| Định dạng | CSV (tái dùng `core/audit/csv_export.py` vừa dựng ở §7al) — Excel/PDF để sau nếu cần |
+| Quyền | Tái dùng `sales.read`/`inventory.read` hiện có — KHÔNG tạo quyền mới (không phải dữ liệu nhạy cảm hơn UI đã hiển thị) |
+| Model giao | **Sonnet** (tái dùng khuôn CSV đã có, không phải thiết kế mới) |
+
+**Thứ tự triển khai:** `report xuất khẩu` (Sonnet) trước — nhanh, rủi ro thấp; đợi commit xong mới mở
+`analytics` (Opus) — tránh 2 agent cùng chạy migration/commit song song trên cùng git tree + Postgres
+sống (rủi ro đã lường trước ở phiên audit dashboard).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
