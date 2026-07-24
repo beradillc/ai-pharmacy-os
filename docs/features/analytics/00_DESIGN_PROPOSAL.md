@@ -1,6 +1,7 @@
 # Module `analytics` — Bản thiết kế đề xuất (DRAFT, chờ Chain duyệt)
 
-> Trạng thái: **ĐANG CHỜ DUYỆT** — chưa code dòng nào. Lập theo yêu cầu chốt PROJECT_STATE §7am
+> Trạng thái: **Q1–Q4 ĐÃ CHỐT (2026-07-25)** — còn chờ Chain gật quyền (mục 6) + lệnh bắt đầu code.
+> Lập theo yêu cầu chốt PROJECT_STATE §7am
 > (GĐ, Chain duyệt 2026-07-24) + Chain chọn **hướng (b) "dừng duyệt thiết kế trước khi code"**
 > (2026-07-25). Đây là điểm nối cross-module 3 module đầu tiên của dự án nên bỏ 1 nhịp duyệt.
 > Người lập: Trợ lý Code (Opus). Ngày: 2026-07-25.
@@ -91,14 +92,14 @@ Một bảng mới `reorder_suggestions` (migration mới, +1 số thứ tự sa
 4. **Dashboard** (`GET /analytics/dashboard?branch_id=`): gộp doanh thu (sales) + top thuốc (sales) +
    đếm cận date/tồn thấp (inventory) + đếm PO nháp chờ duyệt (procurement).
 
-## 5. Điểm cần Chain quyết (business/data — kỷ luật #3, KHÔNG tự quyết)
+## 5. Điểm business/data — CHAIN ĐÃ CHỐT 2026-07-25
 
-| # | Câu hỏi | Vì sao chặn | Đề xuất của Trợ lý Code |
-|---|---|---|---|
-| Q1 | **Nguồn vận tốc bán:** dòng bán `sales` hay xuất kho `inventory` (OUT, gồm cả kê đơn)? | §7am ghi "vận tốc *bán*" nhưng xuất kho là tiêu hao thật (gồm ETC) | Dùng **`sales`** đúng chữ §7am; ghi rõ giới hạn: kê đơn không qua bán lẻ không tính |
-| Q2 | **Lead-time NCC & tồn an toàn lấy đâu?** Hiện KHÔNG lưu ở đâu cả | Công thức reorder cần 2 số này | Thêm `lead_time_days` + `safety_stock_days` mặc định cấu hình theo tenant (VD 7 & 3 ngày), cho override sau. KHÔNG bịa theo thuốc |
-| Q3 | **Chọn NCC nào cho PO nháp?** Chưa có link thuốc→NCC | PO bắt buộc có `supplier_id` | Suy từ **NCC gần nhất từng cấp thuốc đó** (lịch sử PO); nếu chưa từng mua → để đề xuất KHÔNG materialize được, cảnh báo "chưa có NCC" |
-| Q4 | **Kích hoạt tính toán:** chỉ on-demand (bấm nút) hay thêm chạy nền định kỳ? | Ảnh hưởng phạm vi v1 | v1 **chỉ on-demand** (đơn giản, đủ cho dashboard); chạy nền để v2 |
+| # | Câu hỏi | **Chain chốt** |
+|---|---|---|
+| Q1 | Nguồn vận tốc bán | **Dòng bán `sales`** (đúng chữ §7am). Ghi rõ giới hạn: kê đơn ETC không qua bán lẻ KHÔNG tính vào velocity |
+| Q2 | Lead-time NCC & tồn an toàn | **Mặc định cấu hình theo tenant** (`lead_time_days` + `safety_stock_days`, mặc định đề xuất 7 & 3 ngày), cho override sau. KHÔNG bịa theo thuốc |
+| Q3 | Chọn NCC cho PO nháp | **NCC gần nhất từng cấp thuốc đó** (suy từ lịch sử PO). Thuốc chưa từng mua → đề xuất KHÔNG materialize được, cảnh báo "chưa có NCC", không vỡ |
+| Q4 | Kích hoạt tính toán | **Chỉ on-demand** (bấm nút) ở v1. Chạy nền định kỳ để v2 |
 
 ## 6. Quyền & tuân thủ
 
