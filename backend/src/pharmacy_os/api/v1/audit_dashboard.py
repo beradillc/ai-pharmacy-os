@@ -16,9 +16,6 @@ Two endpoints, both read-only:
 
 from __future__ import annotations
 
-import csv
-import io
-from collections.abc import AsyncIterator
 from datetime import datetime
 from uuid import UUID
 
@@ -31,6 +28,7 @@ from pharmacy_os.core.audit.csv_export import CSV_HEADER
 from pharmacy_os.core.audit.dashboard import AuditDashboardService
 from pharmacy_os.core.audit.entry import AuditAction, AuditEntry
 from pharmacy_os.core.context import RequestContext
+from pharmacy_os.core.http import csv_stream_body
 
 
 class AuditEntryResponse(BaseModel):
@@ -104,26 +102,6 @@ async def list_dashboard(
     )
 
 
-async def _csv_body(rows: AsyncIterator[list[str]]) -> AsyncIterator[str]:
-    """Header once, then one CSV line per entry, using :mod:`csv` for quoting so a
-    comma or newline inside ``context`` cannot break the file. A single reused buffer
-    keeps the whole response flat in memory regardless of row count."""
-    buffer = io.StringIO()
-    writer = csv.writer(buffer)
-
-    def _drain() -> str:
-        line = buffer.getvalue()
-        buffer.seek(0)
-        buffer.truncate(0)
-        return line
-
-    writer.writerow(CSV_HEADER)
-    yield _drain()
-    async for row in rows:
-        writer.writerow(row)
-        yield _drain()
-
-
 @router.get("/export")
 async def export_dashboard(
     service: AuditDashboardService = Depends(_service),
@@ -146,7 +124,7 @@ async def export_dashboard(
     )
     filename = f"audit-{ctx.tenant_id}.csv"
     return StreamingResponse(
-        _csv_body(rows),
+        csv_stream_body(CSV_HEADER, rows),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

@@ -25,6 +25,7 @@ from pharmacy_os.api.v1.health import router as health_router
 from pharmacy_os.api.v1.national_sync import wire_national_sync
 from pharmacy_os.api.v1.outbox_wiring import wire_outbox
 from pharmacy_os.api.v1.privacy import router as privacy_router
+from pharmacy_os.api.v1.reports import router as reports_router
 from pharmacy_os.core.di import Container
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.catalog.interface import register as register_catalog
@@ -76,6 +77,11 @@ def build_api_router(container: Container) -> APIRouter:
     drug_info = CatalogDrugInfoProvider(container.resolve(CatalogService))
     rx_info = PrescriptionInfoAdapter(container.resolve(PrescriptionService))
     api.include_router(register_sales(container, get_context, drug_info, rx_info))
+
+    # Sprint 7 report exports (composition root, like the audit dashboard): reads
+    # sales + inventory's own report methods, neither module imports the other.
+    # No new permission — reuses sales.read/inventory.read (PROJECT_STATE §7am).
+    api.include_router(reports_router)
 
     # Cross-module reactions (both modules' services now registered).
     wire_sale_dispensing(container)
