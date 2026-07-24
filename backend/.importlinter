@@ -150,3 +150,47 @@ modules =
     pharmacy_os.modules.crm
     pharmacy_os.modules.procurement
     pharmacy_os.modules.iam
+
+[importlinter:contract:analytics-domain-innermost]
+name = Analytics domain must not import outer layers or frameworks
+type = forbidden
+source_modules =
+    pharmacy_os.modules.analytics.domain
+forbidden_modules =
+    pharmacy_os.modules.analytics.application
+    pharmacy_os.modules.analytics.infrastructure
+    pharmacy_os.modules.analytics.interface
+    fastapi
+    sqlalchemy
+
+[importlinter:contract:analytics-does-not-import-business]
+name = Analytics must not import other business modules (reads via ports only)
+type = forbidden
+source_modules =
+    pharmacy_os.modules.analytics
+forbidden_modules =
+    pharmacy_os.modules.catalog
+    pharmacy_os.modules.inventory
+    pharmacy_os.modules.sales
+    pharmacy_os.modules.prescription
+    pharmacy_os.modules.compliance
+    pharmacy_os.modules.clinical
+    pharmacy_os.modules.crm
+    pharmacy_os.modules.procurement
+    pharmacy_os.modules.iam
+
+[importlinter:contract:business-does-not-import-analytics]
+name = Business modules must not import analytics
+type = forbidden
+source_modules =
+    pharmacy_os.modules.catalog
+    pharmacy_os.modules.inventory
+    pharmacy_os.modules.sales
+    pharmacy_os.modules.prescription
+    pharmacy_os.modules.compliance
+    pharmacy_os.modules.clinical
+    pharmacy_os.modules.crm
+    pharmacy_os.modules.procurement
+    pharmacy_os.modules.iam
+forbidden_modules =
+    pharmacy_os.modules.analytics
