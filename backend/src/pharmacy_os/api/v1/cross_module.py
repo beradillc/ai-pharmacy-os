@@ -174,6 +174,20 @@ def wire_safety_checks(container: Container) -> None:
         names = [name for _, name in basket]
         if len({name.strip().casefold() for name in names}) < 2:
             return  # no drug–drug interaction possible; skip to avoid empty audit noise
+        # Idempotency key of this reaction: one recommendation per business action.
+        # Delivery is at-least-once (transactional outbox), and unlike every other
+        # subscriber the interaction check has no natural key of its own — a redelivered
+        # event would append a second AiRecommendation + audit row for the same sale,
+        # i.e. duplicate the very records an inspection reads as evidence (NĐ356,
+        # docs/12). A manual re-check through the API is unaffected: the guard lives
+        # here in the automatic handler, not in the use-case.
+        if await clinical.find_recommendation_for_context(context_type, context_id, ctx):
+            _safety_log.debug(
+                "interaction_check_skipped_duplicate",
+                context_type=context_type.value,
+                context_id=str(context_id),
+            )
+            return
         try:
             result = await clinical.check_interactions(
                 CheckInteractionsInput(

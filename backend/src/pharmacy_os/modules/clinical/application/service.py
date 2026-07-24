@@ -33,6 +33,7 @@ from pharmacy_os.modules.clinical.application.dto import (
     TenantAiSettingsOutput,
 )
 from pharmacy_os.modules.clinical.domain import (
+    AiContextType,
     AiRecommendation,
     AiRecommendationAlreadyAcceptedError,
     DrugInteraction,
@@ -182,6 +183,22 @@ class ClinicalService:
         if rec is None:
             raise NotFoundError(f"Không tìm thấy khuyến nghị AI {recommendation_id}")
         return AiRecommendationOutput.of(rec)
+
+    async def find_recommendation_for_context(
+        self, context_type: AiContextType, context_id: UUID, ctx: RequestContext
+    ) -> AiRecommendationOutput | None:
+        """The recommendation already recorded for a sale/prescription, or ``None``.
+
+        Lets an automatic caller stay idempotent: an event redelivered by the outbox
+        (at-least-once) must not append a second :class:`AiRecommendation` — and a
+        second audit row — for a business action that was already checked. Returns the
+        record rather than a bare bool so the caller can log/inspect what was found.
+        """
+        require_permission(ctx, "clinical.check")
+        async with self._uow_factory() as uow:
+            repo = self._recommendation_repo_factory(uow, ctx)
+            rec = await repo.find_for_context(context_type, context_id)
+        return AiRecommendationOutput.of(rec) if rec is not None else None
 
     async def accept_recommendation(
         self, recommendation_id: UUID, ctx: RequestContext

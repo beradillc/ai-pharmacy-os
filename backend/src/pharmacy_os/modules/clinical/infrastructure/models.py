@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import JSON, Boolean, Float, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Float, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -50,6 +50,12 @@ class AiRecommendationORM(PkUuidMixin, TimestampMixin, Base):
     """
 
     __tablename__ = "ai_recommendations"
+    __table_args__ = (
+        # Idempotency lookup for automatic checks: "has this sale/prescription already
+        # been checked?" (see ``AiRecommendationRepository.find_for_context``). Not
+        # unique — a pharmacist may legitimately re-run a check from the API.
+        Index("ix_ai_recommendations_context", "tenant_id", "context_type", "context_id"),
+    )
 
     tenant_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
     context_type: Mapped[str] = mapped_column(String(8), nullable=False)

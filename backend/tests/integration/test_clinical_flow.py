@@ -1,4 +1,5 @@
 from collections.abc import Awaitable, Callable
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -110,6 +111,72 @@ async def test_check_persists_recommendation_readable_back(
     fetched = await clinical_service.get_recommendation(result.recommendation.id, ctx)
     assert fetched.id == result.recommendation.id
     assert fetched.sources == ()
+
+
+async def test_find_recommendation_for_context_returns_the_first_one(
+    clinical_service: ClinicalService, ctx: RequestContext, seed_interactions: SeedFn
+) -> None:
+    """The idempotency lookup used by the automatic checks (``wire_safety_checks``).
+
+    It only *reports* what exists — the use-case itself stays free to record another,
+    so a pharmacist re-running the check from the API is never blocked.
+    """
+    await seed_interactions([])
+    context_id = uuid4()
+    assert (
+        await clinical_service.find_recommendation_for_context(AiContextType.SALE, context_id, ctx)
+        is None
+    )
+
+    first = await clinical_service.check_interactions(
+        CheckInteractionsInput(
+            ingredients=["paracetamol"], context_type=AiContextType.SALE, context_id=context_id
+        ),
+        ctx,
+    )
+    second = await clinical_service.check_interactions(
+        CheckInteractionsInput(
+            ingredients=["paracetamol"], context_type=AiContextType.SALE, context_id=context_id
+        ),
+        ctx,
+    )
+    assert second.recommendation.id != first.recommendation.id  # manual re-check allowed
+
+    found = await clinical_service.find_recommendation_for_context(
+        AiContextType.SALE, context_id, ctx
+    )
+    assert found is not None
+    assert found.id == first.recommendation.id
+    # Same id, other context type → a different key, so nothing is found.
+    assert (
+        await clinical_service.find_recommendation_for_context(AiContextType.RX, context_id, ctx)
+        is None
+    )
+
+
+async def test_find_recommendation_for_context_is_tenant_isolated(
+    clinical_service: ClinicalService, ctx: RequestContext, seed_interactions: SeedFn
+) -> None:
+    await seed_interactions([])
+    context_id = uuid4()
+    await clinical_service.check_interactions(
+        CheckInteractionsInput(
+            ingredients=["paracetamol"], context_type=AiContextType.SALE, context_id=context_id
+        ),
+        ctx,
+    )
+    other = RequestContext(
+        tenant_id=uuid4(),
+        branch_id=ctx.branch_id,
+        user_id=ctx.user_id,
+        permissions=ctx.permissions,
+    )
+    assert (
+        await clinical_service.find_recommendation_for_context(
+            AiContextType.SALE, context_id, other
+        )
+        is None
+    )
 
 
 async def test_no_findings_low_confidence_still_requires_review(

@@ -296,6 +296,101 @@ async def test_dispensed_prescription_triggers_check_under_rx_context(
     assert recs[0].context_type == AiContextType.RX.value
 
 
+async def test_redelivered_sale_does_not_duplicate_the_recommendation(
+    wired_container: Container,
+    event_bus: InMemoryEventBus,
+    session_factory: async_sessionmaker[AsyncSession],
+    catalog_service: CatalogService,
+    clinical_service: ClinicalService,
+    ctx: RequestContext,
+) -> None:
+    """Delivery is at-least-once (outbox), so the same sale may arrive twice.
+
+    Exactly one ``AiRecommendation`` may exist per sale: it is the compliance evidence
+    of the check (NĐ356, docs/12), and duplicates make the record unreliable to read.
+    """
+    await _enable_ai(clinical_service, ctx)
+    await _seed_interaction(session_factory, "Warfarin", "Aspirin", InteractionSeverity.MAJOR)
+    warfarin = await _new_ingredient(session_factory, "Warfarin")
+    aspirin = await _new_ingredient(session_factory, "Aspirin")
+    drug_a = await _new_drug(catalog_service, ctx, "Thuốc W", [warfarin.id])
+    drug_b = await _new_drug(catalog_service, ctx, "Thuốc A", [aspirin.id])
+
+    order_id = uuid4()
+    sale = _sale(ctx, order_id, [drug_a, drug_b])
+    await event_bus.publish(sale)
+    await event_bus.publish(sale)  # redelivery of the very same event
+
+    assert len(await _recommendations_for(session_factory, ctx.tenant_id, order_id)) == 1
+
+
+async def test_redelivered_dispense_does_not_duplicate_the_recommendation(
+    wired_container: Container,
+    event_bus: InMemoryEventBus,
+    session_factory: async_sessionmaker[AsyncSession],
+    catalog_service: CatalogService,
+    clinical_service: ClinicalService,
+    prescription_service: PrescriptionService,
+    ctx: RequestContext,
+) -> None:
+    await _enable_ai(clinical_service, ctx)
+    await _seed_interaction(session_factory, "Warfarin", "Aspirin", InteractionSeverity.MAJOR)
+    warfarin = await _new_ingredient(session_factory, "Warfarin")
+    aspirin = await _new_ingredient(session_factory, "Aspirin")
+    drug_a = await _new_drug(catalog_service, ctx, "Thuốc W", [warfarin.id])
+    drug_b = await _new_drug(catalog_service, ctx, "Thuốc A", [aspirin.id])
+    rx = await prescription_service.create_prescription(
+        CreatePrescriptionInput(
+            customer_id=uuid4(),
+            doctor_name="BS. Test",
+            items=[_rx_item(drug_a), _rx_item(drug_b)],
+        ),
+        ctx,
+    )
+
+    event = PrescriptionDispensed(tenant_id=ctx.tenant_id, prescription_id=rx.id)
+    await event_bus.publish(event)
+    await event_bus.publish(event)
+
+    assert len(await _recommendations_for(session_factory, ctx.tenant_id, rx.id)) == 1
+
+
+async def test_another_tenant_is_not_blocked_by_the_idempotency_key(
+    wired_container: Container,
+    event_bus: InMemoryEventBus,
+    session_factory: async_sessionmaker[AsyncSession],
+    catalog_service: CatalogService,
+    clinical_service: ClinicalService,
+    ctx: RequestContext,
+) -> None:
+    """The key is scoped per tenant — one pharmacy's check never suppresses another's."""
+    await _enable_ai(clinical_service, ctx)
+    await _seed_interaction(session_factory, "Warfarin", "Aspirin", InteractionSeverity.MAJOR)
+    warfarin = await _new_ingredient(session_factory, "Warfarin")
+    aspirin = await _new_ingredient(session_factory, "Aspirin")
+    drug_a = await _new_drug(catalog_service, ctx, "Thuốc W", [warfarin.id])
+    drug_b = await _new_drug(catalog_service, ctx, "Thuốc A", [aspirin.id])
+
+    other = RequestContext(
+        tenant_id=uuid4(),
+        branch_id=ctx.branch_id,
+        user_id=ctx.user_id,
+        permissions=ctx.permissions,
+    )
+    await _enable_ai(clinical_service, other)
+    # The catalog is tenant-scoped, so the second pharmacy stocks its own two drugs
+    # over the same (global) active ingredients.
+    other_a = await _new_drug(catalog_service, other, "Thuốc W", [warfarin.id])
+    other_b = await _new_drug(catalog_service, other, "Thuốc A", [aspirin.id])
+
+    order_id = uuid4()  # same business id, two different tenants
+    await event_bus.publish(_sale(ctx, order_id, [drug_a, drug_b]))
+    await event_bus.publish(_sale(other, order_id, [other_a, other_b]))
+
+    assert await _count_recommendations(session_factory, ctx.tenant_id) == 1
+    assert await _count_recommendations(session_factory, other.tenant_id) == 1
+
+
 async def test_unknown_dispensed_prescription_is_ignored(
     wired_container: Container,
     event_bus: InMemoryEventBus,

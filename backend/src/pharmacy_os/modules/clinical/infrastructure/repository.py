@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.clinical.domain import (
+    AiContextType,
     AiRecommendation,
     DrugInteraction,
     TenantAiSettings,
@@ -73,6 +74,22 @@ class SqlAlchemyAiRecommendationRepository:
             AiRecommendationORM.tenant_id == self._ctx.tenant_id,
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return recommendation_to_domain(row) if row is not None else None
+
+    async def find_for_context(
+        self, context_type: AiContextType, context_id: UUID
+    ) -> AiRecommendation | None:
+        stmt = (
+            select(AiRecommendationORM)
+            .where(
+                AiRecommendationORM.tenant_id == self._ctx.tenant_id,
+                AiRecommendationORM.context_type == context_type.value,
+                AiRecommendationORM.context_id == context_id,
+            )
+            .order_by(AiRecommendationORM.created_at, AiRecommendationORM.id)
+            .limit(1)
+        )
+        row = (await self._session.execute(stmt)).scalars().first()
         return recommendation_to_domain(row) if row is not None else None
 
     async def update(self, recommendation: AiRecommendation) -> None:
