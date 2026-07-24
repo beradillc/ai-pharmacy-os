@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pharmacy_os.core.audit.models  # noqa: F401
 import pharmacy_os.core.outbox.models  # noqa: F401
+import pharmacy_os.modules.analytics.infrastructure.models  # noqa: F401
 import pharmacy_os.modules.catalog.infrastructure.models  # noqa: F401
 import pharmacy_os.modules.clinical.infrastructure.models  # noqa: F401
 import pharmacy_os.modules.compliance.infrastructure.models  # noqa: F401

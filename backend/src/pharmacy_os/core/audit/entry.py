@@ -154,6 +154,19 @@ class AuditAction(StrEnum):
     loại thuốc này". No update-drug use-case exists yet, so creation is the
     only mutating action in this module worth auditing."""
 
+    # --- analytics (đề xuất nhập hàng → PO nháp: ai bấm gì, PROJECT_STATE §7am) ---
+    ANALYTICS_REORDER_RUN = "ANALYTICS_REORDER_RUN"
+    """A reorder-suggestion run was executed for a branch — the act that regenerates
+    the branch's PENDING/INSUFFICIENT_DATA suggestions from current sales+stock."""
+
+    ANALYTICS_SUGGESTION_MATERIALIZED = "ANALYTICS_SUGGESTION_MATERIALIZED"
+    """A human turned a suggestion into a DRAFT purchase order — worth a trail because
+    it is the moment a machine-computed demand number becomes a (still-draft)
+    procurement action, traced to "ai đã tạo PO nháp từ đề xuất này"."""
+
+    ANALYTICS_SUGGESTION_DISMISSED = "ANALYTICS_SUGGESTION_DISMISSED"
+    """A human decided not to act on a suggestion."""
+
 
 @dataclass(frozen=True, slots=True)
 class AuditEntry:
