@@ -2001,7 +2001,8 @@ ghi trong nợ tồn-âm ở `TODO.md`. Dữ liệu tenant thử nghiệm đã d
 | `docs/03` ghi bảng tên `outbox_events` | Thực tế là `event_outbox` (migration 0017) — sửa `docs/03` + `docs/06` theo thực tế |
 | README ghi `alembic upgrade head # 0001 → 0013` | Nay tới `0018` — sửa |
 | **Cách chạy pytest của chính Claude che mất exit code** — `pytest -q \| tail` trả về mã thoát của `tail` (luôn 0), nên 2 lần "suite xanh" giữa phiên là **không có căn cứ**; lần chạy đầy đủ đầu tiên có ghi mã thoát thật đã bắt được 1 test đỏ (`test_registry_covers_every_domain_event` — fake event trong test bị đếm nhầm là event thật) | Đã sửa test + từ nay ghi `EXIT=$?` ra file thay vì pipe. Commit `50ea91c` được xác nhận lại bằng chính lần chạy cuối (code của nó nằm trong HEAD) |
-| **README §5 "Trạng thái dự án" đứng yên ở Sprint 3** ("HOÀN THÀNH", `pytest 46`, `import-linter 6/0`) trong khi thực tế đã qua Sprint 6 | **CHƯA sửa** — không thuộc mạch outbox, và viết lại mục này là quyết định trình bày (đưa tới đâu, còn gọi sprint nào là "hiện tại") nên để sếp chốt. Ghi ở đây để không quên |
+| **README §5 "Trạng thái dự án" đứng yên ở Sprint 3** ("HOÀN THÀNH", `pytest 46`, `import-linter 6/0`) trong khi thực tế đã qua Sprint 6 | **ĐÃ SỬA** — Chain chốt nội dung ngay sau khi được báo (2026-07-24): bảng Sprint 1–7, tách rõ "Sprint 7 đã xong / còn lại", số liệu cổng mới (`pytest 650` · `mypy 221` · `import-linter 13/0` · mig `0001`→`0018`). Giữ nguyên sắc thái không overclaim: Sprint 4 ✅ *(backend)*, Sprint 5 ✅ *(mức MOCK — còn `# BLOCKER: AI__API_KEY thật`)* |
+| **ROADMAP.md Sprint 7 vẫn tick `[ ]` cho dòng "transactional outbox ... — CHƯA làm"** dù outbox hạ tầng lõi đã xong (§7ai) | **CHƯA sửa** — dòng đó gộp 2 việc (outbox + audit query dashboard) và mới xong 1; tách lại checkbox là sửa cấu trúc lộ trình, để Chain chốt. README §5 đã ghi đúng thực tế nên không có mâu thuẫn đối ngoại |
 
 ### Quyết định tự chốt trong phiên (full-auto rule #3)
 

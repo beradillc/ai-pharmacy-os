@@ -89,15 +89,39 @@ Chi tiết: [docs/02_ARCHITECTURE.md](docs/02_ARCHITECTURE.md).
 
 ## 5. Trạng thái dự án
 
-**Sprint 3 — Catalog & Inventory: HOÀN THÀNH.** Hai module nghiệp vụ đầu tiên chạy được end-to-end.
+**Sprint 1–6 đã đóng · Sprint 7 (Compliance & Analytics) đang tiến hành.** Backend chạy end-to-end:
+9 module nghiệp vụ + kernel, xác thực JWT thật, sổ thuốc kiểm soát đặc biệt, hồ sơ sức khỏe khách
+hàng, và outbox giao dịch cho sự kiện miền.
 
-- ✅ Sprint 1 — Thiết kế: 12 tài liệu + README/ROADMAP/PROJECT_STATE
-- ✅ Sprint 2 — Kernel: config, DI, event bus, UoW, security, audit, AI port, plugin loader, API v1 + health, Alembic `0001`
-- ✅ Sprint 3 — `catalog` (drug master, quy đổi đơn vị, Rx class) + `inventory` (lô/hạn dùng, movement event-sourced, **FEFO**, cảnh báo cận date). Migration `0002`, seed ATC.
-- ✅ Gate xanh: `pytest` **46** · domain coverage **97%** · `mypy` strict (92 file) · `import-linter` **6/0** · migration live/reversible
-- ⏭️ Sprint 4 — Sales / POS offline (xem [ROADMAP.md](ROADMAP.md))
+| Sprint | Trạng thái | Nội dung chính |
+|--------|-----------|----------------|
+| 1 — Thiết kế | ✅ | 12 tài liệu + README/ROADMAP/PROJECT_STATE (nay đã lên 16, xem mục 4) |
+| 2 — Kernel | ✅ | config, DI, event bus, UoW, security, audit, AI port, plugin loader, API v1 |
+| 3 — Catalog & Inventory | ✅ | `catalog` (drug master, quy đổi đơn vị, Rx class) · `inventory` (lô/HSD, movement event-sourced, **FEFO**, cảnh báo cận date) |
+| 4 — Sales / POS offline | ✅ *(backend)* | `sales`: đơn/thanh toán/trả hàng, idempotency `client_uuid`, `/sync/sales` offline-first. FE POS chưa thuộc phạm vi |
+| 5 — Prescription & Clinical AI | ✅ *(mức MOCK)* | `prescription` + `clinical`: tra tương tác thuốc **tất định**, LLM chỉ diễn giải. `# BLOCKER: AI__API_KEY thật` — chưa gọi vendor thật |
+| 6 — Procurement & CRM | ✅ | `procurement` (NCC/PO/GRN→lô) · `crm` (khách hàng, đồng ý, dị ứng) · cờ AI theo từng tenant |
+| **7 — Compliance & Analytics** | 🔄 **đang làm** | xem hai mục dưới |
 
-Xem chi tiết & lịch sử: [PROJECT_STATE.md](PROJECT_STATE.md).
+**Sprint 7 — đã xong:**
+
+- ✅ `iam` — module IAM thật (users/roles/JWT 2 cấp chuỗi–nhà thuốc, thay dev-header) · [docs/15](docs/15_IAM_DESIGN.md)
+- ✅ `audit_logs` persist (append-only) + `GET /audit-logs` mức tối thiểu
+- ✅ Hồ sơ sức khỏe khách hàng (qua cổng [docs/14](docs/14_FEATURE_PROCESS.md) Bước 0–4) — tách 2 mức nhạy cảm, `crm.sensitive.read` riêng, 6 action audit, export/khử nhận dạng, endpoint metadata DPIA
+- ✅ `compliance` — sổ thuốc kiểm soát đặc biệt (C.1–C.5) + router HTTP
+- ✅ **Transactional outbox** — mọi `UnitOfWork` ghi `event_outbox` trong chính giao dịch nghiệp vụ; relay giao lại at-least-once (xem §7 mục "Giao sự kiện miền" bên dưới)
+
+**Sprint 7 — còn lại:**
+
+- ⬜ Dashboard / audit query (nay mới có `GET /audit-logs` mức tối thiểu) + đưa retry liên thông DAV lên outbox thay cơ chế best-effort hiện tại
+- ⬜ Module `analytics`: dashboard, dự báo nhu cầu, đề xuất nhập
+- ⬜ Report xuất khẩu
+- ⬜ *Nợ kỹ thuật đã ghi:* dọn (retention) dòng `PUBLISHED`/`FAILED` trong `event_outbox` · cảnh báo/khoá tồn-âm khi chạy outbox chế độ async — xem [TODO.md](TODO.md)
+
+**Cổng chất lượng (2026-07-24):** `pytest` **650** · `mypy --strict` **221 file** · `import-linter`
+**13 contract / 0 broken** · `ruff check` + `format --check` sạch · migration `0001`→`0018` live/reversible.
+
+Xem chi tiết & lịch sử: [PROJECT_STATE.md](PROJECT_STATE.md) · lộ trình đầy đủ: [ROADMAP.md](ROADMAP.md).
 
 ---
 
