@@ -7,13 +7,11 @@ the API composition root, not here — sales never imports inventory.
 from __future__ import annotations
 
 from fastapi import APIRouter
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
+from pharmacy_os.core.db import UnitOfWork, UnitOfWorkFactory
 from pharmacy_os.core.di import Container
-from pharmacy_os.core.events import EventBus
 from pharmacy_os.modules.sales.application import SalesService
 from pharmacy_os.modules.sales.domain import DrugInfoProvider, PrescriptionInfoProvider
 from pharmacy_os.modules.sales.infrastructure import SqlAlchemySalesRepository
@@ -26,11 +24,7 @@ def register(
     drug_info: DrugInfoProvider | None = None,
     prescription_info: PrescriptionInfoProvider | None = None,
 ) -> APIRouter:
-    session_factory = container.resolve(async_sessionmaker[AsyncSession])
-    event_bus = container.resolve(EventBus)  # type: ignore[type-abstract]
-
-    def uow_factory() -> UnitOfWork:
-        return SqlAlchemyUnitOfWork(session_factory, event_bus)
+    uow_factory = container.resolve(UnitOfWorkFactory)
 
     def repo_factory(uow: UnitOfWork, ctx: RequestContext) -> SqlAlchemySalesRepository:
         return SqlAlchemySalesRepository(uow.session, ctx)

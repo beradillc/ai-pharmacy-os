@@ -138,7 +138,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    A[Sự kiện: nhập/xuất/bán thuốc] --> B[outbox_events]
+    A[Sự kiện: nhập/xuất/bán thuốc] --> B[event_outbox]
     B --> C[Worker đọc outbox]
     C --> D[Plugin dav_connector map dữ liệu]
     D --> E[Gửi tới cổng DAV]

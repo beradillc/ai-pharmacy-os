@@ -124,7 +124,7 @@ cd backend && pip install -e ".[dev]"
 cp .env.example .env                 # điền AI__API_KEY, SECURITY__JWT_SECRET...
 
 # 3) Migration + seed + chạy API
-alembic upgrade head                 # 0001 (extensions) → 0013 (iam)
+alembic upgrade head                 # 0001 (extensions) → 0018 (index idempotent AI recommendation)
 python -m seeds.run                  # seed mã ATC (idempotent)
 uvicorn pharmacy_os.main:app --reload
 # → /api/v1/health · /api/v1/docs · /api/v1/drugs · /api/v1/inventory/*
@@ -156,6 +156,26 @@ này bật thì ứng dụng **từ chối khởi động**.
 
 `branch_id` nằm trong claim JWT đã ký; header `X-Branch-Id` **không** đè được trên request đã xác
 thực. Đổi chi nhánh dùng `POST /api/v1/auth/switch-branch`. Chi tiết: [docs/15_IAM_DESIGN.md](docs/15_IAM_DESIGN.md).
+
+### Giao sự kiện miền — transactional outbox (2026-07-24)
+
+Mỗi `UnitOfWork` ghi sự kiện vào bảng `event_outbox` **ngay trong giao dịch nghiệp vụ**, nên không còn
+cửa sổ "đã commit đơn hàng nhưng `SaleCompleted` bốc hơi vì tiến trình chết". Hai công tắc quyết định
+sự kiện rời bảng đó bằng đường nào:
+
+| Biến | Mặc định | Ý nghĩa |
+|------|----------|---------|
+| `OUTBOX__SYNC_DRAIN` | `true` | Publish ngay sau commit, trong cùng request — giống hành vi cũ, chỉ khác là sự kiện đã nằm trên đĩa trước đó |
+| `OUTBOX__RELAY_ENABLED` | `false` | Tiến trình nền quét `event_outbox`, giao lại những dòng còn `PENDING` do sự cố. **Đây mới là thứ làm outbox có giá trị** |
+
+**Prod đặt `OUTBOX__SYNC_DRAIN=false` + `OUTBOX__RELAY_ENABLED=true`** (bật cả hai cũng hợp lệ: inline
+cho độ trễ thấp, relay làm lưới an toàn). Cả hai `false` khi `APP__ENV=prod` ⇒ app **từ chối khởi động**.
+
+Giao hàng là **at-least-once**: một sự kiện có thể tới subscriber 2 lần, nên mọi subscriber đều có khoá
+idempotent (`dispense_for_sale` theo `order_id`, GRN theo `grn_id`, medication-history theo
+`(source, ref_id)`, interaction-check theo `(context_type, context_id)`). Thêm `DomainEvent` mới thì phải
+khai vào `ALL_EVENTS` trong `api/v1/outbox_wiring.py` — quên sẽ bị `tests/unit/test_outbox_registry.py`
+bắt ngay, không để lọt tới lúc chạy.
 
 Hoặc dùng `make`: `make up` · `make install` · `make migrate` · `make seed` · `make serve` · `make check` (lint+contracts+types+test).
 

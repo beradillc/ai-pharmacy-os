@@ -18,6 +18,7 @@ LOCKED``, so running several relays (or app instances) never delivers one event 
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -102,6 +103,22 @@ class OutboxRelay:
                 failed=failed,
             )
         return result
+
+    async def run_forever(self, poll_interval_seconds: float) -> None:
+        """Drain in a loop until cancelled — the app's background delivery task.
+
+        A drain that blows up (database down, say) must not kill the loop: it is logged
+        and retried on the next tick, because the rows are still there. Cancellation is
+        the only way out, and it propagates so shutdown isn't delayed.
+        """
+        while True:
+            try:
+                await self.drain_once()
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001 — a failed drain must not stop the loop
+                _log.exception("outbox_drain_failed")
+            await asyncio.sleep(poll_interval_seconds)
 
     async def _publish(self, record: OutboxRecord) -> str | None:
         """Deliver one record to the bus; return an error string, or ``None`` on success."""

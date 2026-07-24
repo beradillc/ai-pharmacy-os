@@ -62,8 +62,16 @@
       2026-07-23** (PROJECT_STATE §7ac, GĐ tự chốt theo full-auto).
 - [x] `SalesOrder.customer_id` (mig `0016`) + ghi `MedicationHistoryEntry` tự động từ event
       (consent-gated, idempotent) + dị ứng OTC — **XONG 2026-07-24** (phiên Opus full-auto, 3 bước,
-      PROJECT_STATE §7ad). **Nợ mang sang Sprint 7 còn lại:** outbox/retry bền (hạ tầng lõi), module
-      `analytics` + report (cần sếp mô tả yêu cầu trước khi thiết kế).
+      PROJECT_STATE §7ad). **Nợ mang sang Sprint 7 còn lại:** ~~outbox/retry bền~~ (xong 2026-07-24,
+      §7ai — xem mục dưới), module `analytics` + report (cần sếp mô tả yêu cầu trước khi thiết kế).
+- [x] **Outbox giao dịch (hạ tầng lõi)** — 3 bước xong **2026-07-24**: codec (§7ae) → machinery ngủ
+      (§7ag) → **flip** (§7ai). Mọi `UnitOfWork` ghi `event_outbox` trong txn nghiệp vụ; 2 cờ
+      `OUTBOX__SYNC_DRAIN` (publish inline) + `OUTBOX__RELAY_ENABLED` (relay nền quét lại dòng PENDING).
+      Prod đặt `false`+`true`. Đã kiểm chứng trên Postgres thật đúng hình dạng prod.
+- [ ] **`event_outbox` — cơ chế dọn (retention) dòng PUBLISHED/FAILED** (ghi 2026-07-24, §7ai). Hiện
+      **không có gì xoá** dòng đã publish: bảng phình vô hạn ở prod (mỗi lần bán ≥ 3 dòng). Cần: job
+      quét theo tuổi (giữ N ngày) + quyết định giữ dòng `FAILED` lâu hơn để còn điều tra. Chưa gấp khi
+      chưa có deployment thật, nhưng phải xong **trước khi chạy prod**.
 - [ ] **`inventory` — cảnh báo/khoá tồn-âm khi eventual-consistency ở prod** (ghi 2026-07-24, sếp chốt
       **Sprint sau**, ngoài phạm vi outbox lần này). Bối cảnh: khi outbox chạy chế độ async ở prod, phản
       ứng cross-module (dispense FEFO sau bán) trừ tồn **trễ vài giây** so với lúc thu ngân bấm bán → 2

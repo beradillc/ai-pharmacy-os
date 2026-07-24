@@ -139,7 +139,7 @@ erDiagram
 |------|-----------|
 | `plugins` | id, key, version, enabled, config jsonb |
 | `settings` | id, scope (SYSTEM/TENANT/BRANCH), scope_id, key, value jsonb |
-| `outbox_events` | id, aggregate, type, payload jsonb, published_at — transactional outbox |
+| `event_outbox` | id, event_id (unique), event_type, tenant_id, payload jsonb, status, occurred_at, retry_count, next_attempt_at, published_at, last_error — transactional outbox (migration 0017; tên bảng thực tế là `event_outbox`, tài liệu cũ ghi `outbox_events`) |
 
 ---
 

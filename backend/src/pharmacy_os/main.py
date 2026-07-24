@@ -6,8 +6,9 @@ loads enabled plugins on startup. Business modules attach here from Sprint 3.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,17 +19,35 @@ from pharmacy_os.api.v1 import build_api_router
 from pharmacy_os.core.bootstrap import build_container
 from pharmacy_os.core.config import Settings, get_settings
 from pharmacy_os.core.errors import register_error_handlers
+from pharmacy_os.core.outbox import OutboxRelay
 from pharmacy_os.core.plugins import PluginLoader
 from pharmacy_os.logging import configure_logging
 
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    loader: PluginLoader = app.state.container.resolve(PluginLoader)
+    container = app.state.container
+    loader: PluginLoader = container.resolve(PluginLoader)
     discovered = loader.discover()
     if discovered:
         loader.load_enabled({name: {} for name in discovered})
+
+    # The outbox relay is a process-lifetime background task: it drains events that
+    # were committed but not yet delivered (including whatever a previous crash left
+    # behind). Tied to the app's lifespan so a shutdown cannot leave it running.
+    settings: Settings = container.resolve(Settings)
+    relay_task: asyncio.Task[None] | None = None
+    if settings.outbox.relay_enabled:
+        relay: OutboxRelay = container.resolve(OutboxRelay)
+        relay_task = asyncio.create_task(
+            relay.run_forever(settings.outbox.poll_interval_seconds),
+            name="outbox-relay",
+        )
     yield
+    if relay_task is not None:
+        relay_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await relay_task
     loader.teardown_all()
 
 

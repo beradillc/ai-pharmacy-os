@@ -14,12 +14,10 @@ changes, because they depend only on the port.
 from __future__ import annotations
 
 import structlog
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
+from pharmacy_os.core.db import UnitOfWork, UnitOfWorkFactory
 from pharmacy_os.core.di import Container
-from pharmacy_os.core.events import EventBus
 from pharmacy_os.modules.compliance.application import NationalSyncService
 from pharmacy_os.modules.compliance.domain import SyncAck, SyncRequest
 from pharmacy_os.modules.compliance.infrastructure import SqlAlchemyNationalSyncLogRepository
@@ -51,11 +49,7 @@ def wire_national_sync(container: Container) -> None:
     A side-effect wiring (no router) — the service is resolvable for the cross-module
     subscriber added in C.5, which will enqueue sync pushes off business events.
     """
-    session_factory = container.resolve(async_sessionmaker[AsyncSession])
-    event_bus = container.resolve(EventBus)  # type: ignore[type-abstract]
-
-    def uow_factory() -> UnitOfWork:
-        return SqlAlchemyUnitOfWork(session_factory, event_bus)
+    uow_factory = container.resolve(UnitOfWorkFactory)
 
     def repo_factory(uow: UnitOfWork, ctx: RequestContext) -> SqlAlchemyNationalSyncLogRepository:
         return SqlAlchemyNationalSyncLogRepository(uow.session, ctx)

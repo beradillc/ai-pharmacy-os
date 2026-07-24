@@ -12,9 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from pharmacy_os.core.ai import LLMProvider, MockLLMProvider
 from pharmacy_os.core.audit import AuditLogger, AuditQueryService
 from pharmacy_os.core.config import Settings
-from pharmacy_os.core.db import build_engine, build_sessionmaker
+from pharmacy_os.core.db import OutboxSink, UnitOfWorkFactory, build_engine, build_sessionmaker
 from pharmacy_os.core.di import Container
 from pharmacy_os.core.events import EventBus, InMemoryEventBus
+from pharmacy_os.core.outbox import OutboxEventSink
 from pharmacy_os.core.plugins import PluginLoader
 from pharmacy_os.core.security.jwt import JwtService
 
@@ -31,6 +32,26 @@ def build_container(settings: Settings) -> Container:
 
     # EventBus is a Protocol used as a service key; concrete impl is InMemoryEventBus.
     container.register_singleton(EventBus, lambda _c: InMemoryEventBus())  # type: ignore[type-abstract]
+    # Every UoW in the app writes its events to event_outbox inside the business
+    # transaction (see core.outbox.sink); OUTBOX__SYNC_DRAIN decides whether they are
+    # also published inline. Modules get their UoWs from UnitOfWorkFactory so none of
+    # them can accidentally build one without the outbox.
+    container.register_singleton(
+        OutboxSink,  # type: ignore[type-abstract]
+        lambda c: OutboxEventSink(
+            c.resolve(async_sessionmaker[AsyncSession]),
+            c.resolve(EventBus),  # type: ignore[type-abstract]
+            sync_drain=c.resolve(Settings).outbox.sync_drain,
+        ),
+    )
+    container.register_singleton(
+        UnitOfWorkFactory,
+        lambda c: UnitOfWorkFactory(
+            c.resolve(async_sessionmaker[AsyncSession]),
+            c.resolve(EventBus),  # type: ignore[type-abstract]
+            c.resolve(OutboxSink),  # type: ignore[type-abstract]
+        ),
+    )
     # LLM port: mock implementation only in S5.5 — no real vendor call is made.
     # BLOCKER: AI__API_KEY thật — swap in the AnthropicProvider here (chosen from
     # settings.ai.provider / api_key) once a live key + the vendor SDK are wired.

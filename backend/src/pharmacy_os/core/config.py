@@ -69,6 +69,32 @@ class OrgSettings(BaseSettings):
     tax_code: str = ""
 
 
+class OutboxSettings(BaseSettings):
+    """How domain events get from the ``event_outbox`` table to their subscribers.
+
+    Defaults are the **dev/test** shape: publish inline right after the commit, no
+    background task, so a request's subscribers finish before it returns and the test
+    suite stays deterministic. A production deployment sets ``OUTBOX__SYNC_DRAIN=false``
+    + ``OUTBOX__RELAY_ENABLED=true`` to get real async delivery; running both is also
+    valid (inline for latency, relay as the sweeper that picks up what a crash left).
+    """
+
+    sync_drain: bool = True
+    """Publish collected events immediately after the business commit (same request)."""
+
+    relay_enabled: bool = False
+    """Run the background :class:`~pharmacy_os.core.outbox.OutboxRelay` in the app.
+
+    This is what makes the outbox worth having: it re-delivers rows left ``PENDING`` by
+    a crash between the commit and the dispatch. Off by default only because a poller
+    inside the test harness would make the suite non-deterministic."""
+
+    poll_interval_seconds: float = 1.0
+    batch_size: int = 100
+    max_retries: int = 5
+    base_backoff_seconds: float = 2.0
+
+
 class SecuritySettings(BaseSettings):
     jwt_secret: SecretStr = SecretStr(_PLACEHOLDER)
     jwt_ttl_minutes: int = 60
@@ -105,6 +131,7 @@ class Settings(BaseSettings):
     ai: AISettings = Field(default_factory=AISettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     org: OrgSettings = Field(default_factory=OrgSettings)
+    outbox: OutboxSettings = Field(default_factory=OutboxSettings)
 
     @model_validator(mode="after")
     def _fail_fast_in_prod(self) -> Settings:
@@ -114,6 +141,11 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "SECURITY__ALLOW_DEV_AUTH must be false in prod: it accepts "
                     "unauthenticated requests with a full permission set"
+                )
+            if not self.outbox.sync_drain and not self.outbox.relay_enabled:
+                raise ValueError(
+                    "OUTBOX__SYNC_DRAIN and OUTBOX__RELAY_ENABLED are both false: "
+                    "events would be written to event_outbox and never delivered"
                 )
             missing = [
                 name

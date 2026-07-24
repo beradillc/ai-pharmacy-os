@@ -1948,10 +1948,82 @@ consistency đã ở `TODO.md` (Sprint sau + p95 NFR Sprint 8).
 
 ---
 
+## 7ai. ✅ OUTBOX BƯỚC 3/3 — FLIP XONG (2026-07-24, phiên Opus full-auto)
+
+**Kết quả:** mọi `UnitOfWork` nay ghi sự kiện vào `event_outbox` **ngay trong giao dịch nghiệp vụ**.
+Cửa sổ mất sự kiện (commit xong → tiến trình chết → `SaleCompleted` bốc hơi) đã đóng. Machinery ngủ từ
+§7ag nay đã được đấu điện thật.
+
+### 3 commit
+
+| Commit | Nội dung |
+|--------|----------|
+| `50ea91c` | **Điều kiện tiên quyết** — chặn trùng interaction-check theo `(context_type, context_id)` (phương án (a) sếp chốt §7ag). Port + repo `find_for_context`, index `0018` (KHÔNG unique), `ClinicalService.find_recommendation_for_context()` chỉ đọc, cổng chặn đặt trong `wire_safety_checks`. Re-check thủ công qua API vẫn chạy được — khoá chỉ áp cho phản ứng tự động |
+| *(chore)* | `ruff format` 5 file trôi định dạng có sẵn từ trước (3 migration 0013–0015 + 2 test e2e) — xem mục "Phát hiện lệch" bên dưới |
+| *(flip)* | Bước 3 nguyên tử: UoW ghi outbox in-txn · `OutboxEventSink` · `OutboxSettings` · `EventRegistry` 14 event ở composition root · relay nền trong lifespan · 12 điểm dựng UoW gom về `UnitOfWorkFactory` |
+
+### Thiết kế đã chọn (khác đôi chỗ so với phác thảo §7ah — đều là chọn kỹ hơn, không cắt bớt)
+
+| Điểm | Phác thảo §7ah | Đã làm | Vì sao |
+|------|----------------|--------|--------|
+| Seam giữa UoW ↔ outbox | UoW gọi thẳng repo outbox | Protocol `OutboxSink` khai **trong `core/db/uow.py`**, cài đặt `OutboxEventSink` ở `core/outbox/sink.py` | `core.outbox.relay` đã phụ thuộc `core.db`; nếu `core.db` import ngược `core.outbox` thì vòng lặp import. Khai protocol tại chỗ dùng = cắt vòng, không cần TYPE_CHECKING lắt léo |
+| Chế độ sync-drain | Gọi lại `relay.drain_once()` | Publish đúng những dòng UoW này vừa ghi, rồi `mark_published` | Gọi lại relay sẽ **đệ quy vô hạn** trên SQLite: `FOR UPDATE SKIP LOCKED` là no-op, nên drain lồng nhau claim lại chính dòng đang xử lý dở. Cách đã làm không tái nhập được vì chỉ đụng id của chính mình |
+| Số event | "17 event" | **14** | Đếm thật bằng `class X(DomainEvent)`: sales 2, prescription 3, procurement 2, inventory 4, iam 3. Con số 17 ở §7ah là ước lượng, không phải đếm |
+| Nơi dựng UoW | Giữ nguyên 12 chỗ | Gom về `UnitOfWorkFactory` đăng ký 1 lần trong container | 12 chỗ tự dựng UoW = 12 cơ hội quên truyền sink; quên là **mất sự kiện im lặng**, không có test nào bắt được. Diff còn nhỏ hơn: xoá 4 dòng, thêm 1 |
+| Công tắc | 1 cờ `OUTBOX__SYNC_DRAIN` | 2 cờ: `SYNC_DRAIN` + `RELAY_ENABLED` | Chúng là 2 việc khác nhau: publish inline (độ trễ) vs quét lại dòng còn PENDING (phục hồi sau sự cố). Prod cần cái thứ hai kể cả khi bật cái thứ nhất |
+
+**Mặc định:** `SYNC_DRAIN=true`, `RELAY_ENABLED=false` (hình dạng dev/test — publish inline, không có
+poller nền làm test mất tính tất định). **Prod đặt `SYNC_DRAIN=false` + `RELAY_ENABLED=true`.** Cả hai
+`false` khi `APP__ENV=prod` ⇒ app **từ chối khởi động** (sự kiện sẽ nằm lại trong bảng vĩnh viễn).
+
+### Bằng chứng — chạy thật trên Postgres, đúng hình dạng prod
+
+Không chỉ pytest (SQLite). Script kiểm tra trực tiếp trên PG với `SYNC_DRAIN=false`:
+
+| Bước | Quan sát |
+|------|----------|
+| Nhập 20 viên | tồn = 20 · outbox `[StockMovedIn PENDING]` |
+| Bán 3 viên | tồn **vẫn 20** (async: chưa trừ) · outbox thêm `SaleCompleted PENDING` |
+| `drain_once()` #1 | published=2 · **tồn 17** (FEFO dispense đã chạy) · sinh `StockMovedOut PENDING` |
+| `drain_once()` #2 | published=1 · tất cả PUBLISHED |
+| `drain_once()` #3 | processed=0 · tồn vẫn 17 (không trừ 2 lần) |
+
+**Phát hiện đáng ghi:** ở chế độ async, **mỗi vòng quét chỉ đẩy được 1 mắt xích** của dây chuyền sự kiện
+(bán → dispense → `StockMovedOut`). Dây chuyền N mắt cần N chu kỳ poll để lắng hẳn. Không phải lỗi —
+nhưng là thứ phải biết khi chọn `POLL_INTERVAL_SECONDS` cho prod, và nó cộng dồn vào độ trễ tồn kho đã
+ghi trong nợ tồn-âm ở `TODO.md`. Dữ liệu tenant thử nghiệm đã dọn sạch sau khi chạy.
+
+### Phát hiện lệch tài liệu ↔ thực tế (đã sửa luôn, đều thuộc loại (a) rẻ)
+
+| Lệch | Xử lý |
+|------|-------|
+| **Cổng `ruff` ĐANG ĐỎ tại HEAD trước phiên này** — 24 lỗi trên `migrations/0013–0015` + 2 file test e2e, có sẵn từ trước, không do phiên này | `ruff format` 5 file đó thành 1 commit riêng. Ghi rõ vì báo cáo "4 cổng xanh" các phiên trước dùng `ruff check` trên file mình sửa, không phải cổng `ruff check . && ruff format --check .` toàn repo như `make lint` |
+| `docs/03` ghi bảng tên `outbox_events` | Thực tế là `event_outbox` (migration 0017) — sửa `docs/03` + `docs/06` theo thực tế |
+| README ghi `alembic upgrade head # 0001 → 0013` | Nay tới `0018` — sửa |
+| **Cách chạy pytest của chính Claude che mất exit code** — `pytest -q \| tail` trả về mã thoát của `tail` (luôn 0), nên 2 lần "suite xanh" giữa phiên là **không có căn cứ**; lần chạy đầy đủ đầu tiên có ghi mã thoát thật đã bắt được 1 test đỏ (`test_registry_covers_every_domain_event` — fake event trong test bị đếm nhầm là event thật) | Đã sửa test + từ nay ghi `EXIT=$?` ra file thay vì pipe. Commit `50ea91c` được xác nhận lại bằng chính lần chạy cuối (code của nó nằm trong HEAD) |
+| **README §5 "Trạng thái dự án" đứng yên ở Sprint 3** ("HOÀN THÀNH", `pytest 46`, `import-linter 6/0`) trong khi thực tế đã qua Sprint 6 | **CHƯA sửa** — không thuộc mạch outbox, và viết lại mục này là quyết định trình bày (đưa tới đâu, còn gọi sprint nào là "hiện tại") nên để sếp chốt. Ghi ở đây để không quên |
+
+### Quyết định tự chốt trong phiên (full-auto rule #3)
+
+Không có quyết định nghiệp vụ/pháp lý mới. Toàn bộ quyết định là **kỹ thuật**, đã liệt kê ở bảng thiết
+kế trên. Quyết định gần nghiệp vụ nhất — mặc định `RELAY_ENABLED=false` — chỉ ảnh hưởng dev/test; prod
+bị validator ép phải có ít nhất 1 đường giao hàng, và README/`.env.example` ghi rõ hình dạng prod.
+
+### Còn nợ sau bước này
+
+| Nợ | Ghi ở đâu |
+|----|-----------|
+| Cảnh báo/khoá tồn-âm khi eventual-consistency ở prod | `TODO.md` Sprint sau + gộp p95 NFR Sprint 8 |
+| Quét dọn (retention) dòng PUBLISHED/FAILED trong `event_outbox` | **Mới** — chưa có cơ chế xoá, bảng sẽ phình vô hạn ở prod. Đã thêm vào `TODO.md` |
+| Module `analytics` + report | Chờ sếp mô tả yêu cầu (§7ad) |
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-24 | **OUTBOX BƯỚC 3/3 — FLIP XONG (§7ai).** UoW ghi `event_outbox` in-txn; `OutboxEventSink` + 2 cờ `OUTBOX__SYNC_DRAIN`/`RELAY_ENABLED`; `EventRegistry` 14 event; relay nền trong lifespan; 12 điểm dựng UoW gom về `UnitOfWorkFactory`. Kèm điều kiện tiên quyết (chặn trùng interaction-check, mig `0018`) + 1 commit `ruff format` sửa cổng lint vốn đã đỏ tại HEAD. **Chạy thật trên Postgres đúng hình dạng prod** (async): bán → PENDING → drain → tồn trừ → PUBLISHED, drain lại = no-op. Phát hiện: async đẩy 1 mắt xích/vòng quét. |
 | 2026-07-24 | **DỪNG PHIÊN đúng nghi thức (§7ah).** Sếp chốt **phương án (a)** — chặn trùng interaction-check bằng khoá `(context_type, context_id)`, là điều kiện tiên quyết TRƯỚC khi flip Bước 3. HEAD `48e40c0`, 4 cổng xanh, docker healthy, không tiến trình treo. Resume = làm Bước 3 (flip nguyên tử), 5 bước ghi ở §7ah. |
 | 2026-07-24 | **Outbox Bước 2/3: machinery NGỦ (bảng `event_outbox` + repo + relay + migration 0017), flag OFF, `UoW` chưa đổi.** Sếp duyệt thiết kế §7af + mở rộng cổng idempotency (liệt kê TOÀN BỘ subscriber). Bảng idempotency đầy đủ: chỉ interaction-check không idempotent. 4 cổng xanh (pytest **633**, +13), live migration 0017 round-trip verified. **Bước 3 (flip) chờ sếp xác nhận danh sách idempotency.** Xem §7ag. |
 | 2026-07-24 | **DỪNG PHIÊN đúng nghi thức** — outbox Bước 1/3 xong, Bước 2/3 chờ đổi model sang Opus (quy tắc chọn model, thiết kế mới chưa có khuôn mẫu). Xem §7af. |

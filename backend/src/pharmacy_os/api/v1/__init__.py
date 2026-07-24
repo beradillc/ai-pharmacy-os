@@ -22,6 +22,7 @@ from pharmacy_os.api.v1.cross_module import (
 )
 from pharmacy_os.api.v1.health import router as health_router
 from pharmacy_os.api.v1.national_sync import wire_national_sync
+from pharmacy_os.api.v1.outbox_wiring import wire_outbox
 from pharmacy_os.api.v1.privacy import router as privacy_router
 from pharmacy_os.core.di import Container
 from pharmacy_os.modules.catalog.application import CatalogService
@@ -91,6 +92,9 @@ def build_api_router(container: Container) -> APIRouter:
     # C.5 cross-module reaction: a completed sale enqueues a national-DB sync push
     # (both the event bus and the sync service are now registered).
     wire_compliance_sync(container)
+
+    # Last: the outbox needs every module's event classes to resolve what it stored.
+    wire_outbox(container)
     return api
 
 

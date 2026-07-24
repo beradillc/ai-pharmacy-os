@@ -6,6 +6,8 @@ persistence is covered separately in ``tests/integration/test_outbox_repository.
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from types import TracebackType
@@ -248,3 +250,61 @@ def test_backoff_doubles(attempt: int, expected: float) -> None:
     # Documents the schedule the retry test relies on: base * 2**(attempt-1).
     base = 2.0
     assert base * 2 ** (attempt - 1) == expected
+
+
+async def test_run_forever_keeps_draining_until_cancelled() -> None:
+    """The background loop: work arriving later is still picked up, and a failed
+    drain doesn't kill the loop — the rows are still there for the next tick."""
+    registry = EventRegistry()
+    registry.register(_Sample)
+    bus = InMemoryEventBus()
+    delivered: list[DomainEvent] = []
+
+    async def handler(event: DomainEvent) -> None:
+        delivered.append(event)
+
+    bus.subscribe(_Sample, handler)
+    repo = _FakeRepo()
+    relay, _uow = _relay(repo, registry=registry, bus=bus, now=datetime.now(UTC))
+
+    task = asyncio.create_task(relay.run_forever(0.001))
+    repo.seed(_record_for(_Sample(tenant_id=uuid4(), note="first")))
+    await _until(lambda: len(delivered) == 1)
+    repo.seed(_record_for(_Sample(tenant_id=uuid4(), note="second")))
+    await _until(lambda: len(delivered) == 2)
+
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert [e.note for e in delivered if isinstance(e, _Sample)] == ["first", "second"]
+
+
+async def test_run_forever_survives_a_failing_drain() -> None:
+    registry = EventRegistry()
+    registry.register(_Sample)
+    repo = _FakeRepo()
+    relay, _uow = _relay(repo, registry=registry, bus=InMemoryEventBus(), now=datetime.now(UTC))
+    calls = 0
+    real_claim = repo.claim_pending
+
+    async def flaky(now: datetime, *, limit: int) -> list[OutboxRecord]:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("database unavailable")
+        return await real_claim(now, limit=limit)
+
+    repo.claim_pending = flaky  # type: ignore[method-assign]
+    task = asyncio.create_task(relay.run_forever(0.001))
+    await _until(lambda: calls >= 3)  # kept going after the first failure
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
+async def _until(condition: Callable[[], bool], timeout: float = 2.0) -> None:
+    deadline = asyncio.get_running_loop().time() + timeout
+    while not condition():
+        if asyncio.get_running_loop().time() > deadline:
+            raise AssertionError("condition not met in time")
+        await asyncio.sleep(0.001)
