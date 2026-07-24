@@ -3,11 +3,40 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
+from enum import StrEnum
 from uuid import UUID
 
 from pharmacy_os.modules.sales.domain import PaymentMethod, SalesOrder
+
+
+class RevenueGranularity(StrEnum):
+    """How the revenue report buckets orders into periods.
+
+    Bucketing happens in Python (:mod:`sales.application.service`), not SQL
+    ``date_trunc`` — that function is Postgres-only and the project's models are
+    kept cross-dialect (Postgres + SQLite for tests)."""
+
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
+
+
+@dataclass(frozen=True, slots=True)
+class RevenueRow:
+    """One (period, branch, currency) bucket of the revenue report.
+
+    ``period_start`` is the bucket's first day: the calendar day itself for
+    ``DAY``, its Monday for ``WEEK``, its 1st for ``MONTH``. Split by currency too
+    (not just summed) so a tenant that ever records a non-``VND`` sale never gets
+    a silently-wrong mixed-currency total."""
+
+    period_start: date
+    branch_id: UUID
+    currency: str
+    order_count: int
+    revenue_total: Decimal
 
 
 @dataclass(slots=True)

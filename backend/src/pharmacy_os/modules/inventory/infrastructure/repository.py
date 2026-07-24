@@ -16,6 +16,7 @@ from pharmacy_os.modules.inventory.domain.entities import (
     StockReconciliationNeeded,
 )
 from pharmacy_os.modules.inventory.domain.fefo import BatchAvailability
+from pharmacy_os.modules.inventory.domain.ports import BatchStockRow
 from pharmacy_os.modules.inventory.infrastructure.models import (
     ProductBatchORM,
     StockBalanceORM,
@@ -106,6 +107,54 @@ class SqlAlchemyBatchRepository:
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [_batch_to_domain(r) for r in rows]
+
+    async def stock_report(
+        self,
+        tenant_id: UUID,
+        *,
+        branch_id: UUID | None,
+        limit: int,
+        offset: int,
+    ) -> list[BatchStockRow]:
+        """Batches with on-hand > 0, tenant-wide by default — a deliberate widening
+        from the branch-only scope of :meth:`near_expiry`/:meth:`on_hand`: this is a
+        chain-level report surface (PROJECT_STATE §7an), not an operational,
+        single-branch read. ``batch_id`` breaks ties so paging stays stable when two
+        batches share an ``expiry_date``."""
+        stmt = (
+            select(
+                ProductBatchORM.id,
+                ProductBatchORM.drug_id,
+                ProductBatchORM.branch_id,
+                ProductBatchORM.lot_no,
+                ProductBatchORM.expiry_date,
+                StockBalanceORM.quantity,
+            )
+            .join(StockBalanceORM, StockBalanceORM.batch_id == ProductBatchORM.id)
+            .where(
+                ProductBatchORM.tenant_id == tenant_id,
+                StockBalanceORM.quantity > 0,
+            )
+        )
+        if branch_id is not None:
+            stmt = stmt.where(ProductBatchORM.branch_id == branch_id)
+        stmt = (
+            stmt.order_by(ProductBatchORM.expiry_date, ProductBatchORM.id)
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return [
+            BatchStockRow(
+                batch_id=r[0],
+                drug_id=r[1],
+                branch_id=r[2],
+                lot_no=r[3],
+                expiry_date=r[4],
+                quantity=r[5],
+            )
+            for r in rows
+        ]
 
 
 class SqlAlchemyMovementRepository:

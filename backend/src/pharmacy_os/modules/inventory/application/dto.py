@@ -87,6 +87,18 @@ class NearExpiryItem:
 
 
 @dataclass(slots=True)
+class StockReportItem:
+    """One batch's current on-hand, as shown in the Sprint 7 stock-by-lot report."""
+
+    batch_id: UUID
+    drug_id: UUID
+    branch_id: UUID
+    lot_no: str
+    expiry_date: date
+    quantity: Decimal
+
+
+@dataclass(slots=True)
 class ReconciliationOutput:
     id: UUID
     branch_id: UUID

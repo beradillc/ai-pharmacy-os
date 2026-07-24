@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from typing import Protocol
@@ -13,6 +14,22 @@ from pharmacy_os.modules.inventory.domain.entities import (
     StockReconciliationNeeded,
 )
 from pharmacy_os.modules.inventory.domain.fefo import BatchAvailability
+
+
+@dataclass(frozen=True, slots=True)
+class BatchStockRow:
+    """One batch's current on-hand, as read for the Sprint 7 stock report.
+
+    ``quantity`` is the live ``stock_balances`` projection, not
+    ``quantity_received`` — the report shows what's actually left, same
+    source as :meth:`BalanceRepository.on_hand`."""
+
+    batch_id: UUID
+    drug_id: UUID
+    branch_id: UUID
+    lot_no: str
+    expiry_date: date
+    quantity: Decimal
 
 
 class BatchRepository(Protocol):
@@ -37,6 +54,18 @@ class BatchRepository(Protocol):
     ) -> list[BatchAvailability]: ...
 
     async def near_expiry(self, branch_id: UUID, *, before: date) -> list[ProductBatch]: ...
+
+    async def stock_report(
+        self,
+        tenant_id: UUID,
+        *,
+        branch_id: UUID | None,
+        limit: int,
+        offset: int,
+    ) -> list[BatchStockRow]:
+        """Page of batches with on-hand > 0, tenant-wide (or narrowed to one branch),
+        soonest-expiring first, ``batch_id`` as the pagination tie-break."""
+        ...
 
 
 class MovementRepository(Protocol):

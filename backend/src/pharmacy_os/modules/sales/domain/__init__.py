@@ -20,6 +20,7 @@ from pharmacy_os.modules.sales.domain.exceptions import (
 from pharmacy_os.modules.sales.domain.ports import (
     DrugInfo,
     DrugInfoProvider,
+    OrderRevenueRow,
     PrescriptionInfo,
     PrescriptionInfoProvider,
     SalesRepository,
@@ -46,6 +47,7 @@ __all__ = [
     "SalesError",
     "UnderpaidError",
     "SalesRepository",
+    "OrderRevenueRow",
     "DrugInfo",
     "DrugInfoProvider",
     "PrescriptionInfo",

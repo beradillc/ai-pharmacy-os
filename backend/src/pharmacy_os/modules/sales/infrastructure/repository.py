@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.modules.sales.domain import SalesOrder
+from pharmacy_os.modules.sales.domain import SalesOrder, SaleStatus
+from pharmacy_os.modules.sales.domain.ports import OrderRevenueRow
 from pharmacy_os.modules.sales.infrastructure.mappers import to_domain, to_orm
-from pharmacy_os.modules.sales.infrastructure.models import SalesOrderORM
+from pharmacy_os.modules.sales.infrastructure.models import SaleLineORM, SalesOrderORM
 
 
 class SqlAlchemySalesRepository:
@@ -49,3 +51,63 @@ class SqlAlchemySalesRepository:
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return to_domain(row) if row is not None else None
+
+    async def completed_in_range(
+        self,
+        tenant_id: UUID,
+        *,
+        branch_id: UUID | None,
+        created_from: datetime,
+        created_to: datetime,
+        limit: int,
+        offset: int,
+    ) -> list[OrderRevenueRow]:
+        """Order-level revenue (SUM over its lines), oldest first.
+
+        ``status != DRAFT`` is the "completed" test: a draft never reached
+        ``complete()`` (Rx + full-payment checks), so it carries no committed
+        revenue — see ``SalesOrder.complete``. A returned/partially-returned order
+        still counts at its original (gross) amount: the report shows revenue as
+        recognised at sale time, not netted against later returns (documented gap,
+        PROJECT_STATE §7an).
+        """
+        stmt = (
+            select(
+                SalesOrderORM.id,
+                SalesOrderORM.branch_id,
+                SalesOrderORM.currency,
+                SalesOrderORM.created_at,
+                func.sum(SaleLineORM.quantity * SaleLineORM.unit_price).label("subtotal"),
+            )
+            .join(SaleLineORM, SaleLineORM.order_id == SalesOrderORM.id)
+            .where(
+                SalesOrderORM.tenant_id == tenant_id,
+                SalesOrderORM.status != SaleStatus.DRAFT.value,
+                SalesOrderORM.created_at >= created_from,
+                SalesOrderORM.created_at < created_to,
+            )
+        )
+        if branch_id is not None:
+            stmt = stmt.where(SalesOrderORM.branch_id == branch_id)
+        stmt = (
+            stmt.group_by(
+                SalesOrderORM.id,
+                SalesOrderORM.branch_id,
+                SalesOrderORM.currency,
+                SalesOrderORM.created_at,
+            )
+            .order_by(SalesOrderORM.created_at, SalesOrderORM.id)
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return [
+            OrderRevenueRow(
+                order_id=r.id,
+                branch_id=r.branch_id,
+                currency=r.currency,
+                created_at=r.created_at,
+                subtotal=r.subtotal,
+            )
+            for r in rows
+        ]
