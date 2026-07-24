@@ -189,9 +189,9 @@ thật sự.
       (`GET /reports/revenue/export`) + tồn kho theo lô/HSD (`GET /reports/inventory/stock/export`),
       CSV stream (tái dùng `csv_export.py`/helper stream từ audit dashboard), quyền tái dùng
       `sales.read`/`inventory.read` — không quyền mới, không migration.
-      *Đợt 2 (không bắt buộc) chưa làm:* top thuốc bán chạy + xuất `ControlledLedgerEntry`. Lọc
-      "theo nhân viên bán hàng" chặn ở thiếu dữ liệu (`SalesOrder` không lưu cột actor) — cần Chain
-      quyết định hướng, xem PROJECT_STATE §7an.
+      Lọc **"theo nhân viên bán hàng" XONG 2026-07-25 (§7ao)**: thêm cột `sold_by_user_id` (mig `0021`)
+      + `GET /reports/revenue/export?sold_by_user_id` (Chain duyệt PA (a)).
+      *Đợt 2 (không bắt buộc) chưa làm:* top thuốc bán chạy + xuất `ControlledLedgerEntry`.
 
 **DoD:** Sổ kiểm soát khớp movements; dashboard hiển thị số liệu thật; đề xuất nhập sinh PO nháp;
 **hồ sơ sức khỏe KH trả lời được 6 câu hỏi thanh tra bằng dữ liệu trong hệ thống** (xem Bước 0 của

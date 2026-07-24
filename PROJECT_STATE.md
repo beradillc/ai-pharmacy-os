@@ -2368,10 +2368,54 @@ vì đây là SQL join/aggregate mới, hành vi có thể khác giữa SQLite (
 
 ---
 
+## 7ao. Lọc doanh thu theo nhân viên bán — cột `sold_by_user_id` XONG (Opus, 2026-07-25)
+
+> Gỡ nợ còn treo ở §7an ("lọc theo nhân viên bán hàng — chặn ở thiếu dữ liệu"). Chain duyệt **PA (a)**
+> ngày 2026-07-25: thêm cột lưu người bán, ghi từ JWT lúc chốt đơn; báo cáo nhân viên tính từ ngày
+> triển khai, đơn cũ để `None`. GĐ đề xuất (a) vì MISA/Sapo/VNPT đều báo cáo theo nhân viên + là cơ sở
+> tính hoa hồng về sau; rủi ro pháp lý = 0 (dữ liệu nội bộ). Chain gật.
+
+### Đã làm — 3 commit stepped
+
+| Bước | Commit | Nội dung |
+|------|--------|----------|
+| 1/3 domain | `cd98f7b` | `SalesOrder.sold_by_user_id` (nullable vĩnh viễn) + trường trên `OrderRevenueRow`; 2 unit test |
+| 2/3 app/infra/mig | `8771234` | `complete_sale` ghi `ctx.user_id`; ORM cột+index; mappers; `repo.completed_in_range` nhận filter; `revenue_report_rows` thêm tham số; migration `0021` |
+| 3/3 interface | `b76a99b` | `GET /reports/revenue/export?sold_by_user_id=…`; 3 e2e |
+
+### Quyết định thiết kế tự chốt (full-auto)
+
+| Điểm | Chọn | Vì sao |
+|------|------|--------|
+| Kiểu cột | `UUID | None`, plain (không FK tới `iam.users`) | Giữ module-independence, đúng khuôn `customer_id`/`prescription_ref` đã có |
+| Đơn cũ / sync offline | `None`, KHÔNG rớt khỏi tổng | Doanh thu tổng không được co lại vì thiếu tên NV; báo cáo theo-NV đơn giản không thấy đơn cũ |
+| Ý nghĩa filter rỗng | `None` = **mọi NV**, không phải "đơn không rõ NV" | Không mở đường tách riêng đơn vô danh — tránh lộ khe hiểu nhầm |
+| `RevenueRow`/CSV | **Không đổi** — chỉ thêm *filter*, không thêm *chiều nhóm* | §7am/§7an nói "lọc theo nhân viên" (filter), không phải cột mới trong file; muốn per-NV thì gọi lọc từng người |
+| Quyền | Tái dùng `sales.read`, KHÔNG quyền mới | Không nhạy cảm hơn UI POS hiện có (khớp §7am) |
+
+### Xác nhận bằng lệnh thật
+
+| Cổng / kiểm chứng | Kết quả |
+|---|---|
+| 4 cổng | ruff/format sạch · import-linter **13/0** · mypy --strict **228** file · pytest **695** EXIT=0 |
+| Migration `0021` trên PG sống | `alembic upgrade head` chạy; `\d sales_orders` có `sold_by_user_id uuid` + index `ix_sales_orders_sold_by_user_id` (xác nhận qua `psql`); downgrade xoá cột → count=0, upgrade lại sạch; `alembic check` không drift |
+| Backup trước migration | `~/backup_pre_migration_20260725_0239.sql` |
+| Kỷ luật #7 (seed/permission) | **Không áp dụng** — thay đổi này là thêm cột, KHÔNG đụng seed data hay permission (không đi nhánh insert-vs-update của role/quyền). Ghi rõ để không nhầm là bỏ sót |
+
+### Còn nợ (không đổi so với §7an)
+
+| Mục | Trạng thái |
+|-----|-----------|
+| Report đợt 2 (top thuốc + `ControlledLedgerEntry`) | Chưa làm — không bắt buộc |
+| Module `analytics` | **KHÔNG đụng** — chờ phiên Opus riêng (§7am) |
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-25 | **LỌC DOANH THU THEO NHÂN VIÊN XONG (§7ao)** — gỡ nợ §7an. Chain duyệt PA (a): thêm cột `sold_by_user_id` trên `sales_orders` (nullable vĩnh viễn, ghi từ JWT lúc chốt đơn), lọc `GET /reports/revenue/export?sold_by_user_id`. 3 commit stepped (`cd98f7b`→`8771234`→`b76a99b`), migration `0021` live+reversible (đã verify cột/index bằng `psql`, downgrade/upgrade sạch, `alembic check` không drift), backup `~/backup_pre_migration_20260725_0239.sql`. Tái dùng `sales.read` — KHÔNG quyền mới. 4 cổng xanh, pytest **695**. Kỷ luật #7 không áp dụng (thêm cột, không đụng seed/permission). `RevenueRow`/CSV giữ nguyên (chỉ thêm filter, không thêm chiều nhóm). **`analytics` vẫn chờ Opus.** |
 | 2026-07-24 | **REPORT XUẤT KHẨU đợt 1 XONG (§7an)** — GĐ giao 1/2 mục Sprint 7 còn treo (Sonnet, full-auto). `GET /reports/revenue/export` (doanh thu ngày/tuần/tháng, lọc chi nhánh) + `GET /reports/inventory/stock/export` (tồn kho theo lô/HSD) — cả hai CSV stream, KHÔNG quyền mới (tái dùng `sales.read`/`inventory.read`), KHÔNG migration. `core/http.py:csv_stream_body` tách từ audit dashboard để dùng chung. 3 commit stepped (`4c45f88`→`be9ada9`→`414269d`), live PG smoke-test khớp 100% với SQL (kỷ luật #7 tinh thần), dữ liệu thử đã dọn sạch. 4 cổng xanh, pytest **690**. **Đợt 2 (top thuốc + `ControlledLedgerEntry`) KHÔNG bắt buộc, chưa làm; lọc "theo nhân viên bán hàng" chặn ở thiếu dữ liệu — cần Chain quyết định hướng. `analytics` KHÔNG đụng — chờ phiên Opus.** |
 | 2026-07-24 | **AUDIT DASHBOARD XONG (§7al)** — GĐ giao 1/3 mục Sprint 7 (full-auto). Quyền RIÊNG `audit.dashboard.read` cấp cho admin+chain+branch (KHÔNG cashier/warehouse; branch có dashboard nhưng không `audit.read` thô). Filter actor+time+`target_type`+action (AND, optional) · export CSV stream theo lô. 3 commit stepped (`7346dbe`→`76ec94e`→`adb38da`), migration `0020` index entity, live PG round-trip + seed verify bằng SQL (kỷ luật #7). 4 cổng xanh, pytest **679**. **2 mục còn lại (`analytics`, report) KHÔNG đụng — chờ Chain trả lời yêu cầu.** |
 | 2026-07-24 | **DỪNG PHIÊN đúng nghi thức (§7ak)** — mạch outbox đóng trọn 4 bước, 7 commit, HEAD `1415bb8`, git sạch, 4 cổng xanh, docker healthy, 0 tiến trình treo, dữ liệu thử đã dọn. Chain chuyển sang **phiên Design** cho 3 mục còn lại Sprint 7 (audit dashboard · `analytics` · report) — cả 3 chặn ở YÊU CẦU, không chặn kỹ thuật; câu hỏi cần trả lời đã liệt kê ở §7ak. Toàn bộ 9 quyết định tự chốt trong phiên gom 1 bảng tại §7ak. |
