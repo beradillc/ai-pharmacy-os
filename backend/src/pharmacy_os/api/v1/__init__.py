@@ -11,6 +11,7 @@ from fastapi import APIRouter
 
 from pharmacy_os.api.deps import get_context
 from pharmacy_os.api.v1.audit import router as audit_router
+from pharmacy_os.api.v1.audit_dashboard import router as audit_dashboard_router
 from pharmacy_os.api.v1.compliance_cross import wire_compliance_sync
 from pharmacy_os.api.v1.cross_module import (
     CatalogDrugInfoProvider,
@@ -47,6 +48,9 @@ def build_api_router(container: Container) -> APIRouter:
         api.include_router(iam_router)
     # Audit trail + privacy record: kernel infrastructure, owned by no business module.
     api.include_router(audit_router)
+    # Audit dashboard: the Sprint 7 investigation/inspection lens (entity filter + CSV
+    # export), guarded by its own audit.dashboard.read permission.
+    api.include_router(audit_dashboard_router)
     api.include_router(privacy_router)
     api.include_router(register_catalog(container, get_context))
     api.include_router(register_inventory(container, get_context))
