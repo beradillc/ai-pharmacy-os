@@ -106,9 +106,7 @@ def test_active_ingredients_crud(client: TestClient) -> None:
             "name": "Klamentin 500mg",
             "rx_class": "ETC",
             "base_unit": "viên",
-            "ingredients": [
-                {"ingredient_id": ingredient["id"], "amount": "500", "unit": "mg"}
-            ],
+            "ingredients": [{"ingredient_id": ingredient["id"], "amount": "500", "unit": "mg"}],
         },
     )
     assert drug.status_code == 201, drug.text

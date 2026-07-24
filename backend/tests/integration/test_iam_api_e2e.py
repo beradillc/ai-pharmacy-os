@@ -205,9 +205,7 @@ def test_cashier_is_refused_a_pharmacist_only_endpoint(client: TestClient) -> No
     )
     staff = _login(client, "tn2@bera.vn", STAFF_PASSWORD)
 
-    created = client.post(
-        "/api/v1/customers", headers=_auth(staff), json={"full_name": "Khách lẻ"}
-    )
+    created = client.post("/api/v1/customers", headers=_auth(staff), json={"full_name": "Khách lẻ"})
     assert created.status_code == 201
 
     # crm.sensitive.write is deliberately absent from the cashier role (NĐ356 Điều 4.2):
