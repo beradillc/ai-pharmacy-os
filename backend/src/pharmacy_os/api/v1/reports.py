@@ -64,6 +64,9 @@ async def export_revenue(
         RevenueGranularity.DAY, description="Nhóm theo ngày/tuần/tháng"
     ),
     branch_id: UUID | None = Query(None, description="Lọc theo chi nhánh (bỏ trống = toàn chuỗi)"),
+    sold_by_user_id: UUID | None = Query(
+        None, description="Lọc theo nhân viên bán (bỏ trống = mọi nhân viên)"
+    ),
     service: SalesService = Depends(_sales_service),
     ctx: RequestContext = Depends(get_context),
 ) -> StreamingResponse:
@@ -71,8 +74,9 @@ async def export_revenue(
     CSV attachment. Requires ``sales.read``; the permission and the date window are
     checked before any bytes stream (see :meth:`SalesService.revenue_report_rows`).
 
-    No salesperson filter: ``SalesOrder`` persists no actor/cashier column today —
-    documented gap, PROJECT_STATE §7an.
+    ``sold_by_user_id`` narrows to one salesperson (PROJECT_STATE §7ao); orders
+    recorded before that column existed have no salesperson and so never appear in a
+    per-salesperson report, only in the unfiltered one.
     """
     rows = await service.revenue_report_rows(
         ctx,
@@ -80,6 +84,7 @@ async def export_revenue(
         date_to=date_to,
         granularity=granularity,
         branch_id=branch_id,
+        sold_by_user_id=sold_by_user_id,
     )
     csv_rows = (revenue_row_to_csv(row) async for row in rows)
     filename = f"revenue-{ctx.tenant_id}-{date_from}_{date_to}.csv"

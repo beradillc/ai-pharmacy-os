@@ -263,6 +263,62 @@ def test_draft_sale_is_never_counted_as_revenue(client: TestClient) -> None:
     assert len(rows) == 1  # header only — the rejected order was never persisted
 
 
+# --- revenue export: salesperson filter (PROJECT_STATE §7ao) -------------------
+
+
+def test_revenue_export_salesperson_filter_narrows_to_that_user(client: TestClient) -> None:
+    """A per-salesperson report shows only the orders that user completed. The admin
+    and a cashier each ring up one sale; filtering by the cashier's id yields the
+    cashier's total alone, not the combined one."""
+    admin = _login(client)
+    _make_staff(client, admin, "tn@bera.vn", CASHIER)
+    cashier = _login(client, "tn@bera.vn", STAFF_PASSWORD)
+
+    _create_sale(client, admin, quantity=1, unit_price=40_000)  # admin's sale
+    _create_sale(client, cashier, quantity=1, unit_price=25_000)  # cashier's sale
+
+    r = client.get(
+        _REVENUE,
+        headers=_auth(admin),
+        params={**_date_range(), "sold_by_user_id": cashier["user_id"]},
+    )
+    assert r.status_code == 200
+    body = list(csv.reader(io.StringIO(r.text)))[1:]
+    total = sum(Decimal(row[REVENUE_CSV_HEADER.index("revenue_total")]) for row in body)
+    orders = sum(int(row[REVENUE_CSV_HEADER.index("order_count")]) for row in body)
+    assert orders == 1
+    assert total == Decimal("25000")
+
+
+def test_revenue_export_without_salesperson_filter_counts_everyone(client: TestClient) -> None:
+    """Omitting the filter keeps every salesperson — the combined total, the same
+    behaviour as before the column existed."""
+    admin = _login(client)
+    _make_staff(client, admin, "tn2@bera.vn", CASHIER)
+    cashier = _login(client, "tn2@bera.vn", STAFF_PASSWORD)
+
+    _create_sale(client, admin, quantity=1, unit_price=40_000)
+    _create_sale(client, cashier, quantity=1, unit_price=25_000)
+
+    r = client.get(_REVENUE, headers=_auth(admin), params=_date_range())
+    body = list(csv.reader(io.StringIO(r.text)))[1:]
+    total = sum(Decimal(row[REVENUE_CSV_HEADER.index("revenue_total")]) for row in body)
+    assert total == Decimal("65000")
+
+
+def test_revenue_export_salesperson_filter_unknown_user_is_empty(client: TestClient) -> None:
+    admin = _login(client)
+    _create_sale(client, admin, quantity=1, unit_price=10_000)
+
+    r = client.get(
+        _REVENUE,
+        headers=_auth(admin),
+        params={**_date_range(), "sold_by_user_id": str(uuid4())},
+    )
+    rows = list(csv.reader(io.StringIO(r.text)))
+    assert len(rows) == 1  # header only — nobody sold under that id
+
+
 # --- stock export --------------------------------------------------------------
 
 
