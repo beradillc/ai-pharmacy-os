@@ -176,10 +176,12 @@ thật sự.
       commit — chết giữa chừng là mất hẳn sự kiện).
       *Phạm vi chưa bao gồm:* vòng retry đẩy DAV của `NationalSyncService` vẫn best-effort riêng —
       dòng `NationalSyncLog` `FAILED` nằm im tới khi có người gọi push lại, chưa có gì tự re-drive.
-- [ ] Audit query dashboard (`compliance`) — **CHƯA làm**, nay chỉ có `GET /audit-logs` mức tối
-      thiểu (§7l). Mang sang cùng module `analytics` khi mở tiếp phần còn lại Sprint 7.
-- [ ] Module `analytics`: dashboard, dự báo nhu cầu, đề xuất nhập.
-- [ ] Report xuất khẩu.
+- [x] Audit query dashboard — **XONG 2026-07-24 (§7al).** Dựng như **kernel-infra** (`core/audit` +
+      endpoint `api/v1/audit-dashboard`), KHÔNG trong `compliance` như phác thảo cũ. Quyền RIÊNG
+      `audit.dashboard.read` (admin+chain+branch, không cashier/warehouse) tách khỏi `audit.read`; lọc
+      actor+time+`target_type`+action; export CSV. `/audit-logs` mức tối thiểu (§7l) vẫn giữ nguyên.
+- [ ] Module `analytics`: dashboard, dự báo nhu cầu, đề xuất nhập. *(chờ Chain mô tả yêu cầu — §7ak/§7al)*
+- [ ] Report xuất khẩu. *(chờ Chain chốt biểu mẫu pháp lý — §7ak/§7al)*
 
 **DoD:** Sổ kiểm soát khớp movements; dashboard hiển thị số liệu thật; đề xuất nhập sinh PO nháp;
 **hồ sơ sức khỏe KH trả lời được 6 câu hỏi thanh tra bằng dữ liệu trong hệ thống** (xem Bước 0 của

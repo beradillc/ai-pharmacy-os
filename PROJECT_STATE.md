@@ -2134,10 +2134,101 @@ sau, gộp đo tải p95 Sprint 8) · retry đẩy DAV vẫn best-effort riêng,
 
 ---
 
+## 7al. ✅ AUDIT DASHBOARD — XONG (2026-07-24, phiên Opus full-auto — GĐ giao 1/3 mục Sprint 7)
+
+> GĐ (thay Chain đang bận HoSoCongTrinh, full-auto) chỉ giao **audit dashboard** — mục rủi ro pháp lý
+> thấp nhất trong 3 mục còn lại (công cụ nội bộ, không phải biểu mẫu nộp cơ quan). **KHÔNG động** vào
+> `analytics` / report xuất khẩu: 2 mục đó cần Chain trả lời trực tiếp (phương pháp dự báo · đúng biểu
+> mẫu pháp lý mà `docs/legal/` đang thiếu) — đoán sai là rủi ro tuân thủ thật, xem §7ak.
+
+### Giả định Design đã dùng (GĐ tự quyết thay Chain khi bận — full-auto rule #3, ghi lại để Chain đọc sau)
+
+| # | Câu hỏi | Đã chọn |
+|---|---------|---------|
+| 1 | Ai được xem | Quyền RIÊNG `audit.dashboard.read` (KHÔNG dùng chung `audit.read`). Cấp: `system_admin` (qua `ALL_PERMISSIONS`) + `chain_pharmacist` (owner) + `branch_pharmacist` (quản lý nhà thuốc). KHÔNG cashier/warehouse. `branch_pharmacist` nhận dashboard nhưng **vẫn không có** `audit.read` thô — tách bề mặt nhạy cảm |
+| 2 | Trả lời câu hỏi gì | Cả 3 (điều tra vụ việc + soát định kỳ + sẵn sàng thanh tra) → lọc linh hoạt, không truy vấn cố định |
+| 3 | Lọc theo chiều | actor + from/to + `target_type` (entity) + action — tất cả optional, AND. `target_type` là chiều MỚI mà `/audit-logs` chưa có |
+| 4 | Xuất file | CSV thuần (không phải biểu mẫu pháp lý — khác hẳn "report xuất khẩu" mục kia) |
+| 5 | Phân trang | Bắt buộc. List: limit≤200/offset. Export: stream theo lô 500, phân trang nội bộ (không nạp cả bảng vào RAM) |
+
+**Điều chỉnh kỹ thuật so với giả định (ghi rõ theo tinh thần "GĐ tự quyết, ghi lại"):** phát hiện đã có
+sẵn `core/audit/query.py` (`AuditQueryService` + `/audit-logs`, quyền `audit.read`) — "bản tối thiểu chứng
+minh trail truy vấn được". KHÔNG sửa/thay nó (giữ contract cũ, kỷ luật #5); dashboard là **bề mặt thứ 2**
+giàu hơn (entity filter + CSV) với quyền riêng, đúng khuôn kernel-infra như audit cũ (đặt ở `core` + endpoint
+ở `api/v1` composition root, không module-import-module).
+
+### 3 commit (stepped-commit, mỗi bước 4 cổng xanh ở trạng thái cô lập)
+
+| Commit | Bước | Nội dung |
+|--------|------|----------|
+| `7346dbe` | 1/3 đọc-thuần | `ports`+`repository` thêm filter `target_type` · `csv_export.py` thuần (CSV_HEADER + entry_to_row, context gộp 1 cột JSON deterministic) |
+| `76ec94e` | 2/3 app+seed+migration | `AuditDashboardService` (list + export_rows: quyền/thời gian check EAGER trước stream, generator ở `_export_stream`) · quyền `audit.dashboard.read` vào 3 role + `ALL_PERMISSIONS` · index `(tenant_id, target_type, occurred_at)` model+mig `0020` |
+| `adb38da` | 3/3 interface | endpoint `GET /audit-dashboard` + `/export` (StreamingResponse text/csv) · đăng ký router + container · e2e 11 test |
+
+### Bằng chứng 4 cổng (mỗi commit kiểm cô lập bằng stash phần bước sau)
+
+| Cổng | Kết quả |
+|------|---------|
+| ruff check + format --check | sạch (300 file) |
+| import-linter | **13/0 KEPT** — không thêm/sửa contract (dashboard ở core, endpoint ở composition root) |
+| mypy --strict | **225 file**, 0 lỗi (bẫy đã gỡ: `list[str]` trong annotation bị phân giải nhầm sang method `list` của class → alias `CsvRow` ở module scope) |
+| pytest | **679** (665 + 3 csv unit + 11 dashboard e2e), EXIT=0 |
+
+### Migration + kỷ luật #7 (chạy thật trên CSDL có dữ liệu sẵn, xác nhận bằng SQL — KHÔNG tin log)
+
+- pg_dump backup trước upgrade: `~/backup_pre_migration_20260724_1914.sql` (full-auto rule #6).
+- `alembic upgrade head`: `0019 → 0020_audit_target_type_idx` trên live PG. **Round-trip verified**:
+  downgrade xoá index (count 0) → upgrade tạo lại (count 1).
+- `python -m seeds.run` trên live PG (role đã tồn tại từ trước, thiếu quyền mới — đúng kịch bản sự cố
+  §7l): 5 role **updated**. Xác minh bằng SQL thật trên `role_permissions`:
+
+  | role | có `audit.dashboard.read` | có `audit.read` |
+  |------|:---:|:---:|
+  | system_admin | ✅ | ✅ |
+  | chain_pharmacist | ✅ | ✅ |
+  | branch_pharmacist | ✅ | ❌ |
+  | cashier | ❌ | ❌ |
+  | warehouse | ❌ | ❌ |
+
+  Đúng 100% ý đồ Design #1. (Ghi chú: live DB còn drift nhẹ từ phiên trước — vài role thiếu 1-2 quyền
+  cũ như `crm.consent.manage`; seed sync đã kéo về khớp code. Không phải quyền phiên này thêm.)
+
+### ⏸️ ĐIỂM DỪNG PHIÊN (2026-07-24) — audit dashboard xong, 2 mục Sprint 7 còn chờ Chain
+
+| Hạng mục | Trạng thái (xác nhận bằng lệnh) |
+|----------|--------------------------------|
+| Git | HEAD `adb38da`, cây sạch (3 commit trong phiên) |
+| Docker | `postgres` + `redis` **Up (healthy)** — Claude bật lại đầu phiên (đã TẮT lúc resume) |
+| Migration | head = `0020_audit_target_type_idx`, live PG round-trip verified |
+| 4 cổng | ruff/format sạch · import-linter 13/0 · mypy --strict 225 file · pytest **679** EXIT=0 |
+| Dữ liệu thử | Không tạo tenant/dữ liệu thử trên live PG (seed chỉ sync role — dữ liệu dùng chung, GIỮ); e2e chạy SQLite tmp, tự dọn |
+| Tiến trình nền | 0 treo |
+
+**Quyết định TỰ CHỐT trong phiên (full-auto rule #3):**
+
+| # | Quyết định | Loại | Đảo ngược |
+|---|-----------|------|-----------|
+| 1 | Quyền riêng `audit.dashboard.read`, không dùng chung `audit.read` | Nghiệp vụ (Design #1, GĐ chốt) | Sửa seed + re-seed |
+| 2 | `branch_pharmacist` được dashboard nhưng KHÔNG `audit.read` thô | Nghiệp vụ (tách bề mặt nhạy cảm) | Sửa seed |
+| 3 | Dashboard là bề mặt thứ 2, KHÔNG thay `/audit-logs` cũ | Kỹ thuật (giữ contract cũ) | Sửa code |
+| 4 | Export CSV stream theo lô 500, phân trang nội bộ | Kỹ thuật (RAM phẳng) | Sửa hằng |
+| 5 | `context` gộp 1 cột JSON (không nở cột theo key) | Kỹ thuật (header ổn định, loss-free) | Sửa serializer |
+| 6 | Index `(tenant_id, target_type, occurred_at)` cho chiều entity | Kỹ thuật | migration down |
+
+**2 mục Sprint 7 còn lại — KHÔNG đụng, chờ Chain trả lời (đúng chỉ đạo phiên):**
+
+| Mục | Câu hỏi Chain phải trả lời trước khi code |
+|-----|-------------------------------------------|
+| Module `analytics` | "Dự báo nhu cầu" tính theo gì (lịch sử bao lâu · mùa vụ/dịch bệnh · cấp thuốc hay hoạt chất)? "Đề xuất nhập" theo tồn tối thiểu hay dự báo? Màn hình đầu hiện số nào? |
+| Report xuất khẩu | Mẫu nào ra trước · theo biểu mẫu pháp lý có sẵn hay tự thiết kế (`docs/legal/` đang thiếu)? Định dạng (Excel/PDF/XML liên thông)? Ai bấm xuất? |
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-24 | **AUDIT DASHBOARD XONG (§7al)** — GĐ giao 1/3 mục Sprint 7 (full-auto). Quyền RIÊNG `audit.dashboard.read` cấp cho admin+chain+branch (KHÔNG cashier/warehouse; branch có dashboard nhưng không `audit.read` thô). Filter actor+time+`target_type`+action (AND, optional) · export CSV stream theo lô. 3 commit stepped (`7346dbe`→`76ec94e`→`adb38da`), migration `0020` index entity, live PG round-trip + seed verify bằng SQL (kỷ luật #7). 4 cổng xanh, pytest **679**. **2 mục còn lại (`analytics`, report) KHÔNG đụng — chờ Chain trả lời yêu cầu.** |
 | 2026-07-24 | **DỪNG PHIÊN đúng nghi thức (§7ak)** — mạch outbox đóng trọn 4 bước, 7 commit, HEAD `1415bb8`, git sạch, 4 cổng xanh, docker healthy, 0 tiến trình treo, dữ liệu thử đã dọn. Chain chuyển sang **phiên Design** cho 3 mục còn lại Sprint 7 (audit dashboard · `analytics` · report) — cả 3 chặn ở YÊU CẦU, không chặn kỹ thuật; câu hỏi cần trả lời đã liệt kê ở §7ak. Toàn bộ 9 quyết định tự chốt trong phiên gom 1 bảng tại §7ak. |
 | 2026-07-24 | **Retention `event_outbox` (§7aj).** `OutboxRetention` quét nền: `PUBLISHED` quá 30 ngày xoá theo lô · `FAILED` giữ vĩnh viễn (mặc định) · `PENDING` không bao giờ, chặn bằng kiểu `TerminalStatus`. Cờ `OUTBOX__RETENTION_ENABLED` độc lập với relay (dòng chất đống ở cả 2 chế độ). Migration `0019` index `(status, created_at)`. pytest **665**, chạy thật trên PG. Mạch outbox đóng trọn 4 bước. |
 | 2026-07-24 | **OUTBOX BƯỚC 3/3 — FLIP XONG (§7ai).** UoW ghi `event_outbox` in-txn; `OutboxEventSink` + 2 cờ `OUTBOX__SYNC_DRAIN`/`RELAY_ENABLED`; `EventRegistry` 14 event; relay nền trong lifespan; 12 điểm dựng UoW gom về `UnitOfWorkFactory`. Kèm điều kiện tiên quyết (chặn trùng interaction-check, mig `0018`) + 1 commit `ruff format` sửa cổng lint vốn đã đỏ tại HEAD. **Chạy thật trên Postgres đúng hình dạng prod** (async): bán → PENDING → drain → tồn trừ → PUBLISHED, drain lại = no-op. Phát hiện: async đẩy 1 mắt xích/vòng quét. |
