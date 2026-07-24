@@ -16,7 +16,7 @@ from pharmacy_os.modules.inventory.domain.entities import (
     StockReconciliationNeeded,
 )
 from pharmacy_os.modules.inventory.domain.fefo import BatchAvailability
-from pharmacy_os.modules.inventory.domain.ports import BatchStockRow
+from pharmacy_os.modules.inventory.domain.ports import BatchStockRow, DrugOnHandRow
 from pharmacy_os.modules.inventory.infrastructure.models import (
     ProductBatchORM,
     StockBalanceORM,
@@ -226,6 +226,24 @@ class SqlAlchemyBalanceRepository:
         )
         total = (await self._session.execute(stmt)).scalar_one()
         return Decimal(total)
+
+    async def on_hand_by_drug(self, branch_id: UUID) -> list[DrugOnHandRow]:
+        stmt = (
+            select(
+                StockBalanceORM.drug_id,
+                func.sum(StockBalanceORM.quantity).label("on_hand"),
+            )
+            .where(
+                StockBalanceORM.branch_id == branch_id,
+                StockBalanceORM.tenant_id == self._ctx.tenant_id,
+            )
+            .group_by(StockBalanceORM.drug_id)
+            .having(func.sum(StockBalanceORM.quantity) > 0)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return [
+            DrugOnHandRow(drug_id=r.drug_id, branch_id=branch_id, on_hand=r.on_hand) for r in rows
+        ]
 
 
 class SqlAlchemyStockReconciliationRepository:

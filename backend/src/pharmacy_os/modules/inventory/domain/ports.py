@@ -32,6 +32,19 @@ class BatchStockRow:
     quantity: Decimal
 
 
+@dataclass(frozen=True, slots=True)
+class DrugOnHandRow:
+    """Total on-hand of a drug at a branch, summed across its batches.
+
+    The bulk counterpart of :meth:`BalanceRepository.on_hand` (single drug) —
+    the analytics reorder run needs current stock for every drug at once, and a
+    per-drug round-trip would be N queries. Only drugs with positive stock appear."""
+
+    drug_id: UUID
+    branch_id: UUID
+    on_hand: Decimal
+
+
 class BatchRepository(Protocol):
     async def add(self, batch: ProductBatch) -> None: ...
 
@@ -84,6 +97,11 @@ class BalanceRepository(Protocol):
 
     async def on_hand(self, drug_id: UUID, branch_id: UUID) -> Decimal:
         """Total on-hand across all batches of a drug at a branch."""
+
+    async def on_hand_by_drug(self, branch_id: UUID) -> list[DrugOnHandRow]:
+        """On-hand per drug at a branch (all drugs with positive stock), summed in
+        SQL. Bulk read for the analytics reorder run — see :class:`DrugOnHandRow`."""
+        ...
 
 
 class StockReconciliationRepository(Protocol):

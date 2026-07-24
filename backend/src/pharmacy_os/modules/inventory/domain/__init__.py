@@ -22,6 +22,7 @@ from pharmacy_os.modules.inventory.domain.ports import (
     BalanceRepository,
     BatchRepository,
     BatchStockRow,
+    DrugOnHandRow,
     MovementRepository,
     StockReconciliationRepository,
 )
@@ -43,6 +44,7 @@ __all__ = [
     "allocate_fefo",
     "BatchRepository",
     "BatchStockRow",
+    "DrugOnHandRow",
     "MovementRepository",
     "BalanceRepository",
     "StockReconciliationRepository",

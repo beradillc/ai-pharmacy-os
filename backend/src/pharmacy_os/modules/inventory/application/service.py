@@ -48,6 +48,7 @@ from pharmacy_os.modules.inventory.domain import (
 from pharmacy_os.modules.inventory.domain.ports import (
     BalanceRepository,
     BatchRepository,
+    DrugOnHandRow,
     MovementRepository,
     StockReconciliationRepository,
 )
@@ -432,6 +433,18 @@ class InventoryService:
         async with self._uow_factory() as uow:
             balances = self._balances(uow, ctx)
             return await balances.on_hand(drug_id, ctx.branch_id)
+
+    async def on_hand_by_drug(
+        self, ctx: RequestContext, *, branch_id: UUID | None = None
+    ) -> list[DrugOnHandRow]:
+        """On-hand per drug (all drugs with positive stock) at *branch_id*, defaulting
+        to the caller's branch. Bulk read for the analytics reorder run — see
+        :class:`DrugOnHandRow`. Requires ``inventory.read``."""
+        require_permission(ctx, "inventory.read")
+        target = branch_id if branch_id is not None else ctx.branch_id
+        async with self._uow_factory() as uow:
+            balances = self._balances(uow, ctx)
+            return await balances.on_hand_by_drug(target)
 
     async def list_near_expiry(
         self, ctx: RequestContext, *, within_days: int = 90
