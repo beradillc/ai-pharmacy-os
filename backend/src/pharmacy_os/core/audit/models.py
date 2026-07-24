@@ -39,6 +39,10 @@ class AuditLogORM(PkUuidMixin, Base):
         # "everything this person did".
         Index("ix_audit_logs_tenant_occurred", "tenant_id", "occurred_at"),
         Index("ix_audit_logs_tenant_actor", "tenant_id", "actor_user_id"),
+        # The third way the dashboard asks: "everything that happened to this kind of
+        # object" (target_type = Prescription/Customer/...), still time-ordered so the
+        # entity filter and the newest-first paging share one index.
+        Index("ix_audit_logs_tenant_target_type", "tenant_id", "target_type", "occurred_at"),
     )
 
     tenant_id: Mapped[UUID] = mapped_column(nullable=False)

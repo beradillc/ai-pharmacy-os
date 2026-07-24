@@ -10,7 +10,7 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from pharmacy_os.core.ai import LLMProvider, MockLLMProvider
-from pharmacy_os.core.audit import AuditLogger, AuditQueryService
+from pharmacy_os.core.audit import AuditDashboardService, AuditLogger, AuditQueryService
 from pharmacy_os.core.config import Settings
 from pharmacy_os.core.db import OutboxSink, UnitOfWorkFactory, build_engine, build_sessionmaker
 from pharmacy_os.core.di import Container
@@ -63,6 +63,10 @@ def build_container(settings: Settings) -> Container:
     container.register_singleton(
         AuditQueryService,
         lambda c: AuditQueryService(c.resolve(async_sessionmaker[AsyncSession])),
+    )
+    container.register_singleton(
+        AuditDashboardService,
+        lambda c: AuditDashboardService(c.resolve(async_sessionmaker[AsyncSession])),
     )
     container.register_singleton(PluginLoader, lambda _c: PluginLoader())
     container.register_singleton(

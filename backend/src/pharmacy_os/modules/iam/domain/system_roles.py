@@ -10,7 +10,9 @@ mapping defensible in an inspection.
 ``ALL_PERMISSIONS`` is the audited list of every code passed to
 ``core.security.rbac.require_permission`` across the eight business modules (38 as of
 2026-07-23, incl. ``sales.return``, ``inventory.reconcile``), plus the six ``iam.*`` codes this
-module introduces. It intentionally includes the six ``compliance.*`` codes that
+module introduces and the two kernel-audit codes (``audit.read`` query +
+``audit.dashboard.read`` dashboard, the latter added 2026-07-24 for the Sprint 7 audit
+dashboard). It intentionally includes the six ``compliance.*`` codes that
 ``api/deps.py._DEV_PERMISSIONS`` was missing (docs/15 §0 F3).
 """
 
@@ -67,6 +69,15 @@ PROCUREMENT_PERMISSIONS = frozenset(
     }
 )
 AUDIT_PERMISSIONS = frozenset({"audit.read"})
+AUDIT_DASHBOARD_PERMISSIONS = frozenset({"audit.dashboard.read"})
+"""The audit **dashboard** — a distinct authority from the raw ``audit.read`` query.
+
+Split so a branch manager can be given the investigation/inspection lens over their
+own tenant's trail without also holding the raw query permission (PROJECT_STATE §7ak,
+duyệt GĐ full-auto 2026-07-24). The dashboard is itself a sensitive surface: the
+trail names who read whose health record, so this is deliberately kept away from
+counter/warehouse staff and granted only to the two professional roles + admin.
+"""
 PRIVACY_PERMISSIONS = frozenset({"privacy.dpia.read"})
 """Reading the processing record: the input to a tenant's DPIA filing, so it belongs
 with whoever answers to the regulator, not with counter staff."""
@@ -95,6 +106,7 @@ ALL_PERMISSIONS: frozenset[str] = (
     | PROCUREMENT_PERMISSIONS
     | IAM_PERMISSIONS
     | AUDIT_PERMISSIONS
+    | AUDIT_DASHBOARD_PERMISSIONS
     | PRIVACY_PERMISSIONS
 )
 
@@ -133,6 +145,7 @@ _CHAIN_PHARMACIST_PERMISSIONS = (
     | COMPLIANCE_PERMISSIONS
     | PROCUREMENT_PERMISSIONS
     | AUDIT_PERMISSIONS
+    | AUDIT_DASHBOARD_PERMISSIONS
     | PRIVACY_PERMISSIONS
     | {"iam.user.read", "iam.role.read"}
 )
@@ -152,6 +165,10 @@ _BRANCH_PHARMACIST_PERMISSIONS = (
     | (CRM_PERMISSIONS - {"crm.erase"})
     | (COMPLIANCE_PERMISSIONS - {"compliance.config.write"})
     | (PROCUREMENT_PERMISSIONS - {"procurement.supplier.create"})
+    # The audit **dashboard** (not the raw ``audit.read`` query): a branch manager
+    # must be able to investigate/inspect their own branch's trail. The lower-level
+    # ``audit.read`` stays chain-only — this role gets the lens, not the raw query.
+    | AUDIT_DASHBOARD_PERMISSIONS
 )
 
 #: Counter staff. No ``rx.approve``/``rx.dispense``: validating and handing over a
