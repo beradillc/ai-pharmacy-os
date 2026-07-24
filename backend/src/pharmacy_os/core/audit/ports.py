@@ -25,11 +25,14 @@ class AuditLogRepository(Protocol):
         occurred_to: datetime | None = None,
         actor_user_id: UUID | None = None,
         action: AuditAction | None = None,
+        target_type: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[AuditEntry]:
         """Newest first, scoped to one tenant. Filters are ANDed; ``None`` means
-        "no constraint on this field"."""
+        "no constraint on this field". ``target_type`` filters by the kind of object
+        acted on (e.g. ``"user"``, ``"Prescription"``) — the entity dimension the
+        audit dashboard needs and the minimal ``/audit-logs`` query did not expose."""
         ...
 
     async def count(
@@ -40,6 +43,7 @@ class AuditLogRepository(Protocol):
         occurred_to: datetime | None = None,
         actor_user_id: UUID | None = None,
         action: AuditAction | None = None,
+        target_type: str | None = None,
     ) -> int:
         """Total matching rows, so a caller can page without guessing the end."""
         ...

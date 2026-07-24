@@ -63,6 +63,7 @@ class SqlAlchemyAuditLogRepository:
         occurred_to: datetime | None,
         actor_user_id: UUID | None,
         action: AuditAction | None,
+        target_type: str | None,
     ) -> list[ColumnElement[bool]]:
         clauses: list[ColumnElement[bool]] = [AuditLogORM.tenant_id == tenant_id]
         if occurred_from is not None:
@@ -73,6 +74,8 @@ class SqlAlchemyAuditLogRepository:
             clauses.append(AuditLogORM.actor_user_id == actor_user_id)
         if action is not None:
             clauses.append(AuditLogORM.action == action.value)
+        if target_type is not None:
+            clauses.append(AuditLogORM.target_type == target_type)
         return clauses
 
     async def list(
@@ -83,12 +86,17 @@ class SqlAlchemyAuditLogRepository:
         occurred_to: datetime | None = None,
         actor_user_id: UUID | None = None,
         action: AuditAction | None = None,
+        target_type: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[AuditEntry]:
         stmt = (
             select(AuditLogORM)
-            .where(*self._filters(tenant_id, occurred_from, occurred_to, actor_user_id, action))
+            .where(
+                *self._filters(
+                    tenant_id, occurred_from, occurred_to, actor_user_id, action, target_type
+                )
+            )
             # id as tie-breaker: several entries can share a timestamp (a failed
             # login and the lock it triggers), and a paged read needs a total order.
             .order_by(AuditLogORM.occurred_at.desc(), AuditLogORM.id.desc())
@@ -106,10 +114,15 @@ class SqlAlchemyAuditLogRepository:
         occurred_to: datetime | None = None,
         actor_user_id: UUID | None = None,
         action: AuditAction | None = None,
+        target_type: str | None = None,
     ) -> int:
         stmt = (
             select(func.count())
             .select_from(AuditLogORM)
-            .where(*self._filters(tenant_id, occurred_from, occurred_to, actor_user_id, action))
+            .where(
+                *self._filters(
+                    tenant_id, occurred_from, occurred_to, actor_user_id, action, target_type
+                )
+            )
         )
         return int((await self._session.execute(stmt)).scalar_one())
