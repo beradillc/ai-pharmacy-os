@@ -159,3 +159,20 @@ def test_return_before_completion_rejected() -> None:
     order.add_line(line)
     with pytest.raises(InvalidOrderStateError):
         order.register_return(line.id, Decimal("1"))
+
+
+def test_sold_by_user_id_defaults_to_none() -> None:
+    """An order built without a salesperson is legal — pre-column and offline-sync
+    orders stay unattributed rather than being rejected (PROJECT_STATE §7ao)."""
+    order = _order()
+    assert order.sold_by_user_id is None
+
+
+def test_sold_by_user_id_is_carried_through_completion() -> None:
+    seller = uuid4()
+    order = _order(sold_by_user_id=seller)
+    order.add_line(_line(price="10000", qty="2"))
+    order.add_payment(_pay("20000"))
+    order.complete()
+    assert order.status is SaleStatus.COMPLETED
+    assert order.sold_by_user_id == seller

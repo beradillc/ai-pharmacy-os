@@ -27,6 +27,11 @@ class OrderRevenueRow:
     currency: str
     created_at: datetime
     subtotal: Decimal
+    sold_by_user_id: UUID | None = None
+    """Who completed the sale, or ``None`` for an order recorded before the column
+    existed — see :attr:`SalesOrder.sold_by_user_id`. Defaulted so a repository (or
+    a test double) that does not care about the salesperson dimension keeps
+    building rows unchanged."""
 
 
 class SalesRepository(Protocol):
@@ -43,15 +48,22 @@ class SalesRepository(Protocol):
         tenant_id: UUID,
         *,
         branch_id: UUID | None,
+        sold_by_user_id: UUID | None,
         created_from: datetime,
         created_to: datetime,
         limit: int,
         offset: int,
     ) -> list[OrderRevenueRow]:
         """Page of completed orders (any post-``DRAFT`` status) in ``[created_from,
-        created_to)``, optionally narrowed to one branch, oldest first — the report
-        service buckets these into periods in Python (no ``date_trunc``: the project
-        keeps queries portable across Postgres/SQLite, see ``models.py``)."""
+        created_to)``, optionally narrowed to one branch and/or one salesperson,
+        oldest first — the report service buckets these into periods in Python (no
+        ``date_trunc``: the project keeps queries portable across Postgres/SQLite,
+        see ``models.py``).
+
+        ``sold_by_user_id`` filters to the orders that user completed; ``None``
+        means "every salesperson", **not** "orders with no salesperson" — the
+        unattributed pre-column orders stay in the unfiltered total and cannot be
+        isolated on their own."""
         ...
 
 
