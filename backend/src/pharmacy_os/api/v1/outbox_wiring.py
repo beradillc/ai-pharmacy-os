@@ -21,6 +21,8 @@ from pharmacy_os.core.events import DomainEvent, EventBus, EventRegistry
 from pharmacy_os.core.outbox import (
     OutboxRelay,
     OutboxRelayConfig,
+    OutboxRetention,
+    OutboxRetentionConfig,
     SqlAlchemyOutboxRepository,
 )
 from pharmacy_os.modules.iam.domain import RolesChanged, UserDeactivated, UserRegistered
@@ -88,12 +90,32 @@ def wire_outbox(container: Container) -> None:
     )
     container.register_instance(OutboxRelay, relay)
 
+    retention = OutboxRetention(
+        uow_factory,
+        _outbox_repo,
+        OutboxRetentionConfig(
+            published_after_days=settings.outbox.retention_published_days,
+            failed_after_days=settings.outbox.retention_failed_days,
+            batch_size=settings.outbox.retention_batch_size,
+            max_batches=settings.outbox.retention_max_batches,
+        ),
+    )
+    container.register_instance(OutboxRetention, retention)
+
     if settings.app.env == "prod" and not settings.outbox.relay_enabled:
         _log.warning(
             "outbox_relay_disabled_in_prod",
             detail=(
                 "events left PENDING by a crash between commit and publish will not be "
                 "redelivered — set OUTBOX__RELAY_ENABLED=true"
+            ),
+        )
+    if settings.app.env == "prod" and not settings.outbox.retention_enabled:
+        _log.warning(
+            "outbox_retention_disabled_in_prod",
+            detail=(
+                "nothing deletes delivered rows — event_outbox will grow without bound "
+                "— set OUTBOX__RETENTION_ENABLED=true"
             ),
         )
 

@@ -68,10 +68,12 @@
       (§7ag) → **flip** (§7ai). Mọi `UnitOfWork` ghi `event_outbox` trong txn nghiệp vụ; 2 cờ
       `OUTBOX__SYNC_DRAIN` (publish inline) + `OUTBOX__RELAY_ENABLED` (relay nền quét lại dòng PENDING).
       Prod đặt `false`+`true`. Đã kiểm chứng trên Postgres thật đúng hình dạng prod.
-- [ ] **`event_outbox` — cơ chế dọn (retention) dòng PUBLISHED/FAILED** (ghi 2026-07-24, §7ai). Hiện
-      **không có gì xoá** dòng đã publish: bảng phình vô hạn ở prod (mỗi lần bán ≥ 3 dòng). Cần: job
-      quét theo tuổi (giữ N ngày) + quyết định giữ dòng `FAILED` lâu hơn để còn điều tra. Chưa gấp khi
-      chưa có deployment thật, nhưng phải xong **trước khi chạy prod**.
+- [x] **`event_outbox` — cơ chế dọn (retention)** — **XONG 2026-07-24** (§7aj). `OutboxRetention` quét
+      nền theo tuổi: `PUBLISHED` quá `OUTBOX__RETENTION_PUBLISHED_DAYS` (mặc định 30) bị xoá theo lô;
+      `FAILED` **giữ vĩnh viễn** trừ khi đặt `RETENTION_FAILED_DAYS`; `PENDING` không bao giờ bị xoá
+      (chặn bằng kiểu `TerminalStatus`). Migration `0019` index `(status, created_at)`.
+      **Prod phải đặt `OUTBOX__RETENTION_ENABLED=true`** — mặc định tắt, khởi động ở prod mà thiếu thì
+      log cảnh báo.
 - [ ] **`inventory` — cảnh báo/khoá tồn-âm khi eventual-consistency ở prod** (ghi 2026-07-24, sếp chốt
       **Sprint sau**, ngoài phạm vi outbox lần này). Bối cảnh: khi outbox chạy chế độ async ở prod, phản
       ứng cross-module (dispense FEFO sau bán) trừ tồn **trễ vài giây** so với lúc thu ngân bấm bán → 2

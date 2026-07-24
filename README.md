@@ -109,17 +109,17 @@ hàng, và outbox giao dịch cho sự kiện miền.
 - ✅ `audit_logs` persist (append-only) + `GET /audit-logs` mức tối thiểu
 - ✅ Hồ sơ sức khỏe khách hàng (qua cổng [docs/14](docs/14_FEATURE_PROCESS.md) Bước 0–4) — tách 2 mức nhạy cảm, `crm.sensitive.read` riêng, 6 action audit, export/khử nhận dạng, endpoint metadata DPIA
 - ✅ `compliance` — sổ thuốc kiểm soát đặc biệt (C.1–C.5) + router HTTP
-- ✅ **Transactional outbox** — mọi `UnitOfWork` ghi `event_outbox` trong chính giao dịch nghiệp vụ; relay giao lại at-least-once (xem §7 mục "Giao sự kiện miền" bên dưới)
+- ✅ **Transactional outbox** — mọi `UnitOfWork` ghi `event_outbox` trong chính giao dịch nghiệp vụ; relay giao lại at-least-once; retention dọn dòng đã xong (xem §7 mục "Giao sự kiện miền" bên dưới)
 
 **Sprint 7 — còn lại:**
 
 - ⬜ Dashboard / audit query (nay mới có `GET /audit-logs` mức tối thiểu) + đưa retry liên thông DAV lên outbox thay cơ chế best-effort hiện tại
 - ⬜ Module `analytics`: dashboard, dự báo nhu cầu, đề xuất nhập
 - ⬜ Report xuất khẩu
-- ⬜ *Nợ kỹ thuật đã ghi:* dọn (retention) dòng `PUBLISHED`/`FAILED` trong `event_outbox` · cảnh báo/khoá tồn-âm khi chạy outbox chế độ async — xem [TODO.md](TODO.md)
+- ⬜ *Nợ kỹ thuật đã ghi:* cảnh báo/khoá tồn-âm khi chạy outbox chế độ async — xem [TODO.md](TODO.md)
 
-**Cổng chất lượng (2026-07-24):** `pytest` **650** · `mypy --strict` **221 file** · `import-linter`
-**13 contract / 0 broken** · `ruff check` + `format --check` sạch · migration `0001`→`0018` live/reversible.
+**Cổng chất lượng (2026-07-24):** `pytest` **665** · `mypy --strict` **222 file** · `import-linter`
+**13 contract / 0 broken** · `ruff check` + `format --check` sạch · migration `0001`→`0019` live/reversible.
 
 Xem chi tiết & lịch sử: [PROJECT_STATE.md](PROJECT_STATE.md) · lộ trình đầy đủ: [ROADMAP.md](ROADMAP.md).
 
@@ -191,9 +191,16 @@ sự kiện rời bảng đó bằng đường nào:
 |------|----------|---------|
 | `OUTBOX__SYNC_DRAIN` | `true` | Publish ngay sau commit, trong cùng request — giống hành vi cũ, chỉ khác là sự kiện đã nằm trên đĩa trước đó |
 | `OUTBOX__RELAY_ENABLED` | `false` | Tiến trình nền quét `event_outbox`, giao lại những dòng còn `PENDING` do sự cố. **Đây mới là thứ làm outbox có giá trị** |
+| `OUTBOX__RETENTION_ENABLED` | `false` | Tiến trình nền **dọn** dòng đã xong. Không có nó, bảng phình vô hạn (mỗi lần bán ≥3 dòng) |
 
-**Prod đặt `OUTBOX__SYNC_DRAIN=false` + `OUTBOX__RELAY_ENABLED=true`** (bật cả hai cũng hợp lệ: inline
-cho độ trễ thấp, relay làm lưới an toàn). Cả hai `false` khi `APP__ENV=prod` ⇒ app **từ chối khởi động**.
+**Prod đặt `OUTBOX__SYNC_DRAIN=false` + `OUTBOX__RELAY_ENABLED=true` + `OUTBOX__RETENTION_ENABLED=true`**
+(bật cả sync lẫn relay cũng hợp lệ: inline cho độ trễ thấp, relay làm lưới an toàn). Cả hai công tắc giao
+hàng cùng `false` khi `APP__ENV=prod` ⇒ app **từ chối khởi động**; thiếu retention thì log cảnh báo lúc khởi động.
+
+**Retention xoá gì:** `PUBLISHED` quá 30 ngày (đổi bằng `OUTBOX__RETENTION_PUBLISHED_DAYS`) — dòng outbox là
+hạ tầng giao hàng, không phải bằng chứng; bản ghi nghiệp vụ và `audit_logs` nằm ở bảng riêng. `FAILED`
+**giữ vĩnh viễn** trừ khi đặt `OUTBOX__RETENTION_FAILED_DAYS` — đó là dấu vết duy nhất của sự kiện chưa
+bao giờ giao được. `PENDING` **không bao giờ** bị xoá, ràng buộc bằng kiểu chứ không bằng lời dặn.
 
 Giao hàng là **at-least-once**: một sự kiện có thể tới subscriber 2 lần, nên mọi subscriber đều có khoá
 idempotent (`dispense_for_sale` theo `order_id`, GRN theo `grn_id`, medication-history theo

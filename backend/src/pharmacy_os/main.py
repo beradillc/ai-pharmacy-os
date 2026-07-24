@@ -19,7 +19,7 @@ from pharmacy_os.api.v1 import build_api_router
 from pharmacy_os.core.bootstrap import build_container
 from pharmacy_os.core.config import Settings, get_settings
 from pharmacy_os.core.errors import register_error_handlers
-from pharmacy_os.core.outbox import OutboxRelay
+from pharmacy_os.core.outbox import OutboxRelay, OutboxRetention
 from pharmacy_os.core.plugins import PluginLoader
 from pharmacy_os.logging import configure_logging
 
@@ -32,22 +32,34 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     if discovered:
         loader.load_enabled({name: {} for name in discovered})
 
-    # The outbox relay is a process-lifetime background task: it drains events that
-    # were committed but not yet delivered (including whatever a previous crash left
-    # behind). Tied to the app's lifespan so a shutdown cannot leave it running.
+    # Two process-lifetime background tasks around the outbox, both tied to the app's
+    # lifespan so a shutdown cannot leave one running: the relay delivers events that
+    # were committed but not yet dispatched (including whatever a crash left behind),
+    # and retention ages finished rows out so the table stops growing.
     settings: Settings = container.resolve(Settings)
-    relay_task: asyncio.Task[None] | None = None
+    tasks: list[asyncio.Task[None]] = []
     if settings.outbox.relay_enabled:
         relay: OutboxRelay = container.resolve(OutboxRelay)
-        relay_task = asyncio.create_task(
-            relay.run_forever(settings.outbox.poll_interval_seconds),
-            name="outbox-relay",
+        tasks.append(
+            asyncio.create_task(
+                relay.run_forever(settings.outbox.poll_interval_seconds),
+                name="outbox-relay",
+            )
+        )
+    if settings.outbox.retention_enabled:
+        retention: OutboxRetention = container.resolve(OutboxRetention)
+        tasks.append(
+            asyncio.create_task(
+                retention.run_forever(settings.outbox.retention_interval_seconds),
+                name="outbox-retention",
+            )
         )
     yield
-    if relay_task is not None:
-        relay_task.cancel()
+    for task in tasks:
+        task.cancel()
+    for task in tasks:
         with suppress(asyncio.CancelledError):
-            await relay_task
+            await task
     loader.teardown_all()
 
 

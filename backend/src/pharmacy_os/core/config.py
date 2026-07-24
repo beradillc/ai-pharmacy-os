@@ -94,6 +94,27 @@ class OutboxSettings(BaseSettings):
     max_retries: int = 5
     base_backoff_seconds: float = 2.0
 
+    retention_enabled: bool = False
+    """Run the background sweep that ages finished rows out of ``event_outbox``.
+
+    Independent of :attr:`relay_enabled`: rows pile up under ``sync_drain`` exactly as
+    they do under the relay, so a deployment needs this on either way. Off by default
+    for the same reason as the relay — a timer inside the test harness would make the
+    suite non-deterministic — but **a production deployment must turn it on**, or the
+    table grows without bound."""
+
+    retention_interval_seconds: float = 3600.0
+    retention_published_days: int = 30
+    """How long a delivered row is kept. Operational history, not legal evidence — the
+    business record and the audit trail live in their own tables."""
+
+    retention_failed_days: int | None = None
+    """How long a dead letter is kept; ``None`` (default) keeps them forever, because
+    deleting one silently discards the only trace of an undelivered event."""
+
+    retention_batch_size: int = 500
+    retention_max_batches: int = 20
+
 
 class SecuritySettings(BaseSettings):
     jwt_secret: SecretStr = SecretStr(_PLACEHOLDER)

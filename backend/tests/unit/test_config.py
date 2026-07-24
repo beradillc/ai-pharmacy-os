@@ -8,9 +8,13 @@ def test_defaults_boot_in_dev() -> None:
     s = Settings(app=AppSettings(env="dev"))
     assert s.ai.model_reasoning == "claude-opus-4-8"
     assert s.security.jwt_ttl_minutes == 60
-    # Dev/test shape: events are published in-line, no background poller.
+    # Dev/test shape: events are published in-line, no background timers at all.
     assert s.outbox.sync_drain is True
     assert s.outbox.relay_enabled is False
+    assert s.outbox.retention_enabled is False
+    # Dead letters are never aged out on a timer — that needs a human's decision.
+    assert s.outbox.retention_failed_days is None
+    assert s.outbox.retention_published_days == 30
 
 
 def test_prod_rejects_placeholder_secrets() -> None:

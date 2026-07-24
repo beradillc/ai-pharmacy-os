@@ -2020,10 +2020,63 @@ bị validator ép phải có ít nhất 1 đường giao hàng, và README/`.en
 
 ---
 
+## 7aj. ✅ RETENTION `event_outbox` (2026-07-24, phiên Opus full-auto — GĐ chọn việc)
+
+**Bối cảnh:** Chain giao "hạn mức còn 45%, tiếp tục code cho hợp lý đi GĐ". GĐ chọn retention chứ không
+chọn audit dashboard / `analytics` / retry DAV — lý do: đây là nợ **do chính mạch flip đẻ ra** (§7ai),
+là **blocker prod**, và là thứ duy nhất trong danh sách không cần Chain mô tả yêu cầu nghiệp vụ trước.
+Cũng vừa cỡ hạn mức còn lại: đóng gọn được, không để lại module xây dở.
+
+### Chính sách xoá — chỗ duy nhất bug ở đây có thể phá dữ liệu thật
+
+| Trạng thái | Xử lý | Vì sao |
+|-----------|-------|--------|
+| `PUBLISHED` | Xoá sau **30 ngày** (`OUTBOX__RETENTION_PUBLISHED_DAYS`) | Dòng outbox là **hạ tầng giao hàng, không phải bằng chứng**: bản ghi nghiệp vụ nằm ở `sales_orders`/`stock_movements`…, vết kiểm toán nằm ở `audit_logs`. Hết hạn không mất thứ gì thanh tra hỏi tới |
+| `FAILED` | **Giữ vĩnh viễn** theo mặc định (`retention_failed_days=None`) | Là dấu vết DUY NHẤT cho biết có sự kiện chưa bao giờ giao được. Xoá theo hẹn giờ = xoá im lặng. Chỉ đặt cửa sổ khi deployment có quy trình soát dead-letter thật |
+| `PENDING` | **Không bao giờ**, ở mọi tuổi | Là việc chưa giao. Ràng buộc bằng **KIỂU** — `TerminalStatus = Literal[PUBLISHED, FAILED]` — nên mypy chặn ngay khi viết, không phụ thuộc người nhớ đọc docstring |
+
+### Thiết kế
+
+| Điểm | Chọn | Vì sao |
+|------|------|--------|
+| Nhịp chạy | Task nền **riêng**, mặc định 1 giờ/lượt, cờ `RETENTION_ENABLED` **độc lập với `RELAY_ENABLED`** | Dòng chất đống ở chế độ `sync_drain` y hệt chế độ relay. Buộc retention vào relay là bẫy: deployment chạy sync-drain sẽ không bao giờ được dọn |
+| Xoá theo lô | `batch_size=500`/txn, `max_batches=20`/lượt | Mỗi lô 1 giao dịch ngắn → không khoá bảng. `max_batches` chặn 1 lượt biến thành bão giao dịch; tồn đọng lớn dọn dần qua nhiều lượt thay vì 1 lần |
+| Câu SQL | `DELETE ... WHERE id IN (SELECT ... LIMIT n)` | Postgres không có `DELETE ... LIMIT`; cách này chạy được cả PG lẫn SQLite bằng đúng 1 câu |
+| Index | Migration `0019` `(status, created_at)` | Index dispatch cũ `(status, next_attempt_at)` cũng dẫn đầu bằng status nhưng già theo `next_attempt_at` — không trả lời được câu hỏi tuổi. Thiếu index này thì mỗi lượt quét đọc toàn bộ dòng đã giao |
+| Mặc định `RETENTION_ENABLED` | **false** | Hẹn giờ chạy trong bộ test làm test mất tính tất định (cùng lý do với relay). **Prod phải bật** — khởi động ở prod mà thiếu thì log `outbox_retention_disabled_in_prod` |
+
+### Bằng chứng
+
+**pytest 665** (+9 unit retention, +2 repo purge, +4 lifespan; `EXIT=0` ghi ra file) · ruff sạch ·
+mypy --strict 222 file · import-linter 13/0 · migration `0019` round-trip verified trên PG thật.
+
+**Chạy thật trên Postgres** (không chỉ SQLite): seed 4 dòng backdate — `PUBLISHED` 60 ngày,
+`PUBLISHED` 1 ngày, `PENDING` 3650 ngày, `FAILED` 3650 ngày → 1 lượt `purge_once()` xoá **đúng 1 dòng**
+(`PUBLISHED` quá hạn), giữ nguyên 3 dòng còn lại; lượt 2 = no-op. Dữ liệu thử nghiệm đã dọn.
+
+**Test lifespan** (mới): xác nhận 2 task nền chỉ khởi khi bật đúng cờ của nó, retention chạy được khi
+relay tắt, và **cả hai đều `cancelled()` sau khi app shutdown** — task rò rỉ giữ connection + hẹn giờ
+suốt đời tiến trình.
+
+### Quyết định tự chốt (full-auto rule #3)
+
+Retention bao nhiêu ngày **không phải quyết định pháp lý** — đã lập luận ở bảng trên (outbox không phải
+hồ sơ lưu trữ theo luật; `audit_logs` mới là). Nếu Chain thấy khác, đổi 1 biến môi trường là xong, không
+phải sửa code. Việc giữ `FAILED` vĩnh viễn là chọn an toàn có chủ đích, không phải quên làm.
+
+### Còn nợ sau bước này
+
+Không phát sinh nợ mới. Mạch outbox nay đóng trọn: codec (§7ae) → machinery (§7ag) → flip (§7ai) →
+retention (§7aj). Nợ Sprint 7 còn lại không đổi: audit query dashboard, `analytics`, report xuất khẩu
+(2 cái sau chờ Chain mô tả yêu cầu), retry DAV vẫn kẹt `# BLOCKER: DAV API spec`.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-24 | **Retention `event_outbox` (§7aj).** `OutboxRetention` quét nền: `PUBLISHED` quá 30 ngày xoá theo lô · `FAILED` giữ vĩnh viễn (mặc định) · `PENDING` không bao giờ, chặn bằng kiểu `TerminalStatus`. Cờ `OUTBOX__RETENTION_ENABLED` độc lập với relay (dòng chất đống ở cả 2 chế độ). Migration `0019` index `(status, created_at)`. pytest **665**, chạy thật trên PG. Mạch outbox đóng trọn 4 bước. |
 | 2026-07-24 | **OUTBOX BƯỚC 3/3 — FLIP XONG (§7ai).** UoW ghi `event_outbox` in-txn; `OutboxEventSink` + 2 cờ `OUTBOX__SYNC_DRAIN`/`RELAY_ENABLED`; `EventRegistry` 14 event; relay nền trong lifespan; 12 điểm dựng UoW gom về `UnitOfWorkFactory`. Kèm điều kiện tiên quyết (chặn trùng interaction-check, mig `0018`) + 1 commit `ruff format` sửa cổng lint vốn đã đỏ tại HEAD. **Chạy thật trên Postgres đúng hình dạng prod** (async): bán → PENDING → drain → tồn trừ → PUBLISHED, drain lại = no-op. Phát hiện: async đẩy 1 mắt xích/vòng quét. |
 | 2026-07-24 | **DỪNG PHIÊN đúng nghi thức (§7ah).** Sếp chốt **phương án (a)** — chặn trùng interaction-check bằng khoá `(context_type, context_id)`, là điều kiện tiên quyết TRƯỚC khi flip Bước 3. HEAD `48e40c0`, 4 cổng xanh, docker healthy, không tiến trình treo. Resume = làm Bước 3 (flip nguyên tử), 5 bước ghi ở §7ah. |
 | 2026-07-24 | **Outbox Bước 2/3: machinery NGỦ (bảng `event_outbox` + repo + relay + migration 0017), flag OFF, `UoW` chưa đổi.** Sếp duyệt thiết kế §7af + mở rộng cổng idempotency (liệt kê TOÀN BỘ subscriber). Bảng idempotency đầy đủ: chỉ interaction-check không idempotent. 4 cổng xanh (pytest **633**, +13), live migration 0017 round-trip verified. **Bước 3 (flip) chờ sếp xác nhận danh sách idempotency.** Xem §7ag. |
