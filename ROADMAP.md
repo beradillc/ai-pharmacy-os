@@ -181,7 +181,11 @@ thật sự.
       `audit.dashboard.read` (admin+chain+branch, không cashier/warehouse) tách khỏi `audit.read`; lọc
       actor+time+`target_type`+action; export CSV. `/audit-logs` mức tối thiểu (§7l) vẫn giữ nguyên.
 - [ ] Module `analytics`: dashboard, dự báo nhu cầu, đề xuất nhập. *(chờ Chain mô tả yêu cầu — §7ak/§7al)*
-- [ ] Report xuất khẩu. *(chờ Chain chốt biểu mẫu pháp lý — §7ak/§7al)*
+- [ ] Report xuất khẩu — **đính chính 2026-07-24 (docs/13 Traceability #21):** KHÔNG phải biểu mẫu
+      pháp lý (Phụ lục X/XI TT20/2017 không áp dụng nhà thuốc bán lẻ, xem docs/13 mục G). Về đúng
+      bản chất Sprint 1 (docs/01_ANALYSIS.md "Báo cáo & Dashboard cơ bản" — doanh thu/tồn kho nội
+      bộ cho quản lý chi nhánh). *Vẫn chờ Chain mô tả nội dung cụ thể (mẫu nào trước, định dạng
+      Excel/PDF/CSV, ai bấm xuất) trước khi code — nhưng rủi ro pháp lý coi như đã gỡ.*
 
 **DoD:** Sổ kiểm soát khớp movements; dashboard hiển thị số liệu thật; đề xuất nhập sinh PO nháp;
 **hồ sơ sức khỏe KH trả lời được 6 câu hỏi thanh tra bằng dữ liệu trong hệ thống** (xem Bước 0 của

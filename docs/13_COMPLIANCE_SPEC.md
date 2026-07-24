@@ -41,6 +41,7 @@
 | 18  | D.3 ghi chú blocker                                    | QĐ1867 mục 1.2; phần "Căn cứ" dẫn TT11/2025 + NĐ163/2025; mục V.4.d dẫn NĐ90/2026                                  |                                                                                                                                                                                KHỚP — đối chiếu chính xác câu chữ                                                                                                                                                                                |
 | 19  | G. Bảng 4 QĐ540                                        | QĐ540 **Bảng 4** "Yêu cầu chức năng thống kê" (xuất PDF/Excel)                                                     |                                                                                                                                                       **THIẾU** — chưa được đề cập ở đâu trong spec cũ → đã bổ sung vào mục ngoài phạm vi                                                                                                                                                        |
 | 20  | F. tenant config `ma_co_so_ban_le`/`ma_co_so_ban_buon` | Code hiện tại                                                                                                      |                                                                                  **GAP** — không tồn tại bảng cấu hình tenant nào (chỉ có `tenant_id`/`branch_id` dạng UUID scoping trong `TenantScopedMixin`/`RequestContext`). Phải **tạo mới** entity, không phải "thêm field" vào bảng đã có → đã sửa mục F                                                                                  |
+| 21  | G. "Báo cáo định kỳ Phụ lục X/XI" (đứng cùng dòng với các mục ngoài phạm vi khác, ngụ ý "chưa làm") | TT20/2017 Điều 8.1 (a,b) — đối tượng lập báo cáo | **SAI TIỀN ĐỀ** — Điều 8.1 chỉ bắt buộc cơ sở khám bệnh/chữa bệnh, cơ sở cai nghiện bắt buộc, cơ sở nghiên cứu/đào tạo y dược, cơ sở hoạt động dược phi thương mại lập Phụ lục X; Phụ lục XI do **Sở Y tế/Cục Quân y** lập. Nhà thuốc **bán lẻ** (Điều 15 — đối tượng AI Pharmacy OS) không nằm trong danh sách này → không phải "ngoài phạm vi sprint" mà là **không áp dụng cho loại hình cơ sở này**, không cần implement. Phát hiện 2026-07-24 khi Chain hỏi lại nội dung/nơi nộp 2 biểu mẫu, đối chiếu nguyên văn docx mới lộ ra (SUMMARY.md cũ chỉ có mục lục, không đủ chi tiết để thấy sai) |
 
 ---
 
@@ -196,7 +197,13 @@ Mỗi lần đẩy 1 bản ghi/lô: `id`, `tenant_id`, `payload_type` (drug/sale
 
 - Wiring endpoint DAV thật (chờ đặc tả API).
 - Biên bản nhận thuốc gây nghiện (Phụ lục XX, Điều 15.1.d), sổ pha chế.
-- Báo cáo định kỳ Phụ lục X/XI.
+- ~~Báo cáo định kỳ Phụ lục X/XI~~ — **đính chính 2026-07-24 (GĐ, đối chiếu lại nguyên văn TT20/2017):**
+  nghĩa vụ này thuộc **Điều 8.1** (cơ sở khám bệnh/chữa bệnh, cơ sở cai nghiện bắt buộc, cơ sở
+  nghiên cứu/đào tạo y dược, cơ sở hoạt động dược phi thương mại khác) — **KHÔNG thuộc Điều 15**
+  (nhà thuốc bán lẻ, đối tượng của AI Pharmacy OS). Phụ lục XI hơn nữa do **Sở Y tế/Cục Quân y**
+  lập (tổng hợp cấp tỉnh/ngành), không phải cơ sở bán lẻ. Nghĩa vụ hồ sơ sổ sách thật của bán lẻ
+  theo Điều 15 chỉ có Phụ lục VIII + XX + XXI (đã làm ở C.1–C.5) — **không cần Phụ lục X/XI**,
+  không phải "chưa làm", là **không áp dụng**. Xem Traceability #20.
 - Kê đơn điện tử liên thông.
 - **Bảng 2 QĐ540** (dữ liệu tổng hợp cấp tỉnh) — do hệ thống trung ương/Sở Y tế tổng hợp, không phải trách nhiệm sinh dữ liệu của cơ sở bán lẻ.
 - **Bảng 4 QĐ540** — "Yêu cầu chức năng thống kê" (kết xuất PDF/Excel: số lượng cơ sở nhập liệu theo tỉnh, danh mục thuốc theo cơ sở/tỉnh). Đây là chức năng thống kê phía cơ quan quản lý (Bộ Y tế/Sở Y tế), không phải chuẩn dữ liệu phải implement ở cơ sở bán lẻ trong sprint này.
