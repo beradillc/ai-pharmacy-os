@@ -185,12 +185,13 @@ thật sự.
       **PO nháp** trong `procurement` (không tự gửi NCC); dashboard đầu = doanh thu/top thuốc/cảnh
       báo cận date+tồn thấp/số PO nháp chờ duyệt. Hoãn v2: phát hiện bất thường + mùa vụ/dịch bệnh.
       Giao Opus (thiết kế mới + cross-module `sales`/`inventory`→`procurement`).
-- [ ] Report xuất khẩu — **yêu cầu chốt 2026-07-24 (GĐ, xem PROJECT_STATE §7am)**: KHÔNG phải biểu
-      mẫu pháp lý (đính chính docs/13 #21 — Phụ lục X/XI không áp dụng bán lẻ). Nội dung: doanh thu
-      (ngày/tuần/tháng, theo chi nhánh/nhân viên) + tồn kho theo lô/HSD → sau đó top thuốc bán chạy
-      + xuất `ControlledLedgerEntry`. Định dạng CSV (tái dùng `csv_export.py` từ audit dashboard).
-      Quyền: tái dùng `sales.read`/`inventory.read` hiện có, không tạo quyền mới. Giao Sonnet (tái
-      dùng khuôn CSV vừa dựng, không phải thiết kế mới).
+- [x] Report xuất khẩu — **đợt 1 XONG 2026-07-24 (§7an)**: doanh thu ngày/tuần/tháng theo chi nhánh
+      (`GET /reports/revenue/export`) + tồn kho theo lô/HSD (`GET /reports/inventory/stock/export`),
+      CSV stream (tái dùng `csv_export.py`/helper stream từ audit dashboard), quyền tái dùng
+      `sales.read`/`inventory.read` — không quyền mới, không migration.
+      *Đợt 2 (không bắt buộc) chưa làm:* top thuốc bán chạy + xuất `ControlledLedgerEntry`. Lọc
+      "theo nhân viên bán hàng" chặn ở thiếu dữ liệu (`SalesOrder` không lưu cột actor) — cần Chain
+      quyết định hướng, xem PROJECT_STATE §7an.
 
 **DoD:** Sổ kiểm soát khớp movements; dashboard hiển thị số liệu thật; đề xuất nhập sinh PO nháp;
 **hồ sơ sức khỏe KH trả lời được 6 câu hỏi thanh tra bằng dữ liệu trong hệ thống** (xem Bước 0 của

@@ -2271,10 +2271,108 @@ sống (rủi ro đã lường trước ở phiên audit dashboard).
 
 ---
 
+## 7an. `report xuất khẩu` đợt 1 XONG (Sonnet, 2026-07-24) — đợt 2 + `analytics` còn nợ
+
+> Phiên Sonnet, làm đúng 1/2 mục Sprint 7 còn treo (§7am) — **KHÔNG đụng `analytics`**, để dành phiên
+> Opus riêng như đã chốt. Docker đã Up (healthy) từ đầu phiên (Claude không cần bật lại — khác các
+> phiên trước). HEAD lúc bắt đầu `a9fdf37`, git sạch.
+
+### Đợt 1 (bắt buộc) — làm xong cả 2
+
+| Report | Nội dung |
+|---|---|
+| Doanh thu | Gom theo ngày/tuần/tháng (`granularity`), lọc chi nhánh tùy chọn, theo tiền tệ — `GET /reports/revenue/export` |
+| Tồn kho | Theo lô + HSD, sắp HSD gần nhất trước, lọc chi nhánh tùy chọn, tenant-wide mặc định — `GET /reports/inventory/stock/export` |
+
+**Đợt 2 (top thuốc bán chạy + xuất `ControlledLedgerEntry`) KHÔNG làm** — đúng chỉ đạo "chỉ làm nếu
+đợt 1 xong sớm và còn dư sức, không bắt buộc". Đợt 1 đã dùng phần lớn ngân sách phiên cho thiết kế +
+live-test; ghi rõ là nợ, không phải "xong hết Sprint 7 report".
+
+### Điều chỉnh kỹ thuật so với giả định ban đầu (ghi rõ theo tinh thần "GĐ tự quyết, ghi lại")
+
+| # | Giả định ban đầu | Thực tế/điều chỉnh | Vì sao |
+|---|---|---|---|
+| 1 | Lọc doanh thu "theo chi nhánh và/hoặc nhân viên bán hàng" | **Bỏ lọc theo nhân viên bán hàng** — chỉ còn lọc theo chi nhánh | `SalesOrder`/`sales_orders` **không có cột** actor/thu ngân nào được lưu (đã đọc `domain/entities.py`, `infrastructure/models.py` xác nhận). Người hoàn tất đơn chỉ có trong audit trail (`AuditEntry.actor_user_id`, `target_type="sale"`) — đây là bề mặt mục đích **tuân thủ** (ai đọc/ghi gì), không phải nguồn dữ liệu nghiệp vụ chung, và không có index trên `target_id` để join hiệu quả với `sales_orders`. Thêm cột `sold_by_user_id` mới là thay đổi schema/nghiệp vụ (ai được coi là "người bán" khi có nhiều thao tác trên 1 đơn?) — vượt phạm vi "chỉ đọc dữ liệu có sẵn" của phiên này. **Cần Chain quyết định hướng** nếu muốn có lọc này: (a) thêm cột vào `sales_orders` (schema change, câu hỏi nghiệp vụ đi kèm), hoặc (b) chấp nhận join qua audit trail (rủi ro hiệu năng + lẫn mục đích compliance/business đã cố tình tách bạch trong dự án) |
+| 2 | "Theo ngày/tuần/tháng" ngụ ý `GROUP BY` trong SQL | Gom nhóm chạy **ở Python** (bộ đệm nhỏ theo bucket `(period, branch, currency)`), không dùng `date_trunc` | `date_trunc` là hàm Postgres-only; models của dự án giữ nguyên tắc cross-dialect (Postgres prod + SQLite test, ghi rõ trong docstring `models.py`). Repo vẫn phân trang 500 đơn/lượt ở tầng SQL (bộ nhớ phẳng phía dữ liệu thô); chỉ có bộ gom-nhóm (nhỏ, bị chặn bởi số period×branch×currency, không phải số đơn) sống trong RAM |
+| 3 | Không nói rõ doanh thu tính gộp hay trừ hàng trả | **Tính gộp tại thời điểm bán** (không trừ theo return sau đó) | Đơn giản, đúng nghĩa "doanh thu ghi nhận lúc bán" — MVP hợp lý; nếu Chain muốn "doanh thu ròng sau trả hàng" là một report khác, cần quyết định thêm |
+| 4 | Tồn kho lọc theo chi nhánh (ngụ ý phạm vi giống các read khác của `inventory`) | **Tenant-wide mặc định** (branch_id lọc tùy chọn) — khác hẳn `on_hand`/`list_near_expiry` vốn luôn khoá theo `ctx.branch_id` | Đây là bề mặt báo cáo cấp chuỗi (như audit dashboard), không phải thao tác nghiệp vụ hàng ngày của 1 chi nhánh. Khớp với cách `sales.read` qua `get_sale`/`by_client_uuid` cũng đã đọc xuyên chi nhánh (chỉ lọc theo `tenant_id`) |
+
+### Kiến trúc đã chọn
+
+- **Không tạo module `reports` mới** — thêm 2 phương thức đọc trực tiếp vào `SalesService`
+  (`revenue_report_rows`) và `InventoryService` (`stock_report_rows`), mỗi service tự viết SQL/aggregation
+  trên bảng nó sở hữu (đúng khuôn `list_near_expiry`/`list_reconciliations` đã có). Composition root
+  (`api/v1/reports.py`, giống `cross_module.py` nhưng cho đọc thay vì phản ứng sự kiện) gọi thẳng cả 2
+  service (đã đăng ký sẵn trong container) để dựng 2 endpoint — `sales` và `inventory` **không** import
+  lẫn nhau (import-linter xác nhận 13/0 KEPT suốt 3 bước).
+- CSV shaping thuần theo đúng khuôn `core/audit/csv_export.py` (§7al): mỗi module một
+  `*_CSV_HEADER` tuple + `*_to_row(...) -> list[str]` (`sales/application/csv_export.py`,
+  `inventory/application/csv_export.py`).
+- **Tách + tái dùng streaming helper:** `core/http.py` có `csv_stream_body(header, rows)` — kéo ra từ
+  `_csv_body` cũ của `audit_dashboard.py` để mọi export CSV trong dự án dùng chung 1 chỗ. `audit_dashboard.py`
+  chuyển sang gọi hàm này (hành vi giữ nguyên, 11 e2e test dashboard cũ vẫn xanh không sửa).
+- Không quyền mới: `sales.read` cho report doanh thu, `inventory.read` cho report tồn kho (đúng chỉ đạo
+  §7am — không phải dữ liệu nhạy cảm hơn UI hiện tại). Vì vậy **không cần** `seeds.run`/reseed role.
+- Không migration (chỉ đọc dữ liệu có sẵn qua `JOIN`/`GROUP BY` trên bảng cũ, không thêm bảng/cột).
+
+### 3 commit (stepped-commit, mỗi bước 4 cổng xanh cô lập bằng `git stash`)
+
+| Commit | Bước | Nội dung |
+|--------|------|----------|
+| `4c45f88` | 1/3 đọc-thuần | `OrderRevenueRow`+`SalesRepository.completed_in_range` · `BatchStockRow`+`BatchRepository.stock_report` · DTO (`RevenueGranularity`/`RevenueRow`/`StockReportItem`) · CSV shaper thuần 2 module |
+| `be9ada9` | 2/3 app | `SalesService.revenue_report_rows` (gom nhóm Python, phân trang 500) · `InventoryService.stock_report_rows` (phân trang 500) — cả 2 kiểm quyền+validate EAGER trước khi trả generator, giống `AuditDashboardService.export_rows` |
+| `414269d` | 3/3 interface | `core/http.py:csv_stream_body` (tách từ audit dashboard) · `api/v1/reports.py` 2 endpoint · đăng ký router · 11 e2e test |
+
+### Bằng chứng 4 cổng (mỗi commit kiểm cô lập bằng `git stash push --include-untracked` phần bước sau)
+
+| Cổng | Kết quả |
+|------|---------|
+| ruff check + format --check | sạch (325 file) |
+| import-linter | **13/0 KEPT** — không thêm/sửa contract, `sales`/`inventory` vẫn độc lập |
+| mypy --strict | **228 file**, 0 lỗi |
+| pytest | **690** (679 cũ + 11 mới), EXIT=0 cả 3 bước lẫn trạng thái cuối |
+
+### Xác nhận trên Postgres sống (tinh thần kỷ luật #7 — không đổi permission/seed nhưng vẫn xác nhận thật
+vì đây là SQL join/aggregate mới, hành vi có thể khác giữa SQLite (pytest) và Postgres (prod))
+
+- `alembic current` = `0020_audit_target_type_idx` — **không migration mới**, khớp dự đoán ban đầu.
+- Bootstrap tenant tạm (`Smoke Test Report Sprint7`) trên Postgres sống qua `uvicorn` thật (không phải
+  TestClient/SQLite): login thật → 2 đơn bán (100.000đ + 30.000đ qua `POST /sales`) → 1 lô nhập 25 đơn vị
+  (`POST /inventory/receive`) → gọi `GET /reports/revenue/export` và `GET /reports/inventory/stock/export`.
+- Đối chiếu bằng SQL trực tiếp (`SUM(quantity*unit_price)` trên `sales_orders`/`sale_lines`): **130000.00000
+  khớp 100% với CSV trả về**, `order_count=2` đúng. Tồn kho CSV đúng lô/HSD/số lượng nhập.
+- **Dọn dữ liệu thử xong**, xác nhận lại bằng SQL = 0 dòng còn lại trên: `tenants`, `branches`, `users`,
+  `sales_orders` (cascade `sale_lines`/`sale_payments`), `product_batches`, `stock_balances`,
+  `stock_movements`, `audit_logs`, `event_outbox`, `national_sync_logs`, `user_roles`, `refresh_tokens`.
+  (`roles` không xoá gì — role hệ thống trong DB dev này là hàng chia sẻ giữa các tenant từ trước, không
+  phải dữ liệu phiên này tạo ra; xác nhận `system_roles_created=0`/`updated=0` ở log bootstrap khớp.)
+
+### ⏸️ ĐIỂM DỪNG PHIÊN (2026-07-24) — report đợt 1 xong, đợt 2 + `analytics` còn nợ
+
+| Hạng mục | Trạng thái (xác nhận bằng lệnh) |
+|----------|--------------------------------|
+| Git | HEAD `414269d`, cây sạch (3 commit trong phiên) |
+| Docker | `postgres` + `redis` **Up (healthy)** suốt phiên — không cần bật lại |
+| Migration | Không đổi, head vẫn `0020_audit_target_type_idx` |
+| 4 cổng | ruff/format sạch · import-linter 13/0 · mypy --strict 228 file · pytest **690** EXIT=0 |
+| Dữ liệu thử | Đã tạo trên Postgres sống để smoke-test, đã xoá sạch, xác nhận lại = 0 dòng |
+| Tiến trình nền | 0 treo (uvicorn smoke-test đã kill) |
+
+**Nợ lại cho phiên sau:**
+
+| Mục | Trạng thái |
+|-----|-----------|
+| Report đợt 2 (top thuốc bán chạy + xuất `ControlledLedgerEntry`) | Chưa làm — không bắt buộc theo chỉ đạo, nhưng vẫn là nợ nếu Chain muốn đủ Sprint 7 report |
+| Lọc doanh thu theo nhân viên bán hàng | Chặn ở thiếu dữ liệu (không có cột lưu), cần Chain quyết định hướng — xem bảng điều chỉnh #1 ở trên |
+| Module `analytics` | **KHÔNG đụng** — giao Opus riêng như đã chốt §7am (thiết kế mới + cross-module `sales`/`inventory`→`procurement`) |
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-24 | **REPORT XUẤT KHẨU đợt 1 XONG (§7an)** — GĐ giao 1/2 mục Sprint 7 còn treo (Sonnet, full-auto). `GET /reports/revenue/export` (doanh thu ngày/tuần/tháng, lọc chi nhánh) + `GET /reports/inventory/stock/export` (tồn kho theo lô/HSD) — cả hai CSV stream, KHÔNG quyền mới (tái dùng `sales.read`/`inventory.read`), KHÔNG migration. `core/http.py:csv_stream_body` tách từ audit dashboard để dùng chung. 3 commit stepped (`4c45f88`→`be9ada9`→`414269d`), live PG smoke-test khớp 100% với SQL (kỷ luật #7 tinh thần), dữ liệu thử đã dọn sạch. 4 cổng xanh, pytest **690**. **Đợt 2 (top thuốc + `ControlledLedgerEntry`) KHÔNG bắt buộc, chưa làm; lọc "theo nhân viên bán hàng" chặn ở thiếu dữ liệu — cần Chain quyết định hướng. `analytics` KHÔNG đụng — chờ phiên Opus.** |
 | 2026-07-24 | **AUDIT DASHBOARD XONG (§7al)** — GĐ giao 1/3 mục Sprint 7 (full-auto). Quyền RIÊNG `audit.dashboard.read` cấp cho admin+chain+branch (KHÔNG cashier/warehouse; branch có dashboard nhưng không `audit.read` thô). Filter actor+time+`target_type`+action (AND, optional) · export CSV stream theo lô. 3 commit stepped (`7346dbe`→`76ec94e`→`adb38da`), migration `0020` index entity, live PG round-trip + seed verify bằng SQL (kỷ luật #7). 4 cổng xanh, pytest **679**. **2 mục còn lại (`analytics`, report) KHÔNG đụng — chờ Chain trả lời yêu cầu.** |
 | 2026-07-24 | **DỪNG PHIÊN đúng nghi thức (§7ak)** — mạch outbox đóng trọn 4 bước, 7 commit, HEAD `1415bb8`, git sạch, 4 cổng xanh, docker healthy, 0 tiến trình treo, dữ liệu thử đã dọn. Chain chuyển sang **phiên Design** cho 3 mục còn lại Sprint 7 (audit dashboard · `analytics` · report) — cả 3 chặn ở YÊU CẦU, không chặn kỹ thuật; câu hỏi cần trả lời đã liệt kê ở §7ak. Toàn bộ 9 quyết định tự chốt trong phiên gom 1 bảng tại §7ak. |
 | 2026-07-24 | **Retention `event_outbox` (§7aj).** `OutboxRetention` quét nền: `PUBLISHED` quá 30 ngày xoá theo lô · `FAILED` giữ vĩnh viễn (mặc định) · `PENDING` không bao giờ, chặn bằng kiểu `TerminalStatus`. Cờ `OUTBOX__RETENTION_ENABLED` độc lập với relay (dòng chất đống ở cả 2 chế độ). Migration `0019` index `(status, created_at)`. pytest **665**, chạy thật trên PG. Mạch outbox đóng trọn 4 bước. |
