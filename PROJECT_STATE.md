@@ -2072,10 +2072,73 @@ retention (§7aj). Nợ Sprint 7 còn lại không đổi: audit query dashboard
 
 ---
 
+## 7ak. ⏸️ ĐIỂM DỪNG PHIÊN (2026-07-24) — mạch outbox đóng trọn, chuyển sang Design
+
+**Trạng thái kỹ thuật lúc dừng (xác nhận bằng lệnh, không tin tài liệu):**
+
+| Hạng mục | Trạng thái |
+|----------|-----------|
+| Git | Sạch (0 file thay đổi), HEAD = `1415bb8` |
+| Docker | `postgres` + `redis` **Up 5h (healthy)** |
+| Tiến trình nền | **0** — không có `uvicorn`/`next dev`/`pytest` treo |
+| 4 cổng | ruff check + format --check sạch (315 file) · mypy --strict **222 file** · import-linter **13/0** · pytest **665** (`EXIT=0` ghi ra file, không pipe qua `tail`) |
+| Migration | head = `0019_outbox_retention_idx`, đã apply live PG (round-trip verified) |
+| Dữ liệu thử nghiệm | Đã dọn — `event_outbox` = 0 dòng; 2 `sales_orders` còn lại là dữ liệu có sẵn từ 2026-07-23, không phải của phiên này |
+
+**7 commit trong phiên:**
+
+| Commit | Nội dung |
+|--------|----------|
+| `50ea91c` | Chặn trùng interaction-check `(context_type, context_id)` + mig `0018` — điều kiện tiên quyết flip |
+| `5c84e22` | `ruff format` 5 file trôi định dạng — khôi phục cổng lint vốn đã đỏ tại HEAD |
+| `2818452` | **FLIP outbox** — UoW ghi `event_outbox` trong txn nghiệp vụ (§7ai) |
+| `af0c4bf` | README §5 "Trạng thái dự án" theo thực tế |
+| `8e9e13f` | Tách checkbox ROADMAP Sprint 7 |
+| `e758f6a` | Retention: logic + repo + mig `0019` (bước 1/2) |
+| `1415bb8` | Retention: settings + lifespan (bước 2/2) — §7aj |
+
+### Toàn bộ quyết định TỰ CHỐT trong phiên (full-auto rule #3 — gom 1 chỗ để Chain đọc lướt)
+
+| # | Quyết định | Loại | Đảo ngược thế nào |
+|---|-----------|------|-------------------|
+| 1 | `OutboxSink` khai protocol trong `core/db/uow.py` thay vì import ngược `core.outbox` | Kỹ thuật (bắt buộc — nếu không thì vòng lặp import) | Sửa code |
+| 2 | Sync-drain publish đúng dòng vừa ghi, KHÔNG gọi lại `relay.drain_once()` | Kỹ thuật (bắt buộc — tránh đệ quy vô hạn trên SQLite) | Sửa code |
+| 3 | Gom 12 điểm dựng UoW về `UnitOfWorkFactory` | Kỹ thuật | Sửa code |
+| 4 | Tách 2 cờ `SYNC_DRAIN` / `RELAY_ENABLED` thay vì 1 | Kỹ thuật | Env var |
+| 5 | Mặc định `RELAY_ENABLED=false`, `RETENTION_ENABLED=false` | Vận hành | **Env var** |
+| 6 | `RETENTION_ENABLED` độc lập `RELAY_ENABLED` | Kỹ thuật | Sửa code |
+| 7 | Retention `PUBLISHED` = 30 ngày | Vận hành (**không phải pháp lý** — lập luận ở §7aj) | **Env var** |
+| 8 | Retention `FAILED` = giữ vĩnh viễn | Vận hành, chọn an toàn có chủ đích | **Env var** |
+| 9 | Sửa 1 mệnh đề trong câu Chain đọc cho ROADMAP (outbox thay cơ chế *phát sự kiện*, KHÔNG thay retry DAV) | Chính xác hoá, đã báo Chain ngay | Sửa 1 dòng md |
+
+Không có quyết định **nghiệp vụ/pháp lý** nào tự chốt trong phiên. Việc gần nhất — chặn trùng
+interaction-check — là do Chain chốt từ §7ag.
+
+### Việc tiếp theo: **PHIÊN DESIGN**, không phải phiên code
+
+Chain chuyển sang Design để lên ý tưởng cho 3 mục còn lại của Sprint 7. Cả 3 đều **chặn ở yêu cầu, không
+chặn ở kỹ thuật** — bắt đầu code trước khi trả lời được các câu dưới là chắc chắn phải viết lại.
+
+| Mục | Câu hỏi phải trả lời trong phiên Design |
+|-----|------------------------------------------|
+| **Audit query dashboard** | Ai được xem (chủ chuỗi / quản lý nhà thuốc / thanh tra)? Xem để trả lời câu hỏi gì (điều tra 1 vụ việc? soát định kỳ? chứng minh tuân thủ khi thanh tra)? Lọc theo chiều nào (người–thời gian–đối tượng–hành động)? Có xuất file không? **Lưu ý riêng:** `audit_logs` chứa vết "ai đã đọc hồ sơ sức khỏe của ai" — dashboard này tự nó là một bề mặt dữ liệu nhạy cảm, cần quyền riêng chứ không dùng chung `audit.read` |
+| **Module `analytics`** | "Dự báo nhu cầu" tính theo gì — lịch sử bán bao lâu, có tính mùa vụ/dịch bệnh không, tới cấp thuốc hay cấp hoạt chất? "Đề xuất nhập" sinh PO nháp theo tồn tối thiểu hay theo dự báo? Dashboard hiển thị số liệu nào ở màn hình đầu? *(treo từ §7ad, chưa từng được mô tả)* |
+| **Report xuất khẩu** | Mẫu nào ra trước, và theo biểu mẫu pháp lý có sẵn hay tự thiết kế? Xuất định dạng gì (Excel/PDF/XML liên thông)? Ai bấm xuất? |
+
+**Điều kiện thuận lợi:** cả 3 đều nằm trong ROADMAP gốc → **không bắt buộc qua cổng `docs/14`** (cổng đó
+dành cho tính năng NGOÀI ROADMAP gốc). Nhưng phần dashboard chạm dữ liệu nhạy cảm nên vẫn nên soát
+Privacy by Design ở mức tối thiểu — đừng bỏ qua chỉ vì cổng không bắt buộc.
+
+**Việc còn treo, không thuộc Sprint 7:** cảnh báo/khoá tồn-âm khi outbox chạy async (Chain đã chốt Sprint
+sau, gộp đo tải p95 Sprint 8) · retry đẩy DAV vẫn best-effort riêng, kẹt `# BLOCKER: DAV API spec`.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-24 | **DỪNG PHIÊN đúng nghi thức (§7ak)** — mạch outbox đóng trọn 4 bước, 7 commit, HEAD `1415bb8`, git sạch, 4 cổng xanh, docker healthy, 0 tiến trình treo, dữ liệu thử đã dọn. Chain chuyển sang **phiên Design** cho 3 mục còn lại Sprint 7 (audit dashboard · `analytics` · report) — cả 3 chặn ở YÊU CẦU, không chặn kỹ thuật; câu hỏi cần trả lời đã liệt kê ở §7ak. Toàn bộ 9 quyết định tự chốt trong phiên gom 1 bảng tại §7ak. |
 | 2026-07-24 | **Retention `event_outbox` (§7aj).** `OutboxRetention` quét nền: `PUBLISHED` quá 30 ngày xoá theo lô · `FAILED` giữ vĩnh viễn (mặc định) · `PENDING` không bao giờ, chặn bằng kiểu `TerminalStatus`. Cờ `OUTBOX__RETENTION_ENABLED` độc lập với relay (dòng chất đống ở cả 2 chế độ). Migration `0019` index `(status, created_at)`. pytest **665**, chạy thật trên PG. Mạch outbox đóng trọn 4 bước. |
 | 2026-07-24 | **OUTBOX BƯỚC 3/3 — FLIP XONG (§7ai).** UoW ghi `event_outbox` in-txn; `OutboxEventSink` + 2 cờ `OUTBOX__SYNC_DRAIN`/`RELAY_ENABLED`; `EventRegistry` 14 event; relay nền trong lifespan; 12 điểm dựng UoW gom về `UnitOfWorkFactory`. Kèm điều kiện tiên quyết (chặn trùng interaction-check, mig `0018`) + 1 commit `ruff format` sửa cổng lint vốn đã đỏ tại HEAD. **Chạy thật trên Postgres đúng hình dạng prod** (async): bán → PENDING → drain → tồn trừ → PUBLISHED, drain lại = no-op. Phát hiện: async đẩy 1 mắt xích/vòng quét. |
 | 2026-07-24 | **DỪNG PHIÊN đúng nghi thức (§7ah).** Sếp chốt **phương án (a)** — chặn trùng interaction-check bằng khoá `(context_type, context_id)`, là điều kiện tiên quyết TRƯỚC khi flip Bước 3. HEAD `48e40c0`, 4 cổng xanh, docker healthy, không tiến trình treo. Resume = làm Bước 3 (flip nguyên tử), 5 bước ghi ở §7ah. |
