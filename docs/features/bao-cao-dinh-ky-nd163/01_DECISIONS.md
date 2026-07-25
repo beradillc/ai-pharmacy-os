@@ -1,7 +1,7 @@
 # Báo cáo định kỳ Mẫu số 06 (NĐ163 Điều 35.2) — Bước 0-3 của `docs/14_FEATURE_PROCESS.md`
 
-> **Trạng thái: TỰ DUYỆT dưới ủy quyền toàn quyền chỉ đạo code (Chain, 2026-07-25).** Full-auto cho
-> phép GĐ tự quyết cross-module + nghiệp vụ, vẫn giữ 4 cổng xanh + 1 commit/bước + ghi PROJECT_STATE.
+> **Trạng thái: ĐÃ XONG (2026-07-25)** — domain/infra (`0cff287`) + application/interface
+> (`3e272db`). Endpoint `GET /compliance/periodic-report/export` sống. 4 cổng xanh, pytest 792.
 > Nguồn pháp lý: `docs/legal/Nghị-định-163-2025-NĐ-CP.SUMMARY.md`; `docs/13_COMPLIANCE_SPEC.md` mục C.7.
 
 ## Bước 0 — Đích (DoD ngược)

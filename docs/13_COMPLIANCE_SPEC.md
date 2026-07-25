@@ -435,3 +435,10 @@ dược của BeraLLC xem đã báo cáo định kỳ theo NĐ163 Điều 35.2 k
 
 **Việc mới cần qua cổng `docs/14_FEATURE_PROCESS.md`:** tính năng "báo cáo định kỳ Mẫu số 06"
 (mục C.7) — ngoài phạm vi 6-bước đã duyệt cho mạch TT18, cần Bước 0-3 riêng trước khi code.
+
+### 2026-07-25 (đợt 3, cùng ngày) — Báo cáo định kỳ Mẫu số 06 — CODE XONG
+
+Chain chốt ưu tiên tính năng này trước bước 4 mạch TT18; qua đủ Bước 0-3
+(`docs/features/bao-cao-dinh-ky-nd163/01_DECISIONS.md`), rồi code 2 bước
+(`0cff287` domain/infra, `3e272db` application/interface). Mục C.7 cập nhật
+từ "CHƯA CÓ" sang "ĐÃ XONG". Chi tiết đầy đủ xem PROJECT_STATE §7at.
