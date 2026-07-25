@@ -29,6 +29,13 @@ from pharmacy_os.modules.compliance.application.dto import (
     TenantComplianceConfigOutput,
 )
 from pharmacy_os.modules.compliance.application.service import ComplianceService
+from pharmacy_os.modules.compliance.application.sync_retry import (
+    SYNC_SYSTEM_PERMISSIONS,
+    SYNC_SYSTEM_USER_ID,
+    NationalSyncRetryRelay,
+    SyncRetryConfig,
+    SyncRetryResult,
+)
 from pharmacy_os.modules.compliance.application.sync_service import NationalSyncService
 
 __all__ = [
@@ -40,7 +47,12 @@ __all__ = [
     "to_book_rows",
     "to_periodic_report_rows",
     "ComplianceService",
+    "NationalSyncRetryRelay",
     "NationalSyncService",
+    "SYNC_SYSTEM_PERMISSIONS",
+    "SYNC_SYSTEM_USER_ID",
+    "SyncRetryConfig",
+    "SyncRetryResult",
     "ControlledLedgerEntryOutput",
     "CustomerDetailInput",
     "CustomerDetailOutput",

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
@@ -20,6 +20,8 @@ from pharmacy_os.modules.compliance.domain import (
     LedgerDirection,
     LedgerPeriodAggregate,
     NationalSyncLog,
+    NationalSyncRetryTask,
+    SyncRetryStatus,
     TenantComplianceConfig,
     book_type_for,
 )
@@ -32,6 +34,8 @@ from pharmacy_os.modules.compliance.infrastructure.mappers import (
     ledger_entry_to_orm,
     sync_log_to_domain,
     sync_log_to_orm,
+    sync_retry_task_to_domain,
+    sync_retry_task_to_orm,
     tenant_config_to_domain,
     tenant_config_to_orm,
 )
@@ -40,6 +44,7 @@ from pharmacy_os.modules.compliance.infrastructure.models import (
     DrugReturnRecordORM,
     LedgerBookSignatureORM,
     NationalSyncLogORM,
+    NationalSyncRetryTaskORM,
     TenantComplianceConfigORM,
 )
 
@@ -224,6 +229,89 @@ class SqlAlchemyNationalSyncLogRepository:
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return sync_log_to_domain(row) if row is not None else None
+
+
+class SqlAlchemyNationalSyncRetryQueue:
+    """Hàng đợi gửi lại, giới hạn theo tenant của ``ctx`` (docs/13 mục D.4)."""
+
+    def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
+        self._session = session
+        self._ctx = ctx
+
+    async def enqueue(self, task: NationalSyncRetryTask) -> None:
+        if await self.by_client_uuid(task.client_uuid) is not None:
+            return  # đã có việc cho bản ghi này — lịch gửi lại là việc của relay
+        self._session.add(sync_retry_task_to_orm(task))
+        await self._session.flush()
+
+    async def by_client_uuid(self, client_uuid: str) -> NationalSyncRetryTask | None:
+        stmt = select(NationalSyncRetryTaskORM).where(
+            NationalSyncRetryTaskORM.client_uuid == client_uuid,
+            NationalSyncRetryTaskORM.tenant_id == self._ctx.tenant_id,
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return sync_retry_task_to_domain(row) if row is not None else None
+
+    async def discard(self, client_uuid: str) -> None:
+        await self._session.execute(
+            delete(NationalSyncRetryTaskORM).where(
+                NationalSyncRetryTaskORM.client_uuid == client_uuid,
+                NationalSyncRetryTaskORM.tenant_id == self._ctx.tenant_id,
+            )
+        )
+        await self._session.flush()
+
+
+class SqlAlchemyNationalSyncRetryClaimer:
+    """Hàng đợi gửi lại, **xuyên tenant** — chỉ relay nền dùng (docs/13 mục D.4).
+
+    Không nhận ``RequestContext``: nó chạy ngoài mọi request nên không có tenant nào để
+    giới hạn. Đây là lý do nó là lớp riêng chứ không phải một phương thức nữa của
+    :class:`SqlAlchemyNationalSyncRetryQueue` — "quét mọi tenant" phải là một quyết định
+    nhìn thấy được ở chỗ wiring, không phải một tham số dễ quên.
+    """
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def claim_due(
+        self, now: datetime, *, limit: int, lease_until: datetime
+    ) -> list[NationalSyncRetryTask]:
+        stmt = (
+            select(NationalSyncRetryTaskORM)
+            .where(NationalSyncRetryTaskORM.status == SyncRetryStatus.PENDING.value)
+            .where(
+                or_(
+                    NationalSyncRetryTaskORM.next_attempt_at.is_(None),
+                    NationalSyncRetryTaskORM.next_attempt_at <= now,
+                )
+            )
+            .order_by(NationalSyncRetryTaskORM.created_at, NationalSyncRetryTaskORM.id)
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+        )
+        rows = list((await self._session.execute(stmt)).scalars().all())
+        for row in rows:
+            row.next_attempt_at = lease_until  # giữ chỗ trước khi gọi cổng (I/O ngoài)
+        await self._session.flush()
+        return [sync_retry_task_to_domain(row) for row in rows]
+
+    async def save(self, task: NationalSyncRetryTask) -> None:
+        stmt = select(NationalSyncRetryTaskORM).where(NationalSyncRetryTaskORM.id == task.id)
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        if row is None:
+            return  # đã ACK và bị xóa giữa chừng — không có gì để ghi
+        row.status = task.status.value
+        row.attempt_count = task.attempt_count
+        row.next_attempt_at = task.next_attempt_at
+        row.last_error = task.last_error
+        await self._session.flush()
+
+    async def delete(self, task_id: UUID) -> None:
+        await self._session.execute(
+            delete(NationalSyncRetryTaskORM).where(NationalSyncRetryTaskORM.id == task_id)
+        )
+        await self._session.flush()
 
 
 class SqlAlchemyLedgerBookSignatureRepository:

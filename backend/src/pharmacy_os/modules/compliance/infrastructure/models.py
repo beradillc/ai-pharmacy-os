@@ -11,6 +11,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -104,6 +105,40 @@ class NationalSyncLogORM(PkUuidMixin, TimestampMixin, Base):
     response_body: Mapped[str | None] = mapped_column(Text, nullable=True)
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class NationalSyncRetryTaskORM(PkUuidMixin, TimestampMixin, Base):
+    """Hàng đợi gửi lại lên CSDL Dược (docs/13 mục D.4).
+
+    Bảng **vận hành**, không phải bảng audit: đây là chỗ duy nhất trong hệ thống giữ
+    payload thô, và chỉ giữ tới khi bản ghi được cổng ACK (xóa dòng) hoặc hết lượt thử
+    (``DEAD`` — còn payload để người xử lý). ``national_sync_logs`` (mục D.2) không đổi:
+    vẫn chỉ ``payload_hash``.
+
+    Không đặt FK sang ``national_sync_logs``: cùng lý do ``event_outbox`` không có FK —
+    hàng đợi giao vận không được ràng vòng đời của nó vào bảng nó nhắc tới.
+    """
+
+    __tablename__ = "national_sync_retry_tasks"
+    __table_args__ = (
+        # 1 bản ghi cần gửi = tối đa 1 việc gửi lại; trùng khóa idempotency của log.
+        UniqueConstraint(
+            "tenant_id", "client_uuid", name="uq_national_sync_retry_tasks_client_uuid"
+        ),
+        # Truy vấn nóng của relay: "việc PENDING đã tới hạn".
+        Index("ix_national_sync_retry_tasks_due", "status", "next_attempt_at"),
+    )
+
+    tenant_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
+    branch_id: Mapped[UUID] = mapped_column(nullable=False)
+    sync_log_id: Mapped[UUID] = mapped_column(nullable=False)
+    payload_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    client_uuid: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(8), nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class LedgerBookSignatureORM(PkUuidMixin, Base):

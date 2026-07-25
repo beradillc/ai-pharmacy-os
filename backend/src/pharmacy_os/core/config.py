@@ -116,6 +116,37 @@ class OutboxSettings(BaseSettings):
     retention_max_batches: int = 20
 
 
+class NationalSyncSettings(BaseSettings):
+    """Gửi lại tự động các bản ghi liên thông CSDL Dược đang treo (docs/13 mục D.4).
+
+    Tách khỏi :class:`OutboxSettings` vì là mối lo khác: outbox giao *sự kiện nội bộ* tới
+    subscriber, còn đây là *gọi ra cổng ngoài* (CSDL Dược Quốc gia) — hỏng theo kiểu khác,
+    cần nhịp chậm hơn hẳn và một điểm dừng.
+    """
+
+    retry_enabled: bool = False
+    """Chạy :class:`~pharmacy_os.modules.compliance.application.NationalSyncRetryRelay` trong app.
+
+    Mặc định TẮT, cùng lý do với ``OUTBOX__RELAY_ENABLED``: một bộ quét nền trong harness
+    test sẽ làm bộ test hết tất định. **Deployment thật phải bật** — không bật thì bản ghi
+    bị cổng từ chối vẫn nằm trong hàng đợi chờ người POST lại tay, đúng cái lỗ hổng cơ chế
+    này sinh ra để vá (QĐ1867 mục I.2 đòi liên thông *kịp thời*).
+
+    Việc gửi lại vẫn được **ghi vào hàng đợi bất kể cờ này** — cờ chỉ quyết định có ai rút
+    hàng đợi ra hay không, y hệt outbox vẫn ghi ``event_outbox`` khi relay tắt. Nhờ vậy bật
+    cờ lên là đẩy được cả những bản ghi hỏng từ trước đó.
+    """
+
+    poll_interval_seconds: float = 30.0
+    """Chậm hơn outbox (1s) hai bậc: cổng quốc gia không phải event bus trong tiến trình,
+    và bản ghi tới hạn sớm nhất cũng phải chờ hết ``base_backoff_seconds``."""
+
+    batch_size: int = 20
+    max_retries: int = 8
+    base_backoff_seconds: float = 60.0
+    lease_seconds: float = 300.0
+
+
 class SecuritySettings(BaseSettings):
     jwt_secret: SecretStr = SecretStr(_PLACEHOLDER)
     jwt_ttl_minutes: int = 60
@@ -153,6 +184,7 @@ class Settings(BaseSettings):
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     org: OrgSettings = Field(default_factory=OrgSettings)
     outbox: OutboxSettings = Field(default_factory=OutboxSettings)
+    national_sync: NationalSyncSettings = Field(default_factory=NationalSyncSettings)
 
     @model_validator(mode="after")
     def _fail_fast_in_prod(self) -> Settings:

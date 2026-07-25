@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from pharmacy_os.modules.compliance.domain import (
     ControlledLedgerEntry,
     ControlledSubstanceCategory,
@@ -11,8 +13,10 @@ from pharmacy_os.modules.compliance.domain import (
     LedgerBookType,
     LedgerDirection,
     NationalSyncLog,
+    NationalSyncRetryTask,
     ReturnedDrugItem,
     SyncPayloadType,
+    SyncRetryStatus,
     SyncStatus,
     TenantComplianceConfig,
 )
@@ -22,6 +26,7 @@ from pharmacy_os.modules.compliance.infrastructure.models import (
     DrugReturnRecordORM,
     LedgerBookSignatureORM,
     NationalSyncLogORM,
+    NationalSyncRetryTaskORM,
     TenantComplianceConfigORM,
 )
 
@@ -125,6 +130,47 @@ def sync_log_to_orm(log: NationalSyncLog) -> NationalSyncLogORM:
         retry_count=log.retry_count,
         error=log.error,
         created_at=log.created_at,
+    )
+
+
+def _as_utc(value: datetime) -> datetime:
+    """SQLite drops the tz that ``DateTime(timezone=True)`` keeps on Postgres; everything is
+    written in UTC, so re-attaching it restates the value rather than changing it. Only the
+    retry queue needs this: its timestamps are compared against ``now`` in Python."""
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
+def sync_retry_task_to_domain(row: NationalSyncRetryTaskORM) -> NationalSyncRetryTask:
+    return NationalSyncRetryTask(
+        id=row.id,
+        tenant_id=row.tenant_id,
+        branch_id=row.branch_id,
+        sync_log_id=row.sync_log_id,
+        payload_type=SyncPayloadType(row.payload_type),
+        client_uuid=row.client_uuid,
+        payload=row.payload,
+        status=SyncRetryStatus(row.status),
+        attempt_count=row.attempt_count,
+        next_attempt_at=_as_utc(row.next_attempt_at) if row.next_attempt_at else None,
+        last_error=row.last_error,
+        created_at=_as_utc(row.created_at),
+    )
+
+
+def sync_retry_task_to_orm(task: NationalSyncRetryTask) -> NationalSyncRetryTaskORM:
+    return NationalSyncRetryTaskORM(
+        id=task.id,
+        tenant_id=task.tenant_id,
+        branch_id=task.branch_id,
+        sync_log_id=task.sync_log_id,
+        payload_type=task.payload_type.value,
+        client_uuid=task.client_uuid,
+        payload=task.payload,
+        status=task.status.value,
+        attempt_count=task.attempt_count,
+        next_attempt_at=task.next_attempt_at,
+        last_error=task.last_error,
+        created_at=task.created_at,
     )
 
 

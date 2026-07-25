@@ -6,6 +6,11 @@ record the outcome (ACK/FAILED). Sync is best-effort: a gateway rejection or err
 on the log (FAILED, ``retry_count`` bumped) rather than raised, so an upstream event handler
 (C.5) never crashes on a sync hiccup — a later attempt reuses the same log and can ACK it.
 
+"Một lần sau" nay là **tự động**: một lần đẩy hỏng để lại việc trong hàng đợi gửi lại
+(``NationalSyncRetryQueue``, mục D.4) kèm payload thô, và ``NationalSyncRetryRelay`` gọi lại
+chính use-case này khi tới hạn. Cổng ACK → việc bị xóa ngay, payload không đọng lại. Bảng
+audit ``NationalSyncLog`` không đổi: vẫn chỉ ``payload_hash`` như mục D.2 liệt kê.
+
 Depends only on ports; the concrete repository, unit of work and gateway are injected at
 composition time. The gateway is a ``MockNationalDrugDbGateway`` today — no real endpoint is
 wired until the DAV API spec exists (docs/13 mục D.3).
@@ -28,14 +33,19 @@ from pharmacy_os.modules.compliance.application.dto import (
 from pharmacy_os.modules.compliance.domain import (
     NationalDrugDbGateway,
     NationalSyncLog,
+    NationalSyncRetryTask,
     SyncAck,
     SyncRequest,
     SyncStatus,
 )
-from pharmacy_os.modules.compliance.domain.ports import NationalSyncLogRepository
+from pharmacy_os.modules.compliance.domain.ports import (
+    NationalSyncLogRepository,
+    NationalSyncRetryQueue,
+)
 
 UowFactory = Callable[[], UnitOfWork]
 SyncLogRepoFactory = Callable[[UnitOfWork, RequestContext], NationalSyncLogRepository]
+RetryQueueFactory = Callable[[UnitOfWork, RequestContext], NationalSyncRetryQueue]
 
 
 class NationalSyncService:
@@ -44,10 +54,15 @@ class NationalSyncService:
         uow_factory: UowFactory,
         sync_log_repo_factory: SyncLogRepoFactory,
         gateway: NationalDrugDbGateway,
+        retry_queue_factory: RetryQueueFactory | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._sync_log_repo_factory = sync_log_repo_factory
         self._gateway = gateway
+        self._retry_queue_factory = retry_queue_factory
+        """Không có hàng đợi (``None``) → hành vi y như trước: hỏng thì dừng ở ``FAILED``,
+        phải có người POST lại. Tùy chọn để test/ngữ cảnh không cần gửi lại dựng service
+        gọn, còn composition root thì luôn tiêm (xem ``api/v1/national_sync.py``)."""
 
     async def push_payload(self, data: PushSyncInput, ctx: RequestContext) -> NationalSyncLogOutput:
         """Đẩy 1 bản ghi lên CSDL Dược, idempotent theo ``client_uuid``.
@@ -91,13 +106,44 @@ class NationalSyncService:
         else:
             self._apply_ack(log, ack)
 
-        # Step 3: persist the outcome.
+        # Step 3: persist the outcome, and keep the retry queue in step with it — one
+        # transaction, so "đã ACK" and "hết việc gửi lại" can never disagree after a crash.
         async with self._uow_factory() as uow:
             repo = self._sync_log_repo_factory(uow, ctx)
             await repo.update(log)
+            if self._retry_queue_factory is not None:
+                await self._sync_retry_queue(self._retry_queue_factory(uow, ctx), log, data, ctx)
             await uow.commit()
 
         return NationalSyncLogOutput.of(log)
+
+    @staticmethod
+    async def _sync_retry_queue(
+        queue: NationalSyncRetryQueue,
+        log: NationalSyncLog,
+        data: PushSyncInput,
+        ctx: RequestContext,
+    ) -> None:
+        """ACK → xóa việc (payload hết lý do tồn tại); hỏng → xếp hàng để relay gửi lại.
+
+        Đã có việc cho ``client_uuid`` này thì ``enqueue`` không làm gì: lịch thử lại thuộc
+        về relay, không phải mỗi lần đẩy hỏng lại dời lịch (sẽ thành gửi lại vô tận). Một
+        việc đã ``DEAD`` cũng vì thế mà **không** tự sống lại — hết lượt tự động là hết,
+        cần người nhìn vào; xem docs/13 mục D.4.
+        """
+        if log.status is SyncStatus.ACK:
+            await queue.discard(data.client_uuid)
+            return
+        await queue.enqueue(
+            NationalSyncRetryTask(
+                tenant_id=ctx.tenant_id,
+                branch_id=ctx.branch_id,
+                sync_log_id=log.id,
+                payload_type=data.payload_type,
+                client_uuid=data.client_uuid,
+                payload=data.payload,
+            )
+        )
 
     @staticmethod
     def _apply_ack(log: NationalSyncLog, ack: SyncAck) -> None:

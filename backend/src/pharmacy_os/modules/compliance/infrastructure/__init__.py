@@ -7,6 +7,7 @@ from pharmacy_os.modules.compliance.infrastructure.models import (
     DrugReturnRecordORM,
     LedgerBookSignatureORM,
     NationalSyncLogORM,
+    NationalSyncRetryTaskORM,
     TenantComplianceConfigORM,
 )
 from pharmacy_os.modules.compliance.infrastructure.repository import (
@@ -14,6 +15,8 @@ from pharmacy_os.modules.compliance.infrastructure.repository import (
     SqlAlchemyDrugReturnRecordRepository,
     SqlAlchemyLedgerBookSignatureRepository,
     SqlAlchemyNationalSyncLogRepository,
+    SqlAlchemyNationalSyncRetryClaimer,
+    SqlAlchemyNationalSyncRetryQueue,
     SqlAlchemyTenantComplianceConfigRepository,
 )
 
@@ -24,10 +27,13 @@ __all__ = [
     "DrugReturnRecordORM",
     "LedgerBookSignatureORM",
     "NationalSyncLogORM",
+    "NationalSyncRetryTaskORM",
     "TenantComplianceConfigORM",
     "SqlAlchemyControlledLedgerRepository",
     "SqlAlchemyDrugReturnRecordRepository",
     "SqlAlchemyLedgerBookSignatureRepository",
     "SqlAlchemyNationalSyncLogRepository",
+    "SqlAlchemyNationalSyncRetryClaimer",
+    "SqlAlchemyNationalSyncRetryQueue",
     "SqlAlchemyTenantComplianceConfigRepository",
 ]
