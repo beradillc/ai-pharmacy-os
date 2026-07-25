@@ -74,7 +74,7 @@ TT18/2026 có hiệu lực **16/7/2026** và **bãi bỏ TT20/2017**, trong khi 
 | 3 — sổ PL XVI | ✅ **XONG 2026-07-25** | `be763d1` enum 9 giá trị + `LedgerBookType` · `ea85d94` `list_for_book()`, CSV export, endpoint `GET /compliance/controlled-ledger/books/{book_type}/export` |
 | 4 — biên bản nhận lại PL XVIII | ✅ **XONG 2026-07-25** | `424220d` — `DrugReturnRecord`+`ReturnedDrugItem`, mig `0025`, `POST/GET /compliance/drug-returns[/{id}]`. Phát hiện: giả định cross-module `inventory` trong docs/13 mục C.6 là dư thừa, đã sửa |
 | 5 — kết xuất cuối ngày + hash | ✅ **XONG 2026-07-25** | `0f122f3` — `GET .../daily-closure?day=`, header `X-Content-Sha256`. Chain ủy quyền GĐ chọn việc, ưu tiên Sonnet — khớp đúng khuôn (nội bộ 1 module, tái dùng hạ tầng bước 3) |
-| 6 — chữ ký số | ⏳ Chỉ thiết kế xong (3 hướng), **chưa code** | Chờ Chain chọn A/B/C — sau khi chọn là thiết kế mới thật sự, cần Opus |
+| 6 — chữ ký số | ✅ **XONG 2026-07-25** | `acc8b1d` — hướng A: `POST .../books/{book_type}/sign`, re-auth mật khẩu qua port cross-module mới `SigningReauthProvider` + `iam.AuthService.verify_own_password()`, chuỗi hash `prev_hash`, quyền `compliance.ledger.sign` (chain/branch pharmacist + admin). Chain chọn hướng A rồi ủy quyền GĐ dùng Opus chốt nốt (kể cả câu "ai ký") — **mạch TT18 6/6 bước đóng trọn** |
 
 ### Nợ phát sinh khi làm bước 3 (chưa duyệt, không tự làm)
 

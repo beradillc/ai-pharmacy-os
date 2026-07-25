@@ -130,12 +130,14 @@
 - [x] ~~**Nguồn còn thiếu**: NĐ163/2025~~ — **ĐÃ ĐỌC 2026-07-25** (`docs/legal/Nghị-định-163-2025-NĐ-CP.SUMMARY.md`).
       Còn thiếu: NĐ90/2026, đặc tả API DAV, văn bản kê đơn ngoại trú hiện hành (cho rule C.3.1 ETC — TT26/2025 đã đọc
       **không phải** nguồn này, xem `docs/legal/Thông-tư-26-2025-TT-BYT.SUMMARY.md`). **TT11/2025 đã có** từ trước.
-- [x] **TT 18/2026/TT-BYT thay TT 20/2017** (đã hết hiệu lực 16/7/2026) — **XONG bước 1-5/6 (2026-07-25)**: căn cứ
+- [x] **TT 18/2026/TT-BYT thay TT 20/2017** (đã hết hiệu lực 16/7/2026) — **XONG TRỌN 6/6 BƯỚC (2026-07-25)**: căn cứ
       pháp lý, seed 122 hoạt chất (PL I/II/III + ngưỡng IV/V/VI, mig `0024`), enum 7→9 giá trị + sổ Phụ lục XVI + endpoint
       kết xuất CSV, **biên bản nhận lại thuốc Phụ lục XVIII** (mig `0025`, `POST/GET /compliance/drug-returns`),
-      **kết xuất cuối ngày + hash toàn vẹn** (`GET .../daily-closure`, header `X-Content-Sha256`). Chỉ còn bước 6
-      (chữ ký số Điều 15.1.d) **chỉ thiết kế**, chờ Chain chọn 1 trong 3 hướng — mạch còn đúng 1 việc.
-      Xem PROJECT_STATE §7ar/§7au, `docs/features/tt18-kiem-soat-dac-biet/`, `docs/features/bien-ban-nhan-lai-pl-xviii/`.
+      **kết xuất cuối ngày + hash toàn vẹn** (`GET .../daily-closure`, header `X-Content-Sha256`), **ký xác nhận điện
+      tử hướng A** (`POST .../books/{book_type}/sign`, mig `0026`, quyền `compliance.ledger.sign`, cross-module thật
+      đầu tiên của mạch — verify mật khẩu qua port mới `SigningReauthProvider` bọc `iam.AuthService`). docs/13 mục C.5
+      cả 4 điểm Điều 15.1 nay không còn ❌. Chain chọn hướng A rồi ủy quyền GĐ dùng Opus chốt nốt câu "ai ký" + tự chạy.
+      Xem PROJECT_STATE §7ar/§7au/§7aw, `docs/features/tt18-kiem-soat-dac-biet/`, `docs/features/bien-ban-nhan-lai-pl-xviii/`.
 - [x] **Báo cáo định kỳ NĐ163 Điều 35.2 (Mẫu số 06)** — **XONG (2026-07-25)**: phát hiện đảo ngược kết luận cũ, bán lẻ
       CÓ nghĩa vụ báo cáo 6 tháng/năm gửi UBND cấp tỉnh. Endpoint `GET /compliance/periodic-report/export`, wiring lần
       đầu tiên `DrugMasterProvider`. Xem PROJECT_STATE §7as/§7at, `docs/13_COMPLIANCE_SPEC.md` mục C.7.

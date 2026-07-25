@@ -2795,6 +2795,70 @@ import-linter (16) · **pytest 813**.
 
 ---
 
+## 7aw. Bước 6/6 mạch TT18 — Ký xác nhận điện tử, hướng A (2026-07-25, Opus — MẠCH ĐÓNG TRỌN)
+
+Chain chọn hướng A (đã khuyến nghị ở §7av/thiết kế trước đó), rồi **"Ủy quyền GĐ chọn và dùng
+Opus còn 55% hạn mức"** — giao GĐ tự quyết toàn bộ phần còn lại: câu hỏi "ai ký" còn treo trong
+thiết kế gốc, thiết kế cross-module cụ thể, và tự chạy tới cùng không dừng hỏi thêm. Đây là
+**cross-module thật đầu tiên trong toàn mạch TT18** (5 bước trước hoàn toàn nội bộ `compliance`).
+
+**Qua đủ Bước 0-3** (`docs/features/tt18-kiem-soat-dac-biet/02_DECISIONS_KY_SO.md`):
+- **Quyết định "ai ký"**: chỉ 2 role đã giữ `compliance.ledger.write` (`chain_pharmacist`,
+  `branch_pharmacist`) + `system_admin` — KHÔNG mở cho `cashier`/`warehouse`. Căn cứ Luật 44/2024
+  Điều 17a ("người chịu trách nhiệm chuyên môn về dược"), nhất quán với việc 2 role đó vốn là
+  nhóm duy nhất được ghi sổ.
+- **Sửa 1 điểm sai trong thiết kế gốc**: bảng `ledger_book_signatures` ở `01_THIET_KE_KY_DIEN_TU.md`
+  liệt kê cột `drug_id` — sai, vì `export_daily_closure` (bước 5) kết xuất **cả sổ** 1 ngày (mọi
+  thuốc), không lọc theo thuốc. Khóa đúng: `(tenant_id, book_type, book_date)`, không `drug_id`/
+  `branch_id` (sổ là hồ sơ theo cơ sở, không theo quầy — đúng nguyên tắc `ControlledLedgerEntry`
+  đã có từ bước 3).
+- **Thiết kế cross-module** (điểm mới, chưa có khuôn mẫu — lý do bắt buộc Opus): `compliance` cần
+  verify mật khẩu của `User` do `iam` sở hữu. Áp đúng pattern composition-root read-port đã dùng
+  cho `DrugMasterProvider`/`CatalogDrugMasterProvider` (§7at): port mới `SigningReauthProvider`
+  trong `compliance/domain/ports.py`; `iam.AuthService.verify_own_password()` (đọc-only, tái dùng
+  logic xác minh của `change_password()` nhưng không mutate/revoke/audit riêng); adapter
+  `IamAuthReauthProvider` tại `api/v1/cross_module.py` bọc `AuthService`, wiring tại
+  `api/v1/__init__.py` — `compliance` không import `iam` trực tiếp, hướng phụ thuộc giữ nguyên.
+
+| Phần | Nội dung |
+|---|---|
+| Domain | `LedgerBookSignature` (bất biến) + port `LedgerBookSignatureRepository` + port `SigningReauthProvider` |
+| Application | `ComplianceService.sign_daily_closure()` — tính lại hash từ CSDL (KHÔNG tin hash client gửi lên, chống ký sai/giả nội dung), re-auth bắt buộc trước khi ký, móc `prev_hash` vào chữ ký gần nhất trước đó (không bắt buộc liên tục theo lịch), chặn ký lại 1 ngày. `record_controlled_entry` chặn ghi thêm dòng vào ngày đã ký (hệ quả trực tiếp "ký xong là chốt sổ", không phải rule phát sinh thêm) |
+| Infra | `ledger_book_signatures` (mig `0026`) — `UniqueConstraint(tenant_id, book_type, book_date)` chặn ký lại **ở cả tầng CSDL**, không chỉ service |
+| Interface | `POST /compliance/controlled-ledger/books/{book_type}/sign` — 201 khi ký, 401 sai mật khẩu/không token, 409 ký lại/ghi thêm vào ngày đã ký |
+| IAM | `AuthService.verify_own_password()` mới; permission `compliance.ledger.sign` thêm vào `COMPLIANCE_PERMISSIONS`, seed tự động cho đúng 2 role dược sĩ + admin |
+| Audit | `AuditAction.LEDGER_BOOK_SIGNED` mới — context mang `content_sha256`, không PII |
+
+**Kỷ luật #7 (test trên CSDL có dữ liệu sẵn — bắt buộc vì thêm permission):** chạy
+`python -m seeds.run` trên Postgres dev (đã có 5 role system từ các phiên trước, KHÔNG dựng lại
+từ đầu) — `system_roles_updated=3`. Xác nhận bằng SQL thật (không tin log):
+```sql
+select code, exists(select 1 from role_permissions rp
+  where rp.role_id = roles.id and rp.permission = 'compliance.ledger.sign') as has_sign
+from roles order by code;
+--  branch_pharmacist | t
+--  cashier           | f
+--  chain_pharmacist  | t
+--  system_admin      | t
+--  warehouse         | f
+```
+Đúng thiết kế: 3 role được cấp, `cashier`/`warehouse` không — không lặp lại lỗ hổng seed đã gặp
+ở §7l (permission mới không tới được deployment cũ).
+
+**docs/13 mục C.5 điểm (d) Điều 15.1 chuyển từ ❌ sang ✅ — cả 4 điểm nay không còn ❌.** Còn lại
+đúng 1 nghĩa vụ giấy phần mềm không lấp được: ghi chú Phụ lục VIII "ký từng trang" — khác nghĩa
+vụ (d), không gộp, nhà thuốc vẫn phải in + ký tay cho tới khi có hướng dẫn thanh tra rõ hơn.
+
+4 cổng xanh: ruff · mypy --strict · import-linter (16/0) · **pytest 813 → 831** (unit
+`TestLedgerBookSignature` 4 ca + `verify_own_password` 3 ca + integration signing flow 7 ca +
+e2e sign 5 ca). Migration `0026` verify live (`\d ledger_book_signatures`, `alembic check` không
+drift). Backup trước migration: `~/backup_pre_migration_20260725_1536.sql`.
+
+**Mạch TT18 (tài liệu → seed danh mục → sổ PL XVI → biên bản nhận lại PL XVIII → kết xuất cuối
+ngày + hash → ký xác nhận điện tử) ĐÓNG TRỌN 6/6 bước.**
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |

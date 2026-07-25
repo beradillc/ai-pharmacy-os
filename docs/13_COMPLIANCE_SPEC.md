@@ -60,7 +60,7 @@
 | 22  | **Toàn bộ mục C — căn cứ pháp lý** | TT18/2026 Điều 16.1 + 16.4 (hiệu lực 16/7/2026, bãi bỏ TT20/2017 + TT27/2024) | **ĐÃ HẾT HIỆU LỰC → đã đổi căn cứ 2026-07-25.** Nội dung nghiệp vụ lõi (phân loại, nghĩa vụ sổ sách bán lẻ) giữ nguyên; chỉ đổi số hiệu điều/phụ lục và bổ sung nghĩa vụ mới ở dòng 24–25 |
 | 23  | C.1 phân loại | TT18 **Phụ lục VII** (bảng 9 tiêu chí, trước nằm ở TT20 Điều 3) + bảng giới hạn PL IV/V/VI | **KHỚP nội dung, THIẾU 2 giá trị** — enum hiện có 7 giá trị (GN/HT/TC/PHOI_HOP_×3/NONE). TT18 Điều 12.3 kéo thêm **thuốc độc** và **thuốc trong danh mục chất bị cấm** vào nghĩa vụ sổ sách của **bán lẻ** ⇒ cần `THUOC_DOC`, `DANH_MUC_CAM`. Xem C.1 |
 | 24  | C.2 nghĩa vụ bán lẻ | TT18 **Điều 12** (thay TT20 Điều 15) | **KHỚP a–đ** (đổi số phụ lục: VIII giữ nguyên, XX→**XVIII**, XXI→**XIX**). **THIẾU khoản 12.3** — sổ xuất/nhập/tồn **Phụ lục XVI** cho thuốc dạng phối hợp + thuốc độc + danh mục cấm; **TT20 không có nghĩa vụ này với bán lẻ** ⇒ nghĩa vụ MỚI, chưa implement |
-| 25  | C.5 (mới) sổ điện tử | TT18 **Điều 15.1 (a–d)** — điều kiện dùng sổ/hồ sơ trên phần mềm | **GAP LỚN** — điểm (d) buộc người theo dõi/xác nhận **ký bằng chữ ký số hoặc kỹ thuật xác nhận điện tử**; ghi chú PL VIII buộc **trích xuất + in cuối mỗi ngày, ký từng trang**. Hệ thống **chưa có cơ chế ký nào** ⇒ sổ điện tử hiện chưa đủ điều kiện thay sổ giấy. Xem C.5 |
+| 25  | C.5 (mới) sổ điện tử | TT18 **Điều 15.1 (a–d)** — điều kiện dùng sổ/hồ sơ trên phần mềm | **XONG (2026-07-25)** — điểm (d) đã có hướng A: ký xác nhận điện tử + chuỗi hash, quyền `compliance.ledger.sign` riêng. Ghi chú PL VIII "ký từng trang" vẫn còn thao tác tay (khác nghĩa vụ (d), không gộp). Xem C.5 |
 | 26  | C.4 lưu trữ | TT18 **Điều 15.3** (dẫn chiếu **TT 33/2025** cho sổ sách, **TT 26/2025** cho đơn thuốc) | **MẤT CĂN CỨ** — quy tắc "≥2 năm kể từ ngày hết hạn dùng" (TT20 Điều 18.1) không còn tồn tại trong TT18. Giữ nguyên hành vi hiện tại (không hard-delete) như **mức sàn an toàn**, chờ 2 thông tư trên mới chốt số năm |
 | 27  | G. báo cáo định kỳ (đính chính dòng 21, ĐÍNH CHÍNH LẦN 2 2026-07-25) | TT18 **Điều 1.2 + Điều 7** (đúng cho phần phi thương mại) **+ NĐ163 Điều 35.2** (đã đọc) | **TT18 Điều 7 đúng nhưng KHÔNG PHẢI TOÀN BỘ CÂU TRẢ LỜI** — TT18 Điều 7 quả thật không áp cho bán lẻ (đúng cơ sở phi thương mại). Nhưng nghĩa vụ báo cáo của cơ sở **kinh doanh** (bán lẻ) nằm ở **NĐ163 Điều 35.2**, đã đọc: **CÓ nghĩa vụ**, 6 tháng/năm, gửi **UBND cấp tỉnh**, Mẫu số 06 Phụ lục II NĐ163 (khác hẳn PL IX/X/XI của TT18). Kết luận đúng: "bán lẻ **CÓ** báo cáo định kỳ, theo NĐ163 không phải TT18" — xem mục **C.7** (mới) |
 | 28  | (mới) C.4 lưu trữ — đã đọc TT33+TT26 | TT33/2025 Phụ lục mục #67 (suy diễn) + TT26/2025 Điều 11 | **CẬP NHẬT** — nâng sàn retention lên ≥20 năm kể từ ngày phát sinh hồ sơ (thay ≥2 năm sau hạn dùng); TT26 xác nhận 2 tham chiếu lỗi thời tự sửa (TT53→TT33, TT20→TT18 Điều 15.4), không phát sinh nghĩa vụ mới |
@@ -259,17 +259,21 @@ sớm), phù hợp nguyên tắc chọn phương án ít rủi ro khi chưa ch�
 | a | Dữ liệu **đầy đủ theo đúng biểu mẫu**, **được mã hóa**, **toàn vẹn**, không đổi khi truyền/chia sẻ | ✅ **XONG (2026-07-25)** — `GET .../daily-closure` trả hash SHA-256 của đúng nội dung 1 ngày (header `X-Content-Sha256`), ghi lại trong audit. TLS đã có từ trước |
 | b | Chính xác, bảo mật; **mọi thay đổi phải LƯU VẾT đầy đủ** | ✅ ledger immutable + `audit_log` |
 | c | Tra cứu được suốt thời gian lưu trữ; **phục hồi & truy xuất** khi cần | ⚠️ Có export, chưa có quy trình phục hồi kiểm chứng |
-| d | Người theo dõi/xác nhận **phải ký bằng chữ ký số hoặc kỹ thuật xác nhận điện tử** | ❌ **KHÔNG CÓ** — bước 6, chờ Chain chọn hướng A/B/C |
+| d | Người theo dõi/xác nhận **phải ký bằng chữ ký số hoặc kỹ thuật xác nhận điện tử** | ✅ **XONG (2026-07-25)** — hướng A: `POST .../books/{book_type}/sign`, re-auth mật khẩu bắt buộc, chuỗi hash `prev_hash` móc từng ngày, chặn ký lại + chặn ghi thêm vào ngày đã ký |
 
 Ghi chú bắt buộc của **Phụ lục VIII**: dùng phần mềm ⇒ phải **trích xuất, in thông tin theo dõi vào
 cuối MỖI NGÀY**, lưu hồ sơ, **có chữ ký xác nhận trên TỪNG TRANG** của người quản lý thuốc và
 trưởng bộ phận. **Phần "trích xuất cuối ngày" đã có** (`GET .../daily-closure`); phần "chữ ký trên
-từng trang" vẫn là thao tác tay (in ra, ký) cho tới khi bước 6 xong.
+từng trang" **vẫn là thao tác tay** (in ra, ký) — hướng A giải quyết điểm (d) của Điều 15.1
+("kỹ thuật xác nhận điện tử"), KHÔNG giải quyết ghi chú "ký từng trang" của Phụ lục VIII, đây là
+2 nghĩa vụ khác nhau, đã nói rõ từ lúc thiết kế (xem `01_THIET_KE_KY_DIEN_TU.md` mục 3).
 
-> **Kết luận thẳng:** chừng nào chưa có (d), sổ điện tử của hệ thống **chưa đủ điều kiện pháp lý
-> thay sổ giấy** — nhà thuốc vẫn phải in và ký tay hằng ngày. Đây là **nợ pháp lý mức 🔴**, đã
-> chốt 2026-07-25: **thiết kế trước, chưa code** (xem `docs/features/tt18-kiem-soat-dac-biet/`
-> mục "Thiết kế ký sổ điện tử", 3 hướng, chờ Chain chọn).
+> **Kết luận cập nhật 2026-07-25:** cả 4 điểm Điều 15.1 nay đã ✅ hoặc ⚠️ (không còn ❌). Hệ thống
+> đủ điều kiện dùng sổ điện tử thay sổ giấy cho phần "theo dõi/xác nhận điện tử" — nhưng nhà thuốc
+> **vẫn phải in và ký tay từng trang mỗi ngày** theo ghi chú Phụ lục VIII cho tới khi có hướng dẫn
+> thanh tra rõ hơn (điều kiện kèm theo bắt buộc của hướng A, không phải tùy chọn). Chi tiết thiết
+> kế + quyết định "ai ký": `docs/features/tt18-kiem-soat-dac-biet/01_THIET_KE_KY_DIEN_TU.md` +
+> `02_DECISIONS_KY_SO.md`.
 
 ### C.6 (MỚI 2026-07-25) Biên bản nhận lại thuốc GN/HT/TC — **Điều 6.2 + Điều 12.1.d, Phụ lục XVIII**
 
@@ -471,3 +475,17 @@ Chain ủy quyền GĐ chọn việc, ưu tiên Sonnet — bước 5 khớp đú
 module, tái dùng hạ tầng bước 3, không cross-module), khác bước 6 (chữ ký số) là thiết kế mới
 thật sự cần Opus, đang chờ Chain chọn hướng A/B/C. Mục C.5 điểm (a) Điều 15.1 chuyển từ ⚠️ sang
 ✅. Chi tiết đầy đủ xem PROJECT_STATE §7av.
+
+### 2026-07-25 (đợt 6, cùng ngày) — Bước 6/6 mạch TT18: Ký xác nhận điện tử — CODE XONG, MẠCH ĐÓNG
+
+Chain chọn hướng A (đã khuyến nghị từ trước), sau đó **ủy quyền GĐ chọn và dùng Opus** để tự
+quyết phần còn lại (bao gồm câu hỏi "ai ký" còn treo) và tự chạy. Qua đủ Bước 0-3
+(`docs/features/tt18-kiem-soat-dac-biet/02_DECISIONS_KY_SO.md`) — sửa 1 điểm sai trong thiết kế
+gốc (khóa chữ ký không có `drug_id`, phạm vi cả sổ/ngày) và thiết kế cross-module thật đầu tiên
+của phiên (compliance verify mật khẩu do iam sở hữu, qua port `SigningReauthProvider` mới +
+`iam.AuthService.verify_own_password()`, cùng pattern `DrugMasterProvider`).
+
+Mục C.5 điểm (d) Điều 15.1 chuyển từ ❌ sang ✅ — **cả 4 điểm Điều 15.1 nay không còn ❌**. Mạch
+TT18 6 bước (tài liệu → seed danh mục → sổ PL XVI → biên bản nhận lại PL XVIII → kết xuất cuối
+ngày + hash → ký xác nhận điện tử) **đóng trọn**. Còn lại là nghĩa vụ giấy không phần mềm lấp
+được (ký từng trang theo ghi chú Phụ lục VIII). Chi tiết đầy đủ xem PROJECT_STATE §7aw.
