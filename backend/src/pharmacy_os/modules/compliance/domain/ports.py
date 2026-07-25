@@ -6,12 +6,15 @@ catalog/inventory/sales/prescription directly).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import date
 from typing import Protocol
 from uuid import UUID
 
 from pharmacy_os.modules.compliance.domain.entities import (
     ControlledLedgerEntry,
+    LedgerBookType,
     NationalSyncLog,
     SyncPayloadType,
     TenantComplianceConfig,
@@ -19,11 +22,26 @@ from pharmacy_os.modules.compliance.domain.entities import (
 
 
 class ControlledLedgerRepository(Protocol):
-    """Persistence port for :class:`ControlledLedgerEntry` (immutable — add/get only)."""
+    """Persistence port for :class:`ControlledLedgerEntry` (immutable — add/get/list only)."""
 
     async def add(self, entry: ControlledLedgerEntry) -> None: ...
 
     async def get(self, entry_id: UUID) -> ControlledLedgerEntry | None: ...
+
+    async def list_for_book(
+        self,
+        book_type: LedgerBookType,
+        *,
+        from_date: date,
+        to_date: date,
+        drug_id: UUID | None = None,
+    ) -> Sequence[ControlledLedgerEntry]:
+        """Các dòng thuộc một mẫu sổ trong kỳ, sắp xếp theo (thuốc, thời điểm giao dịch).
+
+        Sắp theo thuốc trước vì mẫu sổ pháp lý yêu cầu **mỗi thuốc một sổ riêng**
+        (ghi chú Phụ lục VIII), và cột "Còn lại" là tồn lũy kế trong phạm vi từng thuốc.
+        """
+        ...
 
 
 class TenantComplianceConfigRepository(Protocol):

@@ -33,6 +33,13 @@ _PRESCRIPTION_RETAINED_CATEGORIES = (
     ControlledSubstanceCategory.HUONG_THAN,
 )
 
+#: Giữ đồng bộ với ``compliance.domain.rules`` — TT18 Điều 12.3 chỉ buộc 2 nhóm này lập sổ
+#: xuất/nhập/tồn (Phụ lục XVI), không có nghĩa vụ Sổ theo dõi thông tin chi tiết khách hàng.
+_NO_CUSTOMER_LOG_CATEGORIES = (
+    ControlledSubstanceCategory.THUOC_DOC,
+    ControlledSubstanceCategory.DANH_MUC_CAM,
+)
+
 
 class CustomerDetailRequest(BaseModel):
     """Phụ lục XXI — chỉ tên + địa chỉ, KHÔNG có trường CCCD/CMND (mẫu gốc không có cột này)."""
@@ -62,14 +69,16 @@ class RecordControlledEntryRequest(BaseModel):
             return self
         if self.category is ControlledSubstanceCategory.NONE:
             return self
+        if self.category in _NO_CUSTOMER_LOG_CATEGORIES:
+            return self
         if self.customer is None:
             raise ValueError(
                 "Thuốc kiểm soát đặc biệt bán ra cần thông tin khách hàng "
-                "(Phụ lục XXI: tên + địa chỉ)"
+                "(Phụ lục XIX: tên + địa chỉ)"
             )
         if self.category in _PRESCRIPTION_RETAINED_CATEGORIES and not self.prescription_code:
             raise ValueError(
-                "Thuốc gây nghiện/hướng thần bán ra cần lưu prescription_code (Điều 15.1.c)"
+                "Thuốc gây nghiện/hướng thần bán ra cần lưu prescription_code (Điều 12.1.c)"
             )
         return self
 

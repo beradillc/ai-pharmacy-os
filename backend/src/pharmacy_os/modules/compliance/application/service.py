@@ -7,6 +7,7 @@ as factories at composition time (see the module ``register``).
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 from uuid import UUID
 
 from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
@@ -14,8 +15,10 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import NotFoundError, ValidationError
 from pharmacy_os.core.security import require_permission
+from pharmacy_os.modules.compliance.application.csv_export import to_book_rows
 from pharmacy_os.modules.compliance.application.dto import (
     ControlledLedgerEntryOutput,
+    LedgerBookRow,
     RecordControlledEntryInput,
     SetTenantComplianceConfigInput,
     TenantComplianceConfigOutput,
@@ -24,6 +27,7 @@ from pharmacy_os.modules.compliance.domain import (
     ComplianceError,
     ControlledLedgerEntry,
     CustomerDetail,
+    LedgerBookType,
     LedgerDirection,
     TenantComplianceConfig,
     validate_controlled_sale,
@@ -121,6 +125,30 @@ class ComplianceService:
         if entry is None:
             raise NotFoundError(f"Không tìm thấy dòng sổ kiểm soát đặc biệt {entry_id}")
         return ControlledLedgerEntryOutput.of(entry)
+
+    async def ledger_book_rows(
+        self,
+        book_type: LedgerBookType,
+        *,
+        from_date: date,
+        to_date: date,
+        drug_id: UUID | None = None,
+        ctx: RequestContext,
+    ) -> list[LedgerBookRow]:
+        """Các dòng của một mẫu sổ trong kỳ, đã tính sẵn cột "Còn lại" (tồn lũy kế).
+
+        ``PL_VIII`` = GN/HT/TC (TT18 Điều 12.1.a); ``PL_XVI`` = thuốc dạng phối hợp, thuốc
+        độc, thuốc thuộc danh mục chất bị cấm (Điều 12.3).
+        """
+        require_permission(ctx, "compliance.ledger.read")
+        if from_date > to_date:
+            raise ValidationError("from_date không được sau to_date")
+        async with self._uow_factory() as uow:
+            repo = self._ledger_repo_factory(uow, ctx)
+            entries = await repo.list_for_book(
+                book_type, from_date=from_date, to_date=to_date, drug_id=drug_id
+            )
+        return list(to_book_rows(entries))
 
     async def set_tenant_config(
         self, data: SetTenantComplianceConfigInput, ctx: RequestContext

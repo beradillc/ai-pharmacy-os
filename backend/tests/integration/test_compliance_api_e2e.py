@@ -178,3 +178,94 @@ def test_cashier_cannot_write_the_controlled_ledger(client: TestClient) -> None:
 
 def test_the_ledger_needs_a_token(client: TestClient) -> None:
     assert client.get(f"/api/v1/compliance/controlled-ledger/{uuid4()}").status_code == 401
+
+
+def _ghi_so(client: TestClient, admin: Any, **overrides: Any) -> str:
+    body: dict[str, Any] = {
+        "drug_id": str(uuid4()),
+        "category": "HUONG_THAN",
+        "direction": "NHAP",
+        "quantity": "10",
+        "lot_no": "L001",
+        "expiry_date": "2027-01-01",
+        "transaction_at": "2026-07-23T09:00:00Z",
+        "source_or_destination": "Công ty Dược ABC",
+        "document_no": "PN-001",
+    }
+    body.update(overrides)
+    r = client.post("/api/v1/compliance/controlled-ledger", headers=_auth(admin), json=body)
+    assert r.status_code == 201, r.text
+    entry_id: str = r.json()["id"]
+    return entry_id
+
+
+def test_ket_xuat_so_phu_luc_viii_ra_csv(client: TestClient) -> None:
+    admin = _login(client)
+    drug = str(uuid4())
+    _ghi_so(client, admin, drug_id=drug, quantity="100")
+    _ghi_so(
+        client,
+        admin,
+        drug_id=drug,
+        direction="XUAT",
+        quantity="30",
+        transaction_at="2026-07-24T09:00:00Z",
+        prescription_code="RX-1",
+        customer={"patient_name": "Nguyễn Văn A", "patient_address": "1 Lê Lợi"},
+    )
+
+    r = client.get(
+        "/api/v1/compliance/controlled-ledger/books/PL_VIII/export",
+        headers=_auth(admin),
+        params={"date_from": "2026-07-01", "date_to": "2026-07-31", "drug_id": drug},
+    )
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "so-pl_viii-" in r.headers["content-disposition"]
+    dong = [d for d in r.text.splitlines() if d.strip()]
+    assert dong[0].startswith("ngay_thang,noi_xuat_nhap,so_chung_tu")
+    assert len(dong) == 3  # header + 2 giao dịch
+    assert dong[1].split(",")[3:6] == ["100", "", "100"]  # nhập / xuất / còn lại
+    assert dong[2].split(",")[3:6] == ["", "30", "70"]
+
+
+def test_ket_xuat_so_phu_luc_xvi_chi_lay_nhom_dieu_12_3(client: TestClient) -> None:
+    """Sổ PL XVI không được lẫn thuốc GN/HT/TC — 2 mẫu sổ là 2 hồ sơ riêng."""
+    admin = _login(client)
+    thuoc_ht, thuoc_doc = str(uuid4()), str(uuid4())
+    _ghi_so(client, admin, drug_id=thuoc_ht, transaction_at="2026-08-03T09:00:00Z")
+    _ghi_so(
+        client,
+        admin,
+        drug_id=thuoc_doc,
+        category="THUOC_DOC",
+        transaction_at="2026-08-03T09:00:00Z",
+    )
+
+    r = client.get(
+        "/api/v1/compliance/controlled-ledger/books/PL_XVI/export",
+        headers=_auth(admin),
+        params={"date_from": "2026-08-01", "date_to": "2026-08-31"},
+    )
+    assert r.status_code == 200, r.text
+    noi_dung = r.text
+    assert thuoc_doc in noi_dung
+    assert thuoc_ht not in noi_dung
+
+
+def test_ket_xuat_so_can_token(client: TestClient) -> None:
+    r = client.get(
+        "/api/v1/compliance/controlled-ledger/books/PL_VIII/export",
+        params={"date_from": "2026-07-01", "date_to": "2026-07-31"},
+    )
+    assert r.status_code == 401
+
+
+def test_ket_xuat_so_tu_choi_mau_so_khong_ton_tai(client: TestClient) -> None:
+    admin = _login(client)
+    r = client.get(
+        "/api/v1/compliance/controlled-ledger/books/PL_XX/export",
+        headers=_auth(admin),
+        params={"date_from": "2026-07-01", "date_to": "2026-07-31"},
+    )
+    assert r.status_code == 422

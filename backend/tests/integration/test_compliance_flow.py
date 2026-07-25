@@ -14,7 +14,11 @@ from pharmacy_os.modules.compliance.application import (
     RecordControlledEntryInput,
     SetTenantComplianceConfigInput,
 )
-from pharmacy_os.modules.compliance.domain import ControlledSubstanceCategory, LedgerDirection
+from pharmacy_os.modules.compliance.domain import (
+    ControlledSubstanceCategory,
+    LedgerBookType,
+    LedgerDirection,
+)
 
 
 def _entry(**kw: object) -> RecordControlledEntryInput:
@@ -173,3 +177,96 @@ async def test_setting_tenant_config_leaves_an_audit_row(
         entries = await repo.list(ctx.tenant_id, action=AuditAction.TENANT_COMPLIANCE_CONFIG_SET)
         matching = [e for e in entries if e.target_id == str(ctx.tenant_id)]
         assert len(matching) == 1
+
+
+async def test_ledger_book_tach_dung_2_mau_so(
+    compliance_service: ComplianceService, ctx: RequestContext
+) -> None:
+    """PL VIII = GN/HT/TC (Điều 12.1.a); PL XVI = dạng phối hợp + thuốc độc (Điều 12.3)."""
+    thuoc_ht, thuoc_phoi_hop, thuoc_doc = uuid4(), uuid4(), uuid4()
+    await compliance_service.record_controlled_entry(
+        _entry(drug_id=thuoc_ht, direction=LedgerDirection.NHAP, quantity=Decimal("100")), ctx
+    )
+    await compliance_service.record_controlled_entry(
+        _entry(
+            drug_id=thuoc_phoi_hop,
+            category=ControlledSubstanceCategory.PHOI_HOP_TC,
+            direction=LedgerDirection.NHAP,
+            quantity=Decimal("50"),
+        ),
+        ctx,
+    )
+    await compliance_service.record_controlled_entry(
+        _entry(
+            drug_id=thuoc_doc,
+            category=ControlledSubstanceCategory.THUOC_DOC,
+            direction=LedgerDirection.NHAP,
+            quantity=Decimal("7"),
+        ),
+        ctx,
+    )
+
+    pl_viii = await compliance_service.ledger_book_rows(
+        LedgerBookType.PL_VIII, from_date=date(2026, 7, 1), to_date=date(2026, 7, 31), ctx=ctx
+    )
+    pl_xvi = await compliance_service.ledger_book_rows(
+        LedgerBookType.PL_XVI, from_date=date(2026, 7, 1), to_date=date(2026, 7, 31), ctx=ctx
+    )
+    assert [r.drug_id for r in pl_viii] == [thuoc_ht]
+    assert sorted(r.drug_id for r in pl_xvi) == sorted([thuoc_phoi_hop, thuoc_doc])
+
+
+async def test_ledger_book_tinh_ton_luy_ke_va_loc_ky(
+    compliance_service: ComplianceService, ctx: RequestContext
+) -> None:
+    drug = uuid4()
+    for day, direction, qty in (
+        (10, LedgerDirection.NHAP, "100"),
+        (12, LedgerDirection.XUAT, "30"),
+        (20, LedgerDirection.NHAP, "5"),
+    ):
+        await compliance_service.record_controlled_entry(
+            _entry(
+                drug_id=drug,
+                direction=direction,
+                quantity=Decimal(qty),
+                transaction_at=datetime(2026, 7, day, 9, 0, tzinfo=UTC),
+                customer=CustomerDetailInput(patient_name="A", patient_address="B"),
+                prescription_code="RX-1",
+            ),
+            ctx,
+        )
+
+    ca_thang = await compliance_service.ledger_book_rows(
+        LedgerBookType.PL_VIII, from_date=date(2026, 7, 1), to_date=date(2026, 7, 31), ctx=ctx
+    )
+    nua_dau = await compliance_service.ledger_book_rows(
+        LedgerBookType.PL_VIII, from_date=date(2026, 7, 1), to_date=date(2026, 7, 15), ctx=ctx
+    )
+    assert [r.balance for r in ca_thang] == [Decimal("100"), Decimal("70"), Decimal("75")]
+    assert len(nua_dau) == 2
+
+
+async def test_ledger_book_ky_dao_nguoc_bi_tu_choi(
+    compliance_service: ComplianceService, ctx: RequestContext
+) -> None:
+    with pytest.raises(ValidationError):
+        await compliance_service.ledger_book_rows(
+            LedgerBookType.PL_VIII, from_date=date(2026, 7, 31), to_date=date(2026, 7, 1), ctx=ctx
+        )
+
+
+async def test_ban_thuoc_doc_khong_can_thong_tin_khach_hang(
+    compliance_service: ComplianceService, ctx: RequestContext
+) -> None:
+    """Điều 12.3 chỉ buộc sổ xuất/nhập/tồn — không có nghĩa vụ Sổ khách hàng (PL XIX)."""
+    out = await compliance_service.record_controlled_entry(
+        _entry(
+            category=ControlledSubstanceCategory.THUOC_DOC,
+            direction=LedgerDirection.XUAT,
+            customer=None,
+            prescription_code=None,
+        ),
+        ctx,
+    )
+    assert out.category == "THUOC_DOC"

@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from datetime import date
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.compliance.domain import (
     ControlledLedgerEntry,
+    ControlledSubstanceCategory,
+    LedgerBookType,
     NationalSyncLog,
     TenantComplianceConfig,
+    book_type_for,
 )
 from pharmacy_os.modules.compliance.infrastructure.mappers import (
     ledger_entry_to_domain,
@@ -26,6 +31,13 @@ from pharmacy_os.modules.compliance.infrastructure.models import (
     NationalSyncLogORM,
     TenantComplianceConfigORM,
 )
+
+
+def _book_of(category: ControlledSubstanceCategory) -> LedgerBookType | None:
+    """``book_type_for`` nhưng trả ``None`` thay vì ném cho nhóm NONE (không có sổ)."""
+    if category is ControlledSubstanceCategory.NONE:
+        return None
+    return book_type_for(category)
 
 
 class SqlAlchemyControlledLedgerRepository:
@@ -44,6 +56,39 @@ class SqlAlchemyControlledLedgerRepository:
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return ledger_entry_to_domain(row) if row is not None else None
+
+    async def list_for_book(
+        self,
+        book_type: LedgerBookType,
+        *,
+        from_date: date,
+        to_date: date,
+        drug_id: UUID | None = None,
+    ) -> Sequence[ControlledLedgerEntry]:
+        """Lọc theo nhóm thuốc của mẫu sổ — ``book_type`` không phải cột, suy từ ``category``.
+
+        Sổ là hồ sơ của **cơ sở** (theo giấy phép), không phải của từng quầy, nên phạm vi là
+        tenant — không lọc thêm theo ``branch_id``.
+        """
+        categories = [c.value for c in ControlledSubstanceCategory if _book_of(c) is book_type]
+        stmt = (
+            select(ControlledLedgerEntryORM)
+            .where(
+                ControlledLedgerEntryORM.tenant_id == self._ctx.tenant_id,
+                ControlledLedgerEntryORM.category.in_(categories),
+                func.date(ControlledLedgerEntryORM.transaction_at) >= from_date,
+                func.date(ControlledLedgerEntryORM.transaction_at) <= to_date,
+            )
+            .order_by(
+                ControlledLedgerEntryORM.drug_id,
+                ControlledLedgerEntryORM.transaction_at,
+                ControlledLedgerEntryORM.id,
+            )
+        )
+        if drug_id is not None:
+            stmt = stmt.where(ControlledLedgerEntryORM.drug_id == drug_id)
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [ledger_entry_to_domain(row) for row in rows]
 
 
 class SqlAlchemyTenantComplianceConfigRepository:

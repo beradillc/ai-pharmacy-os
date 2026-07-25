@@ -151,3 +151,23 @@ class NationalSyncLogOutput:
             retry_count=log.retry_count,
             error=log.error,
         )
+
+
+@dataclass(slots=True)
+class LedgerBookRow:
+    """Một dòng đã tính sẵn để in ra mẫu sổ Phụ lục VIII/XVI (cột (1)–(8)).
+
+    Khác ``ControlledLedgerEntryOutput`` ở 2 chỗ do mẫu sổ quy định: số lượng tách thành
+    2 cột Nhập/Xuất (một trong hai bỏ trống), và có thêm cột ``balance`` = tồn lũy kế.
+    """
+
+    drug_id: UUID
+    transaction_at: datetime
+    source_or_destination: str
+    document_no: str
+    quantity_in: Decimal | None
+    quantity_out: Decimal | None
+    balance: Decimal
+    lot_no: str
+    expiry_date: date
+    note: str | None
