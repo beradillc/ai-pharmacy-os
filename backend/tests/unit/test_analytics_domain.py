@@ -70,7 +70,7 @@ def test_suggested_qty_rounds_up_to_whole_units() -> None:
     assert ev.suggested_qty == Decimal("9")
 
 
-@pytest.mark.parametrize("bad", [dict(window_days=0), dict(lead_time_days=-1)])
+@pytest.mark.parametrize("bad", [{"window_days": 0}, {"lead_time_days": -1}])
 def test_policy_rejects_bad_config(bad: dict[str, int]) -> None:
     kwargs = {"window_days": 90, "lead_time_days": 7, "safety_stock_days": 3, **bad}
     with pytest.raises(ValueError):
