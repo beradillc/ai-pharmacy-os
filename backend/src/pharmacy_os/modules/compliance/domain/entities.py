@@ -6,7 +6,7 @@ See docs/13_COMPLIANCE_SPEC.md for the legal traceability of every field below.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID, uuid4
@@ -328,6 +328,83 @@ class NationalSyncLog:
         self.response_code = response_code
         self.error = error
         self.retry_count += 1
+
+
+class SyncRetryStatus(StrEnum):
+    """Trạng thái của một việc gửi lại đang chờ (docs/13 mục D.4)."""
+
+    PENDING = "PENDING"  # còn phải gửi lại, tới hạn thì relay lấy
+    DEAD = "DEAD"  # hết số lần thử tự động — cần người xử lý
+
+
+@dataclass(slots=True)
+class NationalSyncRetryTask:
+    """Việc **gửi lại** 1 payload lên CSDL Dược đang treo (docs/13 mục D.4).
+
+    Không phải bản ghi audit — audit là :class:`NationalSyncLog` (mục D.2, chỉ giữ
+    ``payload_hash``, không đổi). Đây là hàng đợi giao vận: giữ payload **thô** đúng
+    khoảng thời gian nghĩa vụ liên thông (mục D.1 "đầy đủ, chính xác, kịp thời") **chưa**
+    hoàn thành. Cổng ACK → dòng này bị xóa ngay, payload biến mất; không ACK → còn giữ để
+    lần sau gửi lại được đúng nội dung cũ (cùng ``payload_hash`` với dòng audit).
+
+    ``client_uuid`` unique theo tenant, trùng khóa idempotency của ``NationalSyncLog`` — 1
+    bản ghi cần gửi chỉ có tối đa 1 việc gửi lại, không bao giờ nhân đôi.
+
+    Số lần thử là **có hạn** (``attempt_count`` ≥ ``max_retries`` → ``DEAD``): gửi lại vô
+    hạn vào một cổng đang từ chối là tự DDoS chính mình, và che mất việc cần người nhìn.
+    """
+
+    tenant_id: UUID
+    branch_id: UUID
+    sync_log_id: UUID
+    payload_type: SyncPayloadType
+    client_uuid: str
+    payload: str
+    status: SyncRetryStatus = SyncRetryStatus.PENDING
+    attempt_count: int = 0
+    next_attempt_at: datetime | None = None
+    last_error: str | None = None
+    id: UUID = field(default_factory=uuid4)
+    created_at: datetime = field(default_factory=_now)
+
+    def is_due(self, now: datetime) -> bool:
+        """Đã tới hạn gửi lại chưa (``DEAD`` thì không bao giờ)."""
+        return self.status is SyncRetryStatus.PENDING and (
+            self.next_attempt_at is None or self.next_attempt_at <= now
+        )
+
+    def lease_until(self, deadline: datetime) -> None:
+        """Đẩy hạn kế tiếp ra ``deadline`` — chống 2 relay cùng cầm 1 việc.
+
+        Relay đặt lease **trước** khi gọi cổng (I/O ngoài, có thể lâu) rồi mới ghi kết quả
+        sau, nên không phải giữ transaction CSDL suốt lúc gọi mạng. Tiến trình chết giữa
+        chừng: lease hết hạn, việc tự nổi lại — gửi lại là **at-least-once**, an toàn vì
+        ``push_payload`` idempotent theo ``client_uuid``.
+        """
+        if self.status is not SyncRetryStatus.PENDING:
+            raise InvalidSyncStateError(f"Chỉ giữ chỗ được việc PENDING (đang {self.status})")
+        self.next_attempt_at = deadline
+
+    def record_failure(
+        self, *, error: str, now: datetime, base_backoff_seconds: float, max_retries: int
+    ) -> bool:
+        """Ghi 1 lần thử hỏng. Trả ``True`` nếu đã hẹn lần sau, ``False`` nếu đã ``DEAD``.
+
+        Giãn cách theo cấp số nhân (``base * 2^(n-1)``) — cùng công thức
+        :class:`~pharmacy_os.core.outbox.OutboxRelay` đang dùng, không phát minh kiểu backoff
+        thứ hai trong cùng codebase.
+        """
+        if self.status is not SyncRetryStatus.PENDING:
+            raise InvalidSyncStateError(f"Chỉ ghi nhận được việc PENDING (đang {self.status})")
+        self.attempt_count += 1
+        self.last_error = error
+        if self.attempt_count >= max_retries:
+            self.status = SyncRetryStatus.DEAD
+            self.next_attempt_at = None
+            return False
+        backoff = base_backoff_seconds * 2 ** (self.attempt_count - 1)
+        self.next_attempt_at = now + timedelta(seconds=backoff)
+        return True
 
 
 @dataclass(frozen=True, slots=True)

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
@@ -21,6 +21,7 @@ from pharmacy_os.modules.compliance.domain.entities import (
     LedgerBookSignature,
     LedgerBookType,
     NationalSyncLog,
+    NationalSyncRetryTask,
     SyncPayloadType,
     TenantComplianceConfig,
 )
@@ -152,6 +153,52 @@ class NationalSyncLogRepository(Protocol):
     async def get(self, log_id: UUID) -> NationalSyncLog | None: ...
 
     async def by_client_uuid(self, client_uuid: str) -> NationalSyncLog | None: ...
+
+
+class NationalSyncRetryQueue(Protocol):
+    """Hàng đợi gửi lại, **theo tenant** — phía tạo việc (docs/13 mục D.4).
+
+    Dùng bởi ``NationalSyncService`` trong đúng ngữ cảnh request/sự kiện đang chạy: cổng
+    từ chối → ``enqueue``; cổng ACK → ``discard`` (payload biến mất ngay khi hết nghĩa vụ).
+    """
+
+    async def enqueue(self, task: NationalSyncRetryTask) -> None:
+        """Thêm việc mới. Đã có việc cho ``client_uuid`` đó thì bỏ qua (không nhân đôi)."""
+        ...
+
+    async def by_client_uuid(self, client_uuid: str) -> NationalSyncRetryTask | None: ...
+
+    async def discard(self, client_uuid: str) -> None:
+        """Xóa việc (nếu có) — gọi khi bản ghi đã ACK. Không có thì im lặng bỏ qua."""
+        ...
+
+
+class NationalSyncRetryClaimer(Protocol):
+    """Hàng đợi gửi lại, **xuyên tenant** — phía relay nền (docs/13 mục D.4).
+
+    Tách khỏi :class:`NationalSyncRetryQueue` vì phạm vi khác hẳn: relay chạy ngoài mọi
+    request nên không có tenant nào để giới hạn, và cho nó dùng chung port với đường
+    nghiệp vụ sẽ mở đúng cái cửa "quên scope tenant" mà tenant-scoping sinh ra để chặn.
+    """
+
+    async def claim_due(
+        self, now: datetime, *, limit: int, lease_until: datetime
+    ) -> list[NationalSyncRetryTask]:
+        """Việc tới hạn (cũ nhất trước), đã được giữ chỗ tới ``lease_until``.
+
+        Khóa hàng bằng ``FOR UPDATE SKIP LOCKED`` trên Postgres để nhiều tiến trình cùng
+        rút một bảng không phát trùng 1 việc; trên SQLite mệnh đề khóa là no-op, đủ cho
+        harness test đơn luồng (giống ``OutboxRepository.claim_pending``).
+        """
+        ...
+
+    async def save(self, task: NationalSyncRetryTask) -> None:
+        """Ghi lại trạng thái sau một lần thử (hẹn lần sau, hoặc đã ``DEAD``)."""
+        ...
+
+    async def delete(self, task_id: UUID) -> None:
+        """Xóa việc đã hoàn thành (bản ghi đã ACK) — payload không còn lý do tồn tại."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)
