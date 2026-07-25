@@ -34,7 +34,10 @@ from pharmacy_os.modules.iam.application import BootstrapTenantInput, IamService
 from pharmacy_os.modules.iam.domain import CASHIER, WAREHOUSE
 from pharmacy_os.modules.iam.interface import build_repositories
 from pharmacy_os.modules.inventory.application.csv_export import STOCK_CSV_HEADER
-from pharmacy_os.modules.sales.application.csv_export import REVENUE_CSV_HEADER
+from pharmacy_os.modules.sales.application.csv_export import (
+    REVENUE_CSV_HEADER,
+    TOP_DRUGS_CSV_HEADER,
+)
 
 ADMIN_EMAIL = "admin@bera.vn"
 ADMIN_PASSWORD = "MatKhauAdmin2026"
@@ -42,6 +45,7 @@ STAFF_PASSWORD = "MatKhauNhanVien26"
 
 _REVENUE = "/api/v1/reports/revenue/export"
 _STOCK = "/api/v1/reports/inventory/stock/export"
+_TOP_DRUGS = "/api/v1/reports/top-drugs/export"
 
 
 async def _bootstrap(db_url: str) -> None:
@@ -119,6 +123,19 @@ def _create_sale(client: TestClient, admin: Any, quantity: int, unit_price: int)
         "lines": [
             {"drug_id": str(uuid4()), "quantity": quantity, "unit_price": unit_price},
         ],
+        "payments": [{"method": "CASH", "amount": quantity * unit_price}],
+    }
+    r = client.post("/api/v1/sales", headers=_auth(admin), json=body)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def _create_sale_for_drug(
+    client: TestClient, admin: Any, drug_id: str, quantity: int, unit_price: int
+) -> Any:
+    body = {
+        "client_uuid": str(uuid4()),
+        "lines": [{"drug_id": drug_id, "quantity": quantity, "unit_price": unit_price}],
         "payments": [{"method": "CASH", "amount": quantity * unit_price}],
     }
     r = client.post("/api/v1/sales", headers=_auth(admin), json=body)
@@ -351,6 +368,87 @@ def test_stock_export_branch_filter_narrows_to_nothing_for_a_foreign_branch(
     assert len(rows) == 1  # header only
 
 
+# --- top-selling-drugs export (Sprint 7 report đợt 2, PROJECT_STATE §7ba) ------
+
+
+def test_top_drugs_requires_a_token(client: TestClient) -> None:
+    assert client.get(_TOP_DRUGS, params=_date_range()).status_code == 401
+
+
+def test_top_drugs_reuses_sales_read_no_new_permission(client: TestClient) -> None:
+    """Same reuse decision as revenue (§7am): a warehouse clerk has inventory.read
+    but not sales.read, so top-drugs (line-level sales data) is denied the same
+    way revenue is."""
+    admin = _login(client)
+    _make_staff(client, admin, "wh2@bera.vn", WAREHOUSE)
+    wh = _login(client, "wh2@bera.vn", STAFF_PASSWORD)
+
+    assert client.get(_TOP_DRUGS, headers=_auth(wh), params=_date_range()).status_code == 403
+
+
+def test_top_drugs_ranks_by_quantity_net_of_returns(client: TestClient) -> None:
+    admin = _login(client)
+    drug_a, drug_b = str(uuid4()), str(uuid4())
+    _create_sale_for_drug(client, admin, drug_a, quantity=10, unit_price=1_000)  # 10 units
+    _create_sale_for_drug(client, admin, drug_b, quantity=3, unit_price=1_000)  # 3 units
+
+    r = client.get(_TOP_DRUGS, headers=_auth(admin), params=_date_range())
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "attachment" in r.headers["content-disposition"]
+
+    rows = list(csv.reader(io.StringIO(r.text)))
+    assert tuple(rows[0]) == TOP_DRUGS_CSV_HEADER
+    body = rows[1:]
+    assert len(body) == 2
+    rank_col = TOP_DRUGS_CSV_HEADER.index("rank")
+    drug_col = TOP_DRUGS_CSV_HEADER.index("drug_id")
+    qty_col = TOP_DRUGS_CSV_HEADER.index("quantity_sold")
+    assert body[0][rank_col] == "1"
+    assert body[0][drug_col] == drug_a
+    assert Decimal(body[0][qty_col]) == Decimal("10")
+    assert body[1][rank_col] == "2"
+    assert body[1][drug_col] == drug_b
+
+
+def test_top_drugs_sort_by_revenue_can_reorder_vs_quantity(client: TestClient) -> None:
+    """More units of a cheap drug can still lose to fewer units of an expensive one
+    when ranking by revenue instead of quantity — proves ``sort_by`` actually
+    changes the order, not just the column values."""
+    admin = _login(client)
+    cheap, pricey = str(uuid4()), str(uuid4())
+    _create_sale_for_drug(client, admin, cheap, quantity=10, unit_price=1_000)  # 10 units / 10_000
+    _create_sale_for_drug(client, admin, pricey, quantity=1, unit_price=50_000)  # 1 unit / 50_000
+
+    r = client.get(_TOP_DRUGS, headers=_auth(admin), params={**_date_range(), "sort_by": "revenue"})
+    body = list(csv.reader(io.StringIO(r.text)))[1:]
+    drug_col = TOP_DRUGS_CSV_HEADER.index("drug_id")
+    assert body[0][drug_col] == pricey
+
+
+def test_top_drugs_limit_truncates_the_ranked_list(client: TestClient) -> None:
+    admin = _login(client)
+    for _ in range(3):
+        _create_sale_for_drug(client, admin, str(uuid4()), quantity=1, unit_price=1_000)
+
+    r = client.get(_TOP_DRUGS, headers=_auth(admin), params={**_date_range(), "limit": 2})
+    body = list(csv.reader(io.StringIO(r.text)))[1:]
+    assert len(body) == 2
+
+
+def test_top_drugs_rejects_reversed_date_range(client: TestClient) -> None:
+    admin = _login(client)
+    r = client.get(
+        _TOP_DRUGS,
+        headers=_auth(admin),
+        params={
+            "date_from": date.today().isoformat(),
+            "date_to": (date.today() - timedelta(days=1)).isoformat(),
+        },
+    )
+    assert r.status_code == 422
+
+
 # --- read-only over HTTP --------------------------------------------------------
 
 
@@ -359,3 +457,4 @@ def test_reports_are_read_only(client: TestClient) -> None:
     for verb in (client.post, client.put, client.patch, client.delete):
         assert verb(_REVENUE, headers=_auth(admin)).status_code == 405
         assert verb(_STOCK, headers=_auth(admin)).status_code == 405
+        assert verb(_TOP_DRUGS, headers=_auth(admin)).status_code == 405

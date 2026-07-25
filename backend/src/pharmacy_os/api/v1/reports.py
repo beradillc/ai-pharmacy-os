@@ -21,11 +21,18 @@ Two endpoints, both read-only, both requiring a token (401 unauthenticated,
   narrowed to one branch, as CSV.
 * ``GET /reports/inventory/stock/export`` — current on-hand by lot + expiry date,
   optionally narrowed to one branch, as CSV.
+* ``GET /reports/top-drugs/export`` — top-selling drugs by quantity or revenue over
+  a window, as CSV (Sprint 7 "report đợt 2", PROJECT_STATE §7ba). Reuses
+  ``sales.read`` and the ``aggregate_sold_by_drug`` query already built for
+  ``analytics`` (PROJECT_STATE §7am) — sorting/ranking/limiting is presentation-only,
+  done here rather than in ``SalesService``.
 """
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Sequence
 from datetime import date
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -39,6 +46,8 @@ from pharmacy_os.modules.inventory.application.csv_export import STOCK_CSV_HEADE
 from pharmacy_os.modules.sales.application import SalesService
 from pharmacy_os.modules.sales.application.csv_export import (
     REVENUE_CSV_HEADER,
+    TOP_DRUGS_CSV_HEADER,
+    drug_sales_row_to_csv,
     revenue_row_to_csv,
 )
 from pharmacy_os.modules.sales.application.dto import RevenueGranularity
@@ -109,6 +118,45 @@ async def export_stock(
     filename = f"stock-{ctx.tenant_id}.csv"
     return StreamingResponse(
         csv_stream_body(STOCK_CSV_HEADER, csv_rows),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/top-drugs/export")
+async def export_top_drugs(
+    date_from: date = Query(..., description="Từ ngày (bao gồm)"),
+    date_to: date = Query(..., description="Đến ngày (bao gồm)"),
+    branch_id: UUID | None = Query(None, description="Lọc theo chi nhánh (bỏ trống = toàn chuỗi)"),
+    sort_by: Literal["quantity", "revenue"] = Query(
+        "quantity", description="Xếp hạng theo số lượng bán ròng hay doanh thu ròng"
+    ),
+    limit: int = Query(20, ge=1, le=500, description="Số thuốc tối đa trong file (đã xếp hạng)"),
+    service: SalesService = Depends(_sales_service),
+    ctx: RequestContext = Depends(get_context),
+) -> StreamingResponse:
+    """Top-selling drugs (net of returns) over ``[date_from, date_to]``, as a CSV
+    attachment. Requires ``sales.read`` (reused, see
+    :meth:`SalesService.aggregate_sold_by_drug`).
+
+    Ranking and ``limit`` are applied here, not in the service — the underlying
+    query returns every drug sold in the window (bounded by catalogue size, already
+    a single non-streamed list), so sorting/truncating it for display is a
+    presentation concern.
+    """
+    agg_rows = await service.aggregate_sold_by_drug(
+        ctx, date_from=date_from, date_to=date_to, branch_id=branch_id
+    )
+    key = (lambda r: r.quantity_sold) if sort_by == "quantity" else (lambda r: r.revenue)
+    ranked = sorted(agg_rows, key=key, reverse=True)[:limit]
+
+    async def csv_rows() -> AsyncIterator[Sequence[str]]:
+        for i, row in enumerate(ranked, start=1):
+            yield drug_sales_row_to_csv(row, rank=i)
+
+    filename = f"top-drugs-{ctx.tenant_id}-{date_from}_{date_to}.csv"
+    return StreamingResponse(
+        csv_stream_body(TOP_DRUGS_CSV_HEADER, csv_rows()),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
