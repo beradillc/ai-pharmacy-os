@@ -89,6 +89,7 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "PRESCRIPTION_DISPENSED",
         "CONTROLLED_LEDGER_ENTRY_RECORDED",
         "TENANT_COMPLIANCE_CONFIG_SET",
+        "PERIODIC_REPORT_EXPORTED",
         "SALE_COMPLETED",
         "INVENTORY_STOCK_RECEIVED",
         "INVENTORY_STOCK_DISPENSED",

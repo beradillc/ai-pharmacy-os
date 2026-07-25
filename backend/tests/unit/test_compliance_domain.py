@@ -16,6 +16,7 @@ from pharmacy_os.modules.compliance.domain import (
     EtcPrescriptionPolicy,
     LedgerBookType,
     LedgerDirection,
+    LedgerPeriodAggregate,
     MissingControlledCustomerDetailError,
     MissingControlledPrescriptionCodeError,
     MissingEtcPrescriptionFieldsError,
@@ -457,3 +458,27 @@ class TestBanThuocDocVaDanhMucCam:
             document_no="PXK-1",
         )
         assert book_type_for(entry.category) is LedgerBookType.PL_XVI
+
+
+class TestLedgerPeriodAggregate:
+    """Tổng theo kỳ cho báo cáo định kỳ Mẫu số 06 (docs/13 mục C.7 — NĐ163 Điều 35.2)."""
+
+    def test_closing_balance_cong_dau_ky_voi_nhap_tru_xuat(self) -> None:
+        agg = LedgerPeriodAggregate(
+            drug_id=uuid4(),
+            category=ControlledSubstanceCategory.HUONG_THAN,
+            opening_balance=Decimal("100"),
+            received_in_period=Decimal("50"),
+            issued_in_period=Decimal("30"),
+        )
+        assert agg.closing_balance == Decimal("120")
+
+    def test_closing_balance_khong_am_khi_xuat_het(self) -> None:
+        agg = LedgerPeriodAggregate(
+            drug_id=uuid4(),
+            category=ControlledSubstanceCategory.GAY_NGHIEN,
+            opening_balance=Decimal("10"),
+            received_in_period=Decimal("0"),
+            issued_in_period=Decimal("10"),
+        )
+        assert agg.closing_balance == Decimal("0")

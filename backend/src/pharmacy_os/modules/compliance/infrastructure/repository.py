@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date
+from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
@@ -14,6 +15,8 @@ from pharmacy_os.modules.compliance.domain import (
     ControlledLedgerEntry,
     ControlledSubstanceCategory,
     LedgerBookType,
+    LedgerDirection,
+    LedgerPeriodAggregate,
     NationalSyncLog,
     TenantComplianceConfig,
     book_type_for,
@@ -89,6 +92,64 @@ class SqlAlchemyControlledLedgerRepository:
             stmt = stmt.where(ControlledLedgerEntryORM.drug_id == drug_id)
         rows = (await self._session.execute(stmt)).scalars().all()
         return [ledger_entry_to_domain(row) for row in rows]
+
+    async def aggregate_for_period(
+        self,
+        categories: Sequence[ControlledSubstanceCategory],
+        *,
+        from_date: date,
+        to_date: date,
+    ) -> Sequence[LedgerPeriodAggregate]:
+        """Tổng bằng SQL (SUM/CASE), không load từng dòng lịch sử vào Python.
+
+        ``opening_balance`` cộng dồn MỌI giao dịch trước ``from_date`` (không giới hạn theo
+        năm/kỳ nào) — đúng ý nghĩa "tồn kỳ trước chuyển sang" của Mẫu số 06 NĐ163.
+        """
+        category_values = [c.value for c in categories]
+        entry_date = func.date(ControlledLedgerEntryORM.transaction_at)
+        is_nhap = ControlledLedgerEntryORM.direction == LedgerDirection.NHAP.value
+        is_xuat = ControlledLedgerEntryORM.direction == LedgerDirection.XUAT.value
+        in_period = entry_date.between(from_date, to_date)
+        opening = func.sum(
+            case(
+                (
+                    entry_date < from_date,
+                    case(
+                        (is_nhap, ControlledLedgerEntryORM.quantity),
+                        else_=-ControlledLedgerEntryORM.quantity,
+                    ),
+                ),
+                else_=0,
+            )
+        )
+        received = func.sum(case((in_period & is_nhap, ControlledLedgerEntryORM.quantity), else_=0))
+        issued = func.sum(case((in_period & is_xuat, ControlledLedgerEntryORM.quantity), else_=0))
+        stmt = (
+            select(
+                ControlledLedgerEntryORM.drug_id,
+                ControlledLedgerEntryORM.category,
+                opening.label("opening"),
+                received.label("received"),
+                issued.label("issued"),
+            )
+            .where(
+                ControlledLedgerEntryORM.tenant_id == self._ctx.tenant_id,
+                ControlledLedgerEntryORM.category.in_(category_values),
+                entry_date <= to_date,
+            )
+            .group_by(ControlledLedgerEntryORM.drug_id, ControlledLedgerEntryORM.category)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return [
+            LedgerPeriodAggregate(
+                drug_id=row.drug_id,
+                category=ControlledSubstanceCategory(row.category),
+                opening_balance=Decimal(row.opening or 0),
+                received_in_period=Decimal(row.received or 0),
+                issued_in_period=Decimal(row.issued or 0),
+            )
+            for row in rows
+        ]
 
 
 class SqlAlchemyTenantComplianceConfigRepository:
