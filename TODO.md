@@ -123,6 +123,16 @@
       `MockNationalDrugDbGateway` ở composition root (`api/v1/national_sync.py`, `# BLOCKER: DAV API spec`,
       KHÔNG endpoint thật) + `wire_national_sync`. Live Postgres, `alembic check` sạch, downgrade/upgrade OK.
 - [x] C.5 — cross-module: `SaleCompleted`/controlled dispense → ghi ledger + enqueue sync log XONG (PROJECT_STATE §7b, ĐÃ ĐÓNG).
+- [x] **Gửi lại tự động khi cổng DAV từ chối (D.4)** — **XONG 2026-07-25** (§7ay). Trước đó dòng
+      `NationalSyncLog` `FAILED` nằm im tới khi có người POST lại tay. Nay: bảng hàng đợi
+      `national_sync_retry_tasks` (giữ payload thô, **xoá ngay khi ACK**) + `NationalSyncRetryRelay`
+      nền (backoff 2^n, dừng ở `max_retries` → `DEAD`), cờ `NATIONAL_SYNC__RETRY_ENABLED` mặc định
+      tắt, migration `0027`. **KHÔNG dùng lại `event_outbox`**: outbox lõi chỉ retry khâu đưa sự kiện
+      lên bus, subscriber hỏng là nuốt-và-ghi-log (xem docstring `core/outbox/relay.py`) — vá lỗ hổng
+      khác nhau. Bảng audit D.2 không đổi (vẫn chỉ `payload_hash`). `# BLOCKER: DAV API spec` **vẫn
+      còn** — mới xong hạ tầng gửi lại, chưa phải kết nối thật.
+      *Còn treo:* chính sách xoá payload của dòng `DEAD` sau N ngày — cần Chain quyết khi có
+      deployment thật, không tự đặt ngưỡng.
 - [x] Router HTTP cho `compliance` (ledger/tenant-config/sync-logs) — **mount 2026-07-23** (PROJECT_STATE §7q); trước đó
       module chỉ có domain/app/infra, không endpoint nào.
 - [x] Audit cho `compliance` (2 action: `CONTROLLED_LEDGER_ENTRY_RECORDED`, `TENANT_COMPLIANCE_CONFIG_SET`) — **XONG

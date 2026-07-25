@@ -361,6 +361,44 @@ Mỗi lần đẩy 1 bản ghi/lô: `id`, `tenant_id`, `payload_type` (drug/sale
   - Hiện thực **MockAdapter** (trả ACK giả, ghi log) ở composition root để test toàn luồng.
   - **KHÔNG wiring endpoint thật** cho tới khi có tài liệu đặc tả. Đánh dấu rõ `# BLOCKER: DAV API spec` trong code.
 
+### D.4 (MỚI 2026-07-25) Gửi lại tự động — bảng `NationalSyncRetryTask`
+
+**Vì sao có mục này.** D.1 đòi liên thông "đầy đủ, chính xác, **kịp thời**". Bản cài đặt cũ chỉ
+best-effort: cổng từ chối → dòng `NationalSyncLog` thành `FAILED` rồi **nằm im** cho tới khi có người
+POST lại tay đúng payload cũ. "Chờ ai đó nhớ ra" không đáp ứng được chữ *kịp thời* — nên bổ sung một
+cơ chế gửi lại tự động, có giãn cách và có điểm dừng.
+
+**Bảng `NationalSyncRetryTask`** (`national_sync_retry_tasks`, migration `0027`): `id`, `tenant_id`,
+`branch_id`, `sync_log_id`, `payload_type`, `client_uuid` (unique theo tenant), **`payload` (thô)**,
+`status` (PENDING/DEAD), `attempt_count`, `next_attempt_at`, `last_error`.
+
+**Quan hệ với D.2 — không mâu thuẫn:** `NationalSyncLog` **giữ nguyên**, vẫn chỉ `payload_hash`. Hai
+bảng hai vai:
+
+| | `national_sync_logs` (D.2) | `national_sync_retry_tasks` (D.4) |
+|---|---|---|
+| Vai | **Audit** truyền nhận — bằng chứng, giữ lâu dài | **Hàng đợi giao vận** — công cụ, sống ngắn |
+| Payload | Chỉ hash | Thô, và **xoá ngay khi cổng ACK** |
+| Vòng đời | Theo thời hạn lưu trữ hồ sơ | Từ lúc đẩy hỏng tới lúc đẩy được (hoặc `DEAD`) |
+
+**Vì sao giữ payload thô ở đây mà không nhét vào bảng audit:** payload `prescription` chứa dữ liệu
+bệnh nhân; nhét vào bảng audit = lưu dữ liệu cá nhân vô thời hạn trong hồ sơ pháp lý, trái nguyên tắc
+tối thiểu hoá của Privacy by Design (`docs/14`). Ở bảng hàng đợi, dữ liệu chỉ tồn tại đúng khoảng thời
+gian **nghĩa vụ liên thông chưa hoàn thành** — hết nghĩa vụ là xoá.
+
+**Giới hạn có chủ đích:** `max_retries` lượt (mặc định 8, giãn cách `60s × 2^(n-1)` ≈ 4 giờ rưỡi) rồi
+chuyển `DEAD` và **không tự gửi nữa** — cần người xử lý. Dòng `DEAD` **vẫn giữ payload**: đó là những
+bản ghi luật vẫn đòi phải lên được CSDL Dược, xoá payload là tự tay chặn đường hoàn thành nghĩa vụ.
+→ **Việc còn treo (cần Chain quyết khi có deployment thật):** chưa có chính sách xoá/ẩn payload của
+dòng `DEAD` sau N ngày. Ghi nhận là câu hỏi mở, không tự đặt ngưỡng.
+
+**Bật/tắt:** `NATIONAL_SYNC__RETRY_ENABLED`, mặc định **tắt** (như `OUTBOX__RELAY_ENABLED`). Hàng đợi
+**vẫn được ghi** khi cờ tắt — cờ chỉ quyết định có tiến trình nền rút hàng đợi hay không, nên bật lên
+là đẩy được cả tồn đọng cũ. Deployment thật phải bật.
+
+**Không đụng D.3:** vẫn chỉ có `MockNationalDrugDbGateway`; `# BLOCKER: DAV API spec` giữ nguyên. Mục
+này làm *hạ tầng gửi lại*, không phải kết nối thật.
+
 ---
 
 ## E. Ràng buộc kiến trúc (bắt buộc giữ)
@@ -489,3 +527,13 @@ Mục C.5 điểm (d) Điều 15.1 chuyển từ ❌ sang ✅ — **cả 4 đi�
 TT18 6 bước (tài liệu → seed danh mục → sổ PL XVI → biên bản nhận lại PL XVIII → kết xuất cuối
 ngày + hash → ký xác nhận điện tử) **đóng trọn**. Còn lại là nghĩa vụ giấy không phần mềm lấp
 được (ký từng trang theo ghi chú Phụ lục VIII). Chi tiết đầy đủ xem PROJECT_STATE §7aw.
+
+### 2026-07-25 (đợt 7, cùng ngày) — Mục D.4 MỚI: gửi lại tự động lên CSDL Dược
+
+Thêm mục D.4 (không sửa D.1/D.2/D.3). Lý do: D.1 đòi liên thông *kịp thời* nhưng cài đặt cũ để dòng
+`FAILED` nằm im chờ người POST lại tay. Bổ sung bảng hàng đợi `national_sync_retry_tasks` giữ payload
+thô + relay nền gửi lại có backoff/điểm dừng.
+
+**Bảng audit D.2 không đổi** — vẫn chỉ `payload_hash`; payload thô nằm ở bảng hàng đợi riêng và bị xoá
+ngay khi cổng ACK (lý do chọn hướng này thay vì thêm cột payload vào bảng audit: xem chính mục D.4).
+`# BLOCKER: DAV API spec` (D.3) **không** được gỡ. Chi tiết xem PROJECT_STATE §7ay.

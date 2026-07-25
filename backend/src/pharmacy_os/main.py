@@ -22,6 +22,7 @@ from pharmacy_os.core.errors import register_error_handlers
 from pharmacy_os.core.outbox import OutboxRelay, OutboxRetention
 from pharmacy_os.core.plugins import PluginLoader
 from pharmacy_os.logging import configure_logging
+from pharmacy_os.modules.compliance.application import NationalSyncRetryRelay
 
 
 @asynccontextmanager
@@ -52,6 +53,18 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             asyncio.create_task(
                 retention.run_forever(settings.outbox.retention_interval_seconds),
                 name="outbox-retention",
+            )
+        )
+    # Third background task, same lifespan discipline: re-drives national-DB pushes the
+    # gateway rejected. Separate from the outbox pair on purpose — that one delivers
+    # internal events to subscribers, this one retries a call to an external authority
+    # (docs/13 mục D.4), which fails differently and must back off far more slowly.
+    if settings.national_sync.retry_enabled:
+        sync_retry: NationalSyncRetryRelay = container.resolve(NationalSyncRetryRelay)
+        tasks.append(
+            asyncio.create_task(
+                sync_retry.run_forever(settings.national_sync.poll_interval_seconds),
+                name="national-sync-retry",
             )
         )
     yield

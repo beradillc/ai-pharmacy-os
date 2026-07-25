@@ -6,6 +6,10 @@ already-published :class:`SaleCompleted` and drives its own
 :class:`NationalSyncService` — it imports nothing from sales beyond the event class,
 exactly like :func:`wire_sale_dispensing`.
 
+The push runs as a system reaction (no end-user request), under the fixed system identity
+``SYNC_SYSTEM_USER_ID`` — shared with the retry relay (docs/13 mục D.4) so both automatic
+push paths appear as the same actor, rather than two hand-copied constants.
+
 Design 5a scope: this link ONLY enqueues a ``NationalSyncLog`` (idempotent by
 ``client_uuid``). It deliberately does NOT write a ``ControlledLedgerEntry``:
 ``SaleCompleted`` carries none of the legally required category / lot / customer /
@@ -18,23 +22,22 @@ actually exists.
 from __future__ import annotations
 
 import json
-from uuid import UUID
 
 import structlog
 
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.di import Container
 from pharmacy_os.core.events import DomainEvent, EventBus
-from pharmacy_os.modules.compliance.application import NationalSyncService, PushSyncInput
+from pharmacy_os.modules.compliance.application import (
+    SYNC_SYSTEM_PERMISSIONS,
+    SYNC_SYSTEM_USER_ID,
+    NationalSyncService,
+    PushSyncInput,
+)
 from pharmacy_os.modules.compliance.domain import SyncPayloadType
 from pharmacy_os.modules.sales.domain import SaleCompleted
 
 _log = structlog.get_logger("cross_module.sales_compliance")
-
-# The sync push is a system reaction (no end-user request), so it runs under a
-# fixed system identity holding exactly the sync permission it needs.
-_SYSTEM_USER = UUID("00000000-0000-0000-0000-00005a1e5c05")
-_SYSTEM_PERMISSIONS = frozenset({"compliance.sync.push"})
 
 
 def _serialize_sale(event: SaleCompleted) -> str:
@@ -63,8 +66,8 @@ def wire_compliance_sync(container: Container) -> None:
         ctx = RequestContext(
             tenant_id=event.tenant_id,
             branch_id=event.branch_id,
-            user_id=_SYSTEM_USER,
-            permissions=_SYSTEM_PERMISSIONS,
+            user_id=SYNC_SYSTEM_USER_ID,
+            permissions=SYNC_SYSTEM_PERMISSIONS,
         )
         # Idempotent by client_uuid: a replayed SaleCompleted reuses the same log
         # (an already-ACKed one is returned untouched), never a duplicate push.

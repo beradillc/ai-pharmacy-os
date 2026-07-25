@@ -174,8 +174,11 @@ thật sự.
       PROJECT_STATE §7ag/§7ai. Mọi `UnitOfWork` ghi sự kiện trong chính giao dịch nghiệp vụ; relay
       giao lại at-least-once. Thay hoàn toàn cơ chế **phát sự kiện** best-effort cũ (publish sau
       commit — chết giữa chừng là mất hẳn sự kiện).
-      *Phạm vi chưa bao gồm:* vòng retry đẩy DAV của `NationalSyncService` vẫn best-effort riêng —
-      dòng `NationalSyncLog` `FAILED` nằm im tới khi có người gọi push lại, chưa có gì tự re-drive.
+      *Phạm vi chưa bao gồm:* vòng retry đẩy DAV — **đã đóng riêng 2026-07-25** (PROJECT_STATE §7ay,
+      docs/13 mục D.4): hàng đợi `national_sync_retry_tasks` + `NationalSyncRetryRelay` nền
+      (`NATIONAL_SYNC__RETRY_ENABLED`, migration `0027`). Không dùng lại `event_outbox` — outbox lõi
+      chỉ retry khâu **đưa sự kiện lên bus**, không retry việc subscriber làm gì với sự kiện. **Kết
+      nối DAV thật vẫn chặn** ở `# BLOCKER: DAV API spec`; chỉ hạ tầng gửi lại là xong.
 - [x] Audit query dashboard — **XONG 2026-07-24 (§7al).** Dựng như **kernel-infra** (`core/audit` +
       endpoint `api/v1/audit-dashboard`), KHÔNG trong `compliance` như phác thảo cũ. Quyền RIÊNG
       `audit.dashboard.read` (admin+chain+branch, không cashier/warehouse) tách khỏi `audit.read`; lọc
@@ -211,7 +214,8 @@ thật sự.
   (`crm.sensitive.read` tách riêng, §7m).
 
 *Nợ mang sang, đã ghi rõ — không tính vào DoD (cập nhật 2026-07-25):* ~~(1) report đợt 2~~ **ĐÃ ĐÓNG
-(§7ax)**; (2) vòng retry đẩy DAV của `NationalSyncService` vẫn best-effort, chưa lên outbox — đang xử lý;
+(§7ax)**; ~~(2) vòng retry đẩy DAV của `NationalSyncService`~~ **ĐÃ ĐÓNG (§7ay** — relay riêng, không
+qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API**)**;
 (3) cảnh báo/khoá tồn-âm khi outbox chạy async ([TODO.md](TODO.md)) — gộp vào Sprint 8 load test;
 (4) `analytics` v2 (bất thường, mùa vụ, override lead-time theo tenant, chạy nền định kỳ) — Sprint 8/9.
 

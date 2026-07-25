@@ -195,6 +195,7 @@ sự kiện rời bảng đó bằng đường nào:
 | `OUTBOX__SYNC_DRAIN` | `true` | Publish ngay sau commit, trong cùng request — giống hành vi cũ, chỉ khác là sự kiện đã nằm trên đĩa trước đó |
 | `OUTBOX__RELAY_ENABLED` | `false` | Tiến trình nền quét `event_outbox`, giao lại những dòng còn `PENDING` do sự cố. **Đây mới là thứ làm outbox có giá trị** |
 | `OUTBOX__RETENTION_ENABLED` | `false` | Tiến trình nền **dọn** dòng đã xong. Không có nó, bảng phình vô hạn (mỗi lần bán ≥3 dòng) |
+| `NATIONAL_SYNC__RETRY_ENABLED` | `false` | Tiến trình nền gửi lại các bản ghi bị **cổng CSDL Dược** từ chối (docs/13 mục D.4). Khác 3 biến trên: đây là gọi ra hệ thống ngoài, không phải giao sự kiện nội bộ. Tắt thì hàng đợi vẫn được ghi, chỉ là không ai gửi lại |
 
 **Prod đặt `OUTBOX__SYNC_DRAIN=false` + `OUTBOX__RELAY_ENABLED=true` + `OUTBOX__RETENTION_ENABLED=true`**
 (bật cả sync lẫn relay cũng hợp lệ: inline cho độ trễ thấp, relay làm lưới an toàn). Cả hai công tắc giao

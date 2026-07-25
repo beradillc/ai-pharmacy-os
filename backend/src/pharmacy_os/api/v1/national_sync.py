@@ -15,12 +15,21 @@ from __future__ import annotations
 
 import structlog
 
+from pharmacy_os.core.config import Settings
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork, UnitOfWorkFactory
 from pharmacy_os.core.di import Container
-from pharmacy_os.modules.compliance.application import NationalSyncService
+from pharmacy_os.modules.compliance.application import (
+    NationalSyncRetryRelay,
+    NationalSyncService,
+    SyncRetryConfig,
+)
 from pharmacy_os.modules.compliance.domain import SyncAck, SyncRequest
-from pharmacy_os.modules.compliance.infrastructure import SqlAlchemyNationalSyncLogRepository
+from pharmacy_os.modules.compliance.infrastructure import (
+    SqlAlchemyNationalSyncLogRepository,
+    SqlAlchemyNationalSyncRetryClaimer,
+    SqlAlchemyNationalSyncRetryQueue,
+)
 
 _log = structlog.get_logger("compliance.national_sync")
 
@@ -44,15 +53,50 @@ class MockNationalDrugDbGateway:
 
 
 def wire_national_sync(container: Container) -> None:
-    """Register ``NationalSyncService`` backed by the mock gateway.
+    """Register ``NationalSyncService`` + the retry relay, both on the mock gateway.
 
     A side-effect wiring (no router) — the service is resolvable for the cross-module
     subscriber added in C.5, which will enqueue sync pushes off business events.
+
+    Chỉ **đăng ký** relay ở đây; ai *chạy* nó là lifespan của app (``main._lifespan``) khi
+    ``NATIONAL_SYNC__RETRY_ENABLED`` bật — một bộ quét nền phải gắn vào vòng đời tiến
+    trình, không phải vào lúc dựng router. Đúng khuôn ``wire_outbox`` đang dùng.
     """
     uow_factory = container.resolve(UnitOfWorkFactory)
+    settings = container.resolve(Settings)
 
     def repo_factory(uow: UnitOfWork, ctx: RequestContext) -> SqlAlchemyNationalSyncLogRepository:
         return SqlAlchemyNationalSyncLogRepository(uow.session, ctx)
 
-    service = NationalSyncService(uow_factory, repo_factory, MockNationalDrugDbGateway())
+    def retry_queue(uow: UnitOfWork, ctx: RequestContext) -> SqlAlchemyNationalSyncRetryQueue:
+        return SqlAlchemyNationalSyncRetryQueue(uow.session, ctx)
+
+    def retry_claimer(uow: UnitOfWork) -> SqlAlchemyNationalSyncRetryClaimer:
+        return SqlAlchemyNationalSyncRetryClaimer(uow.session)
+
+    service = NationalSyncService(
+        uow_factory, repo_factory, MockNationalDrugDbGateway(), retry_queue
+    )
     container.register_instance(NationalSyncService, service)
+
+    relay = NationalSyncRetryRelay(
+        uow_factory,
+        retry_claimer,
+        service,
+        SyncRetryConfig(
+            batch_size=settings.national_sync.batch_size,
+            max_retries=settings.national_sync.max_retries,
+            base_backoff_seconds=settings.national_sync.base_backoff_seconds,
+            lease_seconds=settings.national_sync.lease_seconds,
+        ),
+    )
+    container.register_instance(NationalSyncRetryRelay, relay)
+
+    if settings.app.env == "prod" and not settings.national_sync.retry_enabled:
+        _log.warning(
+            "national_sync_retry_disabled_in_prod",
+            detail=(
+                "bản ghi bị cổng CSDL Dược từ chối sẽ nằm trong hàng đợi tới khi có người "
+                "POST lại tay — đặt NATIONAL_SYNC__RETRY_ENABLED=true"
+            ),
+        )

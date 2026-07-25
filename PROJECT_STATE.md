@@ -1,9 +1,9 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-25** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 đã đóng, đang xử lý retry DAV → bảo mật → plugin loader → connector → observability → load test (thứ tự đã chốt §7ax).
+> Cập nhật cuối: **2026-07-25** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng, kế tiếp bảo mật → plugin loader → connector → observability → load test (thứ tự đã chốt §7ax).
 >
-> **Kế tiếp:** 2 blocker nền cũ (§7j) đã gỡ 1 — RBAC/IAM thật XONG (§7k), nên hồ sơ KH đã làm được và **đã xong**; còn lại **tích điểm KH** (chưa làm, phải qua [docs/14](docs/14_FEATURE_PROCESS.md)) và **`docs/legal/` vẫn thiếu** Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. Nợ mang sang sau Sprint 7 (cập nhật §7ax): ~~report đợt 2~~ **XONG**; retry DAV lên outbox (đang làm); tồn-âm khi outbox async (gộp Sprint 8 load test); `analytics` v2 (Sprint 8/9); FE cho `analytics` (hoãn Sprint 9, quyết định §7ax).
+> **Kế tiếp:** 2 blocker nền cũ (§7j) đã gỡ 1 — RBAC/IAM thật XONG (§7k), nên hồ sơ KH đã làm được và **đã xong**; còn lại **tích điểm KH** (chưa làm, phải qua [docs/14](docs/14_FEATURE_PROCESS.md)) và **`docs/legal/` vẫn thiếu** Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. Nợ mang sang sau Sprint 7 (cập nhật §7ay): ~~report đợt 2~~ **XONG**; ~~retry DAV~~ **XONG (§7ay — relay riêng, không qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API)**; tồn-âm khi outbox async (gộp Sprint 8 load test); `analytics` v2 (Sprint 8/9); FE cho `analytics` (hoãn Sprint 9, quyết định §7ax).
 
 > ⚠️ **Lưu ý vận hành — trạng thái docker/hạ tầng trong tài liệu này là ảnh chụp tại thời điểm ghi, KHÔNG phải trạng thái sống.**
 > Container có thể tự `Exited` giữa các phiên dù tài liệu ghi "đang chạy"/"healthy" (đã xảy ra 2026-07-22: postgres Exited 5h,
@@ -18,13 +18,13 @@
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Giai đoạn         | Giai đoạn 3 — Vận hành (Sprint 7 đóng 2026-07-25); kế tiếp Giai đoạn 4                                |
 | Sprint            | **Sprint 7 — Compliance & Analytics ✅ ĐÓNG (2026-07-25)** · Sprint 1–6 đã đóng · Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật) |
-| Tình trạng Sprint | ✅ **Sprint 7 ĐÓNG, DoD đạt và đã verify trên Postgres thật** (§7ap): `iam` thật · `audit_logs` persist + **audit query dashboard** · hồ sơ sức khỏe KH (qua cổng docs/14) · `compliance` C.1–C.5 + router · **transactional outbox** + retention · **report xuất khẩu đợt 1** (doanh thu ngày/tuần/tháng/chi nhánh/nhân viên + tồn kho theo lô/HSD) · **module `analytics`** (dự báo 90 ngày, mốc tái đặt, đề xuất → PO nháp, dashboard). **Nợ mang sang (đã ghi rõ, không tính DoD, cập nhật §7ax):** ~~report đợt 2~~ **XONG** · retry DAV lên outbox (đang làm) · tồn-âm khi outbox async (Sprint 8) · `analytics` v2 (Sprint 8/9) · FE cho analytics (hoãn Sprint 9). |
+| Tình trạng Sprint | ✅ **Sprint 7 ĐÓNG, DoD đạt và đã verify trên Postgres thật** (§7ap): `iam` thật · `audit_logs` persist + **audit query dashboard** · hồ sơ sức khỏe KH (qua cổng docs/14) · `compliance` C.1–C.5 + router · **transactional outbox** + retention · **report xuất khẩu đợt 1** (doanh thu ngày/tuần/tháng/chi nhánh/nhân viên + tồn kho theo lô/HSD) · **module `analytics`** (dự báo 90 ngày, mốc tái đặt, đề xuất → PO nháp, dashboard). **Nợ mang sang (đã ghi rõ, không tính DoD, cập nhật §7ay):** ~~report đợt 2~~ **XONG** · ~~retry DAV~~ **XONG (§7ay)** · tồn-âm khi outbox async (Sprint 8) · `analytics` v2 (Sprint 8/9) · FE cho analytics (hoãn Sprint 9). |
 | Kernel backend    | ✅ (Sprint 2)                                                                                          |
 | Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp + auto-check tương tác/dị ứng cross-module + `TenantAiSettings` feature-flag theo tenant, router `/clinical/*` + `/clinical/settings`, mock LLM); ✅ `crm` (Hexagonal 4 lớp đủ: `Customer`/`Allergy`(theo hoạt chất, FK `active_ingredients`)/`Condition`/`MedicationHistoryEntry`, `CrmService`, router `/customers/*`, migration `0009`); ✅ `procurement` (Hexagonal 4 lớp đủ: `Supplier`/`PurchaseOrder`+`PurchaseOrderItem`/`GoodsReceiptNote`+`GoodsReceiptItem`, `ProcurementService`, router `/suppliers`+`/purchase-orders`+`/goods-receipts`, migration `0011`; **cross-module GRN confirmed → `inventory` tạo lô** ở composition root, migration `0012` bảng `stock_reconciliation_needed`); ✅ `iam` (§7k); ✅ **`analytics`** (Hexagonal 4 lớp đủ: `ReorderSuggestion` + công thức reorder thuần, `AnalyticsService`, bảng `reorder_suggestions` migration `0022`, router `/analytics/*`; **cross-module qua 5 adapter ở `api/v1/analytics_wiring.py`** đọc `sales`/`inventory`/`procurement` và ghi PO nháp — `analytics` KHÔNG import module nghiệp vụ nào, §7ap) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
-| Chất lượng        | *(2026-07-25)* ✅ ruff · ✅ format (353 file) · ✅ import-linter (**16/0**) · ✅ mypy strict (**245 file**) · ✅ pytest (**741**) |
-| Hạ tầng dev       | ✅ docker compose healthy (xác nhận `docker compose ps` 2026-07-25 09:0x — bật lại sau cúp điện 07:00); ✅ alembic `0001`..`0023` (áp live Postgres, `0023` reversible/no-drift); ✅ seed ATC + tương tác mẫu + system roles idempotent |
+| Chất lượng        | *(2026-07-25, sau §7ay)* ✅ ruff · ✅ format (363 file) · ✅ import-linter (**16/0**) · ✅ mypy strict (**247 file**) · ✅ pytest (**854**) |
+| Hạ tầng dev       | ✅ docker compose healthy (xác nhận `docker compose ps` 2026-07-25 09:0x — bật lại sau cúp điện 07:00); ✅ alembic `0001`..`0027` (áp live Postgres, `0027` reversible/no-drift — xác nhận 2026-07-25 §7ay); ✅ seed ATC + tương tác mẫu + system roles idempotent |
 | Sprint kế tiếp    | **Sprint 7 ĐÓNG** — kế tiếp **Sprint 8 (Plugin & Liên thông)** theo ROADMAP. **Chưa mở** — chờ lệnh Chain. Trước khi mở, cân nhắc 2 việc nền: FE cho các module đã có backend (hiện chỉ có POS tối thiểu), và `# BLOCKER: AI__API_KEY` thật của Sprint 5. |
 
 ---
@@ -2489,7 +2489,7 @@ từng mua ⇒ `can_materialize=false`, không vỡ. Chạy **on-demand**.
 | Mục | Trạng thái |
 |-----|-----------|
 | Report đợt 2 (top thuốc + xuất `ControlledLedgerEntry`) | Chưa làm — không bắt buộc từ đầu |
-| Retry đẩy DAV của `NationalSyncService` lên outbox | Vẫn best-effort riêng (ghi từ §7ai) |
+| ~~Retry đẩy DAV của `NationalSyncService`~~ | **XONG 2026-07-25 (§7ay)** — relay riêng + hàng đợi `national_sync_retry_tasks`, **không** qua `event_outbox` (outbox không retry lỗi subscriber). Kết nối DAV thật vẫn chặn ở `# BLOCKER: DAV API spec` |
 | Cảnh báo/khoá tồn-âm khi outbox chạy async | Nợ kỹ thuật, xem `TODO.md` |
 | `analytics` v2 | Phát hiện bất thường · mùa vụ/dịch bệnh · override lead-time theo tenant · chạy nền định kỳ |
 | Frontend cho analytics | Chưa có màn hình — backend-only như mọi module khác |
@@ -2856,6 +2856,106 @@ drift). Backup trước migration: `~/backup_pre_migration_20260725_1536.sql`.
 
 **Mạch TT18 (tài liệu → seed danh mục → sổ PL XVI → biên bản nhận lại PL XVIII → kết xuất cuối
 ngày + hash → ký xác nhận điện tử) ĐÓNG TRỌN 6/6 bước.**
+
+---
+
+## 7ay. Retry đẩy DAV — XONG (2026-07-25, Opus full-auto, Sprint 8 item 0b)
+
+Đóng nợ Sprint 7 cuối cùng: *"vòng retry đẩy DAV của `NationalSyncService` vẫn best-effort riêng"*.
+Tên nợ ghi là "qua outbox" — **không làm được đúng chữ đó, và đây là lý do**.
+
+### Vì sao KHÔNG cắm vào `event_outbox` (đọc kỹ trước khi cho là làm sai đề bài)
+
+`core/outbox/relay.py` nói thẳng trong docstring: `InMemoryEventBus.publish` **nuốt và ghi log** lỗi
+của subscriber, dòng vẫn được đánh `PUBLISHED`. Nghĩa là retry/dead-letter của outbox phủ **khâu đưa
+sự kiện lên bus** (event_type lạ, lỗi deserialize, lỗi CSDL) — **không** phủ việc subscriber làm gì
+với sự kiện. Đẩy DAV nằm đúng ở phần outbox cố ý không phủ. "Cắm retry DAV vào outbox" vì vậy không
+map được vào cơ chế đang có: muốn dùng lại thì phải đổi ngữ nghĩa outbox (subscriber hỏng ⇒ cả dòng
+hỏng ⇒ **mọi** subscriber khác bị gọi lại), tức là phá hợp đồng at-least-once của 14 event còn lại để
+phục vụ 1 trường hợp.
+
+**Đã làm thay vào đó:** một relay riêng **mô phỏng đúng hình dáng** `OutboxRelay` — claim `FOR UPDATE
+SKIP LOCKED`, backoff luỹ thừa, `max_retries` rồi dừng, cờ bật/tắt, gắn vào lifespan app y hệt. Cùng
+khuôn, khác phạm vi.
+
+**"Vậy có thành hai cơ chế publish song song vĩnh viễn không?"** Không, và đây là chỗ dễ hiểu nhầm
+nhất nên ghi rõ: chưa từng có cơ chế publish nào cho cổng DAV để mà trùng. Outbox trả lời câu *"sự
+kiện nội bộ đã tới subscriber chưa"*; cái này trả lời câu *"bản ghi đã lên được cơ quan quản lý
+chưa"*. Một cái là bus trong tiến trình (mili-giây, hỏng thì hiếm), một cái là hệ thống của Bộ Y tế
+(có thể sập hàng giờ, và nghĩa vụ pháp lý vẫn treo đó). Chúng khác nhau ở nhịp quét (30s vs 1s), giãn
+cách (phút vs giây), điểm dừng, và cả ở chỗ **giữ transaction hay không** (xem dưới). Ghép chung sẽ
+phải nhân nhượng cả hai.
+
+### Quyết định lớn: payload lưu ở đâu (chọn (c), bỏ (a) và (b))
+
+Vấn đề: `NationalSyncLog` **cố ý** chỉ giữ `payload_hash` (mục D.2 chỉ liệt kê hash), nên relay không
+có gì để gửi lại.
+
+| PA | Nội dung | Kết luận |
+|---|---|---|
+| (a) | Thêm cột `payload` vào `national_sync_logs` | **BỎ.** Bảng audit là hồ sơ giữ lâu dài; payload `prescription` chứa dữ liệu bệnh nhân ⇒ lưu dữ liệu cá nhân vô thời hạn trong hồ sơ pháp lý, trái tối thiểu hoá (Privacy by Design, `docs/14`). Đồng thời sửa lặng lẽ một bảng spec đã khoá |
+| (b) | Dựng lại payload từ nguồn khi cần gửi lại | **BỎ.** Cần 3 read-port cross-module mới (SALE→`sales`, DRUG→`catalog`, PRESCRIPTION→`prescription`) + 3 bộ serialize phải giống **từng byte** với lúc đẩy đầu, nếu không `payload_hash` trên dòng audit không còn khớp thứ gửi đi. Sai lệch âm thầm, và biến `compliance` thành phụ thuộc 3 module chỉ để thử lại |
+| **(c)** | **Bảng hàng đợi riêng giữ payload thô, xoá ngay khi ACK** | **CHỌN.** Bảng audit không đổi (đúng D.2). Payload chỉ tồn tại đúng khoảng thời gian **nghĩa vụ liên thông chưa xong** — hết nghĩa vụ là xoá, đó chính là tối thiểu hoá làm đúng chứ không phải né |
+
+Dòng `DEAD` (hết lượt thử) **vẫn giữ payload** — cùng logic `OUTBOX__RETENTION_FAILED_DAYS=None`: đó
+là những bản ghi luật **vẫn đòi** phải lên được CSDL Dược; xoá payload là tự tay chặn đường hoàn thành
+nghĩa vụ, và xoá mất dấu vết duy nhất cho biết có thứ chưa bao giờ gửi được.
+→ **Còn treo, KHÔNG tự quyết:** chính sách xoá/ẩn payload dòng `DEAD` sau N ngày — cần Chain quyết khi
+có deployment thật (ghi vào docs/13 D.4 + TODO.md, không đặt ngưỡng bừa).
+
+### Khác `OutboxRelay` một điểm, có chủ đích
+
+`OutboxRelay` giữ **một** transaction suốt cả mẻ (claim → publish → đánh dấu). Chấp nhận được vì
+publish là gọi hàm trong tiến trình. Ở đây khâu giữa là **gọi mạng ra ngoài** (khi có adapter DAV
+thật), giữ transaction suốt lúc đó là ôm khoá CSDL theo thời gian đáp ứng của một hệ thống mình không
+kiểm soát. Nên tách 3 nhịp: nhận việc + đặt **lease** (txn ngắn) → gọi cổng (ngoài txn) → ghi kết quả
+(txn 2). Đổi lại là at-least-once — vô hại vì `push_payload` idempotent theo `client_uuid`, và bản ghi
+đã ACK được trả nguyên trạng không gửi lại. Tiến trình chết giữa chừng: lease hết hạn, việc tự nổi
+lại (test `test_a_claimed_task_is_leased_away_from_a_second_drain` giữ đúng tính chất này).
+
+### Đã dựng gì
+
+| Lớp | Nội dung |
+|---|---|
+| domain | `NationalSyncRetryTask` (máy trạng thái: `record_failure` backoff `base × 2^(n-1)` → `DEAD` khi hết lượt · `lease_until` · `is_due`), enum `SyncRetryStatus`, port `NationalSyncRetryQueue` (theo tenant) + `NationalSyncRetryClaimer` (xuyên tenant) |
+| application | `NationalSyncRetryRelay` (`drain_once`/`run_forever`) · `NationalSyncService` nhận thêm `retry_queue_factory` — ghi kết quả đẩy + cập nhật hàng đợi trong **cùng 1 transaction** · hằng số `SYNC_SYSTEM_USER_ID`/`SYNC_SYSTEM_PERMISSIONS` gom về đây (trước nằm rời ở `compliance_cross.py`, nay 2 đường đẩy tự động dùng chung 1 actor) |
+| infrastructure | Bảng `national_sync_retry_tasks` + 2 repo tương ứng 2 port · migration `0027` |
+| interface/wiring | `wire_national_sync` đăng ký relay (+ cảnh báo khi prod tắt cờ) · `main._lifespan` chạy task `national-sync-retry` khi `NATIONAL_SYNC__RETRY_ENABLED` |
+| config | `NATIONAL_SYNC__*` (retry_enabled `false`, poll 30s, batch 20, max_retries 8, backoff 60s, lease 300s) + khối giải thích trong `.env.example` |
+
+**Mặc định TẮT** như `OUTBOX__RELAY_ENABLED` (poller trong harness test làm test mất tính tất định),
+nhưng **hàng đợi vẫn được ghi khi cờ tắt** — cờ chỉ quyết định có ai rút hàng đợi hay không, nên bật
+lên là đẩy được cả tồn đọng cũ. Prod phải bật; tắt ở prod thì có log cảnh báo.
+
+### Quyết định tự chốt trong phiên (full-auto — Chain đọc lướt sau)
+
+| # | Quyết định | Lý do |
+|---|---|---|
+| 1 | Relay riêng, không nhét vào `event_outbox` | Outbox cố ý không retry lỗi subscriber; ghép vào phải phá hợp đồng của 14 event khác |
+| 2 | PA (c) cho payload — bảng hàng đợi riêng, xoá khi ACK | Giữ D.2 nguyên vẹn + tối thiểu hoá dữ liệu bệnh nhân; (b) sinh 3 cross-module port và rủi ro lệch hash |
+| 3 | Dòng `DEAD` giữ payload, không tự xoá | Cùng logic dead-letter outbox; xoá = mất dấu vết + chặn đường hoàn thành nghĩa vụ. Ngưỡng xoá để Chain quyết |
+| 4 | Lease thay vì giữ transaction xuyên I/O | Không ôm khoá CSDL theo thời gian đáp ứng của hệ thống ngoài |
+| 5 | Mặc định `retry_enabled=false`, nhưng vẫn ghi hàng đợi | Khớp tinh thần `OUTBOX__RELAY_ENABLED`; bật muộn vẫn cứu được tồn đọng |
+| 6 | Sửa 1 test đỏ ngẫu nhiên **không** liên quan (commit riêng `5957227`) | `test_export_daily_closure...` so chuỗi con `"99"` với nội dung CSV có `drug_id` UUID ngẫu nhiên → đỏ ~8% số lần chạy (đã tái hiện 3 lần). Cổng đỏ ngẫu nhiên làm mất giá trị của chính cổng đó nên sửa ngay, tách commit để không lẫn phạm vi |
+
+### Nghiệm thu
+
+- 4 cổng: ruff · format · import-linter **16/0** (không thêm/sửa contract) · mypy --strict **247 file** · pytest **854** (exit 0) — **+17 test mới của mục này**: 8 domain (máy trạng thái việc gửi lại) + 8 tích hợp (hàng đợi/relay/lease/dead-letter/đa tenant) + 1 lifespan.
+- Migration `0027` chạy **live Postgres**: `alembic upgrade head` → `\d national_sync_retry_tasks`
+  đúng cột/2 index/unique constraint → `downgrade -1` xoá sạch → `upgrade` lại → `alembic check`
+  không drift. pg_dump trước khi chạy (`~/backup_pre_migration_20260725_1959.sql`, lưới an toàn #6).
+- Chạy thật trên Postgres đang có dữ liệu (kỷ luật #5/#7 — dù mục này **không** đụng permission/seed):
+  bơm 1 dòng `FAILED` + việc gửi lại → chạy relay thật → ACK → hàng đợi rỗng, xác nhận bằng SQL, dọn sạch sau đó.
+- 3 commit stepped: `96aee95` (domain) → `09965fd` (app+infra+migration) → `{HEAD3}` (interface/wiring+docs).
+
+**Lệch số cần ghi nhận (không tự sửa tài liệu cũ):** §7ax ghi "pytest 851" tại HEAD `40de806`, nhưng
+`pytest --collect-only` chạy lại đúng commit đó (qua `git worktree`) chỉ ra **837**. 854 − 837 = 17,
+khớp đúng số test mục này thêm vào. Nghĩa là con số 851 ở §7ax **sai hoặc đếm theo cách khác** — ghi
+lại đây để Chain biết, không sửa đè mục cũ.
+
+**KHÔNG overclaim:** đây là **hạ tầng gửi lại**, không phải kết nối DAV thật. `# BLOCKER: DAV API spec`
+(docs/13 mục D.3) **vẫn còn nguyên**, `MockNationalDrugDbGateway` vẫn là hiện thực duy nhất. Khi có
+đặc tả API, thay adapter ở composition root là xong — relay/hàng đợi không phải sửa.
 
 ---
 
