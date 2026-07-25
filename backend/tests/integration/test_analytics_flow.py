@@ -286,3 +286,42 @@ async def test_get_unknown_suggestion_raises(
     svc = _service(session_factory, event_bus, sales=_FakeSales([]), stock=_FakeStock({}))
     with pytest.raises(NotFoundError):
         await svc.materialize(uuid4(), _ctx("analytics.reorder.run"))
+
+
+async def test_all_analytics_actions_reach_audit_table(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    """Persistence coverage for the three analytics audit actions (the guard in
+    ``test_audit_persistence`` lists them as covered here)."""
+    from sqlalchemy import select
+
+    from pharmacy_os.core.audit.models import AuditLogORM
+
+    d_mat, d_dismiss = uuid4(), uuid4()
+    sales = _FakeSales(
+        [
+            DrugSoldQty(d_mat, Decimal("90"), Decimal("900000")),
+            DrugSoldQty(d_dismiss, Decimal("90"), Decimal("900000")),
+        ]
+    )
+    stock = _FakeStock({d_mat: Decimal("4"), d_dismiss: Decimal("4")})
+    svc = _service(
+        session_factory,
+        event_bus,
+        sales=sales,
+        stock=stock,
+        supplier=_FakeSupplier({d_mat: uuid4(), d_dismiss: uuid4()}),
+    )
+    run = _ctx("analytics.reorder.run")
+    await svc.run_reorder(run)  # ANALYTICS_REORDER_RUN
+    by_drug = {s.drug_id: s for s in await svc.list_suggestions(_ctx("analytics.read"))}
+    await svc.materialize(by_drug[d_mat].id, run)  # ANALYTICS_SUGGESTION_MATERIALIZED
+    await svc.dismiss(by_drug[d_dismiss].id, run)  # ANALYTICS_SUGGESTION_DISMISSED
+
+    async with session_factory() as session:
+        actions = set((await session.execute(select(AuditLogORM.action))).scalars().all())
+    assert {
+        "ANALYTICS_REORDER_RUN",
+        "ANALYTICS_SUGGESTION_MATERIALIZED",
+        "ANALYTICS_SUGGESTION_DISMISSED",
+    } <= actions

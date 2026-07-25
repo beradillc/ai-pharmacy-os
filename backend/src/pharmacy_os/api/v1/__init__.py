@@ -10,6 +10,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from pharmacy_os.api.deps import get_context
+from pharmacy_os.api.v1.analytics_wiring import wire_analytics
 from pharmacy_os.api.v1.audit import router as audit_router
 from pharmacy_os.api.v1.audit_dashboard import router as audit_dashboard_router
 from pharmacy_os.api.v1.compliance_cross import wire_compliance_sync
@@ -27,6 +28,7 @@ from pharmacy_os.api.v1.outbox_wiring import wire_outbox
 from pharmacy_os.api.v1.privacy import router as privacy_router
 from pharmacy_os.api.v1.reports import router as reports_router
 from pharmacy_os.core.di import Container
+from pharmacy_os.modules.analytics.interface import register as register_analytics
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.catalog.interface import register as register_catalog
 from pharmacy_os.modules.clinical.interface import register as register_clinical
@@ -82,6 +84,12 @@ def build_api_router(container: Container) -> APIRouter:
     # sales + inventory's own report methods, neither module imports the other.
     # No new permission — reuses sales.read/inventory.read (PROJECT_STATE §7am).
     api.include_router(reports_router)
+
+    # Analytics: reorder suggestions + dashboard (composition root, reads
+    # sales/inventory/procurement via adapters, writes DRAFT POs via procurement).
+    # Wired after those three services are registered (PROJECT_STATE §7am/§7ap).
+    wire_analytics(container)
+    api.include_router(register_analytics(container, get_context))
 
     # Cross-module reactions (both modules' services now registered).
     wire_sale_dispensing(container)

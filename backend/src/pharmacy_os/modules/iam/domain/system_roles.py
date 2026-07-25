@@ -70,6 +70,10 @@ PROCUREMENT_PERMISSIONS = frozenset(
 )
 AUDIT_PERMISSIONS = frozenset({"audit.read"})
 AUDIT_DASHBOARD_PERMISSIONS = frozenset({"audit.dashboard.read"})
+#: Analytics (Sprint 7, PROJECT_STATE §7am/§7ap): reading the dashboard/suggestions vs
+#: running a reorder + turning a suggestion into a draft PO. A management surface —
+#: granted to admin/chain/branch, never cashier/warehouse (Chain duyệt 2026-07-25).
+ANALYTICS_PERMISSIONS = frozenset({"analytics.read", "analytics.reorder.run"})
 """The audit **dashboard** — a distinct authority from the raw ``audit.read`` query.
 
 Split so a branch manager can be given the investigation/inspection lens over their
@@ -108,6 +112,7 @@ ALL_PERMISSIONS: frozenset[str] = (
     | AUDIT_PERMISSIONS
     | AUDIT_DASHBOARD_PERMISSIONS
     | PRIVACY_PERMISSIONS
+    | ANALYTICS_PERMISSIONS
 )
 
 SYSTEM_ADMIN = "system_admin"
@@ -147,6 +152,7 @@ _CHAIN_PHARMACIST_PERMISSIONS = (
     | AUDIT_PERMISSIONS
     | AUDIT_DASHBOARD_PERMISSIONS
     | PRIVACY_PERMISSIONS
+    | ANALYTICS_PERMISSIONS
     | {"iam.user.read", "iam.role.read"}
 )
 
@@ -169,6 +175,8 @@ _BRANCH_PHARMACIST_PERMISSIONS = (
     # must be able to investigate/inspect their own branch's trail. The lower-level
     # ``audit.read`` stays chain-only — this role gets the lens, not the raw query.
     | AUDIT_DASHBOARD_PERMISSIONS
+    # Reorder analytics + dashboard for their own branch (Chain duyệt PA, §7am).
+    | ANALYTICS_PERMISSIONS
 )
 
 #: Counter staff. No ``rx.approve``/``rx.dispense``: validating and handing over a
