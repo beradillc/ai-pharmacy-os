@@ -419,6 +419,35 @@ async def test_new_password_must_satisfy_the_policy(
         )
 
 
+# --- reauth for cross-module signing (compliance ký sổ, docs/13 mục C.5) ---
+
+
+async def test_verify_own_password_true_for_the_correct_password(
+    iam_service: IamService, auth_service: AuthService
+) -> None:
+    ctx = await _admin_ctx(iam_service, auth_service)
+    assert await auth_service.verify_own_password(ctx, ADMIN_PASSWORD) is True
+
+
+async def test_verify_own_password_false_for_a_wrong_password(
+    iam_service: IamService, auth_service: AuthService
+) -> None:
+    ctx = await _admin_ctx(iam_service, auth_service)
+    assert await auth_service.verify_own_password(ctx, "SaiRoi123456") is False
+
+
+async def test_verify_own_password_does_not_mutate_or_revoke_sessions(
+    iam_service: IamService, auth_service: AuthService
+) -> None:
+    """Read-only: unlike ``change_password``, a wrong attempt must not touch the session."""
+    await iam_service.bootstrap_tenant(_bootstrap_input())
+    session = await auth_service.login(LoginInput(email="admin@bera.vn", password=ADMIN_PASSWORD))
+    ctx = _ctx_of(session)
+    assert await auth_service.verify_own_password(ctx, "SaiRoi123456") is False
+    # the same refresh token must still work — nothing was revoked by the failed attempt
+    await auth_service.refresh(session.refresh_token)
+
+
 # --- administration guards --------------------------------------------------
 
 

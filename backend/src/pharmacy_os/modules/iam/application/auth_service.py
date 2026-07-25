@@ -227,6 +227,22 @@ class AuthService:
             await uow.commit()
         await self._record(user, AuditAction.PASSWORD_CHANGED, None, branch_id=ctx.branch_id)
 
+    async def verify_own_password(self, ctx: RequestContext, plain_password: str) -> bool:
+        """Xác minh mật khẩu hiện tại của người đang đăng nhập — đọc-only, không mutate.
+
+        Dùng cho re-auth trước hành vi nhạy cảm ở module khác (VD ``compliance`` ký sổ điện
+        tử, docs/13 mục C.5) qua cross-module read-port (``SigningReauthProvider``, wiring tại
+        ``api/v1/cross_module.py``) — không đổi mật khẩu, không revoke session, không tự audit
+        (nơi gọi tự ghi audit hành vi thật, ghi thêm ở đây là trùng lặp). Cùng logic xác minh
+        bước đầu của :meth:`change_password`, tách riêng vì mục đích khác hẳn.
+        """
+        async with self._uow_factory() as uow:
+            repos = self._repos_factory(uow)
+            user = await repos.users.get(ctx.user_id)
+        if user is None or user.tenant_id != ctx.tenant_id:
+            return False
+        return verify_password(plain_password, user.password_hash)
+
     # -- helpers -------------------------------------------------------------
 
     def _ensure_can_authenticate(self, user: User, now: datetime) -> None:
