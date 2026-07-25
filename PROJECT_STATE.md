@@ -2637,6 +2637,20 @@ ngưỡng thì deployment cũ phải được ghi đè, nếu không sẽ phân 
 **Cổng chất lượng cuối mạch:** ruff · mypy --strict · import-linter (16 contract) · **pytest 782** ·
 `alembic check` không drift.
 
+### ⏸️ ĐÓNG PHIÊN 2026-07-25 — mạch TT18 bước 1–3 trọn vẹn
+
+| Việc | Trạng thái |
+|---|---|
+| Bước 1–3 (tài liệu · 122 hoạt chất · sổ PL XVI + kết xuất CSV) | ✅ Xong, 5 commit `23ff6c1`→`ea85d94`, cây git sạch |
+| Bước 6 — thiết kế ký sổ điện tử | ✅ Soạn xong (`92befaf`), **chờ Chain chọn A/B/C**. GĐ khuyến nghị **A** (xác nhận điện tử bằng tài khoản IAM + chuỗi hash): 0đ, không đổi thói quen dược sĩ, chuỗi hash dùng lại được nếu sau này phải nâng lên chữ ký số thật. Phát hiện then chốt: Điều 15.1.d cho **hai** lựa chọn — "kỹ thuật xác nhận điện tử" **hoặc** chữ ký số |
+| Bước 4 (biên bản PL XVIII), 5 (kết xuất cuối ngày) | ⬜ Đợt sau. **Bước 4 không chờ văn bản nào** — nghĩa vụ đã rõ trong TT18, khởi động được ngay |
+| NĐ 163/2025 · TT 33/2025 · TT 26/2025 | ❌ **Chưa tới máy.** Đã kiểm 2 lượt, quét cả máy: không file mới nào. Nhiều khả năng Chain đính kèm vào khung chat app Claude — file đó **không rơi xuống ổ đĩa** nên phiên CLI không đọc được. Cách chắc ăn: copy vào `/home/gau/Vault/00-Bookmark/` |
+| Nhắc ghi sổ tay từ 16/7 | Chain chốt **không cần quan tâm** — khép lại, không nêu nữa |
+
+**Việc đầu tiên phiên sau:** `ls /home/gau/Vault/00-Bookmark/` → có 3 văn bản thì trích và trả lời
+2 câu còn treo (bán lẻ có phải báo cáo định kỳ không · thời hạn lưu trữ bao lâu); chưa có thì làm
+bước 4 (biên bản nhận lại PL XVIII) vì nó độc lập hoàn toàn.
+
 ---
 
 ## 8. Nhật ký thay đổi (Changelog)
