@@ -233,7 +233,17 @@ qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API**)**
       khi có package plugin thật, phải làm cùng `payment_vnpay`; event hook + circuit breaker +
       timeout tại điểm gọi hoãn; **không có sandbox thật** (rủi ro đã duyệt chấp nhận).
 - [ ] `dav_connector` (liên thông), `payment_vnpay`.
-- [ ] Bảo mật: 2FA vai trò nhạy cảm, rate limit, mã hóa at-rest.
+- [ ] Bảo mật: ~~2FA vai trò nhạy cảm~~ **XONG 2026-07-26 (§7bb)**, rate limit, mã hóa at-rest.
+      2FA = mục 2/4 quy trình cổng nghiêm ngặt (§7az). TOTP (RFC 6238, không SMS — POS
+      offline-first nên yếu tố thứ hai không được phụ thuộc mạng lúc đăng nhập); phạm vi suy từ
+      **quyền đang giữ** (`compliance.ledger.sign` + `iam.role.assign/write` → 3 role) chứ không
+      phải danh sách role chép tay; cưỡng chế ở **cả login lẫn step-up khi ký sổ** (hai đường tấn
+      công khác nhau — máy quầy bỏ trống chỉ step-up chặn được); 10 mã dự phòng + admin reset +
+      **break-glass CLI** `seeds.reset_two_factor` (bịt ca nhà thuốc 1 admin mất cả thiết bị lẫn mã
+      dự phòng ⇒ khoá vĩnh viễn). Cờ `SECURITY__TWO_FACTOR_ENFORCED` mặc định tắt; bật lên **không
+      khoá ai** — chỉ chặn cứng hành vi ký sổ. Kiểm tra thật trên Postgres + uvicorn thật (17 mục).
+      *Nợ:* mã hoá at-rest cột secret (đúng mục 3/4 kế tiếp), reset 2FA không thu hồi phiên đang mở,
+      `crm.erase` chưa vào phạm vi, rate limit theo IP chưa có.
 - [ ] Observability đầy đủ (tracing, metrics, alert).
 - [ ] Load test POS (p95 < 300ms).
 

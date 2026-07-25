@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-26** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng. **⚠️ Quy trình đổi (§7az, 2026-07-26):** 4 mục Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` nay qua cổng nghiêm ngặt hơn full-auto (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật). **Mục 1/4 Plugin loader ✅ XONG (§7ba, 2026-07-26)** — kế tiếp là 2FA (mục 2/4), đang dở bước 2/4 riêng của nó và **uncommitted**, đọc §7az trước khi động vào. Mã hóa at-rest + `payment_vnpay` chưa thiết kế. Rate limit/observability/load test vẫn full-auto bình thường, chưa mục nào bắt đầu.
+> Cập nhật cuối: **2026-07-26** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng. **⚠️ Quy trình đổi (§7az, 2026-07-26):** 4 mục Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` nay qua cổng nghiêm ngặt hơn full-auto (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật). **Mục 1/4 Plugin loader ✅ XONG (§7ba)** · **Mục 2/4 2FA ✅ XONG (§7bb, 2026-07-26)** — kế tiếp là **mục 3/4 mã hoá at-rest** (chưa thiết kế; đã có sẵn 1 khách hàng đầu tiên: cột `user_two_factor.secret` mang `# TODO(sprint8-1b)`), rồi mục 4/4 `payment_vnpay`. Rate limit/observability/load test vẫn full-auto bình thường, chưa mục nào bắt đầu.
 >
 > **Kế tiếp:** 2 blocker nền cũ (§7j) đã gỡ 1 — RBAC/IAM thật XONG (§7k), nên hồ sơ KH đã làm được và **đã xong**; còn lại **tích điểm KH** (chưa làm, phải qua [docs/14](docs/14_FEATURE_PROCESS.md)) và **`docs/legal/` vẫn thiếu** Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. Nợ mang sang sau Sprint 7 (cập nhật §7ay): ~~report đợt 2~~ **XONG**; ~~retry DAV~~ **XONG (§7ay — relay riêng, không qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API)**; tồn-âm khi outbox async (gộp Sprint 8 load test); `analytics` v2 (Sprint 8/9); FE cho `analytics` (hoãn Sprint 9, quyết định §7ax).
 
@@ -3192,10 +3192,100 @@ gọi nào trong `sales`, `payment_vnpay` chưa bắt đầu.
 
 ---
 
+## 7bb. 2FA vai trò nhạy cảm XONG — mục 2/4 quy trình nghiêm ngặt (2026-07-26, Sonnet)
+
+Mục thứ hai qua đủ 4 bước cổng §7az. Nối tiếp phần code dở dang của phiên Opus bị ngắt giữa chừng
+(hết hạn mức) — phần đó làm dưới **ủy quyền cũ**, nên được trình bày lại để duyệt đúng quy trình,
+kèm phần tự kiểm chứng và **một lỗ hổng phát hiện thêm khi rà thiết kế**.
+
+**5 commit:** `7f0c5e9` (app+infra+mig 0028) → `8aee076` (break-glass CLI) → `aabe8ea` (6 endpoint)
+→ `c09ccb4` (seam step-up). Bước 1/4 domain đã commit từ phiên trước (`29080eb`).
+
+### Lỗ hổng tự phát hiện khi rà thiết kế — KHOÁ VĨNH VIỄN
+
+Tài liệu thiết kế cũ ghi "admin reset" như thể đã đủ. Truy RBAC thật thì `iam.user.write` **chỉ
+`system_admin`** có, và `seeds/` **không có lệnh reset 2FA nào**. ⇒ Nhà thuốc nhỏ chỉ có **một**
+`system_admin`; người đó mất điện thoại **và** mất tờ mã dự phòng thì **không ai reset được, kể cả
+chính họ** — khoá vĩnh viễn toàn hệ thống, đúng thứ Chain yêu cầu không được xảy ra. Chain duyệt bổ
+sung **lệnh break-glass** `python -m seeds.reset_two_factor` (chạy tại máy chủ; không mở bề mặt tấn
+công vì ai chạy được đã có credential CSDL — cùng lập luận `bootstrap_tenant`, docs/15 §5 Q2).
+
+### Quyết định lớn (duyệt 2 lượt trước khi code)
+
+| # | Quyết định | Lý do |
+|---|---|---|
+| 1 | **TOTP**, không SMS/email OTP | Lý do quyết định là **POS offline-first**: SMS cần mạng đúng lúc đăng nhập, mất Internet thành sự cố pháp lý (dược sĩ không ký sổ được). Thêm: không phụ thuộc nhà cung cấp, không rò số điện thoại, miễn nhiễm SIM-swap |
+| 2 | Phạm vi theo **QUYỀN**, không theo danh sách role | `{compliance.ledger.sign, iam.role.assign, iam.role.write}` → hôm nay đúng 3 role. `iam.role.*` phải có vì **leo thang đặc quyền**: tự gán role được thì tự cấp `.sign` được. Quy tắc tự phủ role tenant-owned khi mở sau này; danh sách chép tay sẽ bỏ sót im lặng (lỗi §7l) |
+| 3 | Cưỡng chế ở **CẢ HAI** chỗ: login + step-up khi ký | Hai lỗ khác nhau: login-2FA không chặn được **máy quầy bỏ trống** (phiên đang mở); step-up không chặn được mật khẩu lộ dùng cho mọi việc khác. Bỏ step-up là tự hạ chuẩn vừa đặt ở §7aw |
+| 4 | Challenge là **bản ghi CSDL mờ**, không phải JWT ngắn hạn | `get_context` nhận **mọi** token giải mã được ⇒ JWT challenge lọt qua như access token rỗng quyền, mà `/auth/change-password` chỉ đòi mật khẩu hiện tại ⇒ **kẻ có mật khẩu đổi được mật khẩu mà không cần qua 2FA**. Bảng riêng đóng đường đó, kèm dùng-1-lần + đếm số lần đoán |
+| 5 | `SigningReauthOutcome` là **từ vựng riêng của `compliance`** | Không mượn `StepUpResult` của `iam`; adapter ở `api/` ánh xạ ⇒ module-independence giữ nguyên (import-linter **16/0**). Bảng ánh xạ dict đủ khoá: thêm giá trị ở một bên là mypy đỏ, không trôi âm thầm |
+| 6 | Bí mật TOTP **để dạng rõ**, có TODO bàn giao | Chưa có hạ tầng quản lý khoá; mã hoá bằng khoá cùng file `.env` là an toàn giả. Rò CSDL đơn thuần ⇒ 2FA tụt về 1FA (**vẫn cần mật khẩu**), không thành chiếm tài khoản. Phủ bởi **mục 3/4 mã hoá at-rest** — đúng thứ tự Chain đặt |
+
+**Triển khai không khoá ai:** `SECURITY__TWO_FACTOR_ENFORCED` mặc định `false`. Bật lên, người thuộc
+nhóm nhạy cảm **chưa đăng ký vẫn đăng nhập và làm việc bình thường**, chỉ nhận cờ
+`must_enroll_two_factor` để client nhắc; **chỉ hành vi ký sổ bị chặn cứng** (403). *Nhắc rộng, chặn
+hẹp* — bật cờ lúc 8h sáng không được làm cả ca trực không đăng nhập được.
+
+### GĐ tự kiểm tra — chạy THẬT trên Postgres + uvicorn thật, không phải TestClient
+
+Tạo tenant thật trên CSDL dev, chạy `uvicorn` thật cổng 8099, gọi HTTP thật với mã TOTP thật:
+
+| # | Kiểm tra | Kết quả |
+|---|---|---|
+| 1–2 | Đăng nhập thường → enroll, trả `otpauth://` URI | 200 ✅ |
+| 3 | **Enroll nhưng CHƯA activate** → đăng nhập | **200** — không khoá ai ✅ |
+| 4 | Activate bằng mã thật → 10 mã dự phòng | 200 ✅ |
+| 5 | Đăng nhập sau khi bật | **401 + challenge, KHÔNG rò access/refresh token** ✅ |
+| 6 | Nhịp 2 với mã đúng | 200, có token ✅ |
+| 7 | Dùng lại challenge đã tiêu | 401 (dùng-1-lần) ✅ |
+| 8 | **5 lần đoán sai rồi mã ĐÚNG** | 401 — challenge bị huỷ, phải nhập lại mật khẩu ✅ |
+| 9–10 | Mã dự phòng đăng nhập được / dùng lại lần 2 | 200 / **401** ✅ |
+| 11 | Sai mật khẩu | 401, **không phát challenge** ✅ |
+| 12 | **KÝ SỔ chỉ mật khẩu** (đã bật 2FA) | **401 "cần nhập mã để ký"** ✅ |
+| 13 | Ký sổ mã sai | 401 ✅ |
+| 14 | Ký sổ **sai mật khẩu + mã đúng** | 401 "Mật khẩu không đúng" — yếu tố thứ hai là THÊM, không THAY ✅ |
+| 15 | Ký sổ đủ cả hai | **201**, hash `b878e77c…` ✅ |
+| 16 | Ký lại cùng mã | 401 — **re-auth chạy TRƯỚC** kiểm tra trùng ngày (xác minh danh tính trước khi làm gì) ✅ |
+| 17 | **Break-glass CLI** rồi đăng nhập lại | Xoá 1 dòng 2FA + CASCADE mã dự phòng; đăng nhập **200, không còn đòi challenge** ✅ |
+| — | SQL: chữ ký lưu đúng, audit 4 loại action, `TWO_FACTOR_FAILED` **9 dòng** (đúng dấu vết dò mã) | ✅ |
+| — | SQL: **secret KHÔNG có trong audit trail** (0 dòng khớp) | ✅ |
+
+*Lưu ý một điểm tôi làm sai rồi tự sửa:* lần đầu ký thất bại vì tôi dùng mã của timestep **+2** —
+ngoài cửa sổ ±1. Truy `last_used_timestep` trong CSDL thấy watermark **bằng đúng** timestep hiện tại
+(chống replay đang chạy đúng), dùng mã +1 thì ký được. Lỗi ở kịch bản kiểm tra, không phải ở code.
+
+**Dọn sạch:** xoá tenant thử + toàn bộ dữ liệu liên quan, giữ 5 role hệ thống dùng chung; xác nhận
+lại bằng SQL = 0 dòng; uvicorn đã tắt, cổng 8099 đóng; file secret/token tạm đã xoá. Backup trước
+khi động vào CSDL thật: `~/backup_pre_2fa_live_20260726_0617.sql`.
+
+### Nghiệm thu
+
+4 cổng xanh: ruff+format sạch · import-linter **16/0** (không sửa contract nào) · mypy --strict
+**250 file** · pytest toàn repo **939 passed, PYTEST_EXIT=0** (đo không qua pipe). 939 = 908 nền +
+6 audit-persistence + 19 e2e 2FA + 6 step-up.
+
+**Cổng cấu trúc §7aq bắt được thật:** 2 trường chuỗi chưa chặn độ dài. Đã **xác minh từng cái**
+trước khi miễn trừ (`current_password` chỉ vào bcrypt; `challenge_token` chỉ vào sha256 rồi tra theo
+cột `token_hash varchar(64)`), không miễn trừ bừa. **Một lần `PYTEST_EXIT=1`** trong mạch này bắt
+đúng lỗi mà cách đo cũ (`| tail`) sẽ nuốt mất — bằng chứng việc sửa cách đo ở §7az là đáng.
+
+### Nợ ghi rõ
+
+- **Mã hoá at-rest cột `user_two_factor.secret`** — `# TODO(sprint8-1b)` tại chỗ, thuộc **mục 3/4**.
+- **Reset 2FA không thu hồi phiên đang mở** (refresh token 30 ngày vẫn đổi được access token). Là
+  hành vi chuẩn, đã nêu rõ khi duyệt thiết kế; step-up vá đúng chỗ nguy hiểm nhất (ký vẫn đòi mã).
+- **`crm.erase` chưa vào phạm vi 2FA** — GĐ đề nghị giữ ngoài lần này (mối lo bảo vệ dữ liệu cá
+  nhân, khác mạch chống giả mạo chữ ký), Chain chưa yêu cầu đổi. Ứng viên đợt sau.
+- **Chưa có rate limit theo IP/endpoint** — giới hạn hiện tại gắn theo *challenge* (5 lần/challenge),
+  khác việc chặn theo IP mà **mục 3/4 (rate limit)** sẽ dựng.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-26 | **2FA VAI TRÒ NHẠY CẢM XONG — mục 2/4 quy trình nghiêm ngặt (§7bb).** Đủ 4 bước cổng; 5 commit (`7f0c5e9`→`8aee076`→`aabe8ea`→`c09ccb4`, nối bước 1/4 `29080eb` của phiên Opus bị ngắt). **Phát hiện lỗ KHOÁ VĨNH VIỄN khi rà thiết kế**: `iam.user.write` chỉ `system_admin` có + `seeds/` không có lệnh reset ⇒ nhà thuốc 1 admin mất cả thiết bị lẫn mã dự phòng thì không ai cứu được; Chain duyệt bổ sung **break-glass CLI** `seeds.reset_two_factor`. TOTP (không SMS — lý do quyết định là POS **offline-first**), phạm vi theo **quyền** không theo danh sách role, cưỡng chế ở **cả login lẫn step-up khi ký sổ**, challenge là **bản ghi CSDL mờ** không phải JWT (JWT challenge sẽ lọt qua `get_context` và cho đổi mật khẩu mà không qua 2FA). Cờ mặc định tắt; bật lên **không khoá ai** — chỉ chặn cứng hành vi ký. **Tự kiểm tra 17 mục trên Postgres + uvicorn THẬT** (không TestClient): ký sổ chỉ mật khẩu ⇒ 401, đủ 2 yếu tố ⇒ 201; 5 lần đoán sai huỷ challenge; mã dự phòng dùng 1 lần; break-glass rồi đăng nhập lại được; secret **không** có trong audit trail; dọn sạch dữ liệu thử. 4 cổng xanh, pytest **939 EXIT=0**. Nợ: mã hoá at-rest secret (mục 3/4), reset không thu hồi phiên, `crm.erase` ngoài phạm vi, rate limit theo IP chưa có. |
 | 2026-07-26 | **PLUGIN LOADER XONG — mục 1/4 quy trình nghiêm ngặt (§7ba).** Chạy đủ 4 bước cổng mới: thiết kế → 2 lượt duyệt → code → GĐĐH tự kiểm tra thật. 3 commit stepped (`c269fe7`→`6449de2`→`9b46140`). Tách **bật/tắt khỏi khám phá**: `PLUGINS__ENABLED` mặc định rỗng, cài package ≠ bật (trước đây nạp mọi plugin tìm thấy với config rỗng). Thêm **validate trước setup** (contract + so khớp major `api_version`) và **fail-fast** — plugin đã bật mà nạp lỗi/chưa cài ⇒ app từ chối khởi động, khớp tiền lệ `ALLOW_DEV_AUTH`. `HookRegistry` mới: 1 plugin/port, xung đột ⇒ lỗi nêu tên cả hai. **Đổi phá vỡ có chủ đích: hook runtime thành `async`** — hook sync gọi mạng đứng cả event loop và không timeout được; chi phí đổi = 0 lúc này, tăng vọt khi có `payment_vnpay` (đúng lý do làm loader trước). **Tự kiểm tra bằng package cài thật** (`pip install` + entry point thật, 12 mục — test đều dùng entry point giả nên không chứng minh được đường thật), dọn sạch sau đó. **Đính chính §7az ghi sai** "discover/load_enabled không ai gọi" (grep bỏ sót `main.py`). Nợ ghi rõ: 2 contract import-linter **không thêm được** cho tới khi có package plugin thật (đã thử, import-linter báo `Could not find package`), event hook, circuit breaker, timeout tại điểm gọi, không sandbox thật. 4 cổng xanh, pytest **908 EXIT=0**, không migration. |
 | 2026-07-26 | **DỪNG PHIÊN theo lệnh Chain — quy trình mới cho 4 mục đụng tiền/khóa thật (§7az).** Chain đặt cổng nghiêm ngặt hơn full-auto cho Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật), đảo thứ tự: **Plugin loader trước 2FA** (kỹ thuật: payment sẽ chạy như plugin). Phạm vi loader đã chốt sẵn: cờ toàn cục, không per-tenant. Phiên này trước đó (dưới quy trình cũ) đã: report đợt 2 top thuốc bán chạy XONG (`14af10e`) + phát hiện xuất `ControlledLedgerEntry` đã xong sẵn từ TT18; retry DAV qua outbox XONG (Opus, §7ay, 3 commit, hàng đợi riêng không chung outbox lõi); 2FA bước 1/4 domain XONG+commit (`29080eb`), bước 2/4 app+infra+migration **code xong, migration 0028 live trên Postgres, nhưng CHƯA commit** theo đúng lựa chọn Chain — còn 2 test audit-completeness đỏ (thiếu 6 action 2FA trong 2 set đối chiếu tay, chưa sửa). Tự phát hiện lỗi phương pháp: `pytest \| tail` che mất exit code thật của pytest — từ nay đo trực tiếp, không qua pipe. Chi tiết đầy đủ + việc phải làm khi mở lại: §7az. |
 | 2026-07-25 | **NĐ163+TT33+TT26 đọc xong — ĐẢO NGƯỢC kết luận báo cáo định kỳ (§7as)** — Chain chép 3 văn bản, ủy quyền toàn quyền GĐ chỉ đạo code. **NĐ163 Điều 35.2: bán lẻ CÓ nghĩa vụ báo cáo 6 tháng/năm gửi UBND cấp tỉnh (Mẫu số 06), đã trễ ≥3 kỳ (15/7/2025, 15/1/2026, 15/7/2026)** — đảo ngược kết luận cũ "TT18 không áp cho bán lẻ" (kết luận đó đúng riêng cho TT18, sai khi coi là câu trả lời đầy đủ). **Việc khẩn ngoài phần mềm:** xác nhận BeraLLC đã báo cáo chưa. TT33: không có mục riêng cho sổ KSĐB bán lẻ, nâng sàn retention lên ≥20 năm (suy diễn, an toàn hơn 2 năm cũ). TT26: không phát sinh nghĩa vụ mới, xác nhận 2 tham chiếu lỗi thời tự sửa. Cập nhật docs/13 (mục C.7 mới), docs/legal/README, 3 SUMMARY mới. **Chưa code** — tính năng báo cáo Mẫu số 06 cần qua docs/14_FEATURE_PROCESS trước; hỏi Chain ưu tiên việc này hay bước 4 (biên bản PL XVIII) đã duyệt trước đó. |
