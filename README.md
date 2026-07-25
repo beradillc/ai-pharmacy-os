@@ -89,9 +89,9 @@ Chi tiết: [docs/02_ARCHITECTURE.md](docs/02_ARCHITECTURE.md).
 
 ## 5. Trạng thái dự án
 
-**Sprint 1–6 đã đóng · Sprint 7 (Compliance & Analytics) đang tiến hành.** Backend chạy end-to-end:
-9 module nghiệp vụ + kernel, xác thực JWT thật, sổ thuốc kiểm soát đặc biệt, hồ sơ sức khỏe khách
-hàng, và outbox giao dịch cho sự kiện miền.
+**Sprint 1–7 đã đóng.** Backend chạy end-to-end: 10 module nghiệp vụ + kernel, xác thực JWT thật,
+sổ thuốc kiểm soát đặc biệt, hồ sơ sức khỏe khách hàng, outbox giao dịch cho sự kiện miền, và
+phân tích tồn/đề xuất nhập sinh PO nháp.
 
 | Sprint | Trạng thái | Nội dung chính |
 |--------|-----------|----------------|
@@ -101,7 +101,7 @@ hàng, và outbox giao dịch cho sự kiện miền.
 | 4 — Sales / POS offline | ✅ *(backend)* | `sales`: đơn/thanh toán/trả hàng, idempotency `client_uuid`, `/sync/sales` offline-first. FE POS chưa thuộc phạm vi |
 | 5 — Prescription & Clinical AI | ✅ *(mức MOCK)* | `prescription` + `clinical`: tra tương tác thuốc **tất định**, LLM chỉ diễn giải. `# BLOCKER: AI__API_KEY thật` — chưa gọi vendor thật |
 | 6 — Procurement & CRM | ✅ | `procurement` (NCC/PO/GRN→lô) · `crm` (khách hàng, đồng ý, dị ứng) · cờ AI theo từng tenant |
-| **7 — Compliance & Analytics** | 🔄 **đang làm** | xem hai mục dưới |
+| **7 — Compliance & Analytics** | ✅ | xem hai mục dưới |
 
 **Sprint 7 — đã xong:**
 
@@ -110,16 +110,19 @@ hàng, và outbox giao dịch cho sự kiện miền.
 - ✅ Hồ sơ sức khỏe khách hàng (qua cổng [docs/14](docs/14_FEATURE_PROCESS.md) Bước 0–4) — tách 2 mức nhạy cảm, `crm.sensitive.read` riêng, 6 action audit, export/khử nhận dạng, endpoint metadata DPIA
 - ✅ `compliance` — sổ thuốc kiểm soát đặc biệt (C.1–C.5) + router HTTP
 - ✅ **Transactional outbox** — mọi `UnitOfWork` ghi `event_outbox` trong chính giao dịch nghiệp vụ; relay giao lại at-least-once; retention dọn dòng đã xong (xem §7 mục "Giao sự kiện miền" bên dưới)
+- ✅ **Audit query dashboard** — quyền riêng `audit.dashboard.read`, lọc actor/thời gian/đối tượng/hành động, export CSV
+- ✅ **Report xuất khẩu đợt 1** — doanh thu (ngày/tuần/tháng, theo chi nhánh và nhân viên bán) + tồn kho theo lô/HSD, CSV stream
+- ✅ **Module `analytics`** — dự báo nhu cầu (trung bình trượt 90 ngày) + mốc tái đặt hàng cấp thuốc × chi nhánh, đề xuất nhập sinh **PO nháp** trong `procurement` (người duyệt, không tự gửi NCC), dashboard doanh thu/top thuốc/cảnh báo tồn
 
-**Sprint 7 — còn lại:**
+**Sprint 7 — nợ mang sang (đã ghi rõ, không tính vào DoD):**
 
-- ⬜ Dashboard / audit query (nay mới có `GET /audit-logs` mức tối thiểu) + đưa retry liên thông DAV lên outbox thay cơ chế best-effort hiện tại
-- ⬜ Module `analytics`: dashboard, dự báo nhu cầu, đề xuất nhập
-- ⬜ Report xuất khẩu
+- ⬜ Report đợt 2 (không bắt buộc): top thuốc bán chạy + xuất `ControlledLedgerEntry`
+- ⬜ Đưa retry liên thông DAV lên outbox thay cơ chế best-effort hiện tại
+- ⬜ `analytics` v2: phát hiện bất thường, mùa vụ/dịch bệnh, override lead-time theo tenant, chạy nền định kỳ
 - ⬜ *Nợ kỹ thuật đã ghi:* cảnh báo/khoá tồn-âm khi chạy outbox chế độ async — xem [TODO.md](TODO.md)
 
-**Cổng chất lượng (2026-07-24):** `pytest` **665** · `mypy --strict` **222 file** · `import-linter`
-**13 contract / 0 broken** · `ruff check` + `format --check` sạch · migration `0001`→`0019` live/reversible.
+**Cổng chất lượng (2026-07-25):** `pytest` **734** · `mypy --strict` **245 file** · `import-linter`
+**16 contract / 0 broken** · `ruff check` + `format --check` sạch · migration `0001`→`0023` live/reversible.
 
 Xem chi tiết & lịch sử: [PROJECT_STATE.md](PROJECT_STATE.md) · lộ trình đầy đủ: [ROADMAP.md](ROADMAP.md).
 

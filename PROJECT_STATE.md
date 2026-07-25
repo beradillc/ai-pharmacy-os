@@ -1,9 +1,9 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-23** · Sprint hiện tại: **Sprint 6 (Procurement & CRM) — ✅ ĐÓNG (DoD lõi đạt): `procurement` đủ 4 lớp + cross-module GRN→inventory tạo lô (migration `0012`), `crm`, feature-flag AI theo tenant, hoạt chất — tất cả XONG** · Sprint 5 DONE mức MOCK ✅ song song **Compliance (kéo sớm từ Sprint 7): C.1–C.5 XONG ✅ — Sprint Compliance đóng**.
+> Cập nhật cuối: **2026-07-25** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). Sprint 8 **chưa mở** — chờ lệnh Chain.
 >
-> **Kế tiếp (2026-07-23):** các tính năng thương mại **hồ sơ KH · tích điểm KH · in bill** (ngoài ROADMAP gốc) phải đi qua **[docs/14_FEATURE_PROCESS.md](docs/14_FEATURE_PROCESS.md)** (Compliance/Privacy by Design) trước khi code. Đã neo quy trình + phát hiện **2 blocker nền**: (1) RBAC/IAM vẫn dev-header, IAM chưa dựng → chặn hồ sơ KH + tích điểm; (2) `docs/legal/` thiếu Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. **✅ In bill (S7) đã XONG đủ 4 lớp** (domain→app→infra→interface, commit `4a5bc0b`→`53e31b3`, 380 test xanh) — resume sau crash hạ tầng (§8, entry 2026-07-23 đầu). **Còn lại: hồ sơ KH + tích điểm KH vẫn chờ RBAC/IAM thật trước (xem §7j).** Sprint 7 (Analytics) vẫn chưa mở.
+> **Kế tiếp:** 2 blocker nền cũ (§7j) đã gỡ 1 — RBAC/IAM thật XONG (§7k), nên hồ sơ KH đã làm được và **đã xong**; còn lại **tích điểm KH** (chưa làm, phải qua [docs/14](docs/14_FEATURE_PROCESS.md)) và **`docs/legal/` vẫn thiếu** Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. Nợ mang sang sau Sprint 7: report đợt 2, retry DAV lên outbox, tồn-âm khi outbox async, `analytics` v2, FE cho các module đã có backend.
 
 > ⚠️ **Lưu ý vận hành — trạng thái docker/hạ tầng trong tài liệu này là ảnh chụp tại thời điểm ghi, KHÔNG phải trạng thái sống.**
 > Container có thể tự `Exited` giữa các phiên dù tài liệu ghi "đang chạy"/"healthy" (đã xảy ra 2026-07-22: postgres Exited 5h,
@@ -16,16 +16,16 @@
 
 | Hạng mục          | Trạng thái                                                                                            |
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
-| Giai đoạn         | Giai đoạn 2 — Bán hàng · (Compliance kéo sớm từ Giai đoạn 3)                                          |
-| Sprint            | Sprint 6 — Procurement & CRM (backend) **✅ ĐÓNG** · Sprint 5 (Prescription & Clinical AI) DONE mức mock · **+ Compliance (docs/13, kéo sớm từ Sprint 7)** |
-| Tình trạng Sprint | ✅ **Sprint 6 ĐÓNG (DoD lõi đạt).** Bước 1 (hoạt chất) + **`crm`** (migration `0009`) + **Bước 2** (5.5.4 auto-check + dị ứng KH) + **feature-flag AI theo tenant** (migration `0010`) + **`procurement` đủ 4 lớp** (migration `0011`) + **cross-module GRN xác nhận → inventory tạo lô** (migration `0012`, idempotent theo `grn_id`, va chạm lô/lỗi khác ghi `stock_reconciliation_needed`) — tất cả XONG. ✅ Sprint 5 DONE mức mock. ✅ Compliance: **C.1–C.5 XONG**, Sprint đóng. **Nợ mang sang Sprint 7:** ghi `MedicationHistoryEntry` từ event bán/cấp phát (DoD Sprint 6 nhắc, sếp đã hoãn); dị ứng OTC. |
+| Giai đoạn         | Giai đoạn 3 — Vận hành (Sprint 7 đóng 2026-07-25); kế tiếp Giai đoạn 4                                |
+| Sprint            | **Sprint 7 — Compliance & Analytics ✅ ĐÓNG (2026-07-25)** · Sprint 1–6 đã đóng · Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật) |
+| Tình trạng Sprint | ✅ **Sprint 7 ĐÓNG, DoD đạt và đã verify trên Postgres thật** (§7ap): `iam` thật · `audit_logs` persist + **audit query dashboard** · hồ sơ sức khỏe KH (qua cổng docs/14) · `compliance` C.1–C.5 + router · **transactional outbox** + retention · **report xuất khẩu đợt 1** (doanh thu ngày/tuần/tháng/chi nhánh/nhân viên + tồn kho theo lô/HSD) · **module `analytics`** (dự báo 90 ngày, mốc tái đặt, đề xuất → PO nháp, dashboard). **Nợ mang sang (đã ghi rõ, không tính DoD):** report đợt 2 (không bắt buộc) · retry DAV lên outbox · tồn-âm khi outbox async · `analytics` v2 · FE cho analytics. |
 | Kernel backend    | ✅ (Sprint 2)                                                                                          |
-| Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp + auto-check tương tác/dị ứng cross-module + `TenantAiSettings` feature-flag theo tenant, router `/clinical/*` + `/clinical/settings`, mock LLM); ✅ `crm` (Hexagonal 4 lớp đủ: `Customer`/`Allergy`(theo hoạt chất, FK `active_ingredients`)/`Condition`/`MedicationHistoryEntry`, `CrmService`, router `/customers/*`, migration `0009`); ✅ `procurement` (Hexagonal 4 lớp đủ: `Supplier`/`PurchaseOrder`+`PurchaseOrderItem`/`GoodsReceiptNote`+`GoodsReceiptItem`, `ProcurementService`, router `/suppliers`+`/purchase-orders`+`/goods-receipts`, migration `0011`; **cross-module GRN confirmed → `inventory` tạo lô** ở composition root, migration `0012` bảng `stock_reconciliation_needed`) |
+| Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp + auto-check tương tác/dị ứng cross-module + `TenantAiSettings` feature-flag theo tenant, router `/clinical/*` + `/clinical/settings`, mock LLM); ✅ `crm` (Hexagonal 4 lớp đủ: `Customer`/`Allergy`(theo hoạt chất, FK `active_ingredients`)/`Condition`/`MedicationHistoryEntry`, `CrmService`, router `/customers/*`, migration `0009`); ✅ `procurement` (Hexagonal 4 lớp đủ: `Supplier`/`PurchaseOrder`+`PurchaseOrderItem`/`GoodsReceiptNote`+`GoodsReceiptItem`, `ProcurementService`, router `/suppliers`+`/purchase-orders`+`/goods-receipts`, migration `0011`; **cross-module GRN confirmed → `inventory` tạo lô** ở composition root, migration `0012` bảng `stock_reconciliation_needed`); ✅ `iam` (§7k); ✅ **`analytics`** (Hexagonal 4 lớp đủ: `ReorderSuggestion` + công thức reorder thuần, `AnalyticsService`, bảng `reorder_suggestions` migration `0022`, router `/analytics/*`; **cross-module qua 5 adapter ở `api/v1/analytics_wiring.py`** đọc `sales`/`inventory`/`procurement` và ghi PO nháp — `analytics` KHÔNG import module nghiệp vụ nào, §7ap) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
-| Chất lượng        | ✅ ruff · ✅ format · ✅ import-linter (**12/0**) · ✅ mypy strict (**178 file**) · ✅ pytest (**372**)    |
-| Hạ tầng dev       | ✅ docker compose healthy (xác nhận `docker compose ps` 2026-07-22, up ~1h); ✅ alembic `0001`..`0012` (áp live Postgres, `0012` reversible/no-drift); ✅ seed ATC + tương tác mẫu idempotent |
-| Sprint kế tiếp    | **Sprint 6 ĐÓNG** — kế tiếp **Sprint 7 (Compliance & Analytics)**: `compliance` C.1–C.5 đã kéo sớm & đóng (§7b), nên Sprint 7 còn lại chủ yếu **`analytics`** (dashboard, dự báo nhu cầu, đề xuất nhập → PO nháp) + report. **Chưa mở** — chờ lệnh. Nợ mang sang: `MedicationHistoryEntry` từ event, dị ứng OTC (§7g). |
+| Chất lượng        | *(2026-07-25)* ✅ ruff · ✅ format (351 file) · ✅ import-linter (**16/0**) · ✅ mypy strict (**245 file**) · ✅ pytest (**734**) |
+| Hạ tầng dev       | ✅ docker compose healthy (xác nhận `docker compose ps` 2026-07-25 09:0x — bật lại sau cúp điện 07:00); ✅ alembic `0001`..`0023` (áp live Postgres, `0023` reversible/no-drift); ✅ seed ATC + tương tác mẫu + system roles idempotent |
+| Sprint kế tiếp    | **Sprint 7 ĐÓNG** — kế tiếp **Sprint 8 (Plugin & Liên thông)** theo ROADMAP. **Chưa mở** — chờ lệnh Chain. Trước khi mở, cân nhắc 2 việc nền: FE cho các module đã có backend (hiện chỉ có POS tối thiểu), và `# BLOCKER: AI__API_KEY` thật của Sprint 5. |
 
 ---
 
@@ -2411,10 +2411,96 @@ vì đây là SQL join/aggregate mới, hành vi có thể khác giữa SQLite (
 
 ---
 
+## 7ap. Module `analytics` XONG — Sprint 7 ĐÓNG (2026-07-25, Opus full-auto)
+
+> Phiên bắt đầu ~06:00, **cúp điện lúc ~07:00 cắt ngang giữa bước 7/8**. Phiên này (Chain ủy quyền
+> GĐ rà lại + hoàn thiện) nối tiếp: xác nhận việc dở, chạy cổng, phát hiện và vá 3 lỗi, đóng sprint.
+> Thiết kế gốc: `docs/features/analytics/00_DESIGN_PROPOSAL.md` (Chain duyệt Q1–Q4 + quyền,
+> 2026-07-25). Yêu cầu nghiệp vụ: §7am.
+
+### Trạng thái lúc cúp điện vs sau khi rà
+
+| Hạng mục | Lúc cúp điện (07:00) | Sau phiên rà |
+|---|---|---|
+| Bước 1–6/8 | Đã commit (`9b335b0`→`96ef714`) | Giữ nguyên |
+| Bước 7/8 (wiring + quyền + e2e) | Viết xong, **chưa chạy cổng, chưa commit** | Chạy cổng → commit `a40de7e` |
+| Cổng ruff tại HEAD | **ĐỎ** từ commit bước 4/8 (2 lỗi C408 lọt qua) | Vá, commit `0bfb41b` |
+| Container docker | Chết theo điện | Đã bật lại, healthy |
+| Migration `0022` | Đã áp lên PG trước khi mất điện | Xác nhận bằng `alembic current` |
+
+### 3 lỗi phát hiện trong phiên rà (không phải do cúp điện)
+
+| # | Lỗi | Mức | Vá tại |
+|---|---|---|---|
+| 1 | Cổng ruff đỏ tại HEAD từ bước 4/8 — commit lọt qua, vi phạm kỷ luật #1 | Thấp (chỉ lint test) | `0bfb41b` |
+| 2 | **`audit_logs.action` là varchar(32) trong khi 3 giá trị `AuditAction` dài 33–36 ký tự** → Postgres 500. SQLite (nền test) bỏ qua độ dài nên **734 test vẫn xanh**. 2/3 action có từ §7ab/§7ad — **bug sống trên deployment thật từ trước, không phải do analytics** | **Cao** — audit là mặt tuân thủ | `77faa5e` (mig `0023` nới lên 64 + test đọc độ rộng cột từ model để chặn tái diễn) |
+| 3 | **PO nháp ghi bằng system-user**, lệch thiết kế Chain đã duyệt (§6 bản thiết kế: phải dùng identity người bấm). Hệ quả: role chỉ có `analytics.reorder.run` mà không có `procurement.po.create` vẫn tạo được PO qua ngả analytics — **cửa sau leo thang quyền** | Trung bình–cao | `97a4560` (port nhận `actor_user_id`+`actor_permissions`; 4 adapter ĐỌC vẫn giữ system identity) |
+
+> Lỗi #2 là ca mẫu cho kỷ luật #7: nếu chỉ tin pytest thì đã commit và đẩy đi một đường audit gãy
+> trên Postgres. Nó **chỉ lộ ra khi bấm materialize thật bằng token thật trên DB có dữ liệu**.
+
+### Kiến trúc đã dựng
+
+| Lớp | Nội dung |
+|---|---|
+| domain | `ReorderSuggestion` (+`SuggestionStatus`), công thức reorder thuần, 5 read/write port (Protocol) |
+| application | `AnalyticsService`: `run_reorder` · `list_suggestions` · `materialize` · `dismiss` · `dashboard` |
+| infrastructure | Repo SQLAlchemy + bảng `reorder_suggestions` (mig `0022`) — dữ liệu RIÊNG của analytics |
+| interface | Router `/api/v1/analytics/*` + schemas |
+| composition root | `api/v1/analytics_wiring.py` — 5 adapter bọc `sales`/`inventory`/`procurement`. **`analytics` không import module nghiệp vụ nào**; 2 contract import-linter mới khoá điều đó (16 contract, 0 broken) |
+
+**Công thức v1 (đúng §7am):** vận tốc = trung bình trượt 90 ngày; mốc tái đặt = vận tốc × lead-time
+(7 ngày) + tồn an toàn (3 ngày); tồn ≤ mốc ⇒ đề xuất. NCC = NCC gần nhất từng cấp thuốc đó; chưa
+từng mua ⇒ `can_materialize=false`, không vỡ. Chạy **on-demand**.
+
+### Quyết định tự chốt trong phiên (full-auto — Chain đọc lướt sau)
+
+| # | Quyết định | Lý do |
+|---|---|---|
+| 1 | Nới `audit_logs.action` lên 64 thay vì đổi tên 3 action cho ngắn | Đổi tên action là đổi từ vựng vết audit đã ghi trên DB thật; nới cột không mất dữ liệu, `target_type`/`target_id` vốn đã 64 |
+| 2 | `downgrade` của mig `0023` thu về 32 và **để nó nổ** nếu đã có dòng dài | Audit append-only — thà rollback fail còn hơn cắt cụt vết tuân thủ |
+| 3 | Sửa đường ghi PO nháp sang identity người bấm dù wiring cũ đã có docstring biện minh cho system-user | Thiết kế Chain duyệt nói rõ ngược lại, và cách cũ mở cửa hậu leo thang quyền |
+| 4 | Gộp bước 8/8 (e2e + smoke live) vào commit bước 7 | File e2e đã do phiên trước viết sẵn, nằm chung trong đống chưa commit; tách ra sẽ là commit rỗng nghĩa |
+| 5 | Đóng Sprint 7 dù report đợt 2 chưa làm | Đợt 2 đã được ghi "không bắt buộc" từ §7am/§7an; ghi thành nợ mang sang, không tính vào DoD |
+
+### Kỷ luật #7 — đã chạy thật, không chỉ pytest
+
+| Việc | Kết quả |
+|---|---|
+| `python -m seeds.run` trên PG có dữ liệu | Idempotent (`created=0, updated=0` — phiên trước đã sync trước khi mất điện) |
+| Verify bằng SQL | Đúng 3 role (`system_admin`/`chain_pharmacist`/`branch_pharmacist`) có `analytics.read`+`analytics.reorder.run`; `cashier`/`warehouse` **không** có |
+| Round-trip API bằng token thật | dashboard 200 (doanh thu khớp dữ liệu bán thật) · reorder/run 200 · materialize 200 sinh PO **DRAFT** thật (`unit_price=0`) · materialize khi chưa có NCC → **409 có kiểm soát**, không 500 · chạy lại run không nhân đôi dòng |
+| Audit trên PG thật | `ANALYTICS_REORDER_RUN` + `ANALYTICS_SUGGESTION_MATERIALIZED` ghi đúng, `actor_user_id` = **người bấm thật**, không phải system-user |
+| Migration `0023` | live upgrade→downgrade→upgrade sạch, `alembic check` không drift. Backup `~/backup_pre_migration_20260725_0938.sql` |
+| Dọn dữ liệu thử | NCC thử + 3 PO + toàn bộ `reorder_suggestions` đã xoá; giữ lại tenant demo + vết audit (append-only, không xoá) |
+
+### Cổng chất lượng cuối phiên
+
+| Cổng | Kết quả |
+|---|---|
+| `ruff check` + `format --check` | sạch (351 file) |
+| `mypy` (strict) | 245 file, 0 lỗi |
+| `import-linter` | **16 contract / 0 broken** |
+| `pytest` | **734 passed** |
+| alembic | `0001`→`0023`, head khớp, không drift |
+
+### Còn nợ sau khi đóng Sprint 7
+
+| Mục | Trạng thái |
+|-----|-----------|
+| Report đợt 2 (top thuốc + xuất `ControlledLedgerEntry`) | Chưa làm — không bắt buộc từ đầu |
+| Retry đẩy DAV của `NationalSyncService` lên outbox | Vẫn best-effort riêng (ghi từ §7ai) |
+| Cảnh báo/khoá tồn-âm khi outbox chạy async | Nợ kỹ thuật, xem `TODO.md` |
+| `analytics` v2 | Phát hiện bất thường · mùa vụ/dịch bệnh · override lead-time theo tenant · chạy nền định kỳ |
+| Frontend cho analytics | Chưa có màn hình — backend-only như mọi module khác |
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-25 | **MODULE `analytics` XONG — SPRINT 7 ĐÓNG (§7ap)** — nối phiên bị **cúp điện 07:00** cắt ngang giữa bước 7/8. Dự báo trung bình trượt 90 ngày + mốc tái đặt hàng cấp thuốc×chi nhánh, đề xuất sinh **PO nháp** DRAFT trong `procurement`, dashboard doanh thu/top thuốc/cảnh báo tồn. 8 bước, 4 commit trong phiên này (`0bfb41b`→`a40de7e`→`77faa5e`→`97a4560`). **3 lỗi phát hiện khi rà**: (1) cổng ruff đỏ tại HEAD từ bước 4/8; (2) **`audit_logs.action` varchar(32) trong khi 3 action dài 33–36 ký tự → Postgres 500, mà 734 test vẫn xanh vì SQLite bỏ qua độ dài** — 2/3 action có từ trước, bug sống trên deployment thật, vá bằng mig `0023` + test chặn tái diễn; (3) **PO nháp ghi bằng system-user** lệch thiết kế Chain duyệt, mở cửa hậu leo thang quyền — nay ghi bằng identity người bấm. Kỷ luật #7 chạy đủ: seed idempotent + verify SQL (3 role có quyền, cashier/warehouse không) + round-trip API token thật trên PG (materialize sinh PO DRAFT thật, audit ghi đúng người bấm), dữ liệu thử đã dọn. 4 cổng xanh, pytest **734**, import-linter **16/0**, mig `0001`→`0023`. **Nợ mang sang (không tính DoD):** report đợt 2, retry DAV lên outbox, tồn-âm async, `analytics` v2, FE analytics. |
 | 2026-07-25 | **LỌC DOANH THU THEO NHÂN VIÊN XONG (§7ao)** — gỡ nợ §7an. Chain duyệt PA (a): thêm cột `sold_by_user_id` trên `sales_orders` (nullable vĩnh viễn, ghi từ JWT lúc chốt đơn), lọc `GET /reports/revenue/export?sold_by_user_id`. 3 commit stepped (`cd98f7b`→`8771234`→`b76a99b`), migration `0021` live+reversible (đã verify cột/index bằng `psql`, downgrade/upgrade sạch, `alembic check` không drift), backup `~/backup_pre_migration_20260725_0239.sql`. Tái dùng `sales.read` — KHÔNG quyền mới. 4 cổng xanh, pytest **695**. Kỷ luật #7 không áp dụng (thêm cột, không đụng seed/permission). `RevenueRow`/CSV giữ nguyên (chỉ thêm filter, không thêm chiều nhóm). **`analytics` vẫn chờ Opus.** |
 | 2026-07-24 | **REPORT XUẤT KHẨU đợt 1 XONG (§7an)** — GĐ giao 1/2 mục Sprint 7 còn treo (Sonnet, full-auto). `GET /reports/revenue/export` (doanh thu ngày/tuần/tháng, lọc chi nhánh) + `GET /reports/inventory/stock/export` (tồn kho theo lô/HSD) — cả hai CSV stream, KHÔNG quyền mới (tái dùng `sales.read`/`inventory.read`), KHÔNG migration. `core/http.py:csv_stream_body` tách từ audit dashboard để dùng chung. 3 commit stepped (`4c45f88`→`be9ada9`→`414269d`), live PG smoke-test khớp 100% với SQL (kỷ luật #7 tinh thần), dữ liệu thử đã dọn sạch. 4 cổng xanh, pytest **690**. **Đợt 2 (top thuốc + `ControlledLedgerEntry`) KHÔNG bắt buộc, chưa làm; lọc "theo nhân viên bán hàng" chặn ở thiếu dữ liệu — cần Chain quyết định hướng. `analytics` KHÔNG đụng — chờ phiên Opus.** |
 | 2026-07-24 | **AUDIT DASHBOARD XONG (§7al)** — GĐ giao 1/3 mục Sprint 7 (full-auto). Quyền RIÊNG `audit.dashboard.read` cấp cho admin+chain+branch (KHÔNG cashier/warehouse; branch có dashboard nhưng không `audit.read` thô). Filter actor+time+`target_type`+action (AND, optional) · export CSV stream theo lô. 3 commit stepped (`7346dbe`→`76ec94e`→`adb38da`), migration `0020` index entity, live PG round-trip + seed verify bằng SQL (kỷ luật #7). 4 cổng xanh, pytest **679**. **2 mục còn lại (`analytics`, report) KHÔNG đụng — chờ Chain trả lời yêu cầu.** |

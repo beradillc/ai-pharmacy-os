@@ -180,11 +180,16 @@ thật sự.
       endpoint `api/v1/audit-dashboard`), KHÔNG trong `compliance` như phác thảo cũ. Quyền RIÊNG
       `audit.dashboard.read` (admin+chain+branch, không cashier/warehouse) tách khỏi `audit.read`; lọc
       actor+time+`target_type`+action; export CSV. `/audit-logs` mức tối thiểu (§7l) vẫn giữ nguyên.
-- [ ] Module `analytics` — **yêu cầu chốt 2026-07-24 (GĐ, xem PROJECT_STATE §7am)**: dự báo v1 =
-      trung bình trượt 90 ngày + mốc tái đặt hàng, cấp **thuốc × chi nhánh**; đề xuất nhập sinh
-      **PO nháp** trong `procurement` (không tự gửi NCC); dashboard đầu = doanh thu/top thuốc/cảnh
-      báo cận date+tồn thấp/số PO nháp chờ duyệt. Hoãn v2: phát hiện bất thường + mùa vụ/dịch bệnh.
-      Giao Opus (thiết kế mới + cross-module `sales`/`inventory`→`procurement`).
+- [x] Module `analytics` — **XONG 2026-07-25 (§7ap)**. Yêu cầu chốt 2026-07-24 (GĐ, PROJECT_STATE
+      §7am) + thiết kế Chain duyệt 2026-07-25 (`docs/features/analytics/00_DESIGN_PROPOSAL.md`).
+      Dự báo v1 = trung bình trượt 90 ngày + mốc tái đặt hàng, cấp **thuốc × chi nhánh**; đề xuất
+      nhập sinh **PO nháp** trong `procurement` (không tự gửi NCC, `unit_price=0` chờ người điền);
+      dashboard = doanh thu/top thuốc/cảnh báo cận date+tồn thấp/số PO nháp chờ duyệt. Quyền mới
+      `analytics.read` + `analytics.reorder.run` (admin/chain/branch, KHÔNG cashier/warehouse).
+      Cross-module qua 5 adapter ở `api/v1/analytics_wiring.py` — `analytics` không import module
+      nào khác (2 contract import-linter mới). Bảng `reorder_suggestions` (mig `0022`).
+      *Hoãn v2 như đã chốt:* phát hiện bất thường + mùa vụ/dịch bệnh; lead-time/tồn an toàn còn là
+      mặc định toàn hệ thống, chưa cho override theo tenant; tính toán chỉ chạy on-demand.
 - [x] Report xuất khẩu — **đợt 1 XONG 2026-07-24 (§7an)**: doanh thu ngày/tuần/tháng theo chi nhánh
       (`GET /reports/revenue/export`) + tồn kho theo lô/HSD (`GET /reports/inventory/stock/export`),
       CSV stream (tái dùng `csv_export.py`/helper stream từ audit dashboard), quyền tái dùng
@@ -193,9 +198,18 @@ thật sự.
       + `GET /reports/revenue/export?sold_by_user_id` (Chain duyệt PA (a)).
       *Đợt 2 (không bắt buộc) chưa làm:* top thuốc bán chạy + xuất `ControlledLedgerEntry`.
 
-**DoD:** Sổ kiểm soát khớp movements; dashboard hiển thị số liệu thật; đề xuất nhập sinh PO nháp;
-**hồ sơ sức khỏe KH trả lời được 6 câu hỏi thanh tra bằng dữ liệu trong hệ thống** (xem Bước 0 của
-tài liệu tính năng), thu ngân không xem được dị ứng/bệnh nền.
+**DoD:** ✅ Đạt (2026-07-25). Bằng chứng đã chạy thật trên Postgres có dữ liệu, không chỉ pytest:
+- ✅ Sổ kiểm soát khớp movements (C.1–C.5, §7b).
+- ✅ Dashboard hiển thị số liệu **thật** — `GET /analytics/dashboard` trả doanh thu/top thuốc khớp
+  dữ liệu bán thật trên DB đang chạy (§7ap).
+- ✅ Đề xuất nhập sinh PO nháp — materialize tạo `purchase_orders` DRAFT thật, verify bằng SQL (§7ap).
+- ✅ Hồ sơ sức khỏe KH trả lời 6 câu hỏi thanh tra; thu ngân không xem được dị ứng/bệnh nền
+  (`crm.sensitive.read` tách riêng, §7m).
+
+*Nợ mang sang, đã ghi rõ — không tính vào DoD:* (1) report đợt 2 (top thuốc + xuất
+`ControlledLedgerEntry`) — không bắt buộc, chưa làm; (2) vòng retry đẩy DAV của `NationalSyncService`
+vẫn best-effort, chưa lên outbox; (3) cảnh báo/khoá tồn-âm khi outbox chạy async ([TODO.md](TODO.md));
+(4) `analytics` v2 (bất thường, mùa vụ, override lead-time theo tenant, chạy nền định kỳ).
 
 ---
 

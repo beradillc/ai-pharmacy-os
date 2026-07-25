@@ -1,6 +1,11 @@
-# Module `analytics` — Bản thiết kế đề xuất (DRAFT, chờ Chain duyệt)
+# Module `analytics` — Bản thiết kế (ĐÃ DUYỆT & ĐÃ TRIỂN KHAI)
 
-> Trạng thái: **Q1–Q4 ĐÃ CHỐT (2026-07-25)** — còn chờ Chain gật quyền (mục 6) + lệnh bắt đầu code.
+> Trạng thái: **ĐÃ TRIỂN KHAI XONG 2026-07-25** — 8 bước stepped-commit, xem PROJECT_STATE §7ap.
+> Một điểm lệch giữa code và bản thiết kế này đã bị bắt khi rà và **đã sửa theo bản thiết kế**:
+> mục 6 yêu cầu materialize đi qua procurement bằng identity **người bấm**, bản wiring đầu dùng
+> system-user (commit sửa `97a4560`).
+>
+> Trạng thái cũ khi lập: **Q1–Q4 ĐÃ CHỐT (2026-07-25)** — chờ Chain gật quyền (mục 6) + lệnh code.
 > Lập theo yêu cầu chốt PROJECT_STATE §7am
 > (GĐ, Chain duyệt 2026-07-24) + Chain chọn **hướng (b) "dừng duyệt thiết kế trước khi code"**
 > (2026-07-25). Đây là điểm nối cross-module 3 module đầu tiên của dự án nên bỏ 1 nhịp duyệt.
