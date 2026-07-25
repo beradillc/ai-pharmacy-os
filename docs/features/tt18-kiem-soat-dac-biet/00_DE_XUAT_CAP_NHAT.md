@@ -80,3 +80,22 @@ TT18/2026 có hiệu lực **16/7/2026** và **bãi bỏ TT20/2017**, trong khi 
 | 1 | **Phần đầu sổ** (tên thuốc/nồng độ, số ĐKLH, đơn vị tính, nhà sản xuất) chưa kết xuất được ⇒ file CSV hiện là **phần bảng của sổ**, chưa phải sổ hoàn chỉnh để in ra ký | Các trường này thuộc `catalog`; phải mở rộng read-port `DrugMasterFacts` = **cross-module**, kỷ luật 2 buộc đề xuất thiết kế và chờ duyệt |
 | 2 | Tự động suy `category` từ công thức thuốc theo 9 tiêu chí PL VII + ngưỡng PL IV/V/VI (hiện vẫn gán tay) | Cũng cần đọc thành phần hoạt chất từ `catalog` — **cross-module**, và không nằm trong 6 bước Chain đã duyệt |
 | 3 | Xuất Excel (mới có CSV) | Chưa ai yêu cầu; CSV mở được bằng Excel. Chờ Chain nói có cần .xlsx đúng khuôn mẫu để in không |
+
+## 7. Điểm dừng phiên 2026-07-25 (GĐ được Chain ủy quyền quyết)
+
+Chain báo đã tải 3 thông tư còn thiếu lên bookmark, nhưng **không tìm thấy trên máy này** —
+`00-Bookmark/` chỉ có TT18, toàn Vault + Downloads + Desktop không có file nào mới sau 10:30.
+**Việc đầu tiên phiên sau:** kiểm tra `/home/gau/Vault/00-Bookmark/` xem NĐ 163/2025, TT 33/2025,
+TT 26/2025 đã tới chưa; có thì trích như đã làm với TT18 (script trong lịch sử phiên) rồi trả lời
+đúng 3 câu hỏi dưới đây.
+
+| # | Câu hỏi chờ văn bản | Trạng thái tạm thời GĐ chốt |
+|---|---|---|
+| 1 | Nhà thuốc bán lẻ có nghĩa vụ báo cáo định kỳ không? (NĐ 163/2025) | **Giữ "chưa kết luận được"** — không được viết vào tài liệu là "miễn báo cáo" |
+| 2 | Thời hạn lưu hồ sơ, sổ sách (TT 33/2025) | **Giữ mức sàn hiện tại**: không hard-delete, ≥2 năm sau `expiry_date`. Chỉ nới xuống khi đọc được văn bản |
+| 3 | Thời hạn lưu đơn thuốc GN/HT (TT 26/2025) | Như trên; TT 26/2025 còn có thể là nguồn còn thiếu cho rule "mọi thuốc ETC cần đơn" (docs/13 C.3 rule 1 — cờ vẫn TẮT) |
+
+**GĐ chốt thêm (dùng quyền được ủy quyền):** bước 6 chữ ký số làm theo trình tự
+*soạn thiết kế 3 hướng kèm chi phí → Chain xem → mới code*, **không gộp vào đợt code kế tiếp**.
+Lý do: chênh lệch giữa "ký bằng tài khoản IAM + chuỗi hash" và "chữ ký số USB token" là chi phí và
+thói quen vận hành hằng ngày của dược sĩ, không phải lựa chọn kỹ thuật thuần.
