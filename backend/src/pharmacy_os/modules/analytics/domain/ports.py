@@ -11,7 +11,9 @@ Two kinds live here:
 
 All source methods take plain scope data (``tenant_id``/``branch_id``), never a
 ``RequestContext`` — authorisation is enforced at the analytics service boundary, and
-the adapters supply their own system context downstream.
+the adapters supply their own system context downstream. The one **write** sink is the
+exception in substance (it forwards the caller's identity/grants, see
+:class:`DraftPoSink`) but not in shape: it too takes plain data, not a context object.
 """
 
 from __future__ import annotations
@@ -69,13 +71,22 @@ class DraftPoCountSource(Protocol):
 class DraftPoSink(Protocol):
     """Create a single-line DRAFT purchase order from a suggestion (adapter over
     procurement). Returns the new PO's id. Price is left to the human to fill in on
-    the draft, so a supplier quote isn't invented here."""
+    the draft, so a supplier quote isn't invented here.
+
+    Unlike the read sources, this **write** carries the acting human's identity and
+    grants rather than a system identity (design doc §6, Chain duyệt 2026-07-25): a
+    draft PO must have someone answerable for it, and procurement gets to enforce its
+    own ``procurement.po.create`` against the real caller — so an ``analytics.*`` grant
+    alone can never mint purchase orders.
+    """
 
     async def create_draft_po(
         self,
         tenant_id: UUID,
         branch_id: UUID,
         *,
+        actor_user_id: UUID,
+        actor_permissions: frozenset[str],
         supplier_id: UUID,
         drug_id: UUID,
         quantity: Decimal,

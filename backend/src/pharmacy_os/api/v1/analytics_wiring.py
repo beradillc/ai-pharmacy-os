@@ -2,10 +2,13 @@
 
 Analytics never imports sales/inventory/procurement (module-independence); it declares
 port shapes and the adapters here implement them over those modules' services. Every
-adapter reads/writes under a fixed **system identity** holding exactly the permissions
-that call needs — so an analytics user needs only the ``analytics.*`` grants, and the
+adapter **reads** under a fixed **system identity** holding exactly the permissions that
+call needs — so an analytics user needs only the ``analytics.*`` grants, and the
 tenant/branch scope comes from the data the analytics service passes in, not from the
 caller's token. This mirrors ``cross_module.py``'s system-reaction pattern.
+
+The single **write** (:class:`DraftPoSinkAdapter`) is deliberately different: it runs as
+the human who pressed the button, with their own grants — see its docstring.
 """
 
 from __future__ import annotations
@@ -106,7 +109,12 @@ class DraftPoSinkAdapter:
     """``DraftPoSink`` over ``ProcurementService`` (writes via ``procurement.po.create``).
 
     Creates a single-line DRAFT PO with ``unit_price = 0``: analytics forecasts demand,
-    not price — the human fills the quote in on the draft before placing it."""
+    not price — the human fills the quote in on the draft before placing it.
+
+    The **only** adapter here that does not use the system identity: it runs as the
+    human who pressed materialise, with exactly their grants (design doc §6). So a role
+    holding ``analytics.reorder.run`` but not ``procurement.po.create`` is refused by
+    procurement itself — analytics is not a side door into creating purchase orders."""
 
     def __init__(self, procurement: ProcurementService) -> None:
         self._procurement = procurement
@@ -116,11 +124,18 @@ class DraftPoSinkAdapter:
         tenant_id: UUID,
         branch_id: UUID,
         *,
+        actor_user_id: UUID,
+        actor_permissions: frozenset[str],
         supplier_id: UUID,
         drug_id: UUID,
         quantity: Decimal,
     ) -> UUID:
-        ctx = _ctx(tenant_id, branch_id, frozenset({"procurement.po.create"}))
+        ctx = RequestContext(
+            tenant_id=tenant_id,
+            branch_id=branch_id,
+            user_id=actor_user_id,
+            permissions=actor_permissions,
+        )
         out = await self._procurement.create_purchase_order(
             CreatePurchaseOrderInput(
                 supplier_id=supplier_id,

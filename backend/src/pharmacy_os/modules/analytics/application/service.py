@@ -184,6 +184,8 @@ class AnalyticsService:
             po_id = await self._draft_po_sink.create_draft_po(
                 ctx.tenant_id,
                 suggestion.branch_id,
+                actor_user_id=ctx.user_id,
+                actor_permissions=ctx.permissions,
                 supplier_id=suggestion.supplier_id,
                 drug_id=suggestion.drug_id,
                 quantity=suggestion.suggested_qty,

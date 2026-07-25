@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
-from pharmacy_os.core.errors import ConflictError, NotFoundError
+from pharmacy_os.core.errors import ConflictError, NotFoundError, PermissionDeniedError
 from pharmacy_os.core.events import InMemoryEventBus
 from pharmacy_os.modules.analytics.application import AnalyticsService
 from pharmacy_os.modules.analytics.domain import DrugSoldQty, SuggestionStatus
@@ -77,18 +77,22 @@ class _FakeDraftPoCount:
 class _FakeDraftPoSink:
     def __init__(self) -> None:
         self.created: list[tuple[UUID, UUID, Decimal]] = []
+        self.actors: list[tuple[UUID, frozenset[str]]] = []
 
     async def create_draft_po(
         self,
         tenant_id: UUID,
         branch_id: UUID,
         *,
+        actor_user_id: UUID,
+        actor_permissions: frozenset[str],
         supplier_id: UUID,
         drug_id: UUID,
         quantity: Decimal,
     ) -> UUID:
         po_id = uuid4()
         self.created.append((supplier_id, drug_id, quantity))
+        self.actors.append((actor_user_id, actor_permissions))
         return po_id
 
 
@@ -180,19 +184,54 @@ async def test_materialize_creates_draft_po_and_marks(
         supplier=_FakeSupplier({drug: supplier_id}),
         sink=sink,
     )
-    run = _ctx("analytics.reorder.run")
+    run = _ctx("analytics.reorder.run", "procurement.po.create")
     await svc.run_reorder(run)
     sug = (await svc.list_suggestions(_ctx("analytics.read")))[0]
 
     out = await svc.materialize(sug.id, run)
     assert sink.created == [(supplier_id, drug, Decimal("16"))]
     assert out.po_id is not None
+    # The draft PO is written as the human who pressed it, with their own grants —
+    # never a system identity (design doc §6): procurement stays the authority on
+    # ``procurement.po.create``.
+    assert sink.actors == [(run.user_id, run.permissions)]
 
     materialized = await svc.list_suggestions(
         _ctx("analytics.read"), status=SuggestionStatus.MATERIALIZED
     )
     assert materialized[0].po_id == out.po_id
     with pytest.raises(ConflictError):  # already materialized
+        await svc.materialize(sug.id, run)
+
+
+async def test_materialize_cannot_bypass_procurement_permission(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    """``analytics.reorder.run`` alone must not mint purchase orders: the caller's own
+    grants travel to procurement, so procurement's check is the one that decides."""
+
+    class _PermissionCheckingSink(_FakeDraftPoSink):
+        async def create_draft_po(self, *args: object, **kwargs: object) -> UUID:
+            perms = kwargs["actor_permissions"]
+            assert isinstance(perms, frozenset)
+            if "procurement.po.create" not in perms:
+                raise PermissionDeniedError("Thiếu quyền procurement.po.create")
+            return await super().create_draft_po(*args, **kwargs)  # type: ignore[arg-type]
+
+    drug, supplier_id = uuid4(), uuid4()
+    sales = _FakeSales([DrugSoldQty(drug, Decimal("90"), Decimal("900000"))])
+    svc = _service(
+        session_factory,
+        event_bus,
+        sales=sales,
+        stock=_FakeStock({drug: Decimal("4")}),
+        supplier=_FakeSupplier({drug: supplier_id}),
+        sink=_PermissionCheckingSink(),
+    )
+    run = _ctx("analytics.reorder.run")  # no procurement grant
+    await svc.run_reorder(run)
+    sug = (await svc.list_suggestions(_ctx("analytics.read")))[0]
+    with pytest.raises(PermissionDeniedError):
         await svc.materialize(sug.id, run)
 
 
