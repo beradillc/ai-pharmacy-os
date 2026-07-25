@@ -1,8 +1,8 @@
 # TODO — AI Pharmacy OS
 
-> Trạng thái công việc theo hạng mục. Cập nhật cuối: **2026-07-23** (rà lại đối chiếu
-> `PROJECT_STATE.md`, mục A6 danh sách ưu tiên đã duyệt — chỉ sửa dòng đã xác nhận lại bằng lệnh
-> thật/PROJECT_STATE, không rà toàn bộ file để tránh sai sót do thiếu bối cảnh phiên cũ hơn).
+> Trạng thái công việc theo hạng mục. Cập nhật cuối: **2026-07-25** (chỉ sửa dòng đã xác nhận lại
+> bằng lệnh thật/PROJECT_STATE, không rà toàn bộ file để tránh sai sót do thiếu bối cảnh phiên cũ
+> hơn — cùng kỷ luật đã áp dụng 2026-07-23).
 > Nguồn sự thật tổng quan: [PROJECT_STATE.md](PROJECT_STATE.md). Lộ trình: [ROADMAP.md](ROADMAP.md).
 
 ---
@@ -127,9 +127,16 @@
       module chỉ có domain/app/infra, không endpoint nào.
 - [x] Audit cho `compliance` (2 action: `CONTROLLED_LEDGER_ENTRY_RECORDED`, `TENANT_COMPLIANCE_CONFIG_SET`) — **XONG
       2026-07-23** (PROJECT_STATE §7r).
-- [ ] **Nguồn còn thiếu** (chặn phần liên quan, xem cảnh báo đầu docs/13): NĐ163/2025, NĐ90/2026, đặc tả API DAV, văn bản
-      kê đơn ngoại trú hiện hành (cho rule C.3.1 ETC). **TT11/2025 đã có** (`docs/legal/Thông-tư-11-2025-TT-BYT.SUMMARY.md`,
-      xác nhận lại 2026-07-23) — bớt 1/5 so với danh sách gốc.
+- [x] ~~**Nguồn còn thiếu**: NĐ163/2025~~ — **ĐÃ ĐỌC 2026-07-25** (`docs/legal/Nghị-định-163-2025-NĐ-CP.SUMMARY.md`).
+      Còn thiếu: NĐ90/2026, đặc tả API DAV, văn bản kê đơn ngoại trú hiện hành (cho rule C.3.1 ETC — TT26/2025 đã đọc
+      **không phải** nguồn này, xem `docs/legal/Thông-tư-26-2025-TT-BYT.SUMMARY.md`). **TT11/2025 đã có** từ trước.
+- [x] **TT 18/2026/TT-BYT thay TT 20/2017** (đã hết hiệu lực 16/7/2026) — **XONG bước 1-3/6 (2026-07-25)**: căn cứ
+      pháp lý, seed 122 hoạt chất (PL I/II/III + ngưỡng IV/V/VI, mig `0024`), enum 7→9 giá trị + sổ Phụ lục XVI + endpoint
+      kết xuất CSV. Bước 4 (biên bản nhận lại PL XVIII), 5 (kết xuất cuối ngày) **chưa code**; bước 6 (chữ ký số Điều
+      15.1.d) **chỉ thiết kế**, chờ Chain chọn 1 trong 3 hướng. Xem PROJECT_STATE §7ar, `docs/features/tt18-kiem-soat-dac-biet/`.
+- [x] **Báo cáo định kỳ NĐ163 Điều 35.2 (Mẫu số 06)** — **XONG (2026-07-25)**: phát hiện đảo ngược kết luận cũ, bán lẻ
+      CÓ nghĩa vụ báo cáo 6 tháng/năm gửi UBND cấp tỉnh. Endpoint `GET /compliance/periodic-report/export`, wiring lần
+      đầu tiên `DrugMasterProvider`. Xem PROJECT_STATE §7as/§7at, `docs/13_COMPLIANCE_SPEC.md` mục C.7.
 
 ### Sprint 5 — Clinical AI (S5.5, mock LLM only)
 - [x] **5.5.1 domain** — `clinical/domain`: `DrugInteraction` (cặp hoạt chất canonical), `AiRecommendation`
