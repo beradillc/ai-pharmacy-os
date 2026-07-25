@@ -27,6 +27,7 @@ from pharmacy_os.modules.clinical.domain import AiContextType
 from pharmacy_os.modules.compliance.domain import DrugMasterFacts
 from pharmacy_os.modules.crm.application import CrmService, MedicationHistoryItemInput
 from pharmacy_os.modules.crm.domain import MedicationHistorySource
+from pharmacy_os.modules.iam.application import AuthService
 from pharmacy_os.modules.inventory.application import (
     GoodsReceiptLine,
     InventoryService,
@@ -435,6 +436,24 @@ class CatalogDrugMasterProvider:
             strength=drug.strength,
             active_ingredients=" + ".join(ref.name for ref in ingredients),
         )
+
+
+class IamAuthReauthProvider:
+    """Adapter for compliance's ``SigningReauthProvider`` (docs/13 mục C.5, ký sổ hướng A).
+
+    Bọc ``iam.AuthService.verify_own_password`` — ``compliance`` cần xác minh mật khẩu của
+    người dùng hiện tại trước khi ký, nhưng không sở hữu ``User``/mật khẩu (thuộc ``iam``).
+    Cùng vị trí/hình dạng với :class:`CatalogDrugMasterProvider` — compliance không import
+    iam trực tiếp. Không dùng ``_SYSTEM_USER`` giả — ``ctx`` truyền vào đây LÀ ctx thật của
+    người đang ký, không phải một ctx hệ thống dựng sẵn như các adapter phản ứng sự kiện ở
+    trên (xem docs/features/tt18-kiem-soat-dac-biet/02_DECISIONS_KY_SO.md Bước 3).
+    """
+
+    def __init__(self, auth: AuthService) -> None:
+        self._auth = auth
+
+    async def verify(self, ctx: RequestContext, plain_password: str) -> bool:
+        return await self._auth.verify_own_password(ctx, plain_password)
 
 
 class PrescriptionInfoAdapter:

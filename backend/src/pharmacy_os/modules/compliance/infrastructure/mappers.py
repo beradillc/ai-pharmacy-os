@@ -7,6 +7,8 @@ from pharmacy_os.modules.compliance.domain import (
     ControlledSubstanceCategory,
     CustomerDetail,
     DrugReturnRecord,
+    LedgerBookSignature,
+    LedgerBookType,
     LedgerDirection,
     NationalSyncLog,
     ReturnedDrugItem,
@@ -18,6 +20,7 @@ from pharmacy_os.modules.compliance.infrastructure.models import (
     ControlledLedgerEntryORM,
     DrugReturnItemORM,
     DrugReturnRecordORM,
+    LedgerBookSignatureORM,
     NationalSyncLogORM,
     TenantComplianceConfigORM,
 )
@@ -122,6 +125,32 @@ def sync_log_to_orm(log: NationalSyncLog) -> NationalSyncLogORM:
         retry_count=log.retry_count,
         error=log.error,
         created_at=log.created_at,
+    )
+
+
+def ledger_book_signature_to_domain(row: LedgerBookSignatureORM) -> LedgerBookSignature:
+    return LedgerBookSignature(
+        id=row.id,
+        tenant_id=row.tenant_id,
+        book_type=LedgerBookType(row.book_type),
+        book_date=row.book_date,
+        content_sha256=row.content_sha256,
+        prev_hash=row.prev_hash,
+        signed_by_user_id=row.signed_by_user_id,
+        signed_at=row.signed_at,
+    )
+
+
+def ledger_book_signature_to_orm(signature: LedgerBookSignature) -> LedgerBookSignatureORM:
+    return LedgerBookSignatureORM(
+        id=signature.id,
+        tenant_id=signature.tenant_id,
+        book_type=signature.book_type.value,
+        book_date=signature.book_date,
+        content_sha256=signature.content_sha256,
+        prev_hash=signature.prev_hash,
+        signed_by_user_id=signature.signed_by_user_id,
+        signed_at=signature.signed_at,
     )
 
 

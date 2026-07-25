@@ -8,13 +8,18 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
-from pharmacy_os.core.errors import NotFoundError, ValidationError
+from pharmacy_os.core.errors import (
+    ConflictError,
+    NotFoundError,
+    UnauthenticatedError,
+    ValidationError,
+)
 from pharmacy_os.core.security import require_permission
 from pharmacy_os.modules.compliance.application.csv_export import (
     render_ledger_book_csv_text,
@@ -26,10 +31,12 @@ from pharmacy_os.modules.compliance.application.dto import (
     DailyLedgerClosureExport,
     DrugReturnRecordOutput,
     LedgerBookRow,
+    LedgerBookSignatureOutput,
     PeriodicReportRow,
     RecordControlledEntryInput,
     RecordDrugReturnInput,
     SetTenantComplianceConfigInput,
+    SignLedgerBookInput,
     TenantComplianceConfigOutput,
 )
 from pharmacy_os.modules.compliance.domain import (
@@ -38,10 +45,12 @@ from pharmacy_os.modules.compliance.domain import (
     ControlledSubstanceCategory,
     CustomerDetail,
     DrugReturnRecord,
+    LedgerBookSignature,
     LedgerBookType,
     LedgerDirection,
     ReturnedDrugItem,
     TenantComplianceConfig,
+    book_type_for,
     validate_controlled_sale,
 )
 from pharmacy_os.modules.compliance.domain.ports import (
@@ -49,6 +58,8 @@ from pharmacy_os.modules.compliance.domain.ports import (
     DrugMasterFacts,
     DrugMasterProvider,
     DrugReturnRecordRepository,
+    LedgerBookSignatureRepository,
+    SigningReauthProvider,
     TenantComplianceConfigRepository,
 )
 
@@ -56,6 +67,7 @@ UowFactory = Callable[[], UnitOfWork]
 LedgerRepoFactory = Callable[[UnitOfWork, RequestContext], ControlledLedgerRepository]
 ConfigRepoFactory = Callable[[UnitOfWork, RequestContext], TenantComplianceConfigRepository]
 DrugReturnRepoFactory = Callable[[UnitOfWork, RequestContext], DrugReturnRecordRepository]
+SignatureRepoFactory = Callable[[UnitOfWork, RequestContext], LedgerBookSignatureRepository]
 
 #: Phạm vi NĐ163 Điều 35.2.a — không gồm THUOC_DOC/DANH_MUC_CAM (Điều 35.2.b chỉ bắt bán lẻ
 #: báo cáo phóng xạ, không bắt 2 nhóm đó; cũng không gồm NONE — thuốc không kiểm soát).
@@ -78,6 +90,8 @@ class ComplianceService:
         audit: AuditLogger,
         drug_master: DrugMasterProvider | None = None,
         drug_return_repo_factory: DrugReturnRepoFactory | None = None,
+        signature_repo_factory: SignatureRepoFactory | None = None,
+        reauth: SigningReauthProvider | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._ledger_repo_factory = ledger_repo_factory
@@ -85,6 +99,8 @@ class ComplianceService:
         self._audit = audit
         self._drug_master = drug_master
         self._drug_return_repo_factory = drug_return_repo_factory
+        self._signature_repo_factory = signature_repo_factory
+        self._reauth = reauth
 
     async def record_controlled_entry(
         self, data: RecordControlledEntryInput, ctx: RequestContext
@@ -136,6 +152,8 @@ class ComplianceService:
             raise ValidationError(str(exc)) from exc
 
         async with self._uow_factory() as uow:
+            if self._signature_repo_factory is not None:
+                await self._reject_if_day_signed(uow, ctx, entry.category, entry.transaction_at)
             repo = self._ledger_repo_factory(uow, ctx)
             await repo.add(entry)
             await uow.commit()
@@ -186,8 +204,10 @@ class ComplianceService:
     ) -> DailyLedgerClosureExport:
         """Kết xuất cuối ngày (docs/13 mục C.5 — ghi chú Phụ lục VIII: "trích xuất, in cuối
         mỗi ngày"). Chỉ đáp ứng điều kiện **(a)** của Điều 15.1 (toàn vẹn, có hash) — điều
-        kiện **(d)** (chữ ký số/xác nhận điện tử) là bước 6 riêng, chưa code, chờ Chain chọn
-        hướng. Cho tới lúc đó, nhà thuốc vẫn phải in file này ra và **ký tay** mỗi ngày.
+        kiện **(d)** (chữ ký số/xác nhận điện tử) là :meth:`sign_daily_closure` (bước 6, hướng
+        A), một hành vi riêng SAU khi đã xem kết xuất này. Cho tới khi ký, nhà thuốc vẫn phải
+        in file này ra và **ký tay** mỗi ngày (điều kiện kèm theo của hướng A, xem
+        docs/features/tt18-kiem-soat-dac-biet/02_DECISIONS_KY_SO.md Bước 1).
         """
         require_permission(ctx, "compliance.ledger.read")
         async with self._uow_factory() as uow:
@@ -217,6 +237,95 @@ class ComplianceService:
             content_sha256=content_sha256,
             row_count=len(rows),
         )
+
+    def _signature_repo(
+        self, uow: UnitOfWork, ctx: RequestContext
+    ) -> LedgerBookSignatureRepository:
+        if self._signature_repo_factory is None:
+            raise RuntimeError(
+                "ComplianceService chưa được wiring signature_repo_factory — lỗi cấu hình, "
+                "không phải lỗi người dùng (xem interface/register.py)"
+            )
+        return self._signature_repo_factory(uow, ctx)
+
+    async def _reject_if_day_signed(
+        self,
+        uow: UnitOfWork,
+        ctx: RequestContext,
+        category: ControlledSubstanceCategory,
+        transaction_at: datetime,
+    ) -> None:
+        """Chặn ghi thêm dòng vào 1 ngày đã ký (docs/13 mục C.5 — hệ quả "ký xong là chốt sổ")."""
+        book_type = book_type_for(category)
+        day = transaction_at.date()
+        sig_repo = self._signature_repo(uow, ctx)
+        if await sig_repo.get_for_day(book_type, day) is not None:
+            raise ConflictError(
+                f"Sổ {book_type.value} ngày {day} đã ký xác nhận — không ghi thêm được"
+            )
+
+    async def sign_daily_closure(
+        self, data: SignLedgerBookInput, ctx: RequestContext
+    ) -> LedgerBookSignatureOutput:
+        """Ký xác nhận điện tử 1 sổ/1 ngày — hướng A (docs/13 mục C.5, bước 6/6 TT18).
+
+        Tính lại ``content``/hash từ CHÍNH dữ liệu hiện có trong CSDL bằng đúng hàm
+        :func:`render_ledger_book_csv_text` mà :meth:`export_daily_closure` dùng — không tin
+        hash do client gửi lên, tránh ký sai nội dung do client tự tính/giả mạo. Yêu cầu
+        re-auth (nhập lại mật khẩu ngay trước khi ký, không chấp nhận phiên đang mở sẵn — xem
+        docs/features/tt18-kiem-soat-dac-biet/02_DECISIONS_KY_SO.md Bước 3).
+        """
+        require_permission(ctx, "compliance.ledger.sign")
+        if self._reauth is None:
+            raise RuntimeError(
+                "ComplianceService chưa được wiring reauth provider — lỗi cấu hình, "
+                "không phải lỗi người dùng (xem interface/register.py)"
+            )
+        if not await self._reauth.verify(ctx, data.current_password):
+            raise UnauthenticatedError("Mật khẩu hiện tại không đúng")
+
+        async with self._uow_factory() as uow:
+            sig_repo = self._signature_repo(uow, ctx)
+            if await sig_repo.get_for_day(data.book_type, data.book_date) is not None:
+                raise ConflictError(
+                    f"Sổ {data.book_type.value} ngày {data.book_date} đã ký xác nhận rồi"
+                )
+            ledger_repo = self._ledger_repo_factory(uow, ctx)
+            entries = await ledger_repo.list_for_book(
+                data.book_type, from_date=data.book_date, to_date=data.book_date
+            )
+            content = render_ledger_book_csv_text(to_book_rows(entries))
+            content_sha256 = hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+            prev = await sig_repo.latest_before(data.book_type, data.book_date)
+            try:
+                signature = LedgerBookSignature(
+                    tenant_id=ctx.tenant_id,
+                    book_type=data.book_type,
+                    book_date=data.book_date,
+                    content_sha256=content_sha256,
+                    prev_hash=prev.content_sha256 if prev is not None else None,
+                    signed_by_user_id=ctx.user_id,
+                )
+            except ValueError as exc:
+                raise ValidationError(str(exc)) from exc
+            await sig_repo.add(signature)
+            await uow.commit()
+
+        await self._audit.record(
+            AuditEntry(
+                tenant_id=ctx.tenant_id,
+                actor_user_id=ctx.user_id,
+                action=AuditAction.LEDGER_BOOK_SIGNED,
+                target_type="ledger_book_signature",
+                target_id=f"{data.book_type.value}_{data.book_date.isoformat()}",
+            ).with_context(
+                client_ip=ctx.client_ip,
+                branch_id=str(ctx.branch_id),
+                content_sha256=content_sha256,
+            )
+        )
+        return LedgerBookSignatureOutput.of(signature)
 
     async def export_periodic_report(
         self, *, from_date: date, to_date: date, ctx: RequestContext

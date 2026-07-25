@@ -17,6 +17,7 @@ from pharmacy_os.api.v1.compliance_cross import wire_compliance_sync
 from pharmacy_os.api.v1.cross_module import (
     CatalogDrugInfoProvider,
     CatalogDrugMasterProvider,
+    IamAuthReauthProvider,
     PrescriptionInfoAdapter,
     wire_goods_receipt_stock_in,
     wire_medication_history,
@@ -35,6 +36,7 @@ from pharmacy_os.modules.catalog.interface import register as register_catalog
 from pharmacy_os.modules.clinical.interface import register as register_clinical
 from pharmacy_os.modules.compliance.interface import register as register_compliance
 from pharmacy_os.modules.crm.interface import register as register_crm
+from pharmacy_os.modules.iam.application import AuthService
 from pharmacy_os.modules.iam.interface import register as register_iam
 from pharmacy_os.modules.inventory.interface import register as register_inventory
 from pharmacy_os.modules.prescription.application import PrescriptionService
@@ -75,8 +77,12 @@ def build_api_router(container: Container) -> APIRouter:
     # Compliance: sổ thuốc kiểm soát đặc biệt + cấu hình tenant + liên thông CSDL Dược.
     # drug_master: first real wiring of a port defined earlier for QĐ540 Bảng 1 but never
     # implemented — reused 2026-07-25 for the Mẫu số 06 periodic report (docs/13 mục C.7).
+    # reauth: bước 6 ký sổ điện tử (docs/13 mục C.5, hướng A) — compliance verifies a
+    # password it doesn't own via a read-port wrapping iam's AuthService, same shape as
+    # drug_master (docs/features/tt18-kiem-soat-dac-biet/02_DECISIONS_KY_SO.md Bước 3).
     drug_master = CatalogDrugMasterProvider(container.resolve(CatalogService))
-    api.include_router(register_compliance(container, get_context, drug_master))
+    reauth = IamAuthReauthProvider(container.resolve(AuthService))
+    api.include_router(register_compliance(container, get_context, drug_master, reauth))
 
     # Catalog is authoritative for a sale's Rx status; prescription for its ref
     # validity (adapters over their services — sales imports neither module).

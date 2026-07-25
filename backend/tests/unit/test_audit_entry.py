@@ -92,6 +92,7 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "PERIODIC_REPORT_EXPORTED",
         "DRUG_RETURN_RECORDED",
         "LEDGER_DAILY_CLOSURE_EXPORTED",
+        "LEDGER_BOOK_SIGNED",
         "SALE_COMPLETED",
         "INVENTORY_STOCK_RECEIVED",
         "INVENTORY_STOCK_DISPENSED",

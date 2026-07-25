@@ -15,6 +15,7 @@ from pharmacy_os.modules.compliance.domain import (
     ControlledLedgerEntry,
     ControlledSubstanceCategory,
     DrugReturnRecord,
+    LedgerBookSignature,
     LedgerBookType,
     LedgerDirection,
     LedgerPeriodAggregate,
@@ -25,6 +26,8 @@ from pharmacy_os.modules.compliance.domain import (
 from pharmacy_os.modules.compliance.infrastructure.mappers import (
     drug_return_record_to_domain,
     drug_return_record_to_orm,
+    ledger_book_signature_to_domain,
+    ledger_book_signature_to_orm,
     ledger_entry_to_domain,
     ledger_entry_to_orm,
     sync_log_to_domain,
@@ -35,6 +38,7 @@ from pharmacy_os.modules.compliance.infrastructure.mappers import (
 from pharmacy_os.modules.compliance.infrastructure.models import (
     ControlledLedgerEntryORM,
     DrugReturnRecordORM,
+    LedgerBookSignatureORM,
     NationalSyncLogORM,
     TenantComplianceConfigORM,
 )
@@ -220,6 +224,43 @@ class SqlAlchemyNationalSyncLogRepository:
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return sync_log_to_domain(row) if row is not None else None
+
+
+class SqlAlchemyLedgerBookSignatureRepository:
+    def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
+        self._session = session
+        self._ctx = ctx
+
+    async def add(self, signature: LedgerBookSignature) -> None:
+        self._session.add(ledger_book_signature_to_orm(signature))
+        await self._session.flush()
+
+    async def get_for_day(
+        self, book_type: LedgerBookType, book_date: date
+    ) -> LedgerBookSignature | None:
+        stmt = select(LedgerBookSignatureORM).where(
+            LedgerBookSignatureORM.tenant_id == self._ctx.tenant_id,
+            LedgerBookSignatureORM.book_type == book_type.value,
+            LedgerBookSignatureORM.book_date == book_date,
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return ledger_book_signature_to_domain(row) if row is not None else None
+
+    async def latest_before(
+        self, book_type: LedgerBookType, book_date: date
+    ) -> LedgerBookSignature | None:
+        stmt = (
+            select(LedgerBookSignatureORM)
+            .where(
+                LedgerBookSignatureORM.tenant_id == self._ctx.tenant_id,
+                LedgerBookSignatureORM.book_type == book_type.value,
+                LedgerBookSignatureORM.book_date < book_date,
+            )
+            .order_by(LedgerBookSignatureORM.book_date.desc())
+            .limit(1)
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return ledger_book_signature_to_domain(row) if row is not None else None
 
 
 class SqlAlchemyDrugReturnRecordRepository:

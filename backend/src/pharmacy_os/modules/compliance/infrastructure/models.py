@@ -106,6 +106,31 @@ class NationalSyncLogORM(PkUuidMixin, TimestampMixin, Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class LedgerBookSignatureORM(PkUuidMixin, Base):
+    """Xác nhận điện tử 1 sổ/1 ngày — hướng A (docs/13 mục C.5).
+
+    Không dùng ``TenantScopedMixin`` (đã có sẵn cột ``created_at``/không cần
+    ``TimestampMixin`` — ``signed_at`` chính là mốc thời gian nghiệp vụ, không cần thêm cột kỹ
+    thuật trùng ý nghĩa) — khai ``tenant_id`` tay để đặt trong ``UniqueConstraint`` cùng
+    ``book_type``/``book_date``, chặn ký lại ở tầng CSDL (không chỉ tầng service).
+    """
+
+    __tablename__ = "ledger_book_signatures"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "book_type", "book_date", name="uq_ledger_book_signatures_day"
+        ),
+    )
+
+    tenant_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
+    book_type: Mapped[str] = mapped_column(String(8), nullable=False)
+    book_date: Mapped[date] = mapped_column(Date, nullable=False)
+    content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    prev_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    signed_by_user_id: Mapped[UUID] = mapped_column(nullable=False)
+    signed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class DrugReturnRecordORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
     """Biên bản nhận lại thuốc GN/HT/TC (docs/13 mục C.6 — TT18 Điều 6.2 + Điều 12.1.d, PL XVIII).
 

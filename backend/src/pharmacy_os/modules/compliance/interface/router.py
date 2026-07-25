@@ -23,11 +23,13 @@ from pharmacy_os.modules.compliance.domain import LedgerBookType
 from pharmacy_os.modules.compliance.interface.schemas import (
     ControlledLedgerEntryResponse,
     DrugReturnRecordResponse,
+    LedgerBookSignatureResponse,
     NationalSyncLogResponse,
     PushSyncRequest,
     RecordControlledEntryRequest,
     RecordDrugReturnRequest,
     SetTenantComplianceConfigRequest,
+    SignLedgerBookRequest,
     TenantComplianceConfigResponse,
 )
 
@@ -119,6 +121,26 @@ def build_router(get_context: ContextDep) -> APIRouter:
                 "X-Content-Sha256": export.content_sha256,
             },
         )
+
+    @router.post(
+        "/controlled-ledger/books/{book_type}/sign",
+        response_model=LedgerBookSignatureResponse,
+        status_code=status.HTTP_201_CREATED,
+    )
+    async def sign_daily_closure(
+        book_type: LedgerBookType,
+        body: SignLedgerBookRequest,
+        service: ComplianceService = Depends(_compliance_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> LedgerBookSignatureResponse:
+        """Ký xác nhận điện tử 1 sổ/1 ngày — hướng A (docs/13 mục C.5, bước 6/6 TT18).
+
+        Bắt buộc ``current_password`` (re-auth ngay trước khi ký — không chấp nhận chỉ dựa
+        vào phiên đang mở). Sau khi ký: không ký lại được ngày này, không ghi thêm dòng mới
+        vào ngày này (``ConflictError`` → 409 ở cả hai trường hợp).
+        """
+        out = await service.sign_daily_closure(body.to_input(book_type), ctx)
+        return LedgerBookSignatureResponse.of(out)
 
     @router.get("/periodic-report/export")
     async def export_periodic_report(

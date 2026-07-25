@@ -8,7 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from pharmacy_os.core.audit import AuditAction, AuditLogger, SqlAlchemyAuditLogRepository
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
-from pharmacy_os.core.errors import NotFoundError, ValidationError
+from pharmacy_os.core.errors import (
+    ConflictError,
+    NotFoundError,
+    PermissionDeniedError,
+    UnauthenticatedError,
+    ValidationError,
+)
 from pharmacy_os.core.events import InMemoryEventBus
 from pharmacy_os.modules.compliance.application import (
     ComplianceService,
@@ -17,6 +23,7 @@ from pharmacy_os.modules.compliance.application import (
     RecordDrugReturnInput,
     ReturnedDrugItemInput,
     SetTenantComplianceConfigInput,
+    SignLedgerBookInput,
 )
 from pharmacy_os.modules.compliance.domain import (
     ControlledSubstanceCategory,
@@ -29,6 +36,7 @@ from pharmacy_os.modules.compliance.domain.ports import DrugMasterFacts
 from pharmacy_os.modules.compliance.infrastructure import (
     SqlAlchemyControlledLedgerRepository,
     SqlAlchemyDrugReturnRecordRepository,
+    SqlAlchemyLedgerBookSignatureRepository,
     SqlAlchemyTenantComplianceConfigRepository,
 )
 
@@ -673,3 +681,134 @@ async def test_export_daily_closure_leaves_an_audit_row_with_hash(
         matching = [e for e in entries if e.target_id == "PL_VIII_2026-07-25"]
         assert len(matching) == 1
         assert matching[0].context.get("content_sha256") == export.content_sha256
+
+
+# --- bước 6/6 TT18: ký xác nhận điện tử (hướng A, docs/13 mục C.5) ---------
+
+
+class _FakeReauthProvider:
+    """Xác minh giả cho ``SigningReauthProvider`` — chỉ 1 mật khẩu đúng cố định."""
+
+    def __init__(self, correct_password: str = "MatKhauDung2026") -> None:
+        self.correct_password = correct_password
+
+    async def verify(self, ctx: RequestContext, plain_password: str) -> bool:
+        return plain_password == self.correct_password
+
+
+def _compliance_service_with_signing(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    reauth: _FakeReauthProvider | None = None,
+) -> ComplianceService:
+    def uow_factory() -> UnitOfWork:
+        return SqlAlchemyUnitOfWork(session_factory, event_bus)
+
+    return ComplianceService(
+        uow_factory,
+        lambda uow, c: SqlAlchemyControlledLedgerRepository(uow.session, c),
+        lambda uow, c: SqlAlchemyTenantComplianceConfigRepository(uow.session, c),
+        AuditLogger(session_factory),
+        signature_repo_factory=lambda uow, c: SqlAlchemyLedgerBookSignatureRepository(
+            uow.session, c
+        ),
+        reauth=reauth if reauth is not None else _FakeReauthProvider(),
+    )
+
+
+def _sign_input(**kw: object) -> SignLedgerBookInput:
+    kw.setdefault("book_type", LedgerBookType.PL_VIII)
+    kw.setdefault("book_date", date(2026, 7, 25))
+    kw.setdefault("current_password", "MatKhauDung2026")
+    return SignLedgerBookInput(**kw)  # type: ignore[arg-type]
+
+
+async def test_sign_daily_closure_requires_the_permission(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    service = _compliance_service_with_signing(session_factory, event_bus)
+    ctx = RequestContext(
+        tenant_id=uuid4(), branch_id=uuid4(), user_id=uuid4(), permissions=frozenset()
+    )
+    with pytest.raises(PermissionDeniedError):
+        await service.sign_daily_closure(_sign_input(), ctx)
+
+
+async def test_sign_daily_closure_rejects_the_wrong_password(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    service = _compliance_service_with_signing(session_factory, event_bus)
+    with pytest.raises(UnauthenticatedError):
+        await service.sign_daily_closure(_sign_input(current_password="SaiRoi"), ctx)
+
+
+async def test_sign_daily_closure_records_hash_and_chains_to_the_previous_signature(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    service = _compliance_service_with_signing(session_factory, event_bus)
+    await service.record_controlled_entry(
+        _entry(
+            transaction_at=datetime(2026, 7, 24, 9, 0, tzinfo=UTC),
+            customer=CustomerDetailInput(patient_name="A", patient_address="B"),
+            prescription_code="RX-SIGN-01",
+        ),
+        ctx,
+    )
+    first = await service.sign_daily_closure(_sign_input(book_date=date(2026, 7, 24)), ctx)
+    assert first.prev_hash is None
+    assert len(first.content_sha256) == 64
+    assert first.signed_by_user_id == ctx.user_id
+
+    second = await service.sign_daily_closure(_sign_input(book_date=date(2026, 7, 25)), ctx)
+    assert second.prev_hash == first.content_sha256
+
+
+async def test_sign_daily_closure_rejects_signing_the_same_day_twice(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    service = _compliance_service_with_signing(session_factory, event_bus)
+    await service.sign_daily_closure(_sign_input(), ctx)
+    with pytest.raises(ConflictError):
+        await service.sign_daily_closure(_sign_input(), ctx)
+
+
+async def test_sign_daily_closure_leaves_an_audit_row_with_hash(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    service = _compliance_service_with_signing(session_factory, event_bus)
+    signed = await service.sign_daily_closure(_sign_input(), ctx)
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        entries = await repo.list(ctx.tenant_id, action=AuditAction.LEDGER_BOOK_SIGNED)
+        matching = [e for e in entries if e.target_id == "PL_VIII_2026-07-25"]
+        assert len(matching) == 1
+        assert matching[0].context.get("content_sha256") == signed.content_sha256
+
+
+async def test_record_controlled_entry_is_blocked_after_the_day_is_signed(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    """docs/13 mục C.5 — hệ quả "ký xong là chốt sổ": không ghi thêm được vào ngày đã ký."""
+    service = _compliance_service_with_signing(session_factory, event_bus)
+    await service.sign_daily_closure(_sign_input(), ctx)
+
+    with pytest.raises(ConflictError):
+        await service.record_controlled_entry(
+            _entry(
+                transaction_at=datetime(2026, 7, 25, 15, 0, tzinfo=UTC),
+                customer=CustomerDetailInput(patient_name="A", patient_address="B"),
+                prescription_code="RX-SIGN-02",
+            ),
+            ctx,
+        )

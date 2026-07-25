@@ -11,6 +11,8 @@ from pharmacy_os.modules.compliance.domain import (
     ControlledLedgerEntry,
     ControlledSubstanceCategory,
     DrugReturnRecord,
+    LedgerBookSignature,
+    LedgerBookType,
     LedgerDirection,
     NationalSyncLog,
     SyncPayloadType,
@@ -291,8 +293,9 @@ class DailyLedgerClosureExport:
 
     ``content`` là toàn bộ file CSV (header + mọi dòng của đúng 1 ngày), ``content_sha256`` là
     hash SHA-256 hex của ``content`` — bằng chứng toàn vẹn tại thời điểm in, dùng để phát hiện
-    nếu file bị sửa sau khi in ra ký tay. Chưa phải chữ ký số (bước 6 riêng, chờ Chain chọn
-    hướng) — đây chỉ là điều kiện (a) của Điều 15.1 (toàn vẹn dữ liệu), không phải điều kiện (d).
+    nếu file bị sửa sau khi in ra ký tay. Đây là điều kiện (a) của Điều 15.1 (toàn vẹn dữ liệu);
+    điều kiện (d) (chữ ký số/xác nhận điện tử) là :meth:`ComplianceService.sign_daily_closure`
+    (bước 6, hướng A) — 2 bước khác nhau, xem/kết xuất trước, ký sau.
     """
 
     book_type: str
@@ -300,3 +303,39 @@ class DailyLedgerClosureExport:
     content: str
     content_sha256: str
     row_count: int
+
+
+@dataclass(slots=True)
+class SignLedgerBookInput:
+    """Ký xác nhận điện tử 1 sổ/1 ngày — hướng A (docs/13 mục C.5).
+
+    ``current_password`` chỉ dùng tức thời để re-auth (không lưu, không log) — bắt buộc theo
+    thiết kế "không chấp nhận phiên đang mở sẵn" (`01_THIET_KE_KY_DIEN_TU.md` mục 4).
+    """
+
+    book_type: LedgerBookType
+    book_date: date
+    current_password: str
+
+
+@dataclass(slots=True)
+class LedgerBookSignatureOutput:
+    id: UUID
+    book_type: str
+    book_date: date
+    content_sha256: str
+    prev_hash: str | None
+    signed_by_user_id: UUID
+    signed_at: datetime
+
+    @classmethod
+    def of(cls, signature: LedgerBookSignature) -> LedgerBookSignatureOutput:
+        return cls(
+            id=signature.id,
+            book_type=signature.book_type.value,
+            book_date=signature.book_date,
+            content_sha256=signature.content_sha256,
+            prev_hash=signature.prev_hash,
+            signed_by_user_id=signature.signed_by_user_id,
+            signed_at=signature.signed_at,
+        )

@@ -398,3 +398,86 @@ def test_ket_xuat_cuoi_ngay_can_token(client: TestClient) -> None:
         params={"day": "2026-07-25"},
     )
     assert r.status_code == 401
+
+
+def test_ky_so_dien_tu_thanh_cong_va_moc_xich_hash(client: TestClient) -> None:
+    """docs/13 mục C.5, bước 6/6 TT18 — hướng A: re-auth thật qua iam, không mock."""
+    admin = _login(client)
+    _ghi_so(client, admin, transaction_at="2026-07-24T09:00:00Z")
+
+    first = client.post(
+        "/api/v1/compliance/controlled-ledger/books/PL_VIII/sign",
+        headers=_auth(admin),
+        json={"book_date": "2026-07-24", "current_password": ADMIN_PASSWORD},
+    )
+    assert first.status_code == 201, first.text
+    body = first.json()
+    assert body["prev_hash"] is None
+    assert len(body["content_sha256"]) == 64
+
+    second = client.post(
+        "/api/v1/compliance/controlled-ledger/books/PL_VIII/sign",
+        headers=_auth(admin),
+        json={"book_date": "2026-07-25", "current_password": ADMIN_PASSWORD},
+    )
+    assert second.status_code == 201, second.text
+    assert second.json()["prev_hash"] == body["content_sha256"]
+
+
+def test_ky_so_dien_tu_sai_mat_khau_bi_tu_choi(client: TestClient) -> None:
+    admin = _login(client)
+    r = client.post(
+        "/api/v1/compliance/controlled-ledger/books/PL_VIII/sign",
+        headers=_auth(admin),
+        json={"book_date": "2026-07-25", "current_password": "SaiRoi123456"},
+    )
+    assert r.status_code == 401, r.text
+
+
+def test_ky_so_dien_tu_can_token(client: TestClient) -> None:
+    r = client.post(
+        "/api/v1/compliance/controlled-ledger/books/PL_VIII/sign",
+        json={"book_date": "2026-07-25", "current_password": ADMIN_PASSWORD},
+    )
+    assert r.status_code == 401
+
+
+def test_ky_lai_ngay_da_ky_bi_tu_choi(client: TestClient) -> None:
+    admin = _login(client)
+    body = {"book_date": "2026-07-25", "current_password": ADMIN_PASSWORD}
+    first = client.post(
+        "/api/v1/compliance/controlled-ledger/books/PL_VIII/sign", headers=_auth(admin), json=body
+    )
+    assert first.status_code == 201, first.text
+
+    second = client.post(
+        "/api/v1/compliance/controlled-ledger/books/PL_VIII/sign", headers=_auth(admin), json=body
+    )
+    assert second.status_code == 409, second.text
+
+
+def test_ghi_them_dong_vao_ngay_da_ky_bi_tu_choi(client: TestClient) -> None:
+    """docs/13 mục C.5 — hệ quả "ký xong là chốt sổ": không ghi thêm được vào ngày đã ký."""
+    admin = _login(client)
+    client.post(
+        "/api/v1/compliance/controlled-ledger/books/PL_VIII/sign",
+        headers=_auth(admin),
+        json={"book_date": "2026-07-25", "current_password": ADMIN_PASSWORD},
+    )
+
+    r = client.post(
+        "/api/v1/compliance/controlled-ledger",
+        headers=_auth(admin),
+        json={
+            "drug_id": str(uuid4()),
+            "category": "HUONG_THAN",
+            "direction": "NHAP",
+            "quantity": "5",
+            "lot_no": "L002",
+            "expiry_date": "2027-01-01",
+            "transaction_at": "2026-07-25T15:00:00Z",
+            "source_or_destination": "Công ty Dược ABC",
+            "document_no": "PN-002",
+        },
+    )
+    assert r.status_code == 409, r.text

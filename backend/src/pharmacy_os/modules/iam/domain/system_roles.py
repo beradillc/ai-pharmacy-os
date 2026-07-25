@@ -8,12 +8,12 @@ professional roles (cấp chuỗi vs cấp nhà thuốc), so following the statu
 mapping defensible in an inspection.
 
 ``ALL_PERMISSIONS`` is the audited list of every code passed to
-``core.security.rbac.require_permission`` across the eight business modules (38 as of
-2026-07-23, incl. ``sales.return``, ``inventory.reconcile``), plus the six ``iam.*`` codes this
-module introduces and the two kernel-audit codes (``audit.read`` query +
-``audit.dashboard.read`` dashboard, the latter added 2026-07-24 for the Sprint 7 audit
-dashboard). It intentionally includes the six ``compliance.*`` codes that
-``api/deps.py._DEV_PERMISSIONS`` was missing (docs/15 §0 F3).
+``core.security.rbac.require_permission`` across the eight business modules (39 as of
+2026-07-25, incl. ``sales.return``, ``inventory.reconcile``, ``compliance.ledger.sign`` added
+for TT18 bước 6 ký sổ điện tử), plus the six ``iam.*`` codes this module introduces and the two
+kernel-audit codes (``audit.read`` query + ``audit.dashboard.read`` dashboard, the latter added
+2026-07-24 for the Sprint 7 audit dashboard). It intentionally includes the ``compliance.*``
+codes that ``api/deps.py._DEV_PERMISSIONS`` was missing (docs/15 §0 F3).
 """
 
 from __future__ import annotations
@@ -52,6 +52,13 @@ COMPLIANCE_PERMISSIONS = frozenset(
         "compliance.config.write",
         "compliance.ledger.read",
         "compliance.ledger.write",
+        # Ký xác nhận điện tử sổ kiểm soát đặc biệt (TT18 Điều 15.1.d, hướng A — docs/13 mục
+        # C.5). Tách khỏi ``.write``: chỉ "người chịu trách nhiệm chuyên môn về dược" (Luật
+        # 44/2024 Điều 17a) ký được, không mở cho thu ngân/thủ kho dù họ ghi được sổ ở nhóm
+        # quyền khác — nhưng ở đây, ai ghi được sổ (``.write``) thì cũng thuộc nhóm ký được,
+        # nên cả hai role dược sĩ đều giữ cả 2 quyền như nhau (docs/features/tt18-kiem-soat-
+        # dac-biet/02_DECISIONS_KY_SO.md, GĐ quyết dưới ủy quyền 2026-07-25).
+        "compliance.ledger.sign",
         "compliance.sync.read",
         "compliance.sync.push",
     }

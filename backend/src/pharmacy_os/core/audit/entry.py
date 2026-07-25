@@ -105,6 +105,12 @@ class AuditAction(StrEnum):
     of the exported content (not PII) so a later dispute over "was this page altered
     after printing" can be checked against this row."""
 
+    LEDGER_BOOK_SIGNED = "LEDGER_BOOK_SIGNED"
+    """Điện tử xác nhận 1 sổ/1 ngày (TT18 Điều 15.1.d, hướng A) — the act that answers
+    "ai xác nhận sổ ngày này đúng, đủ". ``context`` carries the SHA-256 of the signed
+    content (not PII) so a later dispute can be checked against this row, the same
+    discipline as :attr:`LEDGER_DAILY_CLOSURE_EXPORTED`."""
+
     # --- sales (bán thuốc — Luật Dược Điều 6.5.h, cùng lý do PRESCRIPTION_DISPENSED) ---
     SALE_COMPLETED = "SALE_COMPLETED"
     """A sale was finalised — the third thing an inspection asks about: "ai đã bán

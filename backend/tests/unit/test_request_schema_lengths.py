@@ -43,6 +43,7 @@ _EXEMPT: dict[str, str] = {
     "ResetPasswordRequest.new_password": "chỉ đi vào bcrypt",
     "ChangePasswordRequest.current_password": "chỉ đi vào bcrypt",
     "ChangePasswordRequest.new_password": "chỉ đi vào bcrypt",
+    "SignLedgerBookRequest.current_password": "chỉ đi vào bcrypt (re-auth ký sổ, bước 6 TT18)",
     "RefreshRequest.refresh_token": "chỉ đi vào sha256",
     "SwitchBranchRequest.refresh_token": "chỉ đi vào sha256",
     # Ràng buộc nằm trong Annotated của phần tử (chặn độ dài TỪNG tên, không phải số

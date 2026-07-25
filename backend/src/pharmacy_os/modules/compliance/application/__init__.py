@@ -16,6 +16,7 @@ from pharmacy_os.modules.compliance.application.dto import (
     DailyLedgerClosureExport,
     DrugReturnRecordOutput,
     LedgerBookRow,
+    LedgerBookSignatureOutput,
     NationalSyncLogOutput,
     PeriodicReportRow,
     PushSyncInput,
@@ -24,6 +25,7 @@ from pharmacy_os.modules.compliance.application.dto import (
     ReturnedDrugItemInput,
     ReturnedDrugItemOutput,
     SetTenantComplianceConfigInput,
+    SignLedgerBookInput,
     TenantComplianceConfigOutput,
 )
 from pharmacy_os.modules.compliance.application.service import ComplianceService
@@ -45,6 +47,7 @@ __all__ = [
     "DailyLedgerClosureExport",
     "DrugReturnRecordOutput",
     "LedgerBookRow",
+    "LedgerBookSignatureOutput",
     "NationalSyncLogOutput",
     "PeriodicReportRow",
     "PushSyncInput",
@@ -53,5 +56,6 @@ __all__ = [
     "ReturnedDrugItemInput",
     "ReturnedDrugItemOutput",
     "SetTenantComplianceConfigInput",
+    "SignLedgerBookInput",
     "TenantComplianceConfigOutput",
 ]

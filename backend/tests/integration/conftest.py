@@ -36,6 +36,7 @@ from pharmacy_os.modules.compliance.application import ComplianceService
 from pharmacy_os.modules.compliance.infrastructure import (
     SqlAlchemyControlledLedgerRepository,
     SqlAlchemyDrugReturnRecordRepository,
+    SqlAlchemyLedgerBookSignatureRepository,
     SqlAlchemyTenantComplianceConfigRepository,
 )
 from pharmacy_os.modules.crm.application import CrmService
@@ -118,6 +119,7 @@ def ctx() -> RequestContext:
                 "rx.dispense",
                 "compliance.ledger.read",
                 "compliance.ledger.write",
+                "compliance.ledger.sign",
                 "compliance.config.read",
                 "compliance.config.write",
                 "compliance.sync.push",
@@ -219,6 +221,9 @@ def compliance_service(
         lambda uow, c: SqlAlchemyTenantComplianceConfigRepository(uow.session, c),
         AuditLogger(session_factory),
         drug_return_repo_factory=lambda uow, c: SqlAlchemyDrugReturnRecordRepository(
+            uow.session, c
+        ),
+        signature_repo_factory=lambda uow, c: SqlAlchemyLedgerBookSignatureRepository(
             uow.session, c
         ),
     )

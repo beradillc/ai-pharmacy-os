@@ -17,6 +17,7 @@ from pharmacy_os.modules.compliance.application.dto import (
     ControlledLedgerEntryOutput,
     CustomerDetailInput,
     DrugReturnRecordOutput,
+    LedgerBookSignatureOutput,
     NationalSyncLogOutput,
     PushSyncInput,
     RecordControlledEntryInput,
@@ -24,10 +25,12 @@ from pharmacy_os.modules.compliance.application.dto import (
     ReturnedDrugItemInput,
     ReturnedDrugItemOutput,
     SetTenantComplianceConfigInput,
+    SignLedgerBookInput,
     TenantComplianceConfigOutput,
 )
 from pharmacy_os.modules.compliance.domain import (
     ControlledSubstanceCategory,
+    LedgerBookType,
     LedgerDirection,
     SyncPayloadType,
 )
@@ -284,6 +287,45 @@ class TenantComplianceConfigResponse(BaseModel):
             tenant_id=out.tenant_id,
             ma_co_so_ban_le=out.ma_co_so_ban_le,
             ma_co_so_ban_buon=out.ma_co_so_ban_buon,
+        )
+
+
+class SignLedgerBookRequest(BaseModel):
+    """Ký xác nhận điện tử 1 sổ/1 ngày — hướng A (docs/13 mục C.5, bước 6/6 TT18).
+
+    ``current_password`` bắt buộc nhập lại tại đây (re-auth) — endpoint không chấp nhận chỉ
+    dựa vào ``Authorization: Bearer`` của phiên đang mở, theo đúng thiết kế
+    `01_THIET_KE_KY_DIEN_TU.md` mục 4.
+    """
+
+    book_date: date
+    current_password: str = Field(min_length=1)
+
+    def to_input(self, book_type: LedgerBookType) -> SignLedgerBookInput:
+        return SignLedgerBookInput(
+            book_type=book_type, book_date=self.book_date, current_password=self.current_password
+        )
+
+
+class LedgerBookSignatureResponse(BaseModel):
+    id: UUID
+    book_type: str
+    book_date: date
+    content_sha256: str
+    prev_hash: str | None
+    signed_by_user_id: UUID
+    signed_at: datetime
+
+    @classmethod
+    def of(cls, out: LedgerBookSignatureOutput) -> LedgerBookSignatureResponse:
+        return cls(
+            id=out.id,
+            book_type=out.book_type,
+            book_date=out.book_date,
+            content_sha256=out.content_sha256,
+            prev_hash=out.prev_hash,
+            signed_by_user_id=out.signed_by_user_id,
+            signed_at=out.signed_at,
         )
 
 
