@@ -51,7 +51,17 @@ Dùng **Python entry points** (`importlib.metadata`). Mỗi plugin khai báo tro
 vnpay = "payment_vnpay.plugin:VNPayPlugin"
 ```
 
-`PluginLoader` quét group `pharmacy_os.plugins`, nạp class, gọi `setup()`, đăng ký hook. Bật/tắt & cấu hình qua bảng `plugins` (DB) + [10_CONFIG.md](10_CONFIG.md).
+`PluginLoader` quét group `pharmacy_os.plugins`, nạp class, **validate**, gọi `setup()`, đăng ký hook.
+
+**Bật/tắt & cấu hình qua biến môi trường** `PLUGINS__ENABLED` + `PLUGINS__CONFIG` (xem
+[10_CONFIG.md](10_CONFIG.md)) — **KHÔNG phải bảng `plugins` trong CSDL** như bản thiết kế gốc mô tả.
+Sửa 2026-07-26 (Sprint 8, Chain duyệt): cờ cấu hình đủ cho DoD *"bật/tắt plugin không sửa lõi"*, khớp
+khuôn `OUTBOX__RELAY_ENABLED`/`NATIONAL_SYNC__RETRY_ENABLED` đã dùng nhiều lần, và tránh một bảng +
+migration + API quản trị khi chưa có nhu cầu bật/tắt **theo từng tenant**. Nếu sau này cần per-tenant
+thì mới quay lại phương án bảng CSDL — quyết định đó chưa tới.
+
+**Khám phá tách khỏi bật/tắt:** `discover()` liệt kê mọi plugin **đã cài**; chỉ những key có trong
+`PLUGINS__ENABLED` mới thật sự được nạp. Cài package ≠ bật plugin.
 
 ---
 
@@ -60,25 +70,32 @@ vnpay = "payment_vnpay.plugin:VNPayPlugin"
 Thiết kế các **abstract base** trong `core/plugins/interfaces.py`:
 
 ```python
-# THIẾT KẾ — pseudo-code, hiện thực ở Sprint 2
+# HIỆN THỰC THẬT (Sprint 8) — core/plugins/interfaces.py
+CORE_PLUGIN_API_VERSION = "1.0"   # phiên bản CONTRACT, khác Plugin.version
+
 class Plugin(Protocol):
     key: str
-    version: str
+    version: str        # phiên bản của chính plugin
+    api_version: str    # viết cho contract lõi bản nào — so khớp MAJOR
     def setup(self, ctx: PluginContext) -> None: ...
     def teardown(self) -> None: ...
 
 class PaymentGateway(Plugin, Protocol):
-    def create_charge(self, order_id, amount, method) -> ChargeResult: ...
-    def verify_callback(self, payload) -> PaymentStatus: ...
+    async def create_charge(self, order_id, amount, method) -> dict: ...
+    async def verify_callback(self, payload) -> str: ...
 
 class RegulatoryConnector(Plugin, Protocol):
-    def map_event(self, event: DomainEvent) -> dict: ...
-    def submit(self, payload: dict) -> SubmissionResult: ...
+    def map_event(self, event: dict) -> dict: ...        # thuần, không I/O ⇒ sync
+    async def submit(self, payload: dict) -> dict: ...   # qua mạng ⇒ async
 
-class HardwareDriver(Plugin, Protocol):
-    def print_label(self, batch) -> None: ...
-    def print_invoice(self, order) -> None: ...
+# HardwareDriver: backlog, chưa hiện thực
 ```
+
+**Hook runtime là `async` — quyết định quan trọng nhất của bề mặt plugin** (đổi 2026-07-26, Sprint 8):
+chúng gọi mạng, mà hàm đồng bộ gọi mạng sẽ **đứng cả event loop** — mọi quầy trong nhà thuốc treo vì
+một terminal chờ cổng thanh toán chậm. Đây cũng là hình dạng duy nhất `asyncio.wait_for` timeout được,
+tức là biến yêu cầu "timeout" ở mục 6 từ mong muốn thành thứ cưỡng chế được. `map_event` giữ **sync**
+vì là biến đổi thuần, không I/O.
 
 Plugin **chỉ phụ thuộc contract của core**, không chạm domain module → tách rời an toàn.
 
@@ -114,12 +131,30 @@ sequenceDiagram
 
 ## 6. Cách ly & an toàn plugin
 
-| Rủi ro | Biện pháp |
-|--------|-----------|
-| Plugin lỗi làm sập app | Bọc try/except quanh hook, timeout, mạch ngắt (circuit breaker) |
-| Plugin truy cập dữ liệu ngoài phạm vi | Chỉ nhận DTO/context tối thiểu, không truyền session DB thô |
-| Xung đột phiên bản | `version` + kiểm tra tương thích API core |
-| Bảo mật secret | Secret của plugin lưu ở config store, không hard-code |
+| Rủi ro | Biện pháp | Trạng thái |
+|--------|-----------|-----------|
+| Plugin **đã bật** nạp lỗi lúc khởi động | **FAIL-FAST — app từ chối khởi động** (đổi 2026-07-26). Trước đây log rồi bỏ qua; bỏ qua im lặng chỉ dời lỗi tới lúc thu ngân bấm thanh toán vào cổng chưa từng tồn tại. Khớp tiền lệ `APP__ENV=prod` + `ALLOW_DEV_AUTH=true` ⇒ từ chối khởi động. Bật plugin **chưa cài** cũng fail-fast | ✅ Sprint 8 |
+| Plugin lỗi lúc **chạy** | try/except tại điểm gọi + timeout (`asyncio.wait_for`, khả thi nhờ hook async) | ⏳ Khi có điểm gọi thật (`payment_vnpay`) |
+| `teardown()` lỗi | **Vẫn phòng thủ** (log, chạy tiếp) — đang tắt máy, 1 plugin lỗi không được bỏ qua phần dọn dẹp của plugin khác | ✅ Sprint 8 |
+| Hai plugin cùng nhận 1 port | `HookRegistry` ném `ProviderConflictError` nêu tên **cả hai**, không lặng lẽ chọn cái cuối (nếu không, cổng nào thật sự chạy sẽ phụ thuộc thứ tự duyệt entry point — vô hình trong code, đúng ở dev, sai ở prod) | ✅ Sprint 8 |
+| Plugin truy cập dữ liệu ngoài phạm vi | `PluginContext` chỉ mang `config` — không session CSDL, không UoW, không container | ✅ Sprint 8 |
+| Xung đột phiên bản | `api_version` + so khớp **major** với `CORE_PLUGIN_API_VERSION`, kiểm **trước** khi gọi `setup()` ⇒ plugin bị từ chối không bao giờ chạy code của nó | ✅ Sprint 8 |
+| Bảo mật secret | Secret của plugin nằm trong `PLUGINS__CONFIG`, không hard-code | ✅ Sprint 8 |
+| Mạch ngắt (circuit breaker) | **HOÃN có chủ đích** — quá tay khi mới có 1 plugin; cần số liệu thật mới đặt ngưỡng đúng | ⏳ Nợ đã ghi |
+| **Sandbox thật** (giới hạn CPU/mạng/tệp) | **KHÔNG có.** Chỉ cô lập lỗi, không cô lập tài nguyên. Chấp nhận vì mọi plugin đều first-party — **giả định dài hạn**, mọi plugin sau này thừa hưởng | ⚠️ Rủi ro đã chấp nhận (Chain duyệt 2026-07-26) |
+
+### Ranh giới phụ thuộc — nợ chưa đóng được
+
+Lời hứa *"plugin chỉ phụ thuộc contract của lõi, không chạm domain module"* (mục 4) **hiện chưa có
+cổng CI nào cưỡng chế**. `.importlinter` đặt `root_package = pharmacy_os`, nên package plugin nằm
+ngoài cây đó là **vô hình** với cả 16 contract. Đã thử thêm `root_packages` trỏ tới `payment_vnpay`
+và import-linter báo thẳng `Could not find package 'payment_vnpay' in your Python path` — **không thể
+viết contract cho package chưa tồn tại**.
+
+⇒ **2 contract phải thêm cùng lúc với plugin đầu tiên** (`payment_vnpay`, mục 4/4 Sprint 8), không
+được quên: (1) plugin **cấm** import `pharmacy_os.modules`; (2) plugin chỉ được import
+`pharmacy_os.core.plugins`, cấm phần còn lại của `core`. Đây là lúc ranh giới có động cơ thật để bị
+phá — `payment_vnpay` cần biết về đơn hàng, mà đơn hàng nằm trong `sales`.
 
 ---
 
@@ -142,4 +177,4 @@ sequenceDiagram
 3. Khai báo entry point group `pharmacy_os.plugins`.
 4. Cấu hình schema riêng (validate bằng Pydantic).
 5. Test cách ly (mock core context).
-6. Đăng ký & bật qua bảng `plugins`.
+6. Bật qua `PLUGINS__ENABLED` (không phải bảng `plugins` — xem mục 3).
