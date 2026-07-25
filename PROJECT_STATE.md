@@ -2946,7 +2946,7 @@ lên là đẩy được cả tồn đọng cũ. Prod phải bật; tắt ở pr
   không drift. pg_dump trước khi chạy (`~/backup_pre_migration_20260725_1959.sql`, lưới an toàn #6).
 - Chạy thật trên Postgres đang có dữ liệu (kỷ luật #5/#7 — dù mục này **không** đụng permission/seed):
   bơm 1 dòng `FAILED` + việc gửi lại → chạy relay thật → ACK → hàng đợi rỗng, xác nhận bằng SQL, dọn sạch sau đó.
-- 3 commit stepped: `96aee95` (domain) → `09965fd` (app+infra+migration) → `{HEAD3}` (interface/wiring+docs).
+- 3 commit stepped: `96aee95` (domain) → `09965fd` (app+infra+migration) → `9dd4901` (interface/wiring+docs).
 
 **Lệch số cần ghi nhận (không tự sửa tài liệu cũ):** §7ax ghi "pytest 851" tại HEAD `40de806`, nhưng
 `pytest --collect-only` chạy lại đúng commit đó (qua `git worktree`) chỉ ra **837**. 854 − 837 = 17,
