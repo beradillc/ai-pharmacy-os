@@ -14,8 +14,15 @@
 > - Tài liệu **đặc tả API** kết nối CSDL Dược (do **Trung tâm Thông tin y tế Quốc gia** ban hành theo QĐ 1867 mục 1.2 — hoàn thành 6/2026). **Chưa có trong tay.**
 > - **TT 11/2025/TT-BYT** (sửa đổi TT 02/2018, TT 03/2018, TT 36/2018) và **NĐ 163/2025/NĐ-CP** — QĐ 1867 dẫn chiếu ở phần "Căn cứ", có thể đổi field bắt buộc. **Chưa có trong tay.**
 > - **NĐ 90/2026/NĐ-CP** — chế tài xử phạt không liên thông (QĐ 1867 mục V.4.d dẫn chiếu). **Chưa có trong tay.**
-> - **(bổ sung 2026-07-25, từ TT18)** **NĐ 163/2025/NĐ-CP** — TT18 chỉ "quy định chi tiết" Nghị định này. Nghĩa vụ **báo cáo của cơ sở KINH DOANH dược** (nhà thuốc bán lẻ) xưa nay nằm ở Nghị định (NĐ 54/2017 Điều 47 cũ), **không** nằm ở Thông tư ⇒ **chưa được kết luận "bán lẻ miễn báo cáo"** cho tới khi đọc NĐ163. TT18 còn dẫn chiếu NĐ163 Điều 31 (hồ sơ sổ sách), Điều 33 (giao nhận/vận chuyển), Điều 36 (hủy thuốc). **Chưa có trong tay — chặn mục C.5.**
-> - **(bổ sung 2026-07-25)** **TT 33/2025/TT-BYT** (thời hạn lưu trữ hồ sơ ngành y tế) + **TT 26/2025/TT-BYT** (đơn thuốc & kê đơn ngoại trú) — TT18 Điều 15.3 giao thời hạn lưu trữ cho 2 văn bản này, thay cho quy tắc "2 năm sau hạn dùng" của TT20 Điều 18.1. **Chưa có trong tay — chặn mục C.4.**
+> - ~~**NĐ 163/2025/NĐ-CP** — chưa có trong tay~~ **ĐÃ ĐỌC 2026-07-25.** Hiệu lực 01/7/2025, thay
+>   NĐ 54/2017. ⭐ **Điều 35.2: bán lẻ CÓ nghĩa vụ báo cáo định kỳ 6 tháng/năm gửi UBND cấp tỉnh**
+>   (Mẫu số 06 Phụ lục II) — đảo ngược kết luận cũ. Xem `docs/legal/Nghị-định-163-2025-NĐ-CP.SUMMARY.md`
+>   và mục C.7 (mới) bên dưới. **Đã tới hạn ≥3 kỳ (15/7/2025, 15/1/2026, 15/7/2026) — xác nhận
+>   ngay với BeraLLC xem thực tế đã báo cáo chưa, đây là việc ngoài đời, không phải code.**
+> - ~~**TT 33/2025/TT-BYT** + **TT 26/2025/TT-BYT** — chưa có trong tay~~ **ĐÃ ĐỌC 2026-07-25.**
+>   TT33 không có mục riêng cho sổ KSĐB bán lẻ (mục gần nhất 20 năm, dùng làm sàn suy diễn — xem
+>   mục C.4 bên dưới). TT26 không phát sinh nghĩa vụ mới, chỉ xác nhận 2 tham chiếu lỗi thời trong
+>   chính nó (TT53/2017→TT33, TT20/2017→TT18 Điều 15.4). Xem 2 file SUMMARY tương ứng.
 > - Văn bản quy định **kê đơn thuốc ngoại trú** hiện hành (áp dụng cho `RxClass.ETC` nói chung — TT 20/2017 CHỈ điều chỉnh thuốc kiểm soát đặc biệt, không phải mọi thuốc kê đơn). TT 20/2017 Điều 18.1 dẫn chiếu TT 05/2016/TT-BYT cho việc lưu đơn thuốc GN/HT, nhưng đó cũng không phải nguồn cho rule "mọi thuốc ETC cần prescription_code". **Chưa có trong tay — xem mục C.3.**
 
 ---
@@ -55,7 +62,8 @@
 | 24  | C.2 nghĩa vụ bán lẻ | TT18 **Điều 12** (thay TT20 Điều 15) | **KHỚP a–đ** (đổi số phụ lục: VIII giữ nguyên, XX→**XVIII**, XXI→**XIX**). **THIẾU khoản 12.3** — sổ xuất/nhập/tồn **Phụ lục XVI** cho thuốc dạng phối hợp + thuốc độc + danh mục cấm; **TT20 không có nghĩa vụ này với bán lẻ** ⇒ nghĩa vụ MỚI, chưa implement |
 | 25  | C.5 (mới) sổ điện tử | TT18 **Điều 15.1 (a–d)** — điều kiện dùng sổ/hồ sơ trên phần mềm | **GAP LỚN** — điểm (d) buộc người theo dõi/xác nhận **ký bằng chữ ký số hoặc kỹ thuật xác nhận điện tử**; ghi chú PL VIII buộc **trích xuất + in cuối mỗi ngày, ký từng trang**. Hệ thống **chưa có cơ chế ký nào** ⇒ sổ điện tử hiện chưa đủ điều kiện thay sổ giấy. Xem C.5 |
 | 26  | C.4 lưu trữ | TT18 **Điều 15.3** (dẫn chiếu **TT 33/2025** cho sổ sách, **TT 26/2025** cho đơn thuốc) | **MẤT CĂN CỨ** — quy tắc "≥2 năm kể từ ngày hết hạn dùng" (TT20 Điều 18.1) không còn tồn tại trong TT18. Giữ nguyên hành vi hiện tại (không hard-delete) như **mức sàn an toàn**, chờ 2 thông tư trên mới chốt số năm |
-| 27  | G. báo cáo định kỳ (đính chính dòng 21) | TT18 **Điều 1.2 + Điều 7** (Chương II chỉ áp cho cơ sở dược **không vì mục đích thương mại**) | **KẾT LUẬN CŨ VẪN ĐÚNG với TT18** — bán lẻ không thuộc đối tượng Điều 7; số hiệu mẫu đổi: PL IX (cơ sở phi thương mại, trước 15/01), PL X (cơ quan quản lý, trước 15/02), PL XI (đột xuất 48h). **NHƯNG** nghĩa vụ báo cáo của cơ sở **kinh doanh** nằm ở **NĐ 163/2025** — chưa có văn bản ⇒ **hạ mức kết luận từ "không áp dụng" xuống "chưa kết luận được"** |
+| 27  | G. báo cáo định kỳ (đính chính dòng 21, ĐÍNH CHÍNH LẦN 2 2026-07-25) | TT18 **Điều 1.2 + Điều 7** (đúng cho phần phi thương mại) **+ NĐ163 Điều 35.2** (đã đọc) | **TT18 Điều 7 đúng nhưng KHÔNG PHẢI TOÀN BỘ CÂU TRẢ LỜI** — TT18 Điều 7 quả thật không áp cho bán lẻ (đúng cơ sở phi thương mại). Nhưng nghĩa vụ báo cáo của cơ sở **kinh doanh** (bán lẻ) nằm ở **NĐ163 Điều 35.2**, đã đọc: **CÓ nghĩa vụ**, 6 tháng/năm, gửi **UBND cấp tỉnh**, Mẫu số 06 Phụ lục II NĐ163 (khác hẳn PL IX/X/XI của TT18). Kết luận đúng: "bán lẻ **CÓ** báo cáo định kỳ, theo NĐ163 không phải TT18" — xem mục **C.7** (mới) |
+| 28  | (mới) C.4 lưu trữ — đã đọc TT33+TT26 | TT33/2025 Phụ lục mục #67 (suy diễn) + TT26/2025 Điều 11 | **CẬP NHẬT** — nâng sàn retention lên ≥20 năm kể từ ngày phát sinh hồ sơ (thay ≥2 năm sau hạn dùng); TT26 xác nhận 2 tham chiếu lỗi thời tự sửa (TT53→TT33, TT20→TT18 Điều 15.4), không phát sinh nghĩa vụ mới |
 
 ---
 
@@ -217,16 +225,30 @@ File CSV hiện tại là **phần bảng của sổ + cột `drug_id`**, chưa 
    (Điều 12.2) ⇒ vẫn cần `patient_name` + `patient_address`. Thuốc độc/danh mục cấm **chỉ** cần sổ
    xuất/nhập/tồn, **không** cần sổ khách hàng.
 
-### C.4 Lưu trữ (**Điều 15.3** — thay Điều 18 TT20)
-> ⚠️ **CĂN CỨ CŨ ĐÃ MẤT (2026-07-25).** TT18 **không còn** quy tắc "tối thiểu 2 năm kể từ ngày
-> thuốc hết hạn dùng" — Điều 15.3 giao thời hạn cho 2 văn bản khác:
-> - Đơn thuốc GN/HT/TC → **TT 26/2025/TT-BYT**. **Chưa có văn bản.**
-> - Hồ sơ, sổ sách khác → **TT 33/2025/TT-BYT**. **Chưa có văn bản.**
+### C.4 Lưu trữ (**Điều 15.3** — thay Điều 18 TT20) — **cập nhật 2026-07-25, đã đọc TT33+TT26**
 
-- **Hành vi giữ nguyên làm mức sàn an toàn:** **KHÔNG hard-delete**, dùng soft-delete + audit.
-  Không hạ thời hạn xuống dưới mức đang áp (≥ 2 năm sau `expiry_date`) cho tới khi đọc TT33/2025.
+TT18 **không còn** quy tắc "tối thiểu 2 năm kể từ ngày thuốc hết hạn dùng" — Điều 15.3 giao thời
+hạn cho 2 văn bản khác. Cả hai **đã đọc**:
+
+- **Đơn thuốc GN/HT/TC → TT 26/2025/TT-BYT Điều 11.1** → dẫn tiếp sang **TT 33/2025** (TT26 tự
+  dẫn TT53/2017 nhưng văn bản đó đã hết hiệu lực cùng ngày, bị chính TT33 bãi bỏ — áp nguyên tắc
+  "văn bản dẫn chiếu bị thay thế thì theo văn bản mới", giống TT18 Điều 18).
+- **Hồ sơ, sổ sách khác → TT 33/2025/TT-BYT Phụ lục** — **không có mục riêng** cho sổ kiểm soát
+  đặc biệt của cơ sở bán lẻ. Mục gần đúng nhất (#67 trong phụ lục TT33): "Hồ sơ cấp phép NK/XK
+  nguyên liệu/thuốc GN/HT/TC; **báo cáo định kỳ**" = **20 năm**. Đây là **suy diễn theo mục tương
+  đương** (TT33 Điều 1.2.b cho phép, yêu cầu không thấp hơn mức đã có), không phải trích dẫn trực
+  tiếp — xem `docs/legal/Thông-tư-33-2025-TT-BYT.SUMMARY.md`.
+
+**Quyết định (GĐ, dưới ủy quyền toàn quyền chỉ đạo code 2026-07-25):** nâng sàn retention từ
+"≥2 năm sau `expiry_date`" lên **≥20 năm kể từ ngày phát sinh hồ sơ** (không neo theo hạn dùng
+thuốc nữa — mục #67 TT33 không neo theo hạn dùng). Hướng **an toàn hơn** (giữ lâu hơn, không xóa
+sớm), phù hợp nguyên tắc chọn phương án ít rủi ro khi chưa chắc chắn tuyệt đối.
+
+- **Hành vi:** **KHÔNG hard-delete**, dùng soft-delete + audit. Retention ≥ 20 năm kể từ ngày tạo
+  bản ghi (không phải từ `expiry_date`).
 - Hết thời hạn lưu trữ → người đứng đầu lập **hội đồng hủy**, lập **biên bản hủy**, lưu hồ sơ việc
-  hủy tại cơ sở (**Điều 15.4**) — quy trình hành chính, **ngoài phạm vi phần mềm**.
+  hủy tại cơ sở (**Điều 15.4** TT18 — cũng là tham chiếu đúng cho TT26 Điều 11.2, xem trên) — quy
+  trình hành chính, **ngoài phạm vi phần mềm**.
 
 ### C.5 (MỚI 2026-07-25) Điều kiện dùng sổ/hồ sơ ĐIỆN TỬ — **Điều 15.1**
 
@@ -261,6 +283,41 @@ dùng, **tình trạng cảm quan**, lý do nhận lại), thời gian giao nh�
 
 > ⚠️ Biểu mẫu này **có** thu thập số CCCD — khác Sổ PL XIX. Đây là dữ liệu cá nhân nhạy cảm ⇒ phải
 > qua cổng `docs/14_FEATURE_PROCESS.md` (Luật 91/2025 + NĐ 356/2025) khi implement.
+
+### C.7 (MỚI 2026-07-25) ⭐ Báo cáo định kỳ 6 tháng/năm gửi UBND cấp tỉnh — **NĐ 163/2025 Điều 35.2**
+
+> **Đây là nghĩa vụ pháp lý QUAN TRỌNG NHẤT phát hiện trong đợt đọc 3 văn bản 2026-07-25 — đảo
+> ngược hoàn toàn kết luận cũ ở Traceability #27.** Không nằm ở TT18 (Thông tư chỉ điều chỉnh
+> phần "cơ sở dược không vì mục đích thương mại"), mà nằm ở **Nghị định** — đúng như dự đoán ở
+> `docs/legal/README.md` mục "việc chưa làm #6" trước khi đọc được văn bản.
+
+**Nội dung nghĩa vụ (NĐ163 Điều 35.2.a):** cơ sở **bán buôn, bán lẻ, tổ chức chuỗi nhà thuốc**
+phải lập báo cáo **6 tháng** (kỳ 01/01–30/06, nộp trước **15/7**) và **năm** (kỳ 01/01–31/12, nộp
+trước **15/01** năm sau) về xuất/nhập/tồn/sử dụng **GN/HT/TC + thuốc dạng phối hợp chứa GN/HT/TC**,
+theo **Mẫu số 06 Phụ lục II NĐ163**, gửi **Ủy ban nhân dân cấp tỉnh** nơi đặt trụ sở chính.
+
+**Mẫu số 06 — 12 cột:** TT · Tên thuốc/dạng bào chế/hoạt chất/nồng độ-hàm lượng/quy cách/số ĐKLH ·
+Nước sản xuất · Đơn vị tính · Số công văn cho phép mua trong nước · Tồn kỳ trước · Nhập trong kỳ ·
+Tổng số · Xuất trong kỳ · Tồn cuối kỳ · Hao hụt · Ghi chú.
+
+**Báo cáo thất thoát 48h** cũng đổi cơ quan nhận: NĐ163 Điều 35.4 → gửi **UBND cấp tỉnh** (không
+phải Cục Quân y/Cục Y tế/Sở Y tế như TT18 Điều 7.3, vì đó chỉ áp cho cơ sở phi thương mại).
+
+**Chế tài (Điều 35.5):** không báo cáo đúng hạn → "bị ngừng tiếp nhận, xem xét hồ sơ đề nghị mua,
+xuất khẩu, nhập khẩu thuốc, nguyên liệu làm thuốc đến khi cơ sở báo cáo đầy đủ".
+
+> ⚠️ **KHẨN — việc thật ngoài đời, không phải code:** NĐ163 hiệu lực **01/7/2025**, không có lộ
+> trình ân hạn cho khoản 2 Điều 35 (Điều 124 chỉ áp lộ trình cho khoản 1). Tính đến 2026-07-25 đã
+> qua **3 kỳ hạn nộp**: 15/7/2025, 15/1/2026, 15/7/2026. **Cần xác nhận ngay với người chịu trách
+> nhiệm chuyên môn dược của BeraLLC xem đã từng nộp báo cáo nào trong 3 kỳ này chưa** — nếu chưa,
+> đây là việc cần xử lý bên ngoài phần mềm trước (liên hệ Sở Y tế/UBND tỉnh), không phải chờ code
+> xong mới xử lý.
+
+**Trạng thái implement:** **CHƯA CÓ** trong code — đây là tính năng hoàn toàn mới, ngoài phạm vi
+6-bước đã duyệt cho mạch TT18 (docs/features/tt18-kiem-soat-dac-biet/). Cần qua cổng
+`docs/14_FEATURE_PROCESS.md` trước khi code (Bước 0-3), dù dữ liệu nguồn (ledger) đã có sẵn qua
+`ControlledLedgerEntry` — phần việc mới là **tổng hợp theo kỳ 6 tháng/năm** + **kết xuất đúng Mẫu
+số 06** + (tùy chọn) nhắc lịch nộp báo cáo trước hạn.
 
 ---
 
@@ -319,6 +376,10 @@ Mỗi lần đẩy 1 bản ghi/lô: `id`, `tenant_id`, `payload_type` (drug/sale
   > thành PL IX / PL X / PL XI. **Nhưng hạ mức chắc chắn:** nghĩa vụ báo cáo của cơ sở **kinh doanh**
   > dược nằm ở **NĐ 163/2025/NĐ-CP** (chưa có văn bản), không nằm ở Thông tư ⇒ đọc là
   > **"chưa kết luận được"**, không phải "chắc chắn không áp dụng". Xem Traceability #27.
+  > **ĐÍNH CHÍNH LẦN 2 (2026-07-25, đã đọc NĐ163):** Phụ lục IX/X/XI của TT18 quả thật không áp
+  > cho bán lẻ (kết luận cũ đúng phần này). **NHƯNG bán lẻ CÓ nghĩa vụ báo cáo định kỳ khác** —
+  > theo **NĐ163 Điều 35.2** (Mẫu số 06 Phụ lục II, gửi UBND cấp tỉnh) — **ĐƯA RA KHỎI MỤC NÀY,
+  > chuyển vào phạm vi làm việc ở mục C.7.** Đây không còn là "ngoài phạm vi" nữa. Xem Traceability #27.
 - Kê đơn điện tử liên thông.
 - **Bảng 2 QĐ540** (dữ liệu tổng hợp cấp tỉnh) — do hệ thống trung ương/Sở Y tế tổng hợp, không phải trách nhiệm sinh dữ liệu của cơ sở bán lẻ.
 - **Bảng 4 QĐ540** — "Yêu cầu chức năng thống kê" (kết xuất PDF/Excel: số lượng cơ sở nhập liệu theo tỉnh, danh mục thuốc theo cơ sở/tỉnh). Đây là chức năng thống kê phía cơ quan quản lý (Bộ Y tế/Sở Y tế), không phải chuẩn dữ liệu phải implement ở cơ sở bán lẻ trong sprint này.
@@ -353,3 +414,21 @@ ngày, seed danh mục thuốc độc/danh mục cấm (nhà thuốc BeraLLC **k
 khung enum + sổ PL XVI cho thuốc dạng phối hợp).
 
 Trạng thái từng bước: `docs/features/tt18-kiem-soat-dac-biet/00_DE_XUAT_CAP_NHAT.md` mục 6.
+
+### 2026-07-25 (cùng ngày, đợt 2) — Đọc xong NĐ163/2025 + TT33/2025 + TT26/2025
+
+Chain chép 3 văn bản đang thiếu lên bookmark, ủy quyền toàn quyền cho GĐ tiếp tục chỉ đạo code.
+
+| # | Thay đổi | Mục | Loại |
+|---|---|---|---|
+| 1 | ⭐ **Đảo ngược kết luận báo cáo định kỳ** — bán lẻ **CÓ** nghĩa vụ (NĐ163 Điều 35.2), không phải TT18. Thêm **mục C.7 hoàn toàn mới** | C.7, Traceability #27, mục G | **Đảo ngược kết luận cũ** |
+| 2 | Nâng sàn retention từ ≥2 năm sau hạn dùng lên **≥20 năm kể từ ngày phát sinh** (suy diễn từ TT33 mục #67, không neo hạn dùng nữa) | C.4, Traceability #28 | Quyết định GĐ (dưới ủy quyền) |
+| 3 | Xác nhận 2 tham chiếu lỗi thời trong TT26 tự sửa: TT53/2017→TT33/2025, TT20/2017→TT18 Điều 15.4 | C.4 | Đối chiếu |
+| 4 | 3 file SUMMARY mới trong `docs/legal/`, `docs/legal/README.md` cập nhật bảng tra | — | Tài liệu |
+
+**🔴 Việc khẩn ngoài phần mềm (không chờ code):** xác nhận với người chịu trách nhiệm chuyên môn
+dược của BeraLLC xem đã báo cáo định kỳ theo NĐ163 Điều 35.2 kỳ nào chưa (đã tới hạn 15/7/2025,
+15/1/2026, 15/7/2026). Nếu chưa, xử lý với UBND cấp tỉnh **trước**, không đợi phần mềm xong.
+
+**Việc mới cần qua cổng `docs/14_FEATURE_PROCESS.md`:** tính năng "báo cáo định kỳ Mẫu số 06"
+(mục C.7) — ngoài phạm vi 6-bước đã duyệt cho mạch TT18, cần Bước 0-3 riêng trước khi code.

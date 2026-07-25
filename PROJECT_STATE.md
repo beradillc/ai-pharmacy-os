@@ -2653,10 +2653,66 @@ bước 4 (biên bản nhận lại PL XVIII) vì nó độc lập hoàn toàn.
 
 ---
 
+## 7as. Đọc xong NĐ163/2025 + TT33/2025 + TT26/2025 — ⭐ ĐẢO NGƯỢC KẾT LUẬN BÁO CÁO ĐỊNH KỲ (2026-07-25, GĐ dưới ủy quyền toàn quyền)
+
+> Chain chép 3 văn bản còn thiếu lên bookmark, ủy quyền toàn quyền cho GĐ tiếp tục chỉ đạo code.
+
+### 🔴 Phát hiện quan trọng nhất — KHÔNG PHẢI CODE, LÀ VIỆC THẬT NGOÀI ĐỜI
+
+**NĐ 163/2025/NĐ-CP Điều 35.2** (hiệu lực **01/7/2025**): cơ sở **bán buôn, bán lẻ, tổ chức chuỗi
+nhà thuốc** **PHẢI** báo cáo định kỳ **6 tháng** (trước 15/7) và **năm** (trước 15/01) về xuất/nhập/
+tồn/sử dụng GN/HT/TC + thuốc dạng phối hợp, theo **Mẫu số 06 Phụ lục II NĐ163**, gửi **UBND cấp
+tỉnh** nơi trụ sở chính. Không báo cáo đúng hạn (Điều 35.5) → bị ngừng tiếp nhận hồ sơ mua/XNK
+thuốc cho tới khi báo cáo đầy đủ.
+
+**Đây đảo ngược hoàn toàn** kết luận đã ghi 2 lần trước đó (2026-07-24 và đầu 2026-07-25): "bán lẻ
+không phải báo cáo định kỳ" — kết luận đó **đúng riêng với TT18** (Điều 7 chỉ áp phần phi thương
+mại) nhưng **sai khi coi đó là câu trả lời đầy đủ** — nghĩa vụ thật nằm ở Nghị định, không phải
+Thông tư, đúng như nghi ngờ đã ghi ở `docs/legal/README.md` trước khi có văn bản.
+
+⚠️ **NĐ163 không có lộ trình ân hạn cho khoản 2 Điều 35** (Điều 124 chỉ áp lộ trình cho khoản 1 —
+sản xuất/XNK). Tính đến hôm nay đã qua **3 kỳ hạn nộp: 15/7/2025, 15/1/2026, 15/7/2026**.
+**Việc cần làm ngay, không phải chờ code:** xác nhận với người chịu trách nhiệm chuyên môn dược
+của BeraLLC xem đã từng nộp báo cáo này chưa. Nếu chưa, liên hệ Sở Y tế/UBND tỉnh xử lý trước.
+
+### 2 phát hiện khác
+
+| # | Văn bản | Kết luận |
+|---|---|---|
+| 1 | TT 33/2025 (lưu trữ hồ sơ) | Không có mục riêng cho sổ KSĐB bán lẻ. Mục gần đúng nhất (báo cáo định kỳ GN/HT/TC cấp phép NK/XK) = **20 năm**. GĐ quyết định (dưới ủy quyền): nâng sàn retention từ ≥2 năm sau hạn dùng lên **≥20 năm kể từ ngày phát sinh hồ sơ** — hướng an toàn hơn, không phải kết luận chắc tuyệt đối |
+| 2 | TT 26/2025 (đơn thuốc & kê đơn) | Không phát sinh nghĩa vụ mới cho bán lẻ. Chỉ xác nhận 2 tham chiếu lỗi thời tự sửa trong chính nó: TT53/2017→TT33/2025, TT20/2017→TT18 Điều 15.4 (nguyên tắc "văn bản dẫn chiếu bị thay thế thì theo văn bản mới") |
+
+### Đã cập nhật (chỉ tài liệu, chưa đổi code)
+
+| File | Thay đổi |
+|---|---|
+| `docs/legal/Nghị-định-163-2025-NĐ-CP.SUMMARY.md` | Mới — trích Điều 35.2 (báo cáo), Mẫu số 06 12 cột, Điều 33/36 đối chiếu TT18 |
+| `docs/legal/Thông-tư-33-2025-TT-BYT.SUMMARY.md` | Mới — không có mục riêng, nâng sàn 20 năm |
+| `docs/legal/Thông-tư-26-2025-TT-BYT.SUMMARY.md` | Mới — không có nghĩa vụ mới, xác nhận 2 tham chiếu lỗi thời |
+| `docs/legal/README.md` | Bảng tra cập nhật, đánh dấu NĐ54/2017 hết hiệu lực |
+| `docs/13_COMPLIANCE_SPEC.md` | **Mục C.7 hoàn toàn mới** (báo cáo định kỳ); C.4 nâng sàn 20 năm; Traceability #27 đính chính lần 2, thêm #28; mục G bỏ báo cáo định kỳ ra khỏi "ngoài phạm vi"; changelog mục H |
+
+### Việc mới cần làm — CHƯA CODE, cần qua cổng riêng
+
+Tính năng "báo cáo định kỳ Mẫu số 06" (mục C.7 docs/13) là **tính năng hoàn toàn mới**, ngoài
+phạm vi 6-bước đã duyệt cho mạch TT18. Cần `docs/14_FEATURE_PROCESS.md` Bước 0-3 trước khi code,
+dù dữ liệu nguồn (`ControlledLedgerEntry`) đã có sẵn — việc mới là tổng hợp theo kỳ 6 tháng/năm +
+kết xuất đúng Mẫu số 06 + (tùy chọn) nhắc lịch nộp.
+
+**Ưu tiên đề xuất giữa 2 việc code đang chờ:** (a) bước 4 mạch TT18 đã duyệt trước (biên bản nhận
+lại PL XVIII) — không khẩn về pháp lý nhưng đã sẵn sàng làm ngay; (b) báo cáo định kỳ Mẫu số 06 —
+khẩn hơn về mặt tuân thủ (đã trễ hạn ngoài đời) nhưng cần qua cổng feature-process trước. **Hỏi
+Chain ưu tiên việc nào trước khi tiếp tục code**, thay vì tự chọn dưới ủy quyền, vì đây là quyết
+định phân bổ ưu tiên nghiệp vụ thật (không phải kỹ thuật) và ảnh hưởng tới việc có cần xử lý gấp
+bên ngoài phần mềm trước không.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-25 | **NĐ163+TT33+TT26 đọc xong — ĐẢO NGƯỢC kết luận báo cáo định kỳ (§7as)** — Chain chép 3 văn bản, ủy quyền toàn quyền GĐ chỉ đạo code. **NĐ163 Điều 35.2: bán lẻ CÓ nghĩa vụ báo cáo 6 tháng/năm gửi UBND cấp tỉnh (Mẫu số 06), đã trễ ≥3 kỳ (15/7/2025, 15/1/2026, 15/7/2026)** — đảo ngược kết luận cũ "TT18 không áp cho bán lẻ" (kết luận đó đúng riêng cho TT18, sai khi coi là câu trả lời đầy đủ). **Việc khẩn ngoài phần mềm:** xác nhận BeraLLC đã báo cáo chưa. TT33: không có mục riêng cho sổ KSĐB bán lẻ, nâng sàn retention lên ≥20 năm (suy diễn, an toàn hơn 2 năm cũ). TT26: không phát sinh nghĩa vụ mới, xác nhận 2 tham chiếu lỗi thời tự sửa. Cập nhật docs/13 (mục C.7 mới), docs/legal/README, 3 SUMMARY mới. **Chưa code** — tính năng báo cáo Mẫu số 06 cần qua docs/14_FEATURE_PROCESS trước; hỏi Chain ưu tiên việc này hay bước 4 (biên bản PL XVIII) đã duyệt trước đó. |
 | 2026-07-25 | **TT 18/2026 THAY TT 20/2017 — bước 1/3, chỉ tài liệu (§7ar)** — Chain thả bookmark TT18, yêu cầu chuẩn bị biểu mẫu + hỏi trình tự trước khi code. Trích nguyên văn: TT18 **hiệu lực 16/7/2026, bãi bỏ TT20/2017 + TT27/2024** ⇒ mục C của `docs/13` đang dựa trên văn bản chết 9 ngày. Báo cáo định kỳ **vẫn không áp cho bán lẻ** (Điều 7 thuộc Chương II — cơ sở phi thương mại) nhưng **hạ mức xuống "chưa kết luận được"** vì nghĩa vụ báo cáo của cơ sở kinh doanh nằm ở **NĐ 163/2025** — chưa có văn bản. Cái thật sự bỏ sót là **3 nghĩa vụ khác**: sổ **PL XVI** (Điều 12.3, TT20 không có), **biên bản nhận lại PL XVIII** (trước gạt ngoài phạm vi), **chữ ký số Điều 15.1.d** (không có gì). Lưu trữ mất căn cứ (chờ TT 33/2025 + TT 26/2025). Chain chốt: làm **bước 1–3**, chữ ký số **chỉ thiết kế**, sửa spec **tại chỗ + changelog**, **không bán thuốc độc** ⇒ không seed QĐ 3235. Bước 1 xong: SUMMARY TT18 đầy đủ, `docs/13` mục C viết lại + C.5/C.6 mới + Traceability #22–27 + changelog mục H, `docs/legal/README.md`, bản đề xuất 6 bước. **Bước 2–3 xong cùng ngày:** 122 hoạt chất PL I/II/III + ngưỡng PL IV/V/VI vào bảng `controlled_substances` (mig `0024`; seed **có nhánh cập nhật**, đã ép chạy nhánh đó trên CSDL có dữ liệu sẵn — `created=1, updated=2`); enum **7→9 giá trị** (`THUOC_DOC`, `DANH_MUC_CAM`); `LedgerBookType` **suy từ `category`**, không lưu cột ⇒ không cần migration; endpoint `GET /compliance/controlled-ledger/books/{book_type}/export` kết xuất CSV 2 mẫu sổ, tồn lũy kế reset theo từng thuốc. **Nợ ghi rõ, không tự làm:** phần đầu sổ (tên thuốc, số ĐKLH, ĐVT, nhà sản xuất) chưa xuất được vì phải mở read-port `DrugMasterFacts` — cross-module, chờ duyệt. 4 cổng xanh, pytest **782**, `alembic check` không drift. |
 | 2026-07-25 | **RÀ TOÀN BỘ ĐỘ RỘNG CỘT `varchar` (§7aq)** — GĐ đề xuất cuối §7ap, Chain duyệt. Rà 88 cột/40 bảng: từ vựng đóng (24 enum, permission, role code, event type, target_type, ref_type, hash) **không còn cột nào tràn** sau mig `0023`; nhưng **input người dùng thủng hệ thống** — chỉ 17/159 trường schema có `max_length`, xác nhận live 6/7 endpoint thử trả **500** (`/customers` full_name+phone, `/users` email+full_name, `/drugs` name, `/suppliers` phone). Vá bằng `max_length` khớp độ rộng cột cho 29 trường/8 module (`275cb9a`); verify live 6 request đó nay **422**, chuỗi dài đúng bằng cột vẫn 201 (không chặn thừa). **Cố ý KHÔNG bắt `DBAPIError` đổi thành 4xx** — sẽ nuốt mất lỗi nội bộ vốn cần nổ to. Không chặn mật khẩu/refresh token (không lưu thô) và cột `Text`. 2 cổng chặn tái diễn: test cấu trúc (mọi trường chuỗi request phải chặn hoặc miễn trừ có lý do) + test hành vi (endpoint từng 500 nay 422). 4 cổng xanh, pytest **741**. **Nợ còn mở:** cột `Text` chưa giới hạn (chờ Chain chốt mức nghiệp vụ) · 2 cột dư đúng 1 ký tự · hash sha256 khít 64/64. |
 | 2026-07-25 | **MODULE `analytics` XONG — SPRINT 7 ĐÓNG (§7ap)** — nối phiên bị **cúp điện 07:00** cắt ngang giữa bước 7/8. Dự báo trung bình trượt 90 ngày + mốc tái đặt hàng cấp thuốc×chi nhánh, đề xuất sinh **PO nháp** DRAFT trong `procurement`, dashboard doanh thu/top thuốc/cảnh báo tồn. 8 bước, 4 commit trong phiên này (`0bfb41b`→`a40de7e`→`77faa5e`→`97a4560`). **3 lỗi phát hiện khi rà**: (1) cổng ruff đỏ tại HEAD từ bước 4/8; (2) **`audit_logs.action` varchar(32) trong khi 3 action dài 33–36 ký tự → Postgres 500, mà 734 test vẫn xanh vì SQLite bỏ qua độ dài** — 2/3 action có từ trước, bug sống trên deployment thật, vá bằng mig `0023` + test chặn tái diễn; (3) **PO nháp ghi bằng system-user** lệch thiết kế Chain duyệt, mở cửa hậu leo thang quyền — nay ghi bằng identity người bấm. Kỷ luật #7 chạy đủ: seed idempotent + verify SQL (3 role có quyền, cashier/warehouse không) + round-trip API token thật trên PG (materialize sinh PO DRAFT thật, audit ghi đúng người bấm), dữ liệu thử đã dọn. 4 cổng xanh, pytest **734**, import-linter **16/0**, mig `0001`→`0023`. **Nợ mang sang (không tính DoD):** report đợt 2, retry DAV lên outbox, tồn-âm async, `analytics` v2, FE analytics. |
