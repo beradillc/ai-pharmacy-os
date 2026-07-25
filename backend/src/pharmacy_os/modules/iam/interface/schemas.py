@@ -16,6 +16,10 @@ from pharmacy_os.modules.iam.application.dto import (
     RoleAssignmentOutput,
     RoleOutput,
     SessionOutput,
+    TwoFactorActivationOutput,
+    TwoFactorEnrollmentOutput,
+    TwoFactorLoginInput,
+    TwoFactorStatusOutput,
     UserOutput,
 )
 from pharmacy_os.modules.iam.domain import MIN_PASSWORD_LENGTH
@@ -72,6 +76,11 @@ class SessionResponse(BaseModel):
     branch_id: UUID
     permissions: list[str]
     must_change_password: bool
+    must_enroll_two_factor: bool = False
+    """Enforcement is on and this account holds a sensitive permission but has no
+    active second factor. A prompt, not a barrier — the session is fully usable; only
+    signing the ledger is refused until enrolment."""
+
     accessible_branches: list[BranchResponse]
 
     @classmethod
@@ -86,6 +95,7 @@ class SessionResponse(BaseModel):
             branch_id=out.branch_id,
             permissions=out.permissions,
             must_change_password=out.must_change_password,
+            must_enroll_two_factor=out.must_enroll_two_factor,
             accessible_branches=[BranchResponse.of(b) for b in out.accessible_branches],
         )
 
@@ -204,3 +214,85 @@ class RoleAssignmentResponse(BaseModel):
             granted_by=out.granted_by,
             granted_at=out.granted_at,
         )
+
+
+# --- two-factor authentication ------------------------------------------------
+
+_TOTP_OR_BACKUP = Field(
+    min_length=6,
+    max_length=32,
+    description="Mã 6 chữ số từ ứng dụng xác thực, hoặc một mã dự phòng",
+)
+"""One field for both kinds of code on purpose: the service tries TOTP first and falls
+back to a backup code, so the client does not have to know (or tell us) which it holds
+— a user reading a code off a piece of paper should not need to pick the right box."""
+
+
+class TwoFactorEnrollResponse(BaseModel):
+    """The one and only time the secret leaves the server.
+
+    Both fields carry the same secret: ``secret`` for manual entry when a camera is
+    unavailable, ``provisioning_uri`` for the client to render as a QR code. Nothing
+    is active until a working code is posted to ``/auth/2fa/activate``.
+    """
+
+    secret: str
+    provisioning_uri: str
+
+    @classmethod
+    def of(cls, out: TwoFactorEnrollmentOutput) -> TwoFactorEnrollResponse:
+        return cls(secret=out.secret, provisioning_uri=out.provisioning_uri)
+
+
+class TwoFactorCodeRequest(BaseModel):
+    code: str = _TOTP_OR_BACKUP
+
+
+class TwoFactorActivateResponse(BaseModel):
+    """Backup codes, shown exactly once — only their hashes are stored, so this
+    response cannot be reproduced. Losing them means an administrator reset (or the
+    server-side break-glass command), not a re-read."""
+
+    backup_codes: list[str]
+
+    @classmethod
+    def of(cls, out: TwoFactorActivationOutput) -> TwoFactorActivateResponse:
+        return cls(backup_codes=out.backup_codes)
+
+
+class TwoFactorDisableRequest(BaseModel):
+    """Both factors are required to switch the second one off.
+
+    Password alone would mean a stolen password is enough to remove the very control
+    that protects against a stolen password.
+    """
+
+    current_password: str
+    code: str = _TOTP_OR_BACKUP
+
+
+class TwoFactorStatusResponse(BaseModel):
+    enrolled: bool
+    active: bool
+    must_enroll: bool
+    unused_backup_codes: int
+
+    @classmethod
+    def of(cls, out: TwoFactorStatusOutput) -> TwoFactorStatusResponse:
+        return cls(
+            enrolled=out.enrolled,
+            active=out.active,
+            must_enroll=out.must_enroll,
+            unused_backup_codes=out.unused_backup_codes,
+        )
+
+
+class TwoFactorLoginRequest(BaseModel):
+    """Step 2 of a two-factor login: the challenge handed out by ``/auth/login``
+    (as the ``challenge_token`` member of its 401 body) plus a code."""
+
+    challenge_token: str
+    code: str = _TOTP_OR_BACKUP
+
+    def to_input(self) -> TwoFactorLoginInput:
+        return TwoFactorLoginInput(challenge_token=self.challenge_token, code=self.code)

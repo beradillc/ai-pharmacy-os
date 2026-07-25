@@ -28,6 +28,12 @@ from pharmacy_os.modules.iam.interface.schemas import (
     SessionResponse,
     SetUserActiveRequest,
     SwitchBranchRequest,
+    TwoFactorActivateResponse,
+    TwoFactorCodeRequest,
+    TwoFactorDisableRequest,
+    TwoFactorEnrollResponse,
+    TwoFactorLoginRequest,
+    TwoFactorStatusResponse,
     UserResponse,
 )
 
@@ -94,6 +100,56 @@ def build_auth_router(get_context: ContextDep) -> APIRouter:
             permissions=sorted(ctx.permissions),
         )
 
+    # --- two-factor -----------------------------------------------------------
+    #
+    # ``/2fa/login`` is the only one of these that takes no context: it *completes*
+    # an authentication, so no identity exists yet. The rest act on the caller's own
+    # account and need one. There is deliberately no endpoint to read a secret or a
+    # backup code back — both are shown exactly once, at the moment they are issued.
+
+    @router.post("/2fa/login", response_model=SessionResponse)
+    async def two_factor_login(
+        request: Request, body: TwoFactorLoginRequest, service: AuthService = Depends(_auth)
+    ) -> SessionResponse:
+        """Step 2: exchange the challenge from ``/auth/login`` plus a code for a session."""
+        data = body.to_input()
+        data.client_ip = client_ip_of(request)
+        return SessionResponse.of(await service.complete_two_factor_login(data))
+
+    @router.post("/2fa/enroll", response_model=TwoFactorEnrollResponse)
+    async def enroll_two_factor(
+        service: AuthService = Depends(_auth),
+        ctx: RequestContext = Depends(get_context),
+    ) -> TwoFactorEnrollResponse:
+        """Issue a secret. Nothing changes about logging in until it is activated."""
+        return TwoFactorEnrollResponse.of(await service.enroll_two_factor(ctx))
+
+    @router.post("/2fa/activate", response_model=TwoFactorActivateResponse)
+    async def activate_two_factor(
+        body: TwoFactorCodeRequest,
+        service: AuthService = Depends(_auth),
+        ctx: RequestContext = Depends(get_context),
+    ) -> TwoFactorActivateResponse:
+        """Prove the secret was stored correctly, switch it on, and hand back the
+        backup codes — the only time they are ever shown."""
+        return TwoFactorActivateResponse.of(await service.activate_two_factor(ctx, body.code))
+
+    @router.post("/2fa/disable", status_code=status.HTTP_204_NO_CONTENT)
+    async def disable_two_factor(
+        body: TwoFactorDisableRequest,
+        service: AuthService = Depends(_auth),
+        ctx: RequestContext = Depends(get_context),
+    ) -> Response:
+        await service.disable_two_factor(ctx, body.current_password, body.code)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @router.get("/2fa", response_model=TwoFactorStatusResponse)
+    async def two_factor_status(
+        service: AuthService = Depends(_auth),
+        ctx: RequestContext = Depends(get_context),
+    ) -> TwoFactorStatusResponse:
+        return TwoFactorStatusResponse.of(await service.two_factor_status(ctx))
+
     return router
 
 
@@ -143,6 +199,25 @@ def build_admin_router(get_context: ContextDep) -> APIRouter:
         ctx: RequestContext = Depends(get_context),
     ) -> Response:
         await service.reset_password(user_id, body.new_password, ctx)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @router.post("/users/{user_id}/2fa/reset", status_code=status.HTTP_204_NO_CONTENT)
+    async def reset_two_factor(
+        user_id: UUID,
+        service: IamService = Depends(_iam),
+        ctx: RequestContext = Depends(get_context),
+    ) -> Response:
+        """Clear another user's second factor after they lost their device.
+
+        Requires ``iam.user.write``, so in practice ``system_admin`` only. Deliberately
+        does **not** revoke sessions or force a password change: this lowers a defence,
+        it does not touch the credential, so an in-progress shift is not interrupted.
+
+        Cannot rescue the last remaining administrator — nobody would hold the
+        permission to call it. That case is covered by the server-side break-glass
+        command (``python -m seeds.reset_two_factor``), not by this endpoint.
+        """
+        await service.reset_two_factor(user_id, ctx)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @router.get("/users/{user_id}/roles", response_model=list[RoleAssignmentResponse])

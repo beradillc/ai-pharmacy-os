@@ -44,8 +44,12 @@ _EXEMPT: dict[str, str] = {
     "ChangePasswordRequest.current_password": "chỉ đi vào bcrypt",
     "ChangePasswordRequest.new_password": "chỉ đi vào bcrypt",
     "SignLedgerBookRequest.current_password": "chỉ đi vào bcrypt (re-auth ký sổ, bước 6 TT18)",
+    "TwoFactorDisableRequest.current_password": "chỉ đi vào bcrypt (tắt 2FA đòi cả 2 yếu tố)",
     "RefreshRequest.refresh_token": "chỉ đi vào sha256",
     "SwitchBranchRequest.refresh_token": "chỉ đi vào sha256",
+    # Chỉ đi vào sha256 rồi tra theo `token_hash` (cột varchar(64) lưu bản băm, không
+    # bao giờ lưu token thô) — cùng lý do 2 refresh_token ở trên.
+    "TwoFactorLoginRequest.challenge_token": "chỉ đi vào sha256",
     # Ràng buộc nằm trong Annotated của phần tử (chặn độ dài TỪNG tên, không phải số
     # phần tử) nên không lộ ra ở metadata của chính trường.
     "CheckInteractionsRequest.ingredients": "chặn theo từng phần tử qua Annotated",
