@@ -273,8 +273,14 @@ trưởng bộ phận.
 
 Khi người bệnh không dùng hết hoặc tử vong, cơ sở bán lẻ nhận lại thuốc GN/HT/TC phải:
 - Lập **Biên bản Phụ lục XVIII thành 02 bản**, mỗi bên giữ 01;
-- **Biệt trữ** thuốc nhận lại tại khu vực bảo đảm an ninh chống thất thoát, rồi tiêu hủy theo quy định
-  ⇒ hệ quả kỹ thuật: lô nhận lại phải bị **khóa khỏi tồn kho bán được** (cross-module `inventory`).
+- **Biệt trữ** thuốc nhận lại tại khu vực bảo đảm an ninh chống thất thoát, rồi tiêu hủy theo quy định.
+
+> **Sửa lại 2026-07-25 khi vào Bước 0-3 (`docs/features/bien-ban-nhan-lai-pl-xviii/`):** giả định
+> "khóa khỏi tồn kho bán được, cross-module `inventory`" ghi ban đầu ở đây là **dư thừa, đã bỏ**.
+> Thuốc GN/HT/TC trả lại đi thẳng biệt trữ/tiêu hủy (Điều 6.2), **không** quay lại tồn kho bán được
+> — không có bước "cộng tồn" để cần chặn. Đúng nguyên tắc đã có: "trả tồn" (auto-restock) của
+> `sales.SaleReturned` cũng CHỦ Ý không tự động (PROJECT_STATE §7aa). Tính năng này **không cross-
+> module** với `inventory`.
 
 Trường bắt buộc của biểu mẫu: người giao (`họ tên`, `địa chỉ`, **`số CCCD/hộ chiếu` + nơi cấp, ngày
 cấp**, cờ *là người bệnh* / *là người đại diện*), cơ sở nhận (**ghi rõ người chịu trách nhiệm chuyên
