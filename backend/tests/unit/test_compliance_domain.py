@@ -14,6 +14,7 @@ from pharmacy_os.modules.compliance.domain import (
     ControlledSubstanceCategory,
     CustomerDetail,
     EtcPrescriptionPolicy,
+    LedgerBookType,
     LedgerDirection,
     MissingControlledCustomerDetailError,
     MissingControlledPrescriptionCodeError,
@@ -21,6 +22,7 @@ from pharmacy_os.modules.compliance.domain import (
     NationalDrugRecord,
     NotControlledSubstanceError,
     TenantComplianceConfig,
+    book_type_for,
     to_qld_code,
     to_qld_date,
     to_qld_datetime,
@@ -109,7 +111,11 @@ def test_national_drug_record_is_immutable() -> None:
 # --- C.1 Phân loại — ControlledSubstanceCategory (docs/13 mục C.1) --------
 
 
-def test_controlled_substance_category_has_7_values() -> None:
+def test_controlled_substance_category_has_9_values() -> None:
+    """7 → 9 giá trị (2026-07-25): TT18 Điều 12.3 kéo thuốc độc + danh mục cấm vào
+
+    nghĩa vụ sổ sách của cơ sở BÁN LẺ; TT20/2017 không có nên bản cũ đã loại 2 nhóm này.
+    """
     assert {c.value for c in ControlledSubstanceCategory} == {
         "GAY_NGHIEN",
         "HUONG_THAN",
@@ -117,6 +123,8 @@ def test_controlled_substance_category_has_7_values() -> None:
         "PHOI_HOP_GN",
         "PHOI_HOP_HT",
         "PHOI_HOP_TC",
+        "THUOC_DOC",
+        "DANH_MUC_CAM",
         "NONE",
     }
 
@@ -370,3 +378,82 @@ class TestControlledSubstance:
         )
         assert chat.limit_per_unit_mg is None
         assert "Atropin Sulfat" in (chat.limit_note or "")
+
+
+class TestLedgerBookType:
+    """2 mẫu sổ xuất/nhập/tồn của TT18 — Phụ lục VIII và Phụ lục XVI (Điều 12.1.a / 12.3)."""
+
+    @pytest.mark.parametrize(
+        "category",
+        [
+            ControlledSubstanceCategory.GAY_NGHIEN,
+            ControlledSubstanceCategory.HUONG_THAN,
+            ControlledSubstanceCategory.TIEN_CHAT,
+        ],
+    )
+    def test_gn_ht_tc_ghi_so_phu_luc_viii(self, category: ControlledSubstanceCategory) -> None:
+        assert book_type_for(category) is LedgerBookType.PL_VIII
+
+    @pytest.mark.parametrize(
+        "category",
+        [
+            ControlledSubstanceCategory.PHOI_HOP_GN,
+            ControlledSubstanceCategory.PHOI_HOP_HT,
+            ControlledSubstanceCategory.PHOI_HOP_TC,
+            ControlledSubstanceCategory.THUOC_DOC,
+            ControlledSubstanceCategory.DANH_MUC_CAM,
+        ],
+    )
+    def test_phoi_hop_doc_va_cam_ghi_so_phu_luc_xvi(
+        self, category: ControlledSubstanceCategory
+    ) -> None:
+        """Điều 12.3 — nghĩa vụ MỚI của bán lẻ, TT20/2017 không có."""
+        assert book_type_for(category) is LedgerBookType.PL_XVI
+
+    def test_thuoc_thuong_khong_co_so(self) -> None:
+        with pytest.raises(NotControlledSubstanceError):
+            book_type_for(ControlledSubstanceCategory.NONE)
+
+
+class TestBanThuocDocVaDanhMucCam:
+    """Điều 12.3 chỉ buộc sổ xuất/nhập/tồn — KHÔNG có nghĩa vụ sổ khách hàng (Phụ lục XIX)."""
+
+    @pytest.mark.parametrize(
+        "category",
+        [ControlledSubstanceCategory.THUOC_DOC, ControlledSubstanceCategory.DANH_MUC_CAM],
+    )
+    def test_ban_ra_khong_doi_thong_tin_khach_hang(
+        self, category: ControlledSubstanceCategory
+    ) -> None:
+        validate_controlled_sale(category, prescription_code=None, customer=None)
+
+    @pytest.mark.parametrize(
+        "category",
+        [
+            ControlledSubstanceCategory.PHOI_HOP_GN,
+            ControlledSubstanceCategory.PHOI_HOP_HT,
+            ControlledSubstanceCategory.PHOI_HOP_TC,
+        ],
+    )
+    def test_dang_phoi_hop_van_doi_thong_tin_khach_hang(
+        self, category: ControlledSubstanceCategory
+    ) -> None:
+        """Điều 12.2 — bán lẻ thuốc dạng phối hợp vẫn phải lập Sổ theo dõi khách hàng."""
+        with pytest.raises(MissingControlledCustomerDetailError):
+            validate_controlled_sale(category, prescription_code=None, customer=None)
+
+    def test_ghi_so_duoc_cho_thuoc_doc(self) -> None:
+        entry = ControlledLedgerEntry(
+            tenant_id=uuid4(),
+            branch_id=uuid4(),
+            drug_id=uuid4(),
+            category=ControlledSubstanceCategory.THUOC_DOC,
+            direction=LedgerDirection.NHAP,
+            quantity=Decimal("10"),
+            lot_no="L1",
+            expiry_date=date(2027, 1, 1),
+            transaction_at=datetime(2026, 7, 20, tzinfo=UTC),
+            source_or_destination="NCC A",
+            document_no="PXK-1",
+        )
+        assert book_type_for(entry.category) is LedgerBookType.PL_XVI

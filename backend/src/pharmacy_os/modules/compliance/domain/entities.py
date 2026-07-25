@@ -22,10 +22,12 @@ def _now() -> datetime:
 
 
 class ControlledSubstanceCategory(StrEnum):
-    """Phân loại thuốc kiểm soát đặc biệt (TT 20/2017 Điều 3 khoản 1-6). Xem docs/13 mục C.1.
+    """Phân loại thuốc kiểm soát đặc biệt (TT 18/2026 Phụ lục VII). Xem docs/13 mục C.1.
 
-    Phạm vi module chỉ áp dụng cơ sở bán lẻ — TT20/2017 còn có thuốc phóng xạ/thuốc độc/
-    danh mục cấm cho loại hình cơ sở khác, ngoài phạm vi enum này.
+    Phạm vi module là cơ sở bán lẻ. ``THUOC_DOC``/``DANH_MUC_CAM`` được bổ sung 2026-07-25:
+    TT18 Điều 12.3 buộc **chính cơ sở bán lẻ** lập sổ xuất/nhập/tồn (Phụ lục XVI) cho 2 nhóm
+    này — TT20/2017 không có nghĩa vụ đó nên bản cũ đã loại chúng khỏi enum, tiền đề đó sai.
+    Thuốc phóng xạ vẫn ngoài phạm vi (nhà thuốc bán lẻ không kinh doanh).
     """
 
     GAY_NGHIEN = "GAY_NGHIEN"  # gây nghiện
@@ -34,7 +36,42 @@ class ControlledSubstanceCategory(StrEnum):
     PHOI_HOP_GN = "PHOI_HOP_GN"  # dạng phối hợp chứa gây nghiện
     PHOI_HOP_HT = "PHOI_HOP_HT"  # dạng phối hợp chứa hướng thần
     PHOI_HOP_TC = "PHOI_HOP_TC"  # dạng phối hợp chứa tiền chất
+    THUOC_DOC = "THUOC_DOC"  # thuốc độc, nguyên liệu độc làm thuốc (Điều 12.3)
+    DANH_MUC_CAM = "DANH_MUC_CAM"  # thuốc/dược chất thuộc danh mục chất bị cấm (Điều 12.3)
     NONE = "NONE"  # không thuộc diện kiểm soát — mặc định
+
+
+class LedgerBookType(StrEnum):
+    """Mẫu sổ xuất/nhập/tồn phải dùng cho một nhóm thuốc (docs/13 mục C.2.1).
+
+    Hai mẫu sổ khác nhau, không gộp được: Phụ lục XVI có thêm cột đầu sổ ``nhà sản xuất``
+    và áp cho nhóm thuốc khác Phụ lục VIII.
+    """
+
+    PL_VIII = "PL_VIII"  # GN/HT/TC + nguyên liệu (Điều 12.1.a)
+    PL_XVI = "PL_XVI"  # dạng phối hợp + thuốc độc + danh mục cấm (Điều 12.3)
+
+
+_PL_XVI_CATEGORIES = frozenset(
+    {
+        ControlledSubstanceCategory.PHOI_HOP_GN,
+        ControlledSubstanceCategory.PHOI_HOP_HT,
+        ControlledSubstanceCategory.PHOI_HOP_TC,
+        ControlledSubstanceCategory.THUOC_DOC,
+        ControlledSubstanceCategory.DANH_MUC_CAM,
+    }
+)
+
+
+def book_type_for(category: ControlledSubstanceCategory) -> LedgerBookType:
+    """Mẫu sổ tương ứng với nhóm thuốc — suy ra, KHÔNG lưu trùng xuống CSDL.
+
+    Lưu thành cột riêng thì có 2 nguồn sự thật cho cùng một dữ kiện và chúng lệch nhau được;
+    ``category`` đã đủ để suy ra nên chỉ suy ra tại chỗ.
+    """
+    if category is ControlledSubstanceCategory.NONE:
+        raise NotControlledSubstanceError("Thuốc không thuộc diện kiểm soát thì không có sổ")
+    return LedgerBookType.PL_XVI if category in _PL_XVI_CATEGORIES else LedgerBookType.PL_VIII
 
 
 class LedgerDirection(StrEnum):
