@@ -2701,10 +2701,26 @@ kết xuất đúng Mẫu số 06 + (tùy chọn) nhắc lịch nộp.
 
 **Ưu tiên đề xuất giữa 2 việc code đang chờ:** (a) bước 4 mạch TT18 đã duyệt trước (biên bản nhận
 lại PL XVIII) — không khẩn về pháp lý nhưng đã sẵn sàng làm ngay; (b) báo cáo định kỳ Mẫu số 06 —
-khẩn hơn về mặt tuân thủ (đã trễ hạn ngoài đời) nhưng cần qua cổng feature-process trước. **Hỏi
-Chain ưu tiên việc nào trước khi tiếp tục code**, thay vì tự chọn dưới ủy quyền, vì đây là quyết
-định phân bổ ưu tiên nghiệp vụ thật (không phải kỹ thuật) và ảnh hưởng tới việc có cần xử lý gấp
-bên ngoài phần mềm trước không.
+khẩn hơn về mặt tuân thủ (đã trễ hạn ngoài đời) nhưng cần qua cổng feature-process trước.
+
+**Chain chốt (2026-07-25):** ưu tiên (b) báo cáo định kỳ Mẫu số 06 trước. Thực tế báo cáo trễ hạn
+đã được Chain xác nhận **không áp dụng/đã xử lý** — không còn là việc khẩn ngoài đời, an tâm code.
+
+## 7at. Báo cáo định kỳ Mẫu số 06 (NĐ163 Điều 35.2) — Bước 0-3 xong, bắt đầu code (2026-07-25)
+
+Đã qua cổng `docs/14_FEATURE_PROCESS.md` — xem đầy đủ Bước 0-3 tại
+`docs/features/bao-cao-dinh-ky-nd163/01_DECISIONS.md`. Tóm tắt quyết định chính:
+
+| # | Quyết định |
+|---|---|
+| 1 | Tái dùng permission `compliance.ledger.read` có sẵn — không tạo permission mới |
+| 2 | Audit bằng `AuditAction.PERIODIC_REPORT_EXPORTED` mới, dùng `audit_logs` sẵn có — không tạo bảng lưu nội dung báo cáo |
+| 3 | **Wiring lần đầu** adapter cho `DrugMasterProvider` (port đã định nghĩa từ trước cho QĐ540 nhưng chưa từng được dùng) — đọc `name`/`form`/`strength`/`registration_no`/`base_unit` từ `catalog.Drug` qua composition root, đúng khuôn `CatalogDrugInfoProvider` |
+| 4 | **3 cột không có nguồn dữ liệu** (quy cách đóng gói, nước sản xuất, số công văn cho phép mua trong nước) — để trống có chủ đích trong export, ghi rõ cần điền tay trước khi nộp. Không mở rộng schema `catalog` cho đợt này |
+| 5 | **Cột "Hao hụt"** — ledger không phân biệt lý do xuất (bán vs hỏng/vỡ/hết hạn) — mặc định 0, để trống cho người dùng ghi theo kiểm kê thực tế |
+| 6 | `PeriodicReportRow` là **per-drug aggregate theo kỳ**, khác hẳn `LedgerBookRow` (per-transaction) vừa làm ở mạch TT18 — không gộp chung, giữ 2 hàm riêng |
+
+Code chưa bắt đầu tại thời điểm ghi mục này — tiếp tục ở mục changelog khi xong từng bước.
 
 ---
 
