@@ -72,6 +72,9 @@ TT18/2026 có hiệu lực **16/7/2026** và **bãi bỏ TT20/2017**, trong khi 
 | 1 — tài liệu | ✅ **XONG 2026-07-25** | `docs/13` mục C viết lại theo TT18 + mục C.5/C.6 mới + Traceability #22–27 + changelog mục H; `docs/legal/README.md` cập nhật; SUMMARY TT18 đầy đủ |
 | 2 — seed danh mục | ✅ **XONG 2026-07-25** | `8a4f49a` entity `ControlledSubstance` · `10691e7` bảng `controlled_substances` (mig `0024`) + 122 hoạt chất sinh tự động từ văn bản gốc, seed có nhánh cập nhật, đã thử trên CSDL có dữ liệu sẵn |
 | 3 — sổ PL XVI | ✅ **XONG 2026-07-25** | `be763d1` enum 9 giá trị + `LedgerBookType` · `ea85d94` `list_for_book()`, CSV export, endpoint `GET /compliance/controlled-ledger/books/{book_type}/export` |
+| 4 — biên bản nhận lại PL XVIII | ✅ **XONG 2026-07-25** | `424220d` — `DrugReturnRecord`+`ReturnedDrugItem`, mig `0025`, `POST/GET /compliance/drug-returns[/{id}]`. Phát hiện: giả định cross-module `inventory` trong docs/13 mục C.6 là dư thừa, đã sửa |
+| 5 — kết xuất cuối ngày + hash | ✅ **XONG 2026-07-25** | `0f122f3` — `GET .../daily-closure?day=`, header `X-Content-Sha256`. Chain ủy quyền GĐ chọn việc, ưu tiên Sonnet — khớp đúng khuôn (nội bộ 1 module, tái dùng hạ tầng bước 3) |
+| 6 — chữ ký số | ⏳ Chỉ thiết kế xong (3 hướng), **chưa code** | Chờ Chain chọn A/B/C — sau khi chọn là thiết kế mới thật sự, cần Opus |
 
 ### Nợ phát sinh khi làm bước 3 (chưa duyệt, không tự làm)
 

@@ -2767,6 +2767,32 @@ CCCD), e2e HTTP (201/200, chặn 0 dòng thuốc bằng 422, 401 không token). 
 mypy --strict · import-linter (16) · pytest. Migration `0025` live Postgres, `alembic check` không
 drift, bảng xác nhận đúng cấu trúc bằng `psql \d` thật.
 
+## 7av. Bước 5/6 mạch TT18 — Kết xuất cuối ngày + hash toàn vẹn (2026-07-25, Sonnet)
+
+Chain ủy quyền GĐ chọn việc, **ưu tiên Sonnet**. Chọn bước 5 (không phải bước 6 — chữ ký số) vì
+đúng khuôn Sonnet theo CLAUDE.md mục "Chọn model": app/interface nội bộ 1 module, tái dùng gần hết
+hạ tầng đã có ở bước 3 (`list_for_book`, `to_book_rows`, `ledger_book_row_to_csv`), không cross-
+module, không thiết kế mới. Bước 6 vẫn chờ Chain chọn hướng A/B/C — một khi chọn xong mới là thiết
+kế mới thật sự, thuộc diện Opus.
+
+**Đáp ứng docs/13 mục C.5 điểm (a)** Điều 15.1 (dữ liệu toàn vẹn, không đổi khi truyền/chia sẻ) —
+**CHƯA đáp ứng điểm (d)** (chữ ký số/xác nhận điện tử, vẫn 0, chờ bước 6). Ghi chú bắt buộc Phụ
+lục VIII ("trích xuất, in cuối mỗi ngày") — phần trích xuất đã có, phần ký trên từng trang vẫn là
+thao tác tay cho tới khi bước 6 xong.
+
+| Phần | Nội dung |
+|---|---|
+| Application | `render_ledger_book_csv_text()` — dựng TOÀN BỘ nội dung CSV thành 1 chuỗi (không streaming, khác export theo kỳ dài) để băm SHA-256 trước khi trả response; an toàn bộ nhớ vì phạm vi luôn 1 ngày |
+| Service | `export_daily_closure(book_type, day, ctx)` — gọi `list_for_book(from_date=to_date=day)`, ghi audit `LEDGER_DAILY_CLOSURE_EXPORTED` kèm `content_sha256` trong context (không phải PII, an toàn để lưu) |
+| Interface | `GET /compliance/controlled-ledger/books/{book_type}/daily-closure?day=` — trả CSV + header `X-Content-Sha256`. Tái dùng `compliance.ledger.read`, KHÔNG permission mới |
+
+Test: dựng đúng header khi rỗng, cùng nội dung → cùng hash (tính xác định), đổi 1 ký tự → đổi
+hash; service lọc đúng ngày (giao dịch ngày khác không lẫn vào); audit ghi đúng hash; e2e HTTP 200
++ header `X-Content-Sha256` 64 ký tự hex + 401 không token. 4 cổng xanh: ruff · mypy --strict ·
+import-linter (16) · **pytest 813**.
+
+**Mạch TT18 còn lại đúng 1 việc:** bước 6 (chữ ký số), chờ Chain chọn hướng A/B/C.
+
 ---
 
 ## 8. Nhật ký thay đổi (Changelog)

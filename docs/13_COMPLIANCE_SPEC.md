@@ -256,18 +256,20 @@ sớm), phù hợp nguyên tắc chọn phương án ít rủi ro khi chưa ch�
 
 | Điểm | Yêu cầu | Hiện trạng hệ thống |
 |---|---|---|
-| a | Dữ liệu **đầy đủ theo đúng biểu mẫu**, **được mã hóa**, **toàn vẹn**, không đổi khi truyền/chia sẻ | ⚠️ Một phần (TLS), chưa có hash toàn vẹn bản ghi |
+| a | Dữ liệu **đầy đủ theo đúng biểu mẫu**, **được mã hóa**, **toàn vẹn**, không đổi khi truyền/chia sẻ | ✅ **XONG (2026-07-25)** — `GET .../daily-closure` trả hash SHA-256 của đúng nội dung 1 ngày (header `X-Content-Sha256`), ghi lại trong audit. TLS đã có từ trước |
 | b | Chính xác, bảo mật; **mọi thay đổi phải LƯU VẾT đầy đủ** | ✅ ledger immutable + `audit_log` |
 | c | Tra cứu được suốt thời gian lưu trữ; **phục hồi & truy xuất** khi cần | ⚠️ Có export, chưa có quy trình phục hồi kiểm chứng |
-| d | Người theo dõi/xác nhận **phải ký bằng chữ ký số hoặc kỹ thuật xác nhận điện tử** | ❌ **KHÔNG CÓ** |
+| d | Người theo dõi/xác nhận **phải ký bằng chữ ký số hoặc kỹ thuật xác nhận điện tử** | ❌ **KHÔNG CÓ** — bước 6, chờ Chain chọn hướng A/B/C |
 
 Ghi chú bắt buộc của **Phụ lục VIII**: dùng phần mềm ⇒ phải **trích xuất, in thông tin theo dõi vào
 cuối MỖI NGÀY**, lưu hồ sơ, **có chữ ký xác nhận trên TỪNG TRANG** của người quản lý thuốc và
-trưởng bộ phận.
+trưởng bộ phận. **Phần "trích xuất cuối ngày" đã có** (`GET .../daily-closure`); phần "chữ ký trên
+từng trang" vẫn là thao tác tay (in ra, ký) cho tới khi bước 6 xong.
 
 > **Kết luận thẳng:** chừng nào chưa có (d), sổ điện tử của hệ thống **chưa đủ điều kiện pháp lý
 > thay sổ giấy** — nhà thuốc vẫn phải in và ký tay hằng ngày. Đây là **nợ pháp lý mức 🔴**, đã
-> chốt 2026-07-25: **thiết kế trước, chưa code** (xem `docs/features/tt18-kiem-soat-dac-biet/`).
+> chốt 2026-07-25: **thiết kế trước, chưa code** (xem `docs/features/tt18-kiem-soat-dac-biet/`
+> mục "Thiết kế ký sổ điện tử", 3 hướng, chờ Chain chọn).
 
 ### C.6 (MỚI 2026-07-25) Biên bản nhận lại thuốc GN/HT/TC — **Điều 6.2 + Điều 12.1.d, Phụ lục XVIII**
 
@@ -462,3 +464,10 @@ từ "CHƯA CÓ" sang "ĐÃ XONG". Chi tiết đầy đủ xem PROJECT_STATE §7
 (`docs/features/bien-ban-nhan-lai-pl-xviii/01_DECISIONS.md`) — phát hiện giả định cross-module
 `inventory` trong bản gốc mục C.6 là dư thừa, đã sửa. Mục C.6 cập nhật "Trạng thái implement: ĐÃ
 XONG". Chi tiết đầy đủ xem PROJECT_STATE §7au.
+
+### 2026-07-25 (đợt 5, cùng ngày) — Bước 5/6 mạch TT18: Kết xuất cuối ngày + hash toàn vẹn — CODE XONG
+
+Chain ủy quyền GĐ chọn việc, ưu tiên Sonnet — bước 5 khớp đúng khuôn (app/interface nội bộ 1
+module, tái dùng hạ tầng bước 3, không cross-module), khác bước 6 (chữ ký số) là thiết kế mới
+thật sự cần Opus, đang chờ Chain chọn hướng A/B/C. Mục C.5 điểm (a) Điều 15.1 chuyển từ ⚠️ sang
+✅. Chi tiết đầy đủ xem PROJECT_STATE §7av.
