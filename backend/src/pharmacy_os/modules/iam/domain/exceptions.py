@@ -58,3 +58,19 @@ class RefreshTokenReusedError(IamError):
     client had already exchanged. The application layer answers by revoking every
     session of that user, not just this one.
     """
+
+
+class TwoFactorError(IamError):
+    """Base for two-factor rule violations (Sprint 8)."""
+
+
+class TwoFactorNotPendingError(TwoFactorError):
+    """Raised when activating a configuration that is not awaiting confirmation."""
+
+
+class TwoFactorCodeReusedError(TwoFactorError):
+    """Raised when a TOTP code from an already-spent time step is presented again.
+
+    A code stays valid for its whole 30-second step, so replay is a live window,
+    not a theoretical one (see ``UserTwoFactor.register_use``).
+    """

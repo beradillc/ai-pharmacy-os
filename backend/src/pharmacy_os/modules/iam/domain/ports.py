@@ -19,6 +19,11 @@ from pharmacy_os.modules.iam.domain.entities import (
     Tenant,
     User,
 )
+from pharmacy_os.modules.iam.domain.two_factor import (
+    BackupCode,
+    TwoFactorChallenge,
+    UserTwoFactor,
+)
 
 
 class TenantRepository(Protocol):
@@ -90,4 +95,44 @@ class RefreshTokenRepository(Protocol):
 
     async def delete_expired(self, now: datetime) -> int:
         """Housekeeping: drop rows past ``expires_at`` (called on each refresh)."""
+        ...
+
+
+class UserTwoFactorRepository(Protocol):
+    """One row per user at most — the absence of a row *is* "2FA disabled"."""
+
+    async def add(self, config: UserTwoFactor) -> None: ...
+
+    async def find_for_user(self, user_id: UUID) -> UserTwoFactor | None: ...
+
+    async def update(self, config: UserTwoFactor) -> None: ...
+
+    async def delete_for_user(self, user_id: UUID) -> None:
+        """Remove the configuration and its backup codes (self-disable / admin reset)."""
+        ...
+
+
+class BackupCodeRepository(Protocol):
+    async def replace_all(self, two_factor_id: UUID, codes: list[BackupCode]) -> None:
+        """Issue a fresh set, discarding any previous one.
+
+        Regenerating always invalidates the old sheet: a user who asks for new codes
+        is telling you the old ones are no longer trustworthy.
+        """
+        ...
+
+    async def list_for(self, two_factor_id: UUID) -> list[BackupCode]: ...
+
+    async def update(self, code: BackupCode) -> None: ...
+
+
+class TwoFactorChallengeRepository(Protocol):
+    async def add(self, challenge: TwoFactorChallenge) -> None: ...
+
+    async def find_by_hash(self, token_hash: str) -> TwoFactorChallenge | None: ...
+
+    async def update(self, challenge: TwoFactorChallenge) -> None: ...
+
+    async def delete_expired(self, now: datetime) -> int:
+        """Housekeeping, mirroring :meth:`RefreshTokenRepository.delete_expired`."""
         ...

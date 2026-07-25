@@ -24,6 +24,9 @@ dependencies = [
     "structlog>=24.1",
     "pyjwt>=2.8",
     "bcrypt>=4.1",
+    # TOTP (RFC 6238) for 2FA on high-trust roles — Sprint 8. Standard implementation
+    # rather than hand-rolled HMAC: see core/security/totp.py for the reasoning.
+    "pyotp>=2.9",
     "tenacity>=8.3",
     "httpx>=0.27",
     "reportlab>=4.2",
