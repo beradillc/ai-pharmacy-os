@@ -1,9 +1,9 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-25** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). Sprint 8 **chưa mở** — chờ lệnh Chain.
+> Cập nhật cuối: **2026-07-25** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 đã đóng, đang xử lý retry DAV → bảo mật → plugin loader → connector → observability → load test (thứ tự đã chốt §7ax).
 >
-> **Kế tiếp:** 2 blocker nền cũ (§7j) đã gỡ 1 — RBAC/IAM thật XONG (§7k), nên hồ sơ KH đã làm được và **đã xong**; còn lại **tích điểm KH** (chưa làm, phải qua [docs/14](docs/14_FEATURE_PROCESS.md)) và **`docs/legal/` vẫn thiếu** Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. Nợ mang sang sau Sprint 7: report đợt 2, retry DAV lên outbox, tồn-âm khi outbox async, `analytics` v2, FE cho các module đã có backend.
+> **Kế tiếp:** 2 blocker nền cũ (§7j) đã gỡ 1 — RBAC/IAM thật XONG (§7k), nên hồ sơ KH đã làm được và **đã xong**; còn lại **tích điểm KH** (chưa làm, phải qua [docs/14](docs/14_FEATURE_PROCESS.md)) và **`docs/legal/` vẫn thiếu** Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. Nợ mang sang sau Sprint 7 (cập nhật §7ax): ~~report đợt 2~~ **XONG**; retry DAV lên outbox (đang làm); tồn-âm khi outbox async (gộp Sprint 8 load test); `analytics` v2 (Sprint 8/9); FE cho `analytics` (hoãn Sprint 9, quyết định §7ax).
 
 > ⚠️ **Lưu ý vận hành — trạng thái docker/hạ tầng trong tài liệu này là ảnh chụp tại thời điểm ghi, KHÔNG phải trạng thái sống.**
 > Container có thể tự `Exited` giữa các phiên dù tài liệu ghi "đang chạy"/"healthy" (đã xảy ra 2026-07-22: postgres Exited 5h,
@@ -18,7 +18,7 @@
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Giai đoạn         | Giai đoạn 3 — Vận hành (Sprint 7 đóng 2026-07-25); kế tiếp Giai đoạn 4                                |
 | Sprint            | **Sprint 7 — Compliance & Analytics ✅ ĐÓNG (2026-07-25)** · Sprint 1–6 đã đóng · Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật) |
-| Tình trạng Sprint | ✅ **Sprint 7 ĐÓNG, DoD đạt và đã verify trên Postgres thật** (§7ap): `iam` thật · `audit_logs` persist + **audit query dashboard** · hồ sơ sức khỏe KH (qua cổng docs/14) · `compliance` C.1–C.5 + router · **transactional outbox** + retention · **report xuất khẩu đợt 1** (doanh thu ngày/tuần/tháng/chi nhánh/nhân viên + tồn kho theo lô/HSD) · **module `analytics`** (dự báo 90 ngày, mốc tái đặt, đề xuất → PO nháp, dashboard). **Nợ mang sang (đã ghi rõ, không tính DoD):** report đợt 2 (không bắt buộc) · retry DAV lên outbox · tồn-âm khi outbox async · `analytics` v2 · FE cho analytics. |
+| Tình trạng Sprint | ✅ **Sprint 7 ĐÓNG, DoD đạt và đã verify trên Postgres thật** (§7ap): `iam` thật · `audit_logs` persist + **audit query dashboard** · hồ sơ sức khỏe KH (qua cổng docs/14) · `compliance` C.1–C.5 + router · **transactional outbox** + retention · **report xuất khẩu đợt 1** (doanh thu ngày/tuần/tháng/chi nhánh/nhân viên + tồn kho theo lô/HSD) · **module `analytics`** (dự báo 90 ngày, mốc tái đặt, đề xuất → PO nháp, dashboard). **Nợ mang sang (đã ghi rõ, không tính DoD, cập nhật §7ax):** ~~report đợt 2~~ **XONG** · retry DAV lên outbox (đang làm) · tồn-âm khi outbox async (Sprint 8) · `analytics` v2 (Sprint 8/9) · FE cho analytics (hoãn Sprint 9). |
 | Kernel backend    | ✅ (Sprint 2)                                                                                          |
 | Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp + auto-check tương tác/dị ứng cross-module + `TenantAiSettings` feature-flag theo tenant, router `/clinical/*` + `/clinical/settings`, mock LLM); ✅ `crm` (Hexagonal 4 lớp đủ: `Customer`/`Allergy`(theo hoạt chất, FK `active_ingredients`)/`Condition`/`MedicationHistoryEntry`, `CrmService`, router `/customers/*`, migration `0009`); ✅ `procurement` (Hexagonal 4 lớp đủ: `Supplier`/`PurchaseOrder`+`PurchaseOrderItem`/`GoodsReceiptNote`+`GoodsReceiptItem`, `ProcurementService`, router `/suppliers`+`/purchase-orders`+`/goods-receipts`, migration `0011`; **cross-module GRN confirmed → `inventory` tạo lô** ở composition root, migration `0012` bảng `stock_reconciliation_needed`); ✅ `iam` (§7k); ✅ **`analytics`** (Hexagonal 4 lớp đủ: `ReorderSuggestion` + công thức reorder thuần, `AnalyticsService`, bảng `reorder_suggestions` migration `0022`, router `/analytics/*`; **cross-module qua 5 adapter ở `api/v1/analytics_wiring.py`** đọc `sales`/`inventory`/`procurement` và ghi PO nháp — `analytics` KHÔNG import module nghiệp vụ nào, §7ap) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
@@ -2856,6 +2856,45 @@ drift). Backup trước migration: `~/backup_pre_migration_20260725_1536.sql`.
 
 **Mạch TT18 (tài liệu → seed danh mục → sổ PL XVI → biên bản nhận lại PL XVIII → kết xuất cuối
 ngày + hash → ký xác nhận điện tử) ĐÓNG TRỌN 6/6 bước.**
+
+---
+
+## 7ax. Báo cáo Giai đoạn 1 Sprint 8 (Chain duyệt) + ủy quyền toàn quyền GĐ — mở Sprint 8 (2026-07-25)
+
+Chain duyệt báo cáo Giai đoạn 1 (đối chiếu DoD Sprint 7 tự chạy lại độc lập — khớp 100% với §7ap:
+16/0 contract, mypy 246 file sạch, **pytest 831→851** sau khi thêm việc dưới đây, `alembic current
+= 0026`), rồi **"Ủy quyền GĐ giám sát toàn bộ tiến trình code của Trợ lý Code, chọn mô hình phù hợp
+xử lý hết các vấn đề trên tối ưu"** — kích hoạt CHẾ ĐỘ FULL-AUTO cho toàn bộ kế hoạch đã trình (đóng
+2 việc lửng lơ + mở Sprint 8), giữ nguyên 6 lưới an toàn cố định của full-auto (không đổi).
+
+**Quyết định GĐ tự chốt dưới ủy quyền (ghi lại để Chain đọc sau, không cần hỏi giữa chừng):**
+
+| # | Quyết định | Lý do |
+|---|---|---|
+| 1 | Chọn mô hình theo CLAUDE.md mục "Chọn model": việc nội bộ 1 module (report đợt 2, quan sát/tài liệu) → Sonnet (tự làm); cross-module thật/thiết kế mới hoàn toàn (bảo mật 2FA, plugin loader, connector, retry DAV) → giao Opus qua Agent tool, chạy tuần tự (không song song trên cùng repo để tránh đụng độ composition root) | Đúng khuôn đã có, không phát minh quy tắc mới |
+| 2 | **FE cho `analytics` → hoãn sang Sprint 9**, thêm dòng tường minh vào ROADMAP (trước đó "mồ côi" — không có trong Sprint 8 lẫn Sprint 7) | Sprint 8 chủ đề Hardening hạ tầng thuần, không phải feature UI; pilot thật (Sprint 9) mới cần giao diện hoàn chỉnh; admin/chain vẫn dùng được qua API trong lúc chờ (không chặn nghiệp vụ lõi) |
+| 3 | Thứ tự Sprint 8: (0) đóng 2 việc lửng lơ → (1) bảo mật (2FA/rate-limit/mã hóa at-rest) → (2) plugin loader → (3) `payment_vnpay` rồi `dav_connector` (chờ spec) → (4) observability → (5) load test p95 + tồn-âm (gộp) | Bảo mật lên đầu vì rủi ro đang mở ngay lúc này (`compliance.ledger.sign` mới cấp hôm nay chưa có 2FA); plugin loader trước connector vì ROADMAP ngụ ý connector xây dạng plugin; observability trước load test để có số liệu thật |
+
+**Việc đã xong ngay trong phiên này (item 0a — Sonnet, đúng khuôn §7an):**
+
+- **Report đợt 2 — top thuốc bán chạy XONG TRỌN**: `GET /reports/top-drugs/export` (CSV, rank theo
+  `quantity`/`revenue` net trả hàng, `limit` tùy chọn) — tái dùng `sales.read` (không quyền mới) +
+  `SalesService.aggregate_sold_by_drug` **đã có sẵn** (xây cho `analytics`, §7am) nên domain/app
+  không đổi, chỉ thêm shaper CSV (`sales/application/csv_export.py`) + endpoint đọc-thuần
+  (`api/v1/reports.py`), không migration. `drug_name` cố ý bỏ ngoài cột — cùng giới hạn đã chấp nhận
+  ở ledger book export TT18 (đọc tên thuốc là cross-module vào `catalog`, chưa mở).
+  **Phát hiện khi rà phạm vi trước khi code:** nửa còn lại của "report đợt 2" (xuất
+  `ControlledLedgerEntry`) **hoá ra đã XONG từ trước** qua mạch TT18 (`GET
+  /compliance/controlled-ledger/books/{book_type}/export`, §7ar) — tránh làm trùng, chỉ cần cập nhật
+  ROADMAP. 8 e2e test mới, commit `14af10e`. 4 cổng xanh: ruff/format sạch, import-linter 16/0, mypy
+  --strict 246 file, **pytest 851** (toàn repo, exit 0).
+
+**Hạ tầng dev xác nhận đầu phiên (kỷ luật #5):** `docker compose ps` cho thấy postgres+redis đang
+**Exited** (dừng từ phiên trước ~1h) dù tài liệu đóng phiên trước không ghi rõ trạng thái này — đã tự
+`docker compose up -d` trước khi verify DoD, không tin theo tài liệu.
+
+**Còn lại trong hàng đợi (task tracker phiên này, xem tiếp các mục sau):** retry DAV qua outbox →
+Sprint 8 #1–#5 theo thứ tự đã chốt ở trên.
 
 ---
 

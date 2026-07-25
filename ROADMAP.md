@@ -196,7 +196,11 @@ thật sự.
       `sales.read`/`inventory.read` — không quyền mới, không migration.
       Lọc **"theo nhân viên bán hàng" XONG 2026-07-25 (§7ao)**: thêm cột `sold_by_user_id` (mig `0021`)
       + `GET /reports/revenue/export?sold_by_user_id` (Chain duyệt PA (a)).
-      *Đợt 2 (không bắt buộc) chưa làm:* top thuốc bán chạy + xuất `ControlledLedgerEntry`.
+      **Đợt 2 XONG TRỌN 2026-07-25 (§7ax, Sonnet):** top thuốc bán chạy — `GET /reports/top-drugs/export`
+      (tái dùng `aggregate_sold_by_drug` đã có cho `analytics`, không migration). *Xuất
+      `ControlledLedgerEntry` hoá ra đã XONG từ trước* qua mạch TT18 (`GET
+      /compliance/controlled-ledger/books/{book_type}/export`, §7ar) — phát hiện khi rà lại phạm vi
+      đợt 2 trước khi code, tránh làm trùng.
 
 **DoD:** ✅ Đạt (2026-07-25). Bằng chứng đã chạy thật trên Postgres có dữ liệu, không chỉ pytest:
 - ✅ Sổ kiểm soát khớp movements (C.1–C.5, §7b).
@@ -206,10 +210,10 @@ thật sự.
 - ✅ Hồ sơ sức khỏe KH trả lời 6 câu hỏi thanh tra; thu ngân không xem được dị ứng/bệnh nền
   (`crm.sensitive.read` tách riêng, §7m).
 
-*Nợ mang sang, đã ghi rõ — không tính vào DoD:* (1) report đợt 2 (top thuốc + xuất
-`ControlledLedgerEntry`) — không bắt buộc, chưa làm; (2) vòng retry đẩy DAV của `NationalSyncService`
-vẫn best-effort, chưa lên outbox; (3) cảnh báo/khoá tồn-âm khi outbox chạy async ([TODO.md](TODO.md));
-(4) `analytics` v2 (bất thường, mùa vụ, override lead-time theo tenant, chạy nền định kỳ).
+*Nợ mang sang, đã ghi rõ — không tính vào DoD (cập nhật 2026-07-25):* ~~(1) report đợt 2~~ **ĐÃ ĐÓNG
+(§7ax)**; (2) vòng retry đẩy DAV của `NationalSyncService` vẫn best-effort, chưa lên outbox — đang xử lý;
+(3) cảnh báo/khoá tồn-âm khi outbox chạy async ([TODO.md](TODO.md)) — gộp vào Sprint 8 load test;
+(4) `analytics` v2 (bất thường, mùa vụ, override lead-time theo tenant, chạy nền định kỳ) — Sprint 8/9.
 
 ---
 
@@ -230,6 +234,12 @@ vẫn best-effort, chưa lên outbox; (3) cảnh báo/khoá tồn-âm khi outbox
 - [ ] Triển khai staging → pilot 1 nhà thuốc thật.
 - [ ] Đào tạo, phản hồi, sửa lỗi.
 - [ ] Tài liệu vận hành & backup/restore.
+- [ ] **FE cho `analytics`** *(quyết định 2026-07-25, §7ax — GĐ dưới ủy quyền toàn quyền)* — dashboard
+      doanh thu/top thuốc/cảnh báo tồn + màn duyệt PO nháp, hiện chỉ có API (`GET /analytics/dashboard`,
+      §7ap). Đặt ở Sprint 9 chứ không Sprint 8: chủ đề Sprint 8 là Hardening hạ tầng thuần (plugin/bảo
+      mật/observability/load test), không phải feature UI; pilot thật (Sprint 9) mới cần giao diện hoàn
+      chỉnh để dược sĩ/quản lý dùng — trong lúc chờ, admin/chain vẫn đọc được số liệu qua API trực tiếp,
+      không chặn nghiệp vụ vì đây là tính năng phụ trợ (dự báo/đề xuất), không phải luồng lõi hàng ngày.
 
 **DoD:** Pilot chạy 2 tuần ổn định; checklist go-live đạt.
 
