@@ -13,10 +13,12 @@ from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
 
+from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.compliance.domain.entities import (
     ControlledLedgerEntry,
     ControlledSubstanceCategory,
     DrugReturnRecord,
+    LedgerBookSignature,
     LedgerBookType,
     NationalSyncLog,
     SyncPayloadType,
@@ -85,6 +87,40 @@ class ControlledLedgerRepository(Protocol):
         cuối kỳ, không bị bỏ sót).
         """
         ...
+
+
+class LedgerBookSignatureRepository(Protocol):
+    """Persistence port for :class:`LedgerBookSignature` (docs/13 mục C.5, hướng A).
+
+    Immutable — add/get only, cùng nguyên tắc với :class:`ControlledLedgerRepository`.
+    """
+
+    async def add(self, signature: LedgerBookSignature) -> None: ...
+
+    async def get_for_day(
+        self, book_type: LedgerBookType, book_date: date
+    ) -> LedgerBookSignature | None:
+        """Chữ ký của đúng ngày này (tenant hiện tại) — ``None`` nếu ngày đó chưa ký."""
+        ...
+
+    async def latest_before(
+        self, book_type: LedgerBookType, book_date: date
+    ) -> LedgerBookSignature | None:
+        """Chữ ký gần nhất **trước** ``book_date`` (không nhất thiết ngày liền kề lịch — nhà
+        thuốc có thể không ký một số ngày không phát sinh giao dịch) — dùng làm ``prev_hash``.
+        """
+        ...
+
+
+class SigningReauthProvider(Protocol):
+    """Read-port xác minh mật khẩu người dùng hiện tại trước khi ký sổ (docs/13 mục C.5).
+
+    ``compliance`` không sở hữu ``User``/mật khẩu (thuộc ``iam``) — implement tại composition
+    root bọc ``iam.AuthService``, cùng pattern ``DrugMasterProvider``/``CatalogDrugMasterProvider``
+    (xem docs/features/tt18-kiem-soat-dac-biet/02_DECISIONS_KY_SO.md Bước 3).
+    """
+
+    async def verify(self, ctx: RequestContext, plain_password: str) -> bool: ...
 
 
 class DrugReturnRecordRepository(Protocol):

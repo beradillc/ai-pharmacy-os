@@ -15,6 +15,7 @@ from pharmacy_os.modules.compliance.domain import (
     CustomerDetail,
     DrugReturnRecord,
     EtcPrescriptionPolicy,
+    LedgerBookSignature,
     LedgerBookType,
     LedgerDirection,
     LedgerPeriodAggregate,
@@ -561,4 +562,56 @@ class TestDrugReturnRecord:
                 items=[],
                 handover_at=datetime(2026, 7, 25, 14, 30, tzinfo=UTC),
                 handover_location="Nhà thuốc ABC",
+            )
+
+
+class TestLedgerBookSignature:
+    """Xác nhận điện tử cho 1 sổ/1 ngày, hướng A (docs/13 mục C.5, bước 6/6 TT18)."""
+
+    _HASH_A = "a" * 64
+    _HASH_B = "b" * 64
+
+    def test_hop_le_khong_co_prev_hash(self) -> None:
+        sig = LedgerBookSignature(
+            tenant_id=uuid4(),
+            book_type=LedgerBookType.PL_VIII,
+            book_date=date(2026, 7, 25),
+            content_sha256=self._HASH_A,
+            prev_hash=None,
+            signed_by_user_id=uuid4(),
+        )
+        assert sig.prev_hash is None
+        assert sig.content_sha256 == self._HASH_A
+
+    def test_hop_le_co_prev_hash_moc_xich(self) -> None:
+        sig = LedgerBookSignature(
+            tenant_id=uuid4(),
+            book_type=LedgerBookType.PL_XVI,
+            book_date=date(2026, 7, 26),
+            content_sha256=self._HASH_B,
+            prev_hash=self._HASH_A,
+            signed_by_user_id=uuid4(),
+        )
+        assert sig.prev_hash == self._HASH_A
+
+    def test_content_sha256_sai_do_dai_bi_chan(self) -> None:
+        with pytest.raises(ValueError, match="content_sha256"):
+            LedgerBookSignature(
+                tenant_id=uuid4(),
+                book_type=LedgerBookType.PL_VIII,
+                book_date=date(2026, 7, 25),
+                content_sha256="not-a-real-hash",
+                prev_hash=None,
+                signed_by_user_id=uuid4(),
+            )
+
+    def test_prev_hash_sai_do_dai_bi_chan(self) -> None:
+        with pytest.raises(ValueError, match="prev_hash"):
+            LedgerBookSignature(
+                tenant_id=uuid4(),
+                book_type=LedgerBookType.PL_VIII,
+                book_date=date(2026, 7, 25),
+                content_sha256=self._HASH_A,
+                prev_hash="too-short",
+                signed_by_user_id=uuid4(),
             )

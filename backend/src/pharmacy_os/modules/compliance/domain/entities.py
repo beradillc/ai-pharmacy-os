@@ -353,6 +353,38 @@ class ReturnedDrugItem:
             raise ValueError("Số lượng thuốc nhận lại phải > 0")
 
 
+@dataclass(frozen=True, slots=True)
+class LedgerBookSignature:
+    """Xác nhận điện tử (Điều 15.1.d, hướng A) cho 1 sổ trong 1 ngày (docs/13 mục C.5).
+
+    Phạm vi **cả sổ** trong ngày đó (mọi thuốc của ``book_type``) — khớp đúng phạm vi mà
+    :func:`~pharmacy_os.modules.compliance.application.service.ComplianceService.export_daily_closure`
+    kết xuất (bước 5). Không có ``drug_id`` (bản thiết kế gốc liệt kê nhầm cột này — xem
+    docs/features/tt18-kiem-soat-dac-biet/02_DECISIONS_KY_SO.md Bước 2) và không có
+    ``branch_id`` — sổ là hồ sơ theo cơ sở (tenant), không theo quầy, cùng nguyên tắc đã áp cho
+    :class:`ControlledLedgerEntry`.
+
+    Bất biến sau khi tạo, cùng nguyên tắc với :class:`ControlledLedgerEntry`/
+    :class:`DrugReturnRecord` — ký lại một ngày đã ký là hành vi bị chặn ở tầng service (không
+    phải ở đây), vì kiểm tra đó cần đọc CSDL (đã có chưa), việc entity thuần không tự làm được.
+    """
+
+    tenant_id: UUID
+    book_type: LedgerBookType
+    book_date: date
+    content_sha256: str
+    prev_hash: str | None
+    signed_by_user_id: UUID
+    signed_at: datetime = field(default_factory=_now)
+    id: UUID = field(default_factory=uuid4)
+
+    def __post_init__(self) -> None:
+        if len(self.content_sha256) != 64:
+            raise ValueError("content_sha256 phải là chuỗi hex SHA-256 (64 ký tự)")
+        if self.prev_hash is not None and len(self.prev_hash) != 64:
+            raise ValueError("prev_hash phải là chuỗi hex SHA-256 (64 ký tự) nếu có")
+
+
 @dataclass(slots=True)
 class DrugReturnRecord:
     """Biên bản nhận lại thuốc GN/HT/TC (TT18 Điều 6.2 + Điều 12.1.d, Phụ lục XVIII).
