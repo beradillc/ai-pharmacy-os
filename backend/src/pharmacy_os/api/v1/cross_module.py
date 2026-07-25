@@ -25,9 +25,10 @@ from pharmacy_os.modules.clinical.application import (
 )
 from pharmacy_os.modules.clinical.domain import AiContextType
 from pharmacy_os.modules.compliance.domain import DrugMasterFacts
+from pharmacy_os.modules.compliance.domain.ports import SigningReauthOutcome
 from pharmacy_os.modules.crm.application import CrmService, MedicationHistoryItemInput
 from pharmacy_os.modules.crm.domain import MedicationHistorySource
-from pharmacy_os.modules.iam.application import AuthService
+from pharmacy_os.modules.iam.application import AuthService, StepUpResult
 from pharmacy_os.modules.inventory.application import (
     GoodsReceiptLine,
     InventoryService,
@@ -438,6 +439,18 @@ class CatalogDrugMasterProvider:
         )
 
 
+#: iam's step-up vocabulary → compliance's. Exhaustive by construction: mypy rejects a
+#: missing key the moment either enum gains a member, which is what keeps the two from
+#: drifting apart silently.
+_STEP_UP_TO_SIGNING: dict[StepUpResult, SigningReauthOutcome] = {
+    StepUpResult.OK: SigningReauthOutcome.OK,
+    StepUpResult.BAD_PASSWORD: SigningReauthOutcome.BAD_PASSWORD,
+    StepUpResult.CODE_REQUIRED: SigningReauthOutcome.CODE_REQUIRED,
+    StepUpResult.BAD_CODE: SigningReauthOutcome.BAD_CODE,
+    StepUpResult.ENROLLMENT_REQUIRED: SigningReauthOutcome.ENROLLMENT_REQUIRED,
+}
+
+
 class IamAuthReauthProvider:
     """Adapter for compliance's ``SigningReauthProvider`` (docs/13 mục C.5, ký sổ hướng A).
 
@@ -452,8 +465,19 @@ class IamAuthReauthProvider:
     def __init__(self, auth: AuthService) -> None:
         self._auth = auth
 
-    async def verify(self, ctx: RequestContext, plain_password: str) -> bool:
-        return await self._auth.verify_own_password(ctx, plain_password)
+    async def verify(
+        self, ctx: RequestContext, plain_password: str, totp_code: str | None
+    ) -> SigningReauthOutcome:
+        """Re-auth both factors, translating iam's vocabulary into compliance's.
+
+        The translation is the whole point of this adapter existing: ``compliance``
+        defines its own :class:`SigningReauthOutcome` and never learns that ``iam``
+        (or its :class:`StepUpResult`) exists, so module-independence holds while the
+        two still agree on meaning. A new member on either side stops here as a mypy
+        error rather than silently mapping to something wrong.
+        """
+        result = await self._auth.verify_step_up(ctx, plain_password, totp_code)
+        return _STEP_UP_TO_SIGNING[result]
 
 
 class PrescriptionInfoAdapter:

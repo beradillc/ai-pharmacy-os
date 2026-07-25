@@ -15,8 +15,10 @@ from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import (
+    AppError,
     ConflictError,
     NotFoundError,
+    PermissionDeniedError,
     UnauthenticatedError,
     ValidationError,
 )
@@ -59,6 +61,7 @@ from pharmacy_os.modules.compliance.domain.ports import (
     DrugMasterProvider,
     DrugReturnRecordRepository,
     LedgerBookSignatureRepository,
+    SigningReauthOutcome,
     SigningReauthProvider,
     TenantComplianceConfigRepository,
 )
@@ -79,6 +82,25 @@ _PERIODIC_REPORT_CATEGORIES = (
     ControlledSubstanceCategory.PHOI_HOP_HT,
     ControlledSubstanceCategory.PHOI_HOP_TC,
 )
+
+
+def _enrollment_required() -> AppError:
+    """403, not 401: the signer *is* authenticated and known — they are simply not
+    allowed to perform this particular act until they enrol a second factor."""
+    return PermissionDeniedError("Cần đăng ký xác thực hai lớp trước khi ký sổ kiểm soát đặc biệt")
+
+
+#: How a failed re-auth becomes an HTTP answer. Kept as a table so every outcome has
+#: exactly one mapping and a new enum member cannot silently fall through to "allowed"
+#: — the service raises on anything that is not ``OK``.
+_SIGNING_REAUTH_ERRORS: dict[SigningReauthOutcome, Callable[[], AppError]] = {
+    SigningReauthOutcome.BAD_PASSWORD: lambda: UnauthenticatedError("Mật khẩu hiện tại không đúng"),
+    SigningReauthOutcome.CODE_REQUIRED: lambda: UnauthenticatedError(
+        "Tài khoản đã bật xác thực hai lớp — cần nhập mã để ký"
+    ),
+    SigningReauthOutcome.BAD_CODE: lambda: UnauthenticatedError("Mã xác thực không đúng"),
+    SigningReauthOutcome.ENROLLMENT_REQUIRED: _enrollment_required,
+}
 
 
 class ComplianceService:
@@ -281,8 +303,9 @@ class ComplianceService:
                 "ComplianceService chưa được wiring reauth provider — lỗi cấu hình, "
                 "không phải lỗi người dùng (xem interface/register.py)"
             )
-        if not await self._reauth.verify(ctx, data.current_password):
-            raise UnauthenticatedError("Mật khẩu hiện tại không đúng")
+        outcome = await self._reauth.verify(ctx, data.current_password, data.totp_code)
+        if outcome is not SigningReauthOutcome.OK:
+            raise _SIGNING_REAUTH_ERRORS[outcome]()
 
         async with self._uow_factory() as uow:
             sig_repo = self._signature_repo(uow, ctx)

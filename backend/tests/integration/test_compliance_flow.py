@@ -35,7 +35,7 @@ from pharmacy_os.modules.compliance.domain import (
     LedgerDirection,
     ReturnedDrugItem,
 )
-from pharmacy_os.modules.compliance.domain.ports import DrugMasterFacts
+from pharmacy_os.modules.compliance.domain.ports import DrugMasterFacts, SigningReauthOutcome
 from pharmacy_os.modules.compliance.infrastructure import (
     SqlAlchemyControlledLedgerRepository,
     SqlAlchemyDrugReturnRecordRepository,
@@ -696,13 +696,30 @@ async def test_export_daily_closure_leaves_an_audit_row_with_hash(
 
 
 class _FakeReauthProvider:
-    """Xác minh giả cho ``SigningReauthProvider`` — chỉ 1 mật khẩu đúng cố định."""
+    """Xác minh giả cho ``SigningReauthProvider`` — 1 mật khẩu đúng cố định, 2FA tuỳ chọn.
 
-    def __init__(self, correct_password: str = "MatKhauDung2026") -> None:
+    Mặc định ``required_code=None`` = tài khoản chưa bật 2FA, nên các test cũ (chỉ mật
+    khẩu) giữ nguyên hành vi — chính là tính tương thích ngược mà thiết kế cam kết.
+    """
+
+    def __init__(
+        self, correct_password: str = "MatKhauDung2026", required_code: str | None = None
+    ) -> None:
         self.correct_password = correct_password
+        self.required_code = required_code
 
-    async def verify(self, ctx: RequestContext, plain_password: str) -> bool:
-        return plain_password == self.correct_password
+    async def verify(
+        self, ctx: RequestContext, plain_password: str, totp_code: str | None
+    ) -> SigningReauthOutcome:
+        if plain_password != self.correct_password:
+            return SigningReauthOutcome.BAD_PASSWORD
+        if self.required_code is None:
+            return SigningReauthOutcome.OK
+        if totp_code is None:
+            return SigningReauthOutcome.CODE_REQUIRED
+        if totp_code != self.required_code:
+            return SigningReauthOutcome.BAD_CODE
+        return SigningReauthOutcome.OK
 
 
 def _compliance_service_with_signing(
@@ -751,6 +768,100 @@ async def test_sign_daily_closure_rejects_the_wrong_password(
     service = _compliance_service_with_signing(session_factory, event_bus)
     with pytest.raises(UnauthenticatedError):
         await service.sign_daily_closure(_sign_input(current_password="SaiRoi"), ctx)
+
+
+# --- step-up: ký sổ đòi CẢ HAI yếu tố khi tài khoản đã bật 2FA (Sprint 8) ----
+#
+# Vì sao mật khẩu một mình là không đủ ở đây: ký sổ là hành vi pháp lý KHÔNG ĐẢO
+# NGƯỢC ĐƯỢC (TT18 Điều 15.1.d — ký xong là chốt sổ, không ghi thêm, không ký lại).
+# Một mật khẩu lộ mà đủ để ký thì chữ ký đó vô giá trị về mặt chứng cứ.
+
+
+async def test_signing_needs_the_code_when_two_factor_is_on(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    """Mật khẩu đúng nhưng thiếu mã ⇒ từ chối, nêu rõ là thiếu mã."""
+    service = _compliance_service_with_signing(
+        session_factory, event_bus, reauth=_FakeReauthProvider(required_code="123456")
+    )
+    with pytest.raises(UnauthenticatedError, match="xác thực hai lớp"):
+        await service.sign_daily_closure(_sign_input(), ctx)
+
+
+async def test_signing_rejects_a_wrong_code(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    service = _compliance_service_with_signing(
+        session_factory, event_bus, reauth=_FakeReauthProvider(required_code="123456")
+    )
+    with pytest.raises(UnauthenticatedError, match="Mã xác thực"):
+        await service.sign_daily_closure(_sign_input(totp_code="000000"), ctx)
+
+
+async def test_signing_succeeds_with_password_and_code(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    service = _compliance_service_with_signing(
+        session_factory, event_bus, reauth=_FakeReauthProvider(required_code="123456")
+    )
+    out = await service.sign_daily_closure(_sign_input(totp_code="123456"), ctx)
+    assert out.content_sha256
+
+
+async def test_a_wrong_password_is_refused_even_with_the_right_code(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    """Yếu tố thứ hai là THÊM, không phải THAY — không cái nào bỏ qua được cái kia."""
+    service = _compliance_service_with_signing(
+        session_factory, event_bus, reauth=_FakeReauthProvider(required_code="123456")
+    )
+    with pytest.raises(UnauthenticatedError, match="Mật khẩu"):
+        await service.sign_daily_closure(
+            _sign_input(current_password="SaiRoi", totp_code="123456"), ctx
+        )
+
+
+async def test_signing_is_blocked_until_enrolment_when_enforced(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    """403 chứ không phải 401: danh tính hợp lệ, chỉ là chưa đủ điều kiện để ký.
+
+    Đây là điểm DUY NHẤT bị chặn cứng khi bật cưỡng chế — đăng nhập và mọi việc khác
+    vẫn chạy bình thường ("nhắc rộng, chặn hẹp").
+    """
+
+    class _EnforcedNotEnrolled(_FakeReauthProvider):
+        async def verify(
+            self, ctx: RequestContext, plain_password: str, totp_code: str | None
+        ) -> SigningReauthOutcome:
+            return SigningReauthOutcome.ENROLLMENT_REQUIRED
+
+    service = _compliance_service_with_signing(
+        session_factory, event_bus, reauth=_EnforcedNotEnrolled()
+    )
+    with pytest.raises(PermissionDeniedError, match="đăng ký xác thực hai lớp"):
+        await service.sign_daily_closure(_sign_input(), ctx)
+
+
+async def test_signing_without_two_factor_still_works_backward_compatible(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    """Người chưa bật 2FA, hệ thống chưa cưỡng chế ⇒ hành vi y hệt trước Sprint 8."""
+    service = _compliance_service_with_signing(session_factory, event_bus)
+    out = await service.sign_daily_closure(_sign_input(), ctx)
+    assert out.content_sha256
 
 
 async def test_sign_daily_closure_records_hash_and_chains_to_the_previous_signature(

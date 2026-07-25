@@ -316,6 +316,12 @@ class SignLedgerBookInput:
     book_type: LedgerBookType
     book_date: date
     current_password: str
+    totp_code: str | None = None
+    """Mã xác thực hai lớp, hoặc một mã dự phòng (Sprint 8).
+
+    ``None`` khi người ký chưa bật 2FA và hệ thống chưa bắt buộc — giữ nguyên hành vi cũ,
+    không phá tương thích ngược. Cũng chỉ dùng tức thời như ``current_password``: không lưu,
+    không ghi log."""
 
 
 @dataclass(slots=True)

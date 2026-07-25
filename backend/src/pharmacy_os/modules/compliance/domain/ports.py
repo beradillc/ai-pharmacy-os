@@ -10,6 +10,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
+from enum import StrEnum
 from typing import Protocol
 from uuid import UUID
 
@@ -113,15 +114,47 @@ class LedgerBookSignatureRepository(Protocol):
         ...
 
 
-class SigningReauthProvider(Protocol):
-    """Read-port xác minh mật khẩu người dùng hiện tại trước khi ký sổ (docs/13 mục C.5).
+class SigningReauthOutcome(StrEnum):
+    """Kết quả xác minh lại danh tính ngay trước khi ký sổ.
 
-    ``compliance`` không sở hữu ``User``/mật khẩu (thuộc ``iam``) — implement tại composition
-    root bọc ``iam.AuthService``, cùng pattern ``DrugMasterProvider``/``CatalogDrugMasterProvider``
-    (xem docs/features/tt18-kiem-soat-dac-biet/02_DECISIONS_KY_SO.md Bước 3).
+    Là **từ vựng riêng của `compliance`**, không phải kiểu mượn từ `iam`: port thuộc về
+    module này, nên module này định nghĩa nó và adapter ở composition root chịu trách nhiệm
+    ánh xạ từ kết quả của `iam` sang đây. Nhờ vậy `compliance` vẫn không biết gì về `iam`
+    (giữ nguyên module-independence).
+
+    Năm giá trị chứ không phải ``bool`` vì người ký cần biết **vì sao** bị từ chối: sai mật
+    khẩu, thiếu mã, sai mã, hay chưa đăng ký 2FA — bốn tình huống cần bốn cách xử lý khác
+    nhau ở phía người dùng, gộp thành ``False`` là ném đi thông tin họ cần.
     """
 
-    async def verify(self, ctx: RequestContext, plain_password: str) -> bool: ...
+    OK = "OK"
+    BAD_PASSWORD = "BAD_PASSWORD"
+    CODE_REQUIRED = "CODE_REQUIRED"
+    """Tài khoản đã bật 2FA nhưng request không kèm mã."""
+
+    BAD_CODE = "BAD_CODE"
+    ENROLLMENT_REQUIRED = "ENROLLMENT_REQUIRED"
+    """Đang bắt buộc 2FA cho nhóm nhạy cảm mà người này chưa đăng ký — chặn ký cho tới khi
+    đăng ký xong (chỉ chặn hành vi ký, không chặn đăng nhập/làm việc)."""
+
+
+class SigningReauthProvider(Protocol):
+    """Read-port xác minh lại danh tính người ký ngay trước khi ký sổ (docs/13 mục C.5).
+
+    ``compliance`` không sở hữu ``User``/mật khẩu/2FA (thuộc ``iam``) — implement tại
+    composition root bọc ``iam.AuthService``, cùng pattern
+    ``DrugMasterProvider``/``CatalogDrugMasterProvider``
+    (xem docs/features/tt18-kiem-soat-dac-biet/02_DECISIONS_KY_SO.md Bước 3).
+
+    **Sprint 8:** thêm yếu tố thứ hai. Trước đây chỉ mật khẩu, nghĩa là **một mật khẩu lộ đủ
+    để giả mạo chữ ký pháp lý** (TT18 Điều 15.1.d) — ký xong là chốt sổ, không sửa, không ký
+    lại. ``totp_code`` là ``None`` khi người ký chưa bật 2FA và hệ thống chưa bắt buộc; khi
+    đó hành vi giữ nguyên như trước để không phá tương thích ngược.
+    """
+
+    async def verify(
+        self, ctx: RequestContext, plain_password: str, totp_code: str | None
+    ) -> SigningReauthOutcome: ...
 
 
 class DrugReturnRecordRepository(Protocol):

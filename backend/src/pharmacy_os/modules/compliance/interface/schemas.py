@@ -300,10 +300,22 @@ class SignLedgerBookRequest(BaseModel):
 
     book_date: date
     current_password: str = Field(min_length=1)
+    totp_code: str | None = Field(
+        default=None,
+        min_length=6,
+        max_length=32,
+        description="Mã xác thực hai lớp hoặc mã dự phòng; bắt buộc nếu tài khoản đã bật 2FA",
+    )
+    """Yếu tố thứ hai (Sprint 8). Mật khẩu một mình không đủ để ký một hành vi pháp lý
+    không đảo ngược được: nếu mật khẩu lộ thì chữ ký cũng giả mạo được. Để trống khi tài
+    khoản chưa bật 2FA và hệ thống chưa bắt buộc — server trả 401 nêu rõ nếu cần mã."""
 
     def to_input(self, book_type: LedgerBookType) -> SignLedgerBookInput:
         return SignLedgerBookInput(
-            book_type=book_type, book_date=self.book_date, current_password=self.current_password
+            book_type=book_type,
+            book_date=self.book_date,
+            current_password=self.current_password,
+            totp_code=self.totp_code,
         )
 
 
