@@ -36,6 +36,29 @@ class ControlledLedgerEntryORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, B
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class ControlledSubstanceORM(PkUuidMixin, Base):
+    """Danh mục dược chất kiểm soát đặc biệt — TT 18/2026 PL I/II/III + ngưỡng PL IV/V/VI.
+
+    Dữ liệu tham chiếu DÙNG CHUNG, không tenant-scoped (danh mục do Bộ Y tế ban hành —
+    cùng lý do với ``active_ingredients`` bên catalog). Xem docs/13 mục C.1.
+    """
+
+    __tablename__ = "controlled_substances"
+    __table_args__ = (
+        # Tên quốc tế là khóa tra cứu khi đối chiếu công thức thuốc với danh mục.
+        UniqueConstraint("name_intl", name="uq_controlled_substances_name_intl"),
+    )
+
+    name_intl: Mapped[str] = mapped_column(String(128), nullable=False)
+    common_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    scientific_name: Mapped[str] = mapped_column(Text, nullable=False)
+    appendix: Mapped[str] = mapped_column(String(8), nullable=False)
+    limit_per_unit_mg: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
+    limit_concentration_pct: Mapped[Decimal | None] = mapped_column(Numeric(8, 4), nullable=True)
+    limit_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    effective_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
 class TenantComplianceConfigORM(PkUuidMixin, TimestampMixin, Base):
     """Mã cơ sở do Cục QLD cấp — 1 dòng/tenant (docs/13 mục F, entity mới)."""
 

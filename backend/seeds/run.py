@@ -17,7 +17,11 @@ from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork, build_engine, 
 from pharmacy_os.core.events import InMemoryEventBus
 from pharmacy_os.modules.iam.application import IamService
 from pharmacy_os.modules.iam.interface import build_repositories
-from seeds.reference_data import seed_atc_codes, seed_drug_interactions
+from seeds.reference_data import (
+    seed_atc_codes,
+    seed_controlled_substances,
+    seed_drug_interactions,
+)
 
 _log = structlog.get_logger("seed")
 
@@ -29,6 +33,7 @@ async def main() -> None:
     async with session_factory() as session:
         atc_count = await seed_atc_codes(session)
         interaction_count = await seed_drug_interactions(session)
+        substances_created, substances_updated = await seed_controlled_substances(session)
         await session.commit()
 
     # System roles are code-owned, so a release that adds a permission reaches an
@@ -46,6 +51,8 @@ async def main() -> None:
         "seed_complete",
         atc_codes_inserted=atc_count,
         drug_interactions_inserted=interaction_count,
+        controlled_substances_created=substances_created,
+        controlled_substances_updated=substances_updated,
         system_roles_created=roles.created,
         system_roles_updated=roles.updated,
     )

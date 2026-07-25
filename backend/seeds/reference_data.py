@@ -6,6 +6,9 @@ starter set; a full import job is a later concern.
 
 from __future__ import annotations
 
+from datetime import date
+from decimal import Decimal
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +16,8 @@ from pharmacy_os.modules.catalog.infrastructure import AtcCodeORM
 from pharmacy_os.modules.clinical.domain import DrugInteraction, InteractionSeverity
 from pharmacy_os.modules.clinical.infrastructure import DrugInteractionORM
 from pharmacy_os.modules.clinical.infrastructure.mappers import interaction_to_orm
+from pharmacy_os.modules.compliance.infrastructure import ControlledSubstanceORM
+from seeds.tt18_controlled_substances import CONTROLLED_SUBSTANCES_TT18
 
 # (code, name, level)
 ATC_CODES: list[tuple[str, str, int]] = [
@@ -128,3 +133,62 @@ async def seed_drug_interactions(session: AsyncSession) -> int:
         inserted += 1
     await session.flush()
     return inserted
+
+
+# ---------------------------------------------------------------------------
+# Danh mục dược chất kiểm soát đặc biệt — TT 18/2026 PL I/II/III + ngưỡng PL IV/V/VI.
+# Khác 2 khối trên: đây là dữ liệu PHÁP LÝ chính thức, không phải tập mẫu.
+# Dữ liệu nằm ở seeds/tt18_controlled_substances.py (sinh tự động từ văn bản gốc).
+# ---------------------------------------------------------------------------
+
+
+def _to_decimal(value: str | None) -> Decimal | None:
+    return None if value is None else Decimal(value)
+
+
+async def seed_controlled_substances(session: AsyncSession) -> tuple[int, int]:
+    """Đồng bộ danh mục TT18 vào ``controlled_substances``. Trả về (thêm mới, cập nhật).
+
+    **Có nhánh cập nhật, không chỉ insert** (kỷ luật 7 trong CLAUDE.md): danh mục pháp lý
+    có sửa đổi — thêm chất, đổi ngưỡng nồng độ. Deployment cũ đã có sẵn dòng cho chất đó
+    thì phải được ghi đè theo văn bản mới, nếu chỉ insert-nếu-thiếu thì bản nâng cấp sẽ
+    giữ nguyên ngưỡng cũ và phân loại sai thuốc.
+    """
+    rows = {
+        row.name_intl: row
+        for row in (await session.execute(select(ControlledSubstanceORM))).scalars().all()
+    }
+    created = updated = 0
+    for (
+        name_intl,
+        common_name,
+        scientific_name,
+        appendix,
+        limit_per_unit_mg,
+        limit_concentration_pct,
+        limit_note,
+        effective_from,
+    ) in CONTROLLED_SUBSTANCES_TT18:
+        wanted = {
+            "common_name": common_name,
+            "scientific_name": scientific_name,
+            "appendix": appendix,
+            "limit_per_unit_mg": _to_decimal(limit_per_unit_mg),
+            "limit_concentration_pct": _to_decimal(limit_concentration_pct),
+            "limit_note": limit_note,
+            "effective_from": (
+                None if effective_from is None else date.fromisoformat(effective_from)
+            ),
+        }
+        existing = rows.get(name_intl)
+        if existing is None:
+            session.add(ControlledSubstanceORM(name_intl=name_intl, **wanted))
+            created += 1
+            continue
+        changed = [k for k, v in wanted.items() if getattr(existing, k) != v]
+        if changed:
+            for key in changed:
+                setattr(existing, key, wanted[key])
+            updated += 1
+    await session.flush()
+    return created, updated
