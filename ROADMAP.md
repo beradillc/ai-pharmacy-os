@@ -223,7 +223,15 @@ qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API**)**
 
 ## Sprint 8 — Plugin & Hardening
 
-- [ ] Plugin loader hoàn chỉnh (entry points, hooks, vòng đời).
+- [x] **Plugin loader hoàn chỉnh** (entry points, hooks, vòng đời) — **XONG 2026-07-26 (§7ba)**, mục
+      1/4 của quy trình cổng nghiêm ngặt (§7az). Tách bật/tắt khỏi khám phá (`PLUGINS__ENABLED`, mặc
+      định rỗng — cài package ≠ bật) · validate trước `setup()` (contract + so khớp major
+      `api_version`) · **fail-fast** khi plugin đã bật nạp lỗi · `HookRegistry` 1 plugin/port, xung
+      đột báo lỗi nêu tên cả hai · **hook runtime đổi thành `async`** (hook sync gọi mạng đứng cả
+      event loop, và không timeout được). Kiểm tra bằng package cài thật, không chỉ test.
+      *Nợ ghi rõ:* 2 contract import-linter cấm plugin import `modules` — **chưa thêm được** cho tới
+      khi có package plugin thật, phải làm cùng `payment_vnpay`; event hook + circuit breaker +
+      timeout tại điểm gọi hoãn; **không có sandbox thật** (rủi ro đã duyệt chấp nhận).
 - [ ] `dav_connector` (liên thông), `payment_vnpay`.
 - [ ] Bảo mật: 2FA vai trò nhạy cảm, rate limit, mã hóa at-rest.
 - [ ] Observability đầy đủ (tracing, metrics, alert).

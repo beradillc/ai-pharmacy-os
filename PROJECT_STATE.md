@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-26** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng. **⚠️ Quy trình đổi (§7az, 2026-07-26):** 4 mục Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` nay qua cổng nghiêm ngặt hơn full-auto (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật), **thứ tự đổi thành Plugin loader trước** (không phải 2FA như §7ax cũ). 2FA đang dở bước 2/4, uncommitted — đọc §7az trước khi động vào. Rate limit/observability/load test vẫn full-auto bình thường, chưa mục nào bắt đầu.
+> Cập nhật cuối: **2026-07-26** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng. **⚠️ Quy trình đổi (§7az, 2026-07-26):** 4 mục Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` nay qua cổng nghiêm ngặt hơn full-auto (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật). **Mục 1/4 Plugin loader ✅ XONG (§7ba, 2026-07-26)** — kế tiếp là 2FA (mục 2/4), đang dở bước 2/4 riêng của nó và **uncommitted**, đọc §7az trước khi động vào. Mã hóa at-rest + `payment_vnpay` chưa thiết kế. Rate limit/observability/load test vẫn full-auto bình thường, chưa mục nào bắt đầu.
 >
 > **Kế tiếp:** 2 blocker nền cũ (§7j) đã gỡ 1 — RBAC/IAM thật XONG (§7k), nên hồ sơ KH đã làm được và **đã xong**; còn lại **tích điểm KH** (chưa làm, phải qua [docs/14](docs/14_FEATURE_PROCESS.md)) và **`docs/legal/` vẫn thiếu** Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. Nợ mang sang sau Sprint 7 (cập nhật §7ay): ~~report đợt 2~~ **XONG**; ~~retry DAV~~ **XONG (§7ay — relay riêng, không qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API)**; tồn-âm khi outbox async (gộp Sprint 8 load test); `analytics` v2 (Sprint 8/9); FE cho `analytics` (hoãn Sprint 9, quyết định §7ax).
 
@@ -3088,9 +3088,11 @@ current` là `0028` mà `git log` không có commit nào nhắc `0028` thì đâ
 1. **Mở mục Plugin loader trước** (không phải 2FA, dù 2FA đang dở) — bắt đầu bằng bước 1/4: trình bày
    thiết kế (đã có khung ở trên: cờ toàn cục, mở rộng `core/plugins/` hiện có — xem code khảo sát
    phiên này: `core/plugins/loader.py`/`interfaces.py` đã có discovery qua entry points + `Plugin`/
-   `PaymentGateway`/`RegulatoryConnector` Protocol, nhưng **chưa từng được gọi** ở đâu trong app —
+   `PaymentGateway`/`RegulatoryConnector` Protocol, nhưng ~~**chưa từng được gọi** ở đâu trong app —
    `PluginLoader` đăng ký DI singleton ở `bootstrap.py` nhưng `discover()`/`load_enabled()` không ai
-   gọi). Trình bày rủi ro/điểm không đảo ngược, dừng chờ GĐ xác nhận rồi Chain duyệt — **chưa code**.
+   gọi~~ — **⚠️ CÂU NÀY SAI, đã đính chính ở §7ba**: `main._lifespan` **có gọi** cả hai; lệnh grep lúc
+   viết chỉ quét `core/`, không quét `main.py`). Trình bày rủi ro/điểm không đảo ngược, dừng chờ GĐ xác
+   nhận rồi Chain duyệt — **chưa code**. → **ĐÃ XONG TRỌN 4/4 bước, xem §7ba.**
 2. 2FA quay lại đúng lượt của nó (sau Plugin loader) — trước khi code tiếp bước 2 (đã có code, chỉ
    cần re-verify) phải: (a) sửa 2 test audit-completeness ở trên, (b) chạy lại **toàn bộ** pytest với
    cách đo đúng (không pipe qua tail), (c) mới commit bước 2, rồi làm bước 3 (interface, 5 endpoint)
@@ -3108,10 +3110,93 @@ chưa stage). pytest: **chưa có con số toàn repo đáng tin** — xem lý d
 
 ---
 
+## 7ba. Plugin loader XONG — mục 1/4 quy trình nghiêm ngặt (2026-07-26, Sonnet)
+
+Mục đầu tiên chạy đủ **4 bước cổng mới** của Chain (§7az): thiết kế → 2 lượt duyệt (GĐ rồi Chain) →
+code → GĐĐH tự kiểm tra thật. 3 commit stepped: `c269fe7` (contract+registry thuần) → `6449de2`
+(loader+config+wiring) → `9b46140` (tài liệu).
+
+### ⚠️ Đính chính lỗi trong §7az
+
+§7az ghi *"`discover()`/`load_enabled()` không ai gọi"* — **SAI**. `main._lifespan` **đã gọi cả hai từ
+trước**; lệnh grep lúc viết chỉ quét `core/`, bỏ sót `main.py`. Trạng thái thật trước phiên này:
+loader nạp **mọi plugin tìm thấy** với config rỗng `{}` ⇒ **cài package = tự động bật**, không có cơ
+chế bật/tắt nào. Việc cần làm vì thế khác mô tả cũ — không phải "đấu điện" mà là "thêm cổng bật/tắt +
+đường config + hardening". Đã sửa câu sai tại chỗ ở §7az.
+
+### Đã dựng gì
+
+| Lớp | Nội dung |
+|---|---|
+| `interfaces.py` | `api_version` trên `Plugin` + `CORE_PLUGIN_API_VERSION="1.0"` + `is_compatible_api_version` (so khớp **major**, chuỗi hỏng ⇒ từ chối chứ không nổ) · `KNOWN_PORTS` · **hook runtime đổi thành `async`** |
+| `hooks.py` (MỚI) | `HookRegistry` — provider hook, đúng 1 plugin/port; 2 plugin cùng port ⇒ `ProviderConflictError` **nêu tên cả hai** |
+| `loader.py` | Thêm bước **validate trước `setup()`** · **fail-fast** khi nạp plugin đã bật · log plugin đã cài nhưng chưa bật |
+| `config.py` | `PluginsSettings`: `PLUGINS__ENABLED` (mặc định **rỗng**) + `PLUGINS__CONFIG` |
+| `bootstrap.py` | Đăng ký `HookRegistry` vào DI (điểm gọi runtime hỏi được "plugin nào giữ port này" mà không tự nạp được gì) |
+| `main.py` | Chỉ nạp plugin **được bật**, kèm config thật (thay vì nạp tất cả với `{}`) |
+
+### 3 quyết định lớn (đều đã duyệt 2 lượt trước khi code)
+
+| # | Quyết định | Lý do |
+|---|---|---|
+| 1 | **Hook runtime `async`** (`create_charge`/`verify_callback`/`submit`); `map_event` giữ sync | Hàm sync gọi mạng **đứng cả event loop** — mọi quầy treo vì 1 terminal chờ cổng chậm. Cũng là hình dạng duy nhất `asyncio.wait_for` timeout được. **Đổi phá vỡ nhưng chi phí = 0** vì chưa plugin nào hiện thực; tăng vọt ngay khi `payment_vnpay` ra đời ⇒ đúng lý do làm loader TRƯỚC payment |
+| 2 | **Fail-fast** khi plugin đã bật nạp lỗi (đổi hành vi vận hành) | Bỏ qua im lặng dời lỗi tới lúc thu ngân bấm thanh toán vào cổng chưa từng tồn tại. Khớp tiền lệ `APP__ENV=prod`+`ALLOW_DEV_AUTH=true` ⇒ từ chối khởi động. `teardown` **giữ phòng thủ** (đang tắt máy) |
+| 3 | Giữ **entry_points**, không đổi sang registry nội bộ | `payment_vnpay` là code đụng tiền, cần ranh giới phụ thuộc **vật lý** (package rời không khai báo dependency thì không import được `modules`), không chỉ ranh giới bằng lời hứa |
+
+### GĐĐH tự kiểm tra — chạy thật, KHÔNG chỉ tin test
+
+Toàn bộ test loader dùng entry point **giả** (monkeypatch), nên chúng **không chứng minh** được đường
+entry point thật hoạt động. Đã dựng **package cài được thật** (`demo-gateway`, có `pyproject.toml` +
+entry point thật), `pip install`, rồi kiểm:
+
+| # | Kiểm tra | Kết quả |
+|---|---|---|
+| 1 | `discover()` thật (không monkeypatch) | `['demo_gw']` ✅ |
+| 2 | Nạp + `resolve(PaymentGateway)` | `demo_gw v0.1.0 api 1.0`, ports `['PaymentGateway']` ✅ |
+| 3 | Config tới được plugin | `{'secret': 's3cr3t'}` ✅ |
+| 4 | `await create_charge()` thật | Trả charge đúng ✅ |
+| 5 | `verify_callback` đúng/sai chữ ký | `PAID` / `INVALID` ✅ |
+| 6 | `teardown_all()` → registry rỗng | `None` ✅ |
+| 7 | **App THẬT** (`create_app`+lifespan) nạp plugin thật | health 200, plugin nạp qua lifespan, config `prod-key` tới nơi, charge chạy, shutdown sạch ✅ |
+| 8 | **Fail-fast** — bật plugin chưa cài, app thật | `PluginLoadError`, **app từ chối khởi động** ✅ |
+| 9 | **Cổng phiên bản** — cài thật lại với `api_version="2.0"` | Chặn đúng: *"viết cho API lõi '2.0', lõi hiện tại '1.0' — khác major"* ✅ |
+| 10 | **Tương thích ngược** — không bật plugin nào (trạng thái mọi deployment hiện tại) | App khởi động bình thường, health 200, `resolve()` trả `None` ✅ |
+| 11 | Parse env thật `PLUGINS__ENABLED='["vnpay"]'` + `PLUGINS__CONFIG='{...}'` | Parse đúng, lookup đúng ✅ |
+| 12 | Dọn sạch sau kiểm tra | `pip uninstall` + xoá package; `discover()` = `[]` ✅ |
+
+### Nợ ghi rõ, KHÔNG tự làm
+
+- **2 contract import-linter** (plugin cấm import `pharmacy_os.modules`; plugin chỉ được import
+  `core.plugins`) — **không thêm được bây giờ**: `.importlinter` đặt `root_package = pharmacy_os`, đã
+  thử thêm `root_packages` trỏ `payment_vnpay` và import-linter báo thẳng *"Could not find package
+  'payment_vnpay' in your Python path"*. **Phải thêm CÙNG LÚC với `payment_vnpay`** (mục 4/4) — đó
+  đúng là lúc ranh giới có động cơ thật để bị phá. Đã ghi vào docs/09.
+- **Event hook** (nhiều plugin nghe 1 domain event, dạng `dav_connector`) — hoãn, `payment_vnpay` là
+  provider không phải listener; dựng fan-out chưa có người dùng là đoán yêu cầu.
+- **Circuit breaker** — hoãn, cần số liệu thật mới đặt ngưỡng.
+- **try/except + timeout tại điểm gọi hook** — chưa có điểm gọi nào (chủ ý **không** đụng `sales`).
+  Làm cùng `payment_vnpay`.
+- **KHÔNG có sandbox thật** (không giới hạn CPU/mạng/tệp của plugin) — rủi ro Chain đã duyệt chấp
+  nhận, ghi vào docs/09 vì mọi plugin sau này thừa hưởng giả định "plugin đáng tin".
+
+### Nghiệm thu
+
+4 cổng xanh cả 3 bước: ruff+format sạch · import-linter **16/0** (**không sửa contract nào**) ·
+mypy --strict **250 file** · pytest toàn repo **908 passed, EXIT=0** — đo **không qua pipe** đúng cách
+sửa ở §7az (`pytest -q > file; echo EXIT=$?`). 908 = 854 nền + 23 domain 2FA + **19 contract + 12
+loader** (31 test mới của mục này). **Không migration, không đụng CSDL** ⇒ không cần backup;
+`git revert` đảo ngược được 100%.
+
+**KHÔNG overclaim:** đây là **hạ tầng nạp plugin**. Chưa có plugin thật nào trong repo, chưa có điểm
+gọi nào trong `sales`, `payment_vnpay` chưa bắt đầu.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-26 | **PLUGIN LOADER XONG — mục 1/4 quy trình nghiêm ngặt (§7ba).** Chạy đủ 4 bước cổng mới: thiết kế → 2 lượt duyệt → code → GĐĐH tự kiểm tra thật. 3 commit stepped (`c269fe7`→`6449de2`→`9b46140`). Tách **bật/tắt khỏi khám phá**: `PLUGINS__ENABLED` mặc định rỗng, cài package ≠ bật (trước đây nạp mọi plugin tìm thấy với config rỗng). Thêm **validate trước setup** (contract + so khớp major `api_version`) và **fail-fast** — plugin đã bật mà nạp lỗi/chưa cài ⇒ app từ chối khởi động, khớp tiền lệ `ALLOW_DEV_AUTH`. `HookRegistry` mới: 1 plugin/port, xung đột ⇒ lỗi nêu tên cả hai. **Đổi phá vỡ có chủ đích: hook runtime thành `async`** — hook sync gọi mạng đứng cả event loop và không timeout được; chi phí đổi = 0 lúc này, tăng vọt khi có `payment_vnpay` (đúng lý do làm loader trước). **Tự kiểm tra bằng package cài thật** (`pip install` + entry point thật, 12 mục — test đều dùng entry point giả nên không chứng minh được đường thật), dọn sạch sau đó. **Đính chính §7az ghi sai** "discover/load_enabled không ai gọi" (grep bỏ sót `main.py`). Nợ ghi rõ: 2 contract import-linter **không thêm được** cho tới khi có package plugin thật (đã thử, import-linter báo `Could not find package`), event hook, circuit breaker, timeout tại điểm gọi, không sandbox thật. 4 cổng xanh, pytest **908 EXIT=0**, không migration. |
 | 2026-07-26 | **DỪNG PHIÊN theo lệnh Chain — quy trình mới cho 4 mục đụng tiền/khóa thật (§7az).** Chain đặt cổng nghiêm ngặt hơn full-auto cho Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật), đảo thứ tự: **Plugin loader trước 2FA** (kỹ thuật: payment sẽ chạy như plugin). Phạm vi loader đã chốt sẵn: cờ toàn cục, không per-tenant. Phiên này trước đó (dưới quy trình cũ) đã: report đợt 2 top thuốc bán chạy XONG (`14af10e`) + phát hiện xuất `ControlledLedgerEntry` đã xong sẵn từ TT18; retry DAV qua outbox XONG (Opus, §7ay, 3 commit, hàng đợi riêng không chung outbox lõi); 2FA bước 1/4 domain XONG+commit (`29080eb`), bước 2/4 app+infra+migration **code xong, migration 0028 live trên Postgres, nhưng CHƯA commit** theo đúng lựa chọn Chain — còn 2 test audit-completeness đỏ (thiếu 6 action 2FA trong 2 set đối chiếu tay, chưa sửa). Tự phát hiện lỗi phương pháp: `pytest \| tail` che mất exit code thật của pytest — từ nay đo trực tiếp, không qua pipe. Chi tiết đầy đủ + việc phải làm khi mở lại: §7az. |
 | 2026-07-25 | **NĐ163+TT33+TT26 đọc xong — ĐẢO NGƯỢC kết luận báo cáo định kỳ (§7as)** — Chain chép 3 văn bản, ủy quyền toàn quyền GĐ chỉ đạo code. **NĐ163 Điều 35.2: bán lẻ CÓ nghĩa vụ báo cáo 6 tháng/năm gửi UBND cấp tỉnh (Mẫu số 06), đã trễ ≥3 kỳ (15/7/2025, 15/1/2026, 15/7/2026)** — đảo ngược kết luận cũ "TT18 không áp cho bán lẻ" (kết luận đó đúng riêng cho TT18, sai khi coi là câu trả lời đầy đủ). **Việc khẩn ngoài phần mềm:** xác nhận BeraLLC đã báo cáo chưa. TT33: không có mục riêng cho sổ KSĐB bán lẻ, nâng sàn retention lên ≥20 năm (suy diễn, an toàn hơn 2 năm cũ). TT26: không phát sinh nghĩa vụ mới, xác nhận 2 tham chiếu lỗi thời tự sửa. Cập nhật docs/13 (mục C.7 mới), docs/legal/README, 3 SUMMARY mới. **Chưa code** — tính năng báo cáo Mẫu số 06 cần qua docs/14_FEATURE_PROCESS trước; hỏi Chain ưu tiên việc này hay bước 4 (biên bản PL XVIII) đã duyệt trước đó. |
 | 2026-07-25 | **TT 18/2026 THAY TT 20/2017 — bước 1/3, chỉ tài liệu (§7ar)** — Chain thả bookmark TT18, yêu cầu chuẩn bị biểu mẫu + hỏi trình tự trước khi code. Trích nguyên văn: TT18 **hiệu lực 16/7/2026, bãi bỏ TT20/2017 + TT27/2024** ⇒ mục C của `docs/13` đang dựa trên văn bản chết 9 ngày. Báo cáo định kỳ **vẫn không áp cho bán lẻ** (Điều 7 thuộc Chương II — cơ sở phi thương mại) nhưng **hạ mức xuống "chưa kết luận được"** vì nghĩa vụ báo cáo của cơ sở kinh doanh nằm ở **NĐ 163/2025** — chưa có văn bản. Cái thật sự bỏ sót là **3 nghĩa vụ khác**: sổ **PL XVI** (Điều 12.3, TT20 không có), **biên bản nhận lại PL XVIII** (trước gạt ngoài phạm vi), **chữ ký số Điều 15.1.d** (không có gì). Lưu trữ mất căn cứ (chờ TT 33/2025 + TT 26/2025). Chain chốt: làm **bước 1–3**, chữ ký số **chỉ thiết kế**, sửa spec **tại chỗ + changelog**, **không bán thuốc độc** ⇒ không seed QĐ 3235. Bước 1 xong: SUMMARY TT18 đầy đủ, `docs/13` mục C viết lại + C.5/C.6 mới + Traceability #22–27 + changelog mục H, `docs/legal/README.md`, bản đề xuất 6 bước. **Bước 2–3 xong cùng ngày:** 122 hoạt chất PL I/II/III + ngưỡng PL IV/V/VI vào bảng `controlled_substances` (mig `0024`; seed **có nhánh cập nhật**, đã ép chạy nhánh đó trên CSDL có dữ liệu sẵn — `created=1, updated=2`); enum **7→9 giá trị** (`THUOC_DOC`, `DANH_MUC_CAM`); `LedgerBookType` **suy từ `category`**, không lưu cột ⇒ không cần migration; endpoint `GET /compliance/controlled-ledger/books/{book_type}/export` kết xuất CSV 2 mẫu sổ, tồn lũy kế reset theo từng thuốc. **Nợ ghi rõ, không tự làm:** phần đầu sổ (tên thuốc, số ĐKLH, ĐVT, nhà sản xuất) chưa xuất được vì phải mở read-port `DrugMasterFacts` — cross-module, chờ duyệt. 4 cổng xanh, pytest **782**, `alembic check` không drift. |
