@@ -10,6 +10,7 @@ from uuid import UUID
 from pharmacy_os.modules.compliance.domain import (
     ControlledLedgerEntry,
     ControlledSubstanceCategory,
+    DrugReturnRecord,
     LedgerDirection,
     NationalSyncLog,
     SyncPayloadType,
@@ -202,3 +203,83 @@ class PeriodicReportRow:
     purchase_permit_no: str | None = None
     shrinkage: Decimal = Decimal(0)
     note: str | None = None
+
+
+@dataclass(slots=True)
+class ReturnedDrugItemInput:
+    description: str
+    unit: str
+    quantity: Decimal
+    lot_no: str
+    expiry_date: date
+    condition_note: str
+    reason: str
+
+
+@dataclass(slots=True)
+class RecordDrugReturnInput:
+    """docs/13 mục C.6 — TT18 Điều 6.2 + Điều 12.1.d, Phụ lục XVIII."""
+
+    returner_name: str
+    returner_address: str
+    returner_id_number: str
+    returner_id_issuer: str
+    returner_id_issued_at: date
+    returner_is_patient: bool
+    receiving_pharmacist_name: str
+    items: list[ReturnedDrugItemInput]
+    handover_at: datetime
+    handover_location: str
+
+
+@dataclass(slots=True)
+class ReturnedDrugItemOutput:
+    description: str
+    unit: str
+    quantity: Decimal
+    lot_no: str
+    expiry_date: date
+    condition_note: str
+    reason: str
+
+
+@dataclass(slots=True)
+class DrugReturnRecordOutput:
+    id: UUID
+    returner_name: str
+    returner_address: str
+    returner_id_number: str
+    returner_id_issuer: str
+    returner_id_issued_at: date
+    returner_is_patient: bool
+    receiving_pharmacist_name: str
+    items: list[ReturnedDrugItemOutput]
+    handover_at: datetime
+    handover_location: str
+
+    @classmethod
+    def of(cls, record: DrugReturnRecord) -> DrugReturnRecordOutput:
+        return cls(
+            id=record.id,
+            returner_name=record.returner_name,
+            returner_address=record.returner_address,
+            returner_id_number=record.returner_id_number,
+            returner_id_issuer=record.returner_id_issuer,
+            returner_id_issued_at=record.returner_id_issued_at,
+            returner_is_patient=record.returner_is_patient,
+            receiving_pharmacist_name=record.receiving_pharmacist_name,
+            items=[
+                ReturnedDrugItemOutput(
+                    description=i.description,
+                    unit=i.unit,
+                    quantity=i.quantity,
+                    lot_no=i.lot_no,
+                    expiry_date=i.expiry_date,
+                    condition_note=i.condition_note,
+                    reason=i.reason,
+                )
+                for i in record.items
+            ],
+            handover_at=record.handover_at,
+            handover_location=record.handover_location,
+        )

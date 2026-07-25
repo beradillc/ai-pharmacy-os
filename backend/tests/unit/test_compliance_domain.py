@@ -13,6 +13,7 @@ from pharmacy_os.modules.compliance.domain import (
     ControlledSubstanceAppendix,
     ControlledSubstanceCategory,
     CustomerDetail,
+    DrugReturnRecord,
     EtcPrescriptionPolicy,
     LedgerBookType,
     LedgerDirection,
@@ -22,6 +23,7 @@ from pharmacy_os.modules.compliance.domain import (
     MissingEtcPrescriptionFieldsError,
     NationalDrugRecord,
     NotControlledSubstanceError,
+    ReturnedDrugItem,
     TenantComplianceConfig,
     book_type_for,
     to_qld_code,
@@ -482,3 +484,81 @@ class TestLedgerPeriodAggregate:
             issued_in_period=Decimal("10"),
         )
         assert agg.closing_balance == Decimal("0")
+
+
+class TestReturnedDrugItem:
+    """Một dòng trong bảng thuốc nhận lại (Phụ lục XVIII, docs/13 mục C.6)."""
+
+    def test_quantity_duong_hop_le(self) -> None:
+        item = ReturnedDrugItem(
+            description="Diazepam 5mg, viên nén, hộp 2 vỉ x 10 viên, SĐK VD-12345-26",
+            unit="viên",
+            quantity=Decimal("3"),
+            lot_no="L20260101",
+            expiry_date=date(2028, 1, 1),
+            condition_note="Còn nguyên vỉ, không biến đổi màu sắc",
+            reason="Người bệnh không dùng hết",
+        )
+        assert item.quantity == Decimal("3")
+
+    def test_quantity_khong_duong_bi_chan(self) -> None:
+        with pytest.raises(ValueError, match="phải > 0"):
+            ReturnedDrugItem(
+                description="X",
+                unit="viên",
+                quantity=Decimal("0"),
+                lot_no="L1",
+                expiry_date=date(2028, 1, 1),
+                condition_note="",
+                reason="",
+            )
+
+
+class TestDrugReturnRecord:
+    """Biên bản nhận lại thuốc GN/HT/TC (docs/13 mục C.6)."""
+
+    def _item(self) -> ReturnedDrugItem:
+        return ReturnedDrugItem(
+            description="Diazepam 5mg",
+            unit="viên",
+            quantity=Decimal("3"),
+            lot_no="L20260101",
+            expiry_date=date(2028, 1, 1),
+            condition_note="Còn nguyên vỉ",
+            reason="Không dùng hết",
+        )
+
+    def test_bien_ban_hop_le(self) -> None:
+        record = DrugReturnRecord(
+            tenant_id=uuid4(),
+            branch_id=uuid4(),
+            returner_name="Nguyễn Văn A",
+            returner_address="12 Lê Lợi, Q1, HCM",
+            returner_id_number="079123456789",
+            returner_id_issuer="Cục Cảnh sát QLHC về TTXH",
+            returner_id_issued_at=date(2021, 5, 1),
+            returner_is_patient=True,
+            receiving_pharmacist_name="DS. Trần Thị B",
+            items=[self._item()],
+            handover_at=datetime(2026, 7, 25, 14, 30, tzinfo=UTC),
+            handover_location="Nhà thuốc ABC, 12 Lê Lợi, Q1, HCM",
+        )
+        assert record.items[0].quantity == Decimal("3")
+        assert record.returner_is_patient is True
+
+    def test_bien_ban_khong_the_khong_co_dong_thuoc_nao(self) -> None:
+        with pytest.raises(ValueError, match="ít nhất 1 dòng thuốc"):
+            DrugReturnRecord(
+                tenant_id=uuid4(),
+                branch_id=uuid4(),
+                returner_name="Nguyễn Văn A",
+                returner_address="12 Lê Lợi",
+                returner_id_number="079123456789",
+                returner_id_issuer="Cục Cảnh sát QLHC về TTXH",
+                returner_id_issued_at=date(2021, 5, 1),
+                returner_is_patient=True,
+                receiving_pharmacist_name="DS. Trần Thị B",
+                items=[],
+                handover_at=datetime(2026, 7, 25, 14, 30, tzinfo=UTC),
+                handover_location="Nhà thuốc ABC",
+            )

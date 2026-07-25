@@ -14,16 +14,21 @@ from pharmacy_os.modules.compliance.application import (
     ComplianceService,
     CustomerDetailInput,
     RecordControlledEntryInput,
+    RecordDrugReturnInput,
+    ReturnedDrugItemInput,
     SetTenantComplianceConfigInput,
 )
 from pharmacy_os.modules.compliance.domain import (
     ControlledSubstanceCategory,
+    DrugReturnRecord,
     LedgerBookType,
     LedgerDirection,
+    ReturnedDrugItem,
 )
 from pharmacy_os.modules.compliance.domain.ports import DrugMasterFacts
 from pharmacy_os.modules.compliance.infrastructure import (
     SqlAlchemyControlledLedgerRepository,
+    SqlAlchemyDrugReturnRecordRepository,
     SqlAlchemyTenantComplianceConfigRepository,
 )
 
@@ -453,3 +458,156 @@ async def test_periodic_report_thuoc_khong_tra_duoc_van_xuat_hien(
     )
     assert row.drug_id == drug
     assert str(drug) in row.drug_name
+
+
+class TestDrugReturnRecordRepository:
+    """Biên bản nhận lại thuốc GN/HT/TC (docs/13 mục C.6) — repository add/get roundtrip."""
+
+    def _record(self, ctx: RequestContext) -> DrugReturnRecord:
+        return DrugReturnRecord(
+            tenant_id=ctx.tenant_id,
+            branch_id=ctx.branch_id,
+            returner_name="Nguyễn Văn A",
+            returner_address="12 Lê Lợi, Q1, HCM",
+            returner_id_number="079123456789",
+            returner_id_issuer="Cục Cảnh sát QLHC về TTXH",
+            returner_id_issued_at=date(2021, 5, 1),
+            returner_is_patient=True,
+            receiving_pharmacist_name="DS. Trần Thị B",
+            items=[
+                ReturnedDrugItem(
+                    description="Diazepam 5mg, viên nén, hộp 2 vỉ x 10 viên",
+                    unit="viên",
+                    quantity=Decimal("3"),
+                    lot_no="L20260101",
+                    expiry_date=date(2028, 1, 1),
+                    condition_note="Còn nguyên vỉ",
+                    reason="Người bệnh không dùng hết",
+                ),
+                ReturnedDrugItem(
+                    description="Tramadol 37.5mg",
+                    unit="viên",
+                    quantity=Decimal("5"),
+                    lot_no="L20260202",
+                    expiry_date=date(2027, 6, 1),
+                    condition_note="Vỉ đã bóc, còn 5 viên",
+                    reason="Người bệnh tử vong",
+                ),
+            ],
+            handover_at=datetime(2026, 7, 25, 14, 30, tzinfo=UTC),
+            handover_location="Nhà thuốc ABC, 12 Lê Lợi, Q1, HCM",
+        )
+
+    async def test_add_va_get_giu_nguyen_du_lieu_ke_ca_nhieu_dong_thuoc(
+        self, session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+    ) -> None:
+        ctx = RequestContext(
+            tenant_id=uuid4(),
+            branch_id=uuid4(),
+            user_id=uuid4(),
+            permissions=frozenset({"compliance.ledger.write", "compliance.ledger.read"}),
+        )
+        record = self._record(ctx)
+
+        async with SqlAlchemyUnitOfWork(session_factory, event_bus) as uow:
+            repo = SqlAlchemyDrugReturnRecordRepository(uow.session, ctx)
+            await repo.add(record)
+            await uow.commit()
+
+        async with SqlAlchemyUnitOfWork(session_factory, event_bus) as uow:
+            repo = SqlAlchemyDrugReturnRecordRepository(uow.session, ctx)
+            fetched = await repo.get(record.id)
+
+        assert fetched is not None
+        assert fetched.returner_name == "Nguyễn Văn A"
+        assert fetched.returner_id_number == "079123456789"
+        assert len(fetched.items) == 2
+        assert {i.description for i in fetched.items} == {
+            "Diazepam 5mg, viên nén, hộp 2 vỉ x 10 viên",
+            "Tramadol 37.5mg",
+        }
+        assert fetched.items[0].quantity in (Decimal("3"), Decimal("5"))
+
+    async def test_get_tra_ve_none_ngoai_tenant(
+        self, session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+    ) -> None:
+        ctx = RequestContext(
+            tenant_id=uuid4(),
+            branch_id=uuid4(),
+            user_id=uuid4(),
+            permissions=frozenset({"compliance.ledger.write"}),
+        )
+        record = self._record(ctx)
+        async with SqlAlchemyUnitOfWork(session_factory, event_bus) as uow:
+            repo = SqlAlchemyDrugReturnRecordRepository(uow.session, ctx)
+            await repo.add(record)
+            await uow.commit()
+
+        other_ctx = RequestContext(
+            tenant_id=uuid4(), branch_id=uuid4(), user_id=uuid4(), permissions=frozenset()
+        )
+        async with SqlAlchemyUnitOfWork(session_factory, event_bus) as uow:
+            repo = SqlAlchemyDrugReturnRecordRepository(uow.session, other_ctx)
+            fetched = await repo.get(record.id)
+        assert fetched is None
+
+
+def _drug_return_input(**kw: object) -> RecordDrugReturnInput:
+    base: dict[str, object] = {
+        "returner_name": "Nguyễn Văn A",
+        "returner_address": "12 Lê Lợi, Q1, HCM",
+        "returner_id_number": "079123456789",
+        "returner_id_issuer": "Cục Cảnh sát QLHC về TTXH",
+        "returner_id_issued_at": date(2021, 5, 1),
+        "returner_is_patient": True,
+        "receiving_pharmacist_name": "DS. Trần Thị B",
+        "items": [
+            ReturnedDrugItemInput(
+                description="Diazepam 5mg",
+                unit="viên",
+                quantity=Decimal("3"),
+                lot_no="L20260101",
+                expiry_date=date(2028, 1, 1),
+                condition_note="Còn nguyên vỉ",
+                reason="Không dùng hết",
+            )
+        ],
+        "handover_at": datetime(2026, 7, 25, 14, 30, tzinfo=UTC),
+        "handover_location": "Nhà thuốc ABC",
+    }
+    base.update(kw)
+    return RecordDrugReturnInput(**base)  # type: ignore[arg-type]
+
+
+async def test_record_drug_return_persists_and_reads_back(
+    compliance_service: ComplianceService, ctx: RequestContext
+) -> None:
+    out = await compliance_service.record_drug_return(_drug_return_input(), ctx)
+    assert out.returner_name == "Nguyễn Văn A"
+    assert len(out.items) == 1
+
+    fetched = await compliance_service.get_drug_return(out.id, ctx)
+    assert fetched.id == out.id
+    assert fetched.returner_id_number == "079123456789"
+
+
+async def test_get_unknown_drug_return_raises(
+    compliance_service: ComplianceService, ctx: RequestContext
+) -> None:
+    with pytest.raises(NotFoundError):
+        await compliance_service.get_drug_return(uuid4(), ctx)
+
+
+async def test_recording_a_drug_return_leaves_an_audit_row_without_id_number(
+    compliance_service: ComplianceService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    out = await compliance_service.record_drug_return(_drug_return_input(), ctx)
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        entries = await repo.list(ctx.tenant_id, action=AuditAction.DRUG_RETURN_RECORDED)
+        matching = [e for e in entries if e.target_id == str(out.id)]
+        assert len(matching) == 1
+        assert "079123456789" not in str(matching[0].context)

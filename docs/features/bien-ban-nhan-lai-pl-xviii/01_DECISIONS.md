@@ -1,8 +1,8 @@
 # Biên bản nhận lại thuốc GN/HT/TC — Phụ lục XVIII (Bước 0-3 của `docs/14_FEATURE_PROCESS.md`)
 
-> **Trạng thái: TỰ DUYỆT dưới ủy quyền toàn quyền chỉ đạo code (Chain, 2026-07-25).**
-> Bước 4/6 mạch TT18, đã Chain duyệt phạm vi từ đầu. Nguồn: `docs/13_COMPLIANCE_SPEC.md` mục C.6;
-> TT18 Điều 6.2 + Điều 12.1.d + Phụ lục XVIII.
+> **Trạng thái: ĐÃ XONG (2026-07-25).** Bước 4/6 mạch TT18. Endpoint `POST/GET /compliance/drug-
+> returns[/{id}]` sống — migration `0025` live, không cross-module (đã sửa giả định cũ). Nguồn:
+> `docs/13_COMPLIANCE_SPEC.md` mục C.6; TT18 Điều 6.2 + Điều 12.1.d + Phụ lục XVIII.
 
 ## Bước 0 — Đích (DoD ngược)
 

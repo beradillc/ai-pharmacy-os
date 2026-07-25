@@ -21,9 +21,11 @@ from pharmacy_os.modules.compliance.application.csv_export import (
 )
 from pharmacy_os.modules.compliance.application.dto import (
     ControlledLedgerEntryOutput,
+    DrugReturnRecordOutput,
     LedgerBookRow,
     PeriodicReportRow,
     RecordControlledEntryInput,
+    RecordDrugReturnInput,
     SetTenantComplianceConfigInput,
     TenantComplianceConfigOutput,
 )
@@ -32,8 +34,10 @@ from pharmacy_os.modules.compliance.domain import (
     ControlledLedgerEntry,
     ControlledSubstanceCategory,
     CustomerDetail,
+    DrugReturnRecord,
     LedgerBookType,
     LedgerDirection,
+    ReturnedDrugItem,
     TenantComplianceConfig,
     validate_controlled_sale,
 )
@@ -41,12 +45,14 @@ from pharmacy_os.modules.compliance.domain.ports import (
     ControlledLedgerRepository,
     DrugMasterFacts,
     DrugMasterProvider,
+    DrugReturnRecordRepository,
     TenantComplianceConfigRepository,
 )
 
 UowFactory = Callable[[], UnitOfWork]
 LedgerRepoFactory = Callable[[UnitOfWork, RequestContext], ControlledLedgerRepository]
 ConfigRepoFactory = Callable[[UnitOfWork, RequestContext], TenantComplianceConfigRepository]
+DrugReturnRepoFactory = Callable[[UnitOfWork, RequestContext], DrugReturnRecordRepository]
 
 #: Phạm vi NĐ163 Điều 35.2.a — không gồm THUOC_DOC/DANH_MUC_CAM (Điều 35.2.b chỉ bắt bán lẻ
 #: báo cáo phóng xạ, không bắt 2 nhóm đó; cũng không gồm NONE — thuốc không kiểm soát).
@@ -68,12 +74,14 @@ class ComplianceService:
         config_repo_factory: ConfigRepoFactory,
         audit: AuditLogger,
         drug_master: DrugMasterProvider | None = None,
+        drug_return_repo_factory: DrugReturnRepoFactory | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._ledger_repo_factory = ledger_repo_factory
         self._config_repo_factory = config_repo_factory
         self._audit = audit
         self._drug_master = drug_master
+        self._drug_return_repo_factory = drug_return_repo_factory
 
     async def record_controlled_entry(
         self, data: RecordControlledEntryInput, ctx: RequestContext
@@ -206,6 +214,72 @@ class ComplianceService:
             ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
         )
         return rows
+
+    def _drug_return_repo(self, uow: UnitOfWork, ctx: RequestContext) -> DrugReturnRecordRepository:
+        if self._drug_return_repo_factory is None:
+            raise RuntimeError(
+                "ComplianceService chưa được wiring drug_return_repo_factory — lỗi cấu hình, "
+                "không phải lỗi người dùng (xem interface/register.py)"
+            )
+        return self._drug_return_repo_factory(uow, ctx)
+
+    async def record_drug_return(
+        self, data: RecordDrugReturnInput, ctx: RequestContext
+    ) -> DrugReturnRecordOutput:
+        """Ghi biên bản nhận lại thuốc GN/HT/TC (docs/13 mục C.6 — TT18 Điều 6.2 + Điều 12.1.d).
+
+        Không kiểm tra chéo `drug_id`/tồn kho — mẫu Phụ lục XVIII gốc không có cột đó (xem
+        docs/features/bien-ban-nhan-lai-pl-xviii/01_DECISIONS.md). Số CCCD/hộ chiếu của người
+        giao **không** được đưa vào audit context, cùng nguyên tắc PII đã áp cho tên/địa chỉ
+        khách hàng ở :meth:`record_controlled_entry`.
+        """
+        require_permission(ctx, "compliance.ledger.write")
+        try:
+            record = DrugReturnRecord(
+                tenant_id=ctx.tenant_id,
+                branch_id=ctx.branch_id,
+                returner_name=data.returner_name,
+                returner_address=data.returner_address,
+                returner_id_number=data.returner_id_number,
+                returner_id_issuer=data.returner_id_issuer,
+                returner_id_issued_at=data.returner_id_issued_at,
+                returner_is_patient=data.returner_is_patient,
+                receiving_pharmacist_name=data.receiving_pharmacist_name,
+                items=[
+                    ReturnedDrugItem(
+                        description=i.description,
+                        unit=i.unit,
+                        quantity=i.quantity,
+                        lot_no=i.lot_no,
+                        expiry_date=i.expiry_date,
+                        condition_note=i.condition_note,
+                        reason=i.reason,
+                    )
+                    for i in data.items
+                ],
+                handover_at=data.handover_at,
+                handover_location=data.handover_location,
+            )
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+
+        async with self._uow_factory() as uow:
+            repo = self._drug_return_repo(uow, ctx)
+            await repo.add(record)
+            await uow.commit()
+
+        await self._record(ctx, AuditAction.DRUG_RETURN_RECORDED, "drug_return_record", record.id)
+        return DrugReturnRecordOutput.of(record)
+
+    async def get_drug_return(self, record_id: UUID, ctx: RequestContext) -> DrugReturnRecordOutput:
+        """Trả về 1 biên bản nhận lại thuốc theo id, đã tenant-scope; 404 nếu không có."""
+        require_permission(ctx, "compliance.ledger.read")
+        async with self._uow_factory() as uow:
+            repo = self._drug_return_repo(uow, ctx)
+            record = await repo.get(record_id)
+        if record is None:
+            raise NotFoundError(f"Không tìm thấy biên bản nhận lại thuốc {record_id}")
+        return DrugReturnRecordOutput.of(record)
 
     async def set_tenant_config(
         self, data: SetTenantComplianceConfigInput, ctx: RequestContext

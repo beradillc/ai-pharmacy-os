@@ -16,6 +16,7 @@ from uuid import UUID
 from pharmacy_os.modules.compliance.domain.entities import (
     ControlledLedgerEntry,
     ControlledSubstanceCategory,
+    DrugReturnRecord,
     LedgerBookType,
     NationalSyncLog,
     SyncPayloadType,
@@ -84,6 +85,17 @@ class ControlledLedgerRepository(Protocol):
         cuối kỳ, không bị bỏ sót).
         """
         ...
+
+
+class DrugReturnRecordRepository(Protocol):
+    """Persistence port for :class:`DrugReturnRecord` (docs/13 mục C.6).
+
+    Immutable — add/get only.
+    """
+
+    async def add(self, record: DrugReturnRecord) -> None: ...
+
+    async def get(self, record_id: UUID) -> DrugReturnRecord | None: ...
 
 
 class TenantComplianceConfigRepository(Protocol):

@@ -16,9 +16,13 @@ from pydantic import BaseModel, Field, model_validator
 from pharmacy_os.modules.compliance.application.dto import (
     ControlledLedgerEntryOutput,
     CustomerDetailInput,
+    DrugReturnRecordOutput,
     NationalSyncLogOutput,
     PushSyncInput,
     RecordControlledEntryInput,
+    RecordDrugReturnInput,
+    ReturnedDrugItemInput,
+    ReturnedDrugItemOutput,
     SetTenantComplianceConfigInput,
     TenantComplianceConfigOutput,
 )
@@ -116,6 +120,110 @@ class SetTenantComplianceConfigRequest(BaseModel):
         return SetTenantComplianceConfigInput(
             ma_co_so_ban_le=self.ma_co_so_ban_le,
             ma_co_so_ban_buon=self.ma_co_so_ban_buon,
+        )
+
+
+class ReturnedDrugItemRequest(BaseModel):
+    """Một dòng thuốc nhận lại (Phụ lục XVIII) — cột 'quy cách/số ĐKLH' gộp vào `description`."""
+
+    description: str = Field(min_length=1)
+    unit: str = Field(min_length=1, max_length=32)
+    quantity: Decimal = Field(gt=0)
+    lot_no: str = Field(min_length=1, max_length=64)
+    expiry_date: date
+    condition_note: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+
+
+class RecordDrugReturnRequest(BaseModel):
+    """docs/13 mục C.6 — TT18 Điều 6.2 + Điều 12.1.d, Phụ lục XVIII."""
+
+    returner_name: str = Field(min_length=1, max_length=255)
+    returner_address: str = Field(min_length=1, max_length=500)
+    returner_id_number: str = Field(min_length=1, max_length=32)
+    returner_id_issuer: str = Field(min_length=1, max_length=255)
+    returner_id_issued_at: date
+    returner_is_patient: bool
+    receiving_pharmacist_name: str = Field(min_length=1, max_length=255)
+    items: list[ReturnedDrugItemRequest] = Field(min_length=1)
+    handover_at: datetime
+    handover_location: str = Field(min_length=1, max_length=500)
+
+    def to_input(self) -> RecordDrugReturnInput:
+        return RecordDrugReturnInput(
+            returner_name=self.returner_name,
+            returner_address=self.returner_address,
+            returner_id_number=self.returner_id_number,
+            returner_id_issuer=self.returner_id_issuer,
+            returner_id_issued_at=self.returner_id_issued_at,
+            returner_is_patient=self.returner_is_patient,
+            receiving_pharmacist_name=self.receiving_pharmacist_name,
+            items=[
+                ReturnedDrugItemInput(
+                    description=i.description,
+                    unit=i.unit,
+                    quantity=i.quantity,
+                    lot_no=i.lot_no,
+                    expiry_date=i.expiry_date,
+                    condition_note=i.condition_note,
+                    reason=i.reason,
+                )
+                for i in self.items
+            ],
+            handover_at=self.handover_at,
+            handover_location=self.handover_location,
+        )
+
+
+class ReturnedDrugItemResponse(BaseModel):
+    description: str
+    unit: str
+    quantity: Decimal
+    lot_no: str
+    expiry_date: date
+    condition_note: str
+    reason: str
+
+    @classmethod
+    def of(cls, out: ReturnedDrugItemOutput) -> ReturnedDrugItemResponse:
+        return cls(
+            description=out.description,
+            unit=out.unit,
+            quantity=out.quantity,
+            lot_no=out.lot_no,
+            expiry_date=out.expiry_date,
+            condition_note=out.condition_note,
+            reason=out.reason,
+        )
+
+
+class DrugReturnRecordResponse(BaseModel):
+    id: UUID
+    returner_name: str
+    returner_address: str
+    returner_id_number: str
+    returner_id_issuer: str
+    returner_id_issued_at: date
+    returner_is_patient: bool
+    receiving_pharmacist_name: str
+    items: list[ReturnedDrugItemResponse]
+    handover_at: datetime
+    handover_location: str
+
+    @classmethod
+    def of(cls, out: DrugReturnRecordOutput) -> DrugReturnRecordResponse:
+        return cls(
+            id=out.id,
+            returner_name=out.returner_name,
+            returner_address=out.returner_address,
+            returner_id_number=out.returner_id_number,
+            returner_id_issuer=out.returner_id_issuer,
+            returner_id_issued_at=out.returner_id_issued_at,
+            returner_is_patient=out.returner_is_patient,
+            receiving_pharmacist_name=out.receiving_pharmacist_name,
+            items=[ReturnedDrugItemResponse.of(i) for i in out.items],
+            handover_at=out.handover_at,
+            handover_location=out.handover_location,
         )
 
 

@@ -328,3 +328,56 @@ class NationalSyncLog:
         self.response_code = response_code
         self.error = error
         self.retry_count += 1
+
+
+@dataclass(frozen=True, slots=True)
+class ReturnedDrugItem:
+    """Một dòng trong bảng danh mục thuốc nhận lại (Phụ lục XVIII, docs/13 mục C.6).
+
+    ``description`` là chuỗi tự do (tên/dạng bào chế/nồng độ/quy cách/số ĐKLH) theo đúng cột gộp
+    của mẫu giấy gốc — không tra `catalog` (mẫu pháp lý không yêu cầu, và cưỡng ép tra cứu sẽ vượt
+    phạm vi mẫu gốc; xem docs/features/bien-ban-nhan-lai-pl-xviii/01_DECISIONS.md Bước 3).
+    """
+
+    description: str
+    unit: str
+    quantity: Decimal
+    lot_no: str
+    expiry_date: date
+    condition_note: str
+    reason: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "quantity", Decimal(self.quantity))
+        if self.quantity <= 0:
+            raise ValueError("Số lượng thuốc nhận lại phải > 0")
+
+
+@dataclass(slots=True)
+class DrugReturnRecord:
+    """Biên bản nhận lại thuốc GN/HT/TC (TT18 Điều 6.2 + Điều 12.1.d, Phụ lục XVIII).
+
+    Bất biến sau khi tạo — không có phương thức sửa/xóa, cùng nguyên tắc với
+    :class:`ControlledLedgerEntry` (hồ sơ tuân thủ, không phải dữ liệu tác nghiệp có thể chỉnh sửa).
+    Không nối `drug_id`/`ControlledLedgerEntry` — mẫu giấy gốc không có cột đó (xem
+    ``ReturnedDrugItem``).
+    """
+
+    tenant_id: UUID
+    branch_id: UUID
+    returner_name: str
+    returner_address: str
+    returner_id_number: str
+    returner_id_issuer: str
+    returner_id_issued_at: date
+    returner_is_patient: bool
+    receiving_pharmacist_name: str
+    items: list[ReturnedDrugItem]
+    handover_at: datetime
+    handover_location: str
+    id: UUID = field(default_factory=uuid4)
+    created_at: datetime = field(default_factory=_now)
+
+    def __post_init__(self) -> None:
+        if not self.items:
+            raise ValueError("Biên bản nhận lại thuốc phải có ít nhất 1 dòng thuốc")

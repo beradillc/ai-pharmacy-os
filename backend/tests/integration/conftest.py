@@ -35,6 +35,7 @@ from pharmacy_os.modules.clinical.infrastructure import (
 from pharmacy_os.modules.compliance.application import ComplianceService
 from pharmacy_os.modules.compliance.infrastructure import (
     SqlAlchemyControlledLedgerRepository,
+    SqlAlchemyDrugReturnRecordRepository,
     SqlAlchemyTenantComplianceConfigRepository,
 )
 from pharmacy_os.modules.crm.application import CrmService
@@ -217,6 +218,9 @@ def compliance_service(
         lambda uow, c: SqlAlchemyControlledLedgerRepository(uow.session, c),
         lambda uow, c: SqlAlchemyTenantComplianceConfigRepository(uow.session, c),
         AuditLogger(session_factory),
+        drug_return_repo_factory=lambda uow, c: SqlAlchemyDrugReturnRecordRepository(
+            uow.session, c
+        ),
     )
 
 

@@ -6,8 +6,18 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Date, DateTime, Integer, Numeric, String, Text, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from pharmacy_os.core.db.base import Base, PkUuidMixin, TenantScopedMixin, TimestampMixin
 
@@ -94,3 +104,47 @@ class NationalSyncLogORM(PkUuidMixin, TimestampMixin, Base):
     response_body: Mapped[str | None] = mapped_column(Text, nullable=True)
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class DrugReturnRecordORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
+    """Biên bản nhận lại thuốc GN/HT/TC (docs/13 mục C.6 — TT18 Điều 6.2 + Điều 12.1.d, PL XVIII).
+
+    Immutable theo domain rule, cùng nguyên tắc với ``ControlledLedgerEntryORM`` — chỉ INSERT.
+    """
+
+    __tablename__ = "drug_return_records"
+
+    returner_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    returner_address: Mapped[str] = mapped_column(String(500), nullable=False)
+    returner_id_number: Mapped[str] = mapped_column(String(32), nullable=False)
+    returner_id_issuer: Mapped[str] = mapped_column(String(255), nullable=False)
+    returner_id_issued_at: Mapped[date] = mapped_column(Date, nullable=False)
+    returner_is_patient: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    receiving_pharmacist_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    handover_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    handover_location: Mapped[str] = mapped_column(String(500), nullable=False)
+
+    items: Mapped[list[DrugReturnItemORM]] = relationship(
+        back_populates="record",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class DrugReturnItemORM(PkUuidMixin, Base):
+    """Một dòng trong bảng danh mục thuốc nhận lại (docs/13 mục C.6, Phụ lục XVIII)."""
+
+    __tablename__ = "drug_return_items"
+
+    record_id: Mapped[UUID] = mapped_column(
+        ForeignKey("drug_return_records.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    unit: Mapped[str] = mapped_column(String(32), nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(18, 3), nullable=False)
+    lot_no: Mapped[str] = mapped_column(String(64), nullable=False)
+    expiry_date: Mapped[date] = mapped_column(Date, nullable=False)
+    condition_note: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+
+    record: Mapped[DrugReturnRecordORM] = relationship(back_populates="items")

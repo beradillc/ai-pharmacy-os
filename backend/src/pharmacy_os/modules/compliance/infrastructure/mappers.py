@@ -6,14 +6,18 @@ from pharmacy_os.modules.compliance.domain import (
     ControlledLedgerEntry,
     ControlledSubstanceCategory,
     CustomerDetail,
+    DrugReturnRecord,
     LedgerDirection,
     NationalSyncLog,
+    ReturnedDrugItem,
     SyncPayloadType,
     SyncStatus,
     TenantComplianceConfig,
 )
 from pharmacy_os.modules.compliance.infrastructure.models import (
     ControlledLedgerEntryORM,
+    DrugReturnItemORM,
+    DrugReturnRecordORM,
     NationalSyncLogORM,
     TenantComplianceConfigORM,
 )
@@ -118,4 +122,64 @@ def sync_log_to_orm(log: NationalSyncLog) -> NationalSyncLogORM:
         retry_count=log.retry_count,
         error=log.error,
         created_at=log.created_at,
+    )
+
+
+def drug_return_record_to_domain(row: DrugReturnRecordORM) -> DrugReturnRecord:
+    return DrugReturnRecord(
+        id=row.id,
+        tenant_id=row.tenant_id,
+        branch_id=row.branch_id,
+        returner_name=row.returner_name,
+        returner_address=row.returner_address,
+        returner_id_number=row.returner_id_number,
+        returner_id_issuer=row.returner_id_issuer,
+        returner_id_issued_at=row.returner_id_issued_at,
+        returner_is_patient=row.returner_is_patient,
+        receiving_pharmacist_name=row.receiving_pharmacist_name,
+        items=[
+            ReturnedDrugItem(
+                description=i.description,
+                unit=i.unit,
+                quantity=i.quantity,
+                lot_no=i.lot_no,
+                expiry_date=i.expiry_date,
+                condition_note=i.condition_note,
+                reason=i.reason,
+            )
+            for i in row.items
+        ],
+        handover_at=row.handover_at,
+        handover_location=row.handover_location,
+        created_at=row.created_at,
+    )
+
+
+def drug_return_record_to_orm(record: DrugReturnRecord) -> DrugReturnRecordORM:
+    return DrugReturnRecordORM(
+        id=record.id,
+        tenant_id=record.tenant_id,
+        branch_id=record.branch_id,
+        returner_name=record.returner_name,
+        returner_address=record.returner_address,
+        returner_id_number=record.returner_id_number,
+        returner_id_issuer=record.returner_id_issuer,
+        returner_id_issued_at=record.returner_id_issued_at,
+        returner_is_patient=record.returner_is_patient,
+        receiving_pharmacist_name=record.receiving_pharmacist_name,
+        handover_at=record.handover_at,
+        handover_location=record.handover_location,
+        items=[
+            DrugReturnItemORM(
+                record_id=record.id,
+                description=i.description,
+                unit=i.unit,
+                quantity=i.quantity,
+                lot_no=i.lot_no,
+                expiry_date=i.expiry_date,
+                condition_note=i.condition_note,
+                reason=i.reason,
+            )
+            for i in record.items
+        ],
     )

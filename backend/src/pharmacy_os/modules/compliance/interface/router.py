@@ -22,9 +22,11 @@ from pharmacy_os.modules.compliance.application import (
 from pharmacy_os.modules.compliance.domain import LedgerBookType
 from pharmacy_os.modules.compliance.interface.schemas import (
     ControlledLedgerEntryResponse,
+    DrugReturnRecordResponse,
     NationalSyncLogResponse,
     PushSyncRequest,
     RecordControlledEntryRequest,
+    RecordDrugReturnRequest,
     SetTenantComplianceConfigRequest,
     TenantComplianceConfigResponse,
 )
@@ -135,6 +137,29 @@ def build_router(get_context: ContextDep) -> APIRouter:
     ) -> ControlledLedgerEntryResponse:
         out = await service.get_ledger_entry(entry_id, ctx)
         return ControlledLedgerEntryResponse.of(out)
+
+    @router.post(
+        "/drug-returns",
+        response_model=DrugReturnRecordResponse,
+        status_code=status.HTTP_201_CREATED,
+    )
+    async def record_drug_return(
+        body: RecordDrugReturnRequest,
+        service: ComplianceService = Depends(_compliance_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> DrugReturnRecordResponse:
+        """Biên bản nhận lại thuốc GN/HT/TC (docs/13 mục C.6 — TT18 Điều 6.2 + Điều 12.1.d)."""
+        out = await service.record_drug_return(body.to_input(), ctx)
+        return DrugReturnRecordResponse.of(out)
+
+    @router.get("/drug-returns/{record_id}", response_model=DrugReturnRecordResponse)
+    async def get_drug_return(
+        record_id: UUID,
+        service: ComplianceService = Depends(_compliance_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> DrugReturnRecordResponse:
+        out = await service.get_drug_return(record_id, ctx)
+        return DrugReturnRecordResponse.of(out)
 
     @router.put("/tenant-config", response_model=TenantComplianceConfigResponse)
     async def set_tenant_config(

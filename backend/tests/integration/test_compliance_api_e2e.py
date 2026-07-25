@@ -297,3 +297,62 @@ def test_ket_xuat_bao_cao_dinh_ky_can_token(client: TestClient) -> None:
         params={"date_from": "2026-07-01", "date_to": "2026-07-31"},
     )
     assert r.status_code == 401
+
+
+def test_ghi_va_doc_bien_ban_nhan_lai_thuoc(client: TestClient) -> None:
+    """TT18 Điều 6.2 + Điều 12.1.d, Phụ lục XVIII — docs/13 mục C.6."""
+    admin = _login(client)
+    body = {
+        "returner_name": "Nguyễn Văn A",
+        "returner_address": "12 Lê Lợi, Q1, HCM",
+        "returner_id_number": "079123456789",
+        "returner_id_issuer": "Cục Cảnh sát QLHC về TTXH",
+        "returner_id_issued_at": "2021-05-01",
+        "returner_is_patient": True,
+        "receiving_pharmacist_name": "DS. Trần Thị B",
+        "items": [
+            {
+                "description": "Diazepam 5mg, viên nén, hộp 2 vỉ x 10 viên",
+                "unit": "viên",
+                "quantity": "3",
+                "lot_no": "L20260101",
+                "expiry_date": "2028-01-01",
+                "condition_note": "Còn nguyên vỉ",
+                "reason": "Người bệnh không dùng hết",
+            }
+        ],
+        "handover_at": "2026-07-25T14:30:00Z",
+        "handover_location": "Nhà thuốc ABC, 12 Lê Lợi, Q1, HCM",
+    }
+    created = client.post("/api/v1/compliance/drug-returns", headers=_auth(admin), json=body)
+    assert created.status_code == 201, created.text
+    record_id = created.json()["id"]
+    assert created.json()["returner_id_number"] == "079123456789"
+
+    fetched = client.get(f"/api/v1/compliance/drug-returns/{record_id}", headers=_auth(admin))
+    assert fetched.status_code == 200
+    assert len(fetched.json()["items"]) == 1
+    assert fetched.json()["items"][0]["description"] == "Diazepam 5mg, viên nén, hộp 2 vỉ x 10 viên"
+
+
+def test_bien_ban_nhan_lai_thuoc_can_it_nhat_1_dong(client: TestClient) -> None:
+    admin = _login(client)
+    body = {
+        "returner_name": "Nguyễn Văn A",
+        "returner_address": "12 Lê Lợi",
+        "returner_id_number": "079123456789",
+        "returner_id_issuer": "Cục Cảnh sát QLHC về TTXH",
+        "returner_id_issued_at": "2021-05-01",
+        "returner_is_patient": True,
+        "receiving_pharmacist_name": "DS. Trần Thị B",
+        "items": [],
+        "handover_at": "2026-07-25T14:30:00Z",
+        "handover_location": "Nhà thuốc ABC",
+    }
+    r = client.post("/api/v1/compliance/drug-returns", headers=_auth(admin), json=body)
+    assert r.status_code == 422
+
+
+def test_bien_ban_nhan_lai_thuoc_can_token(client: TestClient) -> None:
+    r = client.get(f"/api/v1/compliance/drug-returns/{uuid4()}")
+    assert r.status_code == 401

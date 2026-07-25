@@ -2740,6 +2740,33 @@ kỳ, loại đúng thuốc độc/danh mục cấm, kỳ đảo ngược bị t
 fake `DrugMasterProvider`, thuốc không tra được vẫn xuất hiện), e2e HTTP (200 + header CSV đúng +
 401 không token). 4 cổng xanh: ruff · mypy --strict · import-linter (16) · pytest.
 
+## 7au. Bước 4/6 mạch TT18 — Biên bản nhận lại thuốc PL XVIII (2026-07-25)
+
+Quay lại bước đã Chain duyệt phạm vi từ đầu, sau khi ưu tiên xong báo cáo Mẫu số 06. Qua đủ
+`docs/14_FEATURE_PROCESS.md` Bước 0-3 (`docs/features/bien-ban-nhan-lai-pl-xviii/01_DECISIONS.md`)
+— **có** thu thập CCCD (dữ liệu cá nhân), nên vẫn phải qua cổng dù không phải dữ liệu sức khỏe.
+
+**Phát hiện khi rà (Bước 2):** giả định cũ trong `docs/13` mục C.6 ("khóa khỏi tồn kho bán được,
+cross-module `inventory`") là **dư thừa**. Thuốc GN/HT/TC nhận lại đi thẳng biệt trữ/tiêu hủy
+(Điều 6.2), không quay lại tồn kho bán được — không có bước "cộng tồn" nào để cần chặn tự động.
+Áp đúng tiền lệ đã có: "trả tồn" (auto-restock) của `sales.SaleReturned` cũng **chủ ý** không tự
+động (PROJECT_STATE §7aa, dược sĩ phải kiểm tra trước). Nhờ vậy tính năng này **không cross-
+module** — đơn giản hơn dự kiến ban đầu trong docs/13.
+
+| Phần | Nội dung |
+|---|---|
+| Domain | `DrugReturnRecord` + `ReturnedDrugItem` (value object, `quantity>0`) — bất biến, không có phương thức sửa/xóa, cùng nguyên tắc `ControlledLedgerEntry`. Không nối `drug_id`/ledger — mẫu giấy gốc không có cột đó |
+| Infra | Bảng `drug_return_records` (cha) + `drug_return_items` (con, FK `ON DELETE CASCADE`) — mig `0025`, theo đúng khuôn `Drug`/`DrugIngredientORM` của `catalog` (`relationship` + `cascade="all, delete-orphan"` + `lazy="selectin"`) |
+| Application | `ComplianceService.record_drug_return()`/`get_drug_return()` — tái dùng `compliance.ledger.write`/`.read`, **không** permission mới |
+| Interface | `POST /compliance/drug-returns` (201) + `GET /compliance/drug-returns/{id}` |
+| Audit | `AuditAction.DRUG_RETURN_RECORDED` — **số CCCD không được ghi vào audit context**, cùng nguyên tắc PII đã áp cho tên/địa chỉ khách hàng ở `CONTROLLED_LEDGER_ENTRY_RECORDED` |
+
+Test: domain (item/record hợp lệ, chặn biên bản 0 dòng thuốc), repo roundtrip (add/get giữ nguyên
+nhiều dòng thuốc, tenant-scope đúng), service (persist+đọc lại, 404 khi không có, audit không lộ
+CCCD), e2e HTTP (201/200, chặn 0 dòng thuốc bằng 422, 401 không token). 4 cổng xanh: ruff ·
+mypy --strict · import-linter (16) · pytest. Migration `0025` live Postgres, `alembic check` không
+drift, bảng xác nhận đúng cấu trúc bằng `psql \d` thật.
+
 ---
 
 ## 8. Nhật ký thay đổi (Changelog)

@@ -290,6 +290,13 @@ dùng, **tình trạng cảm quan**, lý do nhận lại), thời gian giao nh�
 > ⚠️ Biểu mẫu này **có** thu thập số CCCD — khác Sổ PL XIX. Đây là dữ liệu cá nhân nhạy cảm ⇒ phải
 > qua cổng `docs/14_FEATURE_PROCESS.md` (Luật 91/2025 + NĐ 356/2025) khi implement.
 
+**Trạng thái implement: ĐÃ XONG (2026-07-25)**, qua đủ cổng `docs/14_FEATURE_PROCESS.md` Bước 0-3
+(`docs/features/bien-ban-nhan-lai-pl-xviii/01_DECISIONS.md`). `DrugReturnRecord` (+ `ReturnedDrugItem`
+con) — bảng `drug_return_records`/`drug_return_items` (mig `0025`), endpoint
+`POST/GET /compliance/drug-returns[/{id}]`, audit `DRUG_RETURN_RECORDED` (không ghi số CCCD vào
+context). Tái dùng `compliance.ledger.write`/`.read` — không permission mới. **Không cross-module**
+với `inventory` (xem sửa lại giả định ở trên).
+
 ### C.7 (MỚI 2026-07-25) ⭐ Báo cáo định kỳ 6 tháng/năm gửi UBND cấp tỉnh — **NĐ 163/2025 Điều 35.2**
 
 > **Đây là nghĩa vụ pháp lý QUAN TRỌNG NHẤT phát hiện trong đợt đọc 3 văn bản 2026-07-25 — đảo
@@ -448,3 +455,10 @@ Chain chốt ưu tiên tính năng này trước bước 4 mạch TT18; qua đ�
 (`docs/features/bao-cao-dinh-ky-nd163/01_DECISIONS.md`), rồi code 2 bước
 (`0cff287` domain/infra, `3e272db` application/interface). Mục C.7 cập nhật
 từ "CHƯA CÓ" sang "ĐÃ XONG". Chi tiết đầy đủ xem PROJECT_STATE §7at.
+
+### 2026-07-25 (đợt 4, cùng ngày) — Bước 4/6 mạch TT18: Biên bản nhận lại PL XVIII — CODE XONG
+
+Ưu tiên xong việc trên, quay lại bước 4 đã Chain duyệt phạm vi từ đầu. Qua đủ Bước 0-3
+(`docs/features/bien-ban-nhan-lai-pl-xviii/01_DECISIONS.md`) — phát hiện giả định cross-module
+`inventory` trong bản gốc mục C.6 là dư thừa, đã sửa. Mục C.6 cập nhật "Trạng thái implement: ĐÃ
+XONG". Chi tiết đầy đủ xem PROJECT_STATE §7au.

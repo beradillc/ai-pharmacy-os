@@ -14,6 +14,7 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.compliance.domain import (
     ControlledLedgerEntry,
     ControlledSubstanceCategory,
+    DrugReturnRecord,
     LedgerBookType,
     LedgerDirection,
     LedgerPeriodAggregate,
@@ -22,6 +23,8 @@ from pharmacy_os.modules.compliance.domain import (
     book_type_for,
 )
 from pharmacy_os.modules.compliance.infrastructure.mappers import (
+    drug_return_record_to_domain,
+    drug_return_record_to_orm,
     ledger_entry_to_domain,
     ledger_entry_to_orm,
     sync_log_to_domain,
@@ -31,6 +34,7 @@ from pharmacy_os.modules.compliance.infrastructure.mappers import (
 )
 from pharmacy_os.modules.compliance.infrastructure.models import (
     ControlledLedgerEntryORM,
+    DrugReturnRecordORM,
     NationalSyncLogORM,
     TenantComplianceConfigORM,
 )
@@ -216,3 +220,21 @@ class SqlAlchemyNationalSyncLogRepository:
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return sync_log_to_domain(row) if row is not None else None
+
+
+class SqlAlchemyDrugReturnRecordRepository:
+    def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
+        self._session = session
+        self._ctx = ctx
+
+    async def add(self, record: DrugReturnRecord) -> None:
+        self._session.add(drug_return_record_to_orm(record))
+        await self._session.flush()
+
+    async def get(self, record_id: UUID) -> DrugReturnRecord | None:
+        stmt = select(DrugReturnRecordORM).where(
+            DrugReturnRecordORM.id == record_id,
+            DrugReturnRecordORM.tenant_id == self._ctx.tenant_id,
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return drug_return_record_to_domain(row) if row is not None else None

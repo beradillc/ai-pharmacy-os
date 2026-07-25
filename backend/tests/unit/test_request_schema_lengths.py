@@ -33,6 +33,9 @@ _EXEMPT: dict[str, str] = {
     "CreatePrescriptionRequest.diagnosis": "cột Text",
     "CreateSupplierRequest.address": "cột Text",
     "PushSyncRequest.payload": "không xuống cột nào — chỉ băm thành payload_hash",
+    "ReturnedDrugItemRequest.description": "cột Text",
+    "ReturnedDrugItemRequest.condition_note": "cột Text",
+    "ReturnedDrugItemRequest.reason": "cột Text",
     # Bí mật: không lưu thô, nên không có cột để tràn. Chặn trên còn có hại — khoá cửa
     # người đặt mật khẩu rất dài (bcrypt vốn tự cắt ở 72 byte).
     "LoginRequest.password": "chỉ đi vào bcrypt",

@@ -93,6 +93,12 @@ class AuditAction(StrEnum):
     """Mẫu số 06 (NĐ 163/2025 Điều 35.2) generated for a reporting period — the
     evidence an inspection asks for first: "đã báo cáo kỳ này chưa, lúc nào, ai tạo"."""
 
+    DRUG_RETURN_RECORDED = "DRUG_RETURN_RECORDED"
+    """A Phụ lục XVIII biên bản (TT18 Điều 6.2/12.1.d) was recorded — who logged the
+    return of unused GN/HT/TC medicine. The returner's CCCD number is never written
+    into the audit context, same discipline as :attr:`CONTROLLED_LEDGER_ENTRY_RECORDED`
+    keeping the customer's name/address out."""
+
     # --- sales (bán thuốc — Luật Dược Điều 6.5.h, cùng lý do PRESCRIPTION_DISPENSED) ---
     SALE_COMPLETED = "SALE_COMPLETED"
     """A sale was finalised — the third thing an inspection asks about: "ai đã bán
