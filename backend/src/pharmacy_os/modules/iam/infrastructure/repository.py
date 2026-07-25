@@ -18,24 +18,33 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.modules.iam.domain import (
     ActivationStatus,
+    BackupCode,
     Branch,
     RefreshSession,
     Role,
     RoleAssignment,
     Tenant,
+    TwoFactorChallenge,
     User,
+    UserTwoFactor,
 )
 from pharmacy_os.modules.iam.infrastructure.mappers import (
     assignment_to_domain,
     assignment_to_orm,
+    backup_code_to_domain,
+    backup_code_to_orm,
     branch_to_domain,
     branch_to_orm,
+    challenge_to_domain,
+    challenge_to_orm,
     role_to_domain,
     role_to_orm,
     session_to_domain,
     session_to_orm,
     tenant_to_domain,
     tenant_to_orm,
+    two_factor_to_domain,
+    two_factor_to_orm,
     user_to_domain,
     user_to_orm,
 )
@@ -45,8 +54,11 @@ from pharmacy_os.modules.iam.infrastructure.models import (
     RoleORM,
     RolePermissionORM,
     TenantORM,
+    TwoFactorBackupCodeORM,
+    TwoFactorChallengeORM,
     UserORM,
     UserRoleORM,
+    UserTwoFactorORM,
 )
 
 
@@ -240,5 +252,96 @@ class SqlAlchemyRefreshTokenRepository:
 
     async def delete_expired(self, now: datetime) -> int:
         stmt = delete(RefreshTokenORM).where(RefreshTokenORM.expires_at < now)
+        result = cast("CursorResult[Any]", await self._session.execute(stmt))
+        return result.rowcount
+
+
+class SqlAlchemyUserTwoFactorRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def add(self, config: UserTwoFactor) -> None:
+        self._session.add(two_factor_to_orm(config))
+        await self._session.flush()
+
+    async def find_for_user(self, user_id: UUID) -> UserTwoFactor | None:
+        stmt = select(UserTwoFactorORM).where(UserTwoFactorORM.user_id == user_id)
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return two_factor_to_domain(row) if row is not None else None
+
+    async def update(self, config: UserTwoFactor) -> None:
+        row = await self._session.get(UserTwoFactorORM, config.id)
+        if row is None:
+            return
+        row.secret = config.secret
+        row.status = config.status.value
+        row.confirmed_at = config.confirmed_at
+        row.last_used_timestep = config.last_used_timestep
+        await self._session.flush()
+
+    async def delete_for_user(self, user_id: UUID) -> None:
+        """Delete the configuration; backup codes go with it via ``ON DELETE CASCADE``.
+
+        Deleting rather than flagging is the point: a disabled configuration that kept
+        its secret would leave a live credential in the database for no purpose.
+        """
+        await self._session.execute(
+            delete(UserTwoFactorORM).where(UserTwoFactorORM.user_id == user_id)
+        )
+        await self._session.flush()
+
+
+class SqlAlchemyBackupCodeRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def replace_all(self, two_factor_id: UUID, codes: list[BackupCode]) -> None:
+        await self._session.execute(
+            delete(TwoFactorBackupCodeORM).where(
+                TwoFactorBackupCodeORM.two_factor_id == two_factor_id
+            )
+        )
+        for code in codes:
+            self._session.add(backup_code_to_orm(code))
+        await self._session.flush()
+
+    async def list_for(self, two_factor_id: UUID) -> list[BackupCode]:
+        stmt = select(TwoFactorBackupCodeORM).where(
+            TwoFactorBackupCodeORM.two_factor_id == two_factor_id
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [backup_code_to_domain(r) for r in rows]
+
+    async def update(self, code: BackupCode) -> None:
+        row = await self._session.get(TwoFactorBackupCodeORM, code.id)
+        if row is None:
+            return
+        row.used_at = code.used_at
+        await self._session.flush()
+
+
+class SqlAlchemyTwoFactorChallengeRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def add(self, challenge: TwoFactorChallenge) -> None:
+        self._session.add(challenge_to_orm(challenge))
+        await self._session.flush()
+
+    async def find_by_hash(self, token_hash: str) -> TwoFactorChallenge | None:
+        stmt = select(TwoFactorChallengeORM).where(TwoFactorChallengeORM.token_hash == token_hash)
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return challenge_to_domain(row) if row is not None else None
+
+    async def update(self, challenge: TwoFactorChallenge) -> None:
+        row = await self._session.get(TwoFactorChallengeORM, challenge.id)
+        if row is None:
+            return
+        row.attempts = challenge.attempts
+        row.consumed_at = challenge.consumed_at
+        await self._session.flush()
+
+    async def delete_expired(self, now: datetime) -> int:
+        stmt = delete(TwoFactorChallengeORM).where(TwoFactorChallengeORM.expires_at < now)
         result = cast("CursorResult[Any]", await self._session.execute(stmt))
         return result.rowcount

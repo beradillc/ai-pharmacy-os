@@ -39,6 +39,35 @@ class AuditAction(StrEnum):
     PASSWORD_RESET = "PASSWORD_RESET"
     TOKEN_REPLAY_DETECTED = "TOKEN_REPLAY_DETECTED"
 
+    # --- two-factor authentication (Sprint 8) ---
+    # Every transition of a user's second factor is recorded, because each one either
+    # raises or lowers the protection standing between a leaked password and a binding
+    # ledger signature (TT18 Điều 15.1.d). ``context`` never carries the secret, a
+    # code, or a backup code — only which account changed and how.
+    TWO_FACTOR_ENROLLED = "TWO_FACTOR_ENROLLED"
+    """A secret was issued and is awaiting confirmation (still inactive)."""
+
+    TWO_FACTOR_ACTIVATED = "TWO_FACTOR_ACTIVATED"
+    """Confirmed with a real code — from here the account is protected."""
+
+    TWO_FACTOR_DISABLED = "TWO_FACTOR_DISABLED"
+    """The user turned their own second factor off."""
+
+    TWO_FACTOR_RESET = "TWO_FACTOR_RESET"
+    """An **administrator** cleared somebody else's 2FA (lost-device recovery).
+
+    Separate from :attr:`TWO_FACTOR_DISABLED` for the reason ``PASSWORD_RESET`` is
+    separate from ``PASSWORD_CHANGED``: one person lowering another person's defences
+    is a privileged act and must be answerable on its own."""
+
+    TWO_FACTOR_FAILED = "TWO_FACTOR_FAILED"
+    """A wrong code was submitted. A burst on one account is the signature of somebody
+    who already holds the password and is guessing the six digits."""
+
+    TWO_FACTOR_BACKUP_CODE_USED = "TWO_FACTOR_BACKUP_CODE_USED"
+    """A recovery code was spent — worth its own action because it usually means the
+    authenticator device is gone, and because ten of them is a finite supply."""
+
     # --- customer health data (dữ liệu nhạy cảm, NĐ356 Điều 4.2) ---
     CUSTOMER_SENSITIVE_READ = "CUSTOMER_SENSITIVE_READ"
     """A person opened a customer's allergies / conditions / medication history."""

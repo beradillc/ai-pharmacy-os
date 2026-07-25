@@ -17,12 +17,15 @@ from pharmacy_os.core.di import Container
 from pharmacy_os.core.security import JwtService
 from pharmacy_os.modules.iam.application import AuthService, IamRepositories, IamService
 from pharmacy_os.modules.iam.infrastructure import (
+    SqlAlchemyBackupCodeRepository,
     SqlAlchemyBranchRepository,
     SqlAlchemyRefreshTokenRepository,
     SqlAlchemyRoleAssignmentRepository,
     SqlAlchemyRoleRepository,
     SqlAlchemyTenantRepository,
+    SqlAlchemyTwoFactorChallengeRepository,
     SqlAlchemyUserRepository,
+    SqlAlchemyUserTwoFactorRepository,
 )
 from pharmacy_os.modules.iam.interface.router import (
     ContextDep,
@@ -39,6 +42,9 @@ def build_repositories(uow: UnitOfWork) -> IamRepositories:
         roles=SqlAlchemyRoleRepository(uow.session),
         assignments=SqlAlchemyRoleAssignmentRepository(uow.session),
         sessions=SqlAlchemyRefreshTokenRepository(uow.session),
+        two_factor=SqlAlchemyUserTwoFactorRepository(uow.session),
+        backup_codes=SqlAlchemyBackupCodeRepository(uow.session),
+        challenges=SqlAlchemyTwoFactorChallengeRepository(uow.session),
     )
 
 
@@ -48,7 +54,6 @@ def register(container: Container, get_context: ContextDep) -> list[APIRouter]:
 
     uow_factory = container.resolve(UnitOfWorkFactory)
 
-    iam_service = IamService(uow_factory, build_repositories, audit)
     auth_service = AuthService(
         uow_factory,
         build_repositories,
@@ -56,7 +61,9 @@ def register(container: Container, get_context: ContextDep) -> list[APIRouter]:
         audit,
         access_ttl_minutes=settings.security.jwt_ttl_minutes,
         refresh_ttl_days=settings.security.refresh_ttl_days,
+        two_factor_enforced=settings.security.two_factor_enforced,
     )
+    iam_service = IamService(uow_factory, build_repositories, audit, auth_service)
     container.register_instance(IamService, iam_service)
     container.register_instance(AuthService, auth_service)
 

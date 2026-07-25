@@ -11,6 +11,7 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
+import pyotp
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -25,6 +26,7 @@ from pharmacy_os.modules.iam.application import (
     CreateUserInput,
     IamService,
     LoginInput,
+    StepUpResult,
 )
 from pharmacy_os.modules.iam.domain import CASHIER
 
@@ -285,8 +287,122 @@ async def test_every_action_emitted_by_iam_reaches_the_table() -> None:
         AuditAction.PASSWORD_CHANGED,
         AuditAction.PASSWORD_RESET,
         AuditAction.TOKEN_REPLAY_DETECTED,
+        AuditAction.TWO_FACTOR_ENROLLED,
+        AuditAction.TWO_FACTOR_ACTIVATED,
+        AuditAction.TWO_FACTOR_DISABLED,
+        AuditAction.TWO_FACTOR_RESET,
+        AuditAction.TWO_FACTOR_FAILED,
+        AuditAction.TWO_FACTOR_BACKUP_CODE_USED,
     }
     assert covered == set(AuditAction) - _COVERED_ELSEWHERE
+
+
+# --- two-factor: every transition of a second factor is answerable ------------
+#
+# Each of these drives the real use-case and reads the table back, like the rest of
+# this file. Worth the coverage because every one of them either raises or lowers the
+# protection standing between a leaked password and a binding ledger signature.
+
+
+def _totp_now(secret: str, *, skew_seconds: int = 0) -> str:
+    """A valid code for *secret*.
+
+    ``skew_seconds`` moves to a neighbouring time step, which the replay watermark
+    forces after a code has already been spent: ``UserTwoFactor.register_use`` refuses
+    any step at or below the last one used, so re-reading "now" straight after
+    activation would be rejected as a replay (correctly).
+    """
+    return str(pyotp.TOTP(secret).at(datetime.now(UTC) + timedelta(seconds=skew_seconds)))
+
+
+async def _enrolled_admin(
+    iam_service: IamService, auth_service: AuthService
+) -> tuple[RequestContext, str, list[str]]:
+    """An admin with 2FA switched on; returns its context, TOTP secret and backup codes."""
+    ctx = await _admin_ctx(iam_service, auth_service)
+    enrolment = await auth_service.enroll_two_factor(ctx)
+    activation = await auth_service.activate_two_factor(ctx, _totp_now(enrolment.secret))
+    return ctx, enrolment.secret, activation.backup_codes
+
+
+async def test_two_factor_enrolment_and_activation_are_persisted(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    ctx, _, _ = await _enrolled_admin(iam_service, auth_service)
+
+    actions = await _actions(audit_repo, ctx.tenant_id)
+    assert AuditAction.TWO_FACTOR_ENROLLED in actions
+    assert AuditAction.TWO_FACTOR_ACTIVATED in actions
+
+
+async def test_the_secret_is_never_written_to_the_audit_trail(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    """The trail records *that* the factor changed, never the credential itself."""
+    ctx, secret, backup_codes = await _enrolled_admin(iam_service, auth_service)
+
+    entries = await audit_repo.list(ctx.tenant_id, limit=200)
+    blob = "".join(str(e.context) for e in entries)
+    assert secret not in blob
+    for code in backup_codes:
+        assert code not in blob
+
+
+async def test_a_wrong_code_at_step_up_is_persisted(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    """A burst of these on one account is the signature of somebody who already has
+    the password and is guessing the six digits."""
+    ctx, _, _ = await _enrolled_admin(iam_service, auth_service)
+
+    result = await auth_service.verify_step_up(ctx, ADMIN_PASSWORD, "000000")
+
+    assert result is StepUpResult.BAD_CODE
+    assert AuditAction.TWO_FACTOR_FAILED in await _actions(audit_repo, ctx.tenant_id)
+
+
+async def test_spending_a_backup_code_is_persisted(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    """Its own action because it usually means the authenticator is gone — and
+    because ten of them is a finite supply somebody should be watching."""
+    ctx, _, backup_codes = await _enrolled_admin(iam_service, auth_service)
+
+    result = await auth_service.verify_step_up(ctx, ADMIN_PASSWORD, backup_codes[0])
+
+    assert result is StepUpResult.OK
+    assert AuditAction.TWO_FACTOR_BACKUP_CODE_USED in await _actions(audit_repo, ctx.tenant_id)
+
+
+async def test_disabling_ones_own_two_factor_is_persisted(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    ctx, secret, _ = await _enrolled_admin(iam_service, auth_service)
+
+    await auth_service.disable_two_factor(ctx, ADMIN_PASSWORD, _totp_now(secret, skew_seconds=30))
+
+    assert AuditAction.TWO_FACTOR_DISABLED in await _actions(audit_repo, ctx.tenant_id)
+
+
+async def test_an_admin_resetting_someone_elses_two_factor_is_persisted(
+    iam_service: IamService, auth_service: AuthService, audit_repo: SqlAlchemyAuditLogRepository
+) -> None:
+    """Separate from DISABLED for the reason PASSWORD_RESET is separate from
+    PASSWORD_CHANGED: one person lowering another's defences is a privileged act and
+    must be answerable on its own."""
+    ctx = await _admin_ctx(iam_service, auth_service)
+    staff = await iam_service.create_user(
+        CreateUserInput(email=STAFF_EMAIL, password=STAFF_PASSWORD, full_name="Nhân Viên"), ctx
+    )
+
+    await iam_service.reset_two_factor(staff.id, ctx)
+
+    entries = await audit_repo.list(ctx.tenant_id, limit=200)
+    reset = [e for e in entries if e.action is AuditAction.TWO_FACTOR_RESET]
+    assert len(reset) == 1
+    # The subject is the user who lost their factor; the actor is the admin.
+    assert reset[0].target_id == str(staff.id)
+    assert reset[0].actor_user_id == ctx.user_id
 
 
 # --- the trail's own properties ---------------------------------------------

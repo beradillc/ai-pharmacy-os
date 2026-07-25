@@ -1,6 +1,6 @@
 """The bundle of iam repositories a use-case works with.
 
-The other modules inject a single ``repo_factory(uow, ctx)``. IAM needs six
+The other modules inject a single ``repo_factory(uow, ctx)``. IAM needs nine
 repositories and — because authentication runs before any ``RequestContext``
 exists — cannot bind them to a context, so they travel as one bundle built from
 the unit of work instead of six separate factory parameters.
@@ -13,12 +13,15 @@ from dataclasses import dataclass
 
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.modules.iam.domain import (
+    BackupCodeRepository,
     BranchRepository,
     RefreshTokenRepository,
     RoleAssignmentRepository,
     RoleRepository,
     TenantRepository,
+    TwoFactorChallengeRepository,
     UserRepository,
+    UserTwoFactorRepository,
 )
 
 
@@ -30,6 +33,9 @@ class IamRepositories:
     roles: RoleRepository
     assignments: RoleAssignmentRepository
     sessions: RefreshTokenRepository
+    two_factor: UserTwoFactorRepository
+    backup_codes: BackupCodeRepository
+    challenges: TwoFactorChallengeRepository
 
 
 UowFactory = Callable[[], UnitOfWork]

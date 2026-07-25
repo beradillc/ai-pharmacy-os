@@ -17,7 +17,17 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from pharmacy_os.core.db.base import Base, PkUuidMixin, TimestampMixin
@@ -176,3 +186,83 @@ class RefreshTokenORM(PkUuidMixin, Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     replaced_by: Mapped[UUID | None] = mapped_column()
+
+
+class UserTwoFactorORM(PkUuidMixin, TimestampMixin, Base):
+    """One user's TOTP configuration — at most one row per user (Sprint 8).
+
+    ``user_id`` is UNIQUE rather than the primary key so the row keeps a stable
+    surrogate id for ``two_factor_backup_codes`` to hang off, matching every other
+    table in this module.
+
+    "2FA disabled" is the **absence of a row**: disabling deletes, so no stale secret
+    is left behind for a later database leak to expose.
+    """
+
+    __tablename__ = "user_two_factor"
+
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    tenant_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
+
+    secret: Mapped[str] = mapped_column(String(64), nullable=False)
+    """Base32 TOTP secret, 32 chars today (160 bits); 64 leaves room without a migration.
+
+    # TODO(sprint8-1b): mã hóa at-rest cột này.
+    Stored in cleartext deliberately — see ``iam.domain.two_factor.UserTwoFactor``
+    for the full reasoning. Short version: there is no key management in this
+    codebase yet, so encrypting with a key sitting in the same ``.env`` would be
+    theatre; and a database-only leak still does not yield account takeover, because
+    both login and signing also require the password.
+    """
+
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="PENDING")
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_used_timestep: Mapped[int | None] = mapped_column(BigInteger)
+    """Highest RFC 6238 counter already spent — makes each code single-use.
+
+    ``BigInteger``: the counter is unix-seconds/30, which passes 2^31 in the year
+    3038. Cheap now, unfixable later.
+    """
+
+
+class TwoFactorBackupCodeORM(Base):
+    """One recovery code, stored as a SHA-256 hash; used rows are marked, not deleted."""
+
+    __tablename__ = "two_factor_backup_codes"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    two_factor_id: Mapped[UUID] = mapped_column(
+        ForeignKey("user_two_factor.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class TwoFactorChallengeORM(PkUuidMixin, Base):
+    """A login that passed the password and still owes its second factor.
+
+    Deliberately a table rather than a short-lived JWT: ``api.deps.get_context``
+    accepts any token ``JwtService`` can decode, so a challenge JWT would work as a
+    zero-permission access token — and ``/auth/change-password`` needs no permission,
+    only the current password, which the holder just proved. That would let a stolen
+    password change the password without ever clearing 2FA. An opaque row closes it,
+    and carries the single-use flag and attempt counter a stateless token cannot.
+    """
+
+    __tablename__ = "two_factor_challenges"
+
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    tenant_id: Mapped[UUID] = mapped_column(nullable=False)
+    branch_id: Mapped[UUID | None] = mapped_column()
+    """The branch requested at step 1, replayed at step 2 so permissions resolve for
+    the same branch the user asked for."""
+
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

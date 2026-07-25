@@ -43,12 +43,15 @@ from pharmacy_os.modules.crm.application import CrmService
 from pharmacy_os.modules.crm.infrastructure import SqlAlchemyCustomerRepository
 from pharmacy_os.modules.iam.application import AuthService, IamRepositories, IamService
 from pharmacy_os.modules.iam.infrastructure import (
+    SqlAlchemyBackupCodeRepository,
     SqlAlchemyBranchRepository,
     SqlAlchemyRefreshTokenRepository,
     SqlAlchemyRoleAssignmentRepository,
     SqlAlchemyRoleRepository,
     SqlAlchemyTenantRepository,
+    SqlAlchemyTwoFactorChallengeRepository,
     SqlAlchemyUserRepository,
+    SqlAlchemyUserTwoFactorRepository,
 )
 from pharmacy_os.modules.inventory.application import InventoryService
 from pharmacy_os.modules.inventory.infrastructure import (
@@ -285,17 +288,22 @@ def _iam_repos(uow: UnitOfWork) -> IamRepositories:
         roles=SqlAlchemyRoleRepository(uow.session),
         assignments=SqlAlchemyRoleAssignmentRepository(uow.session),
         sessions=SqlAlchemyRefreshTokenRepository(uow.session),
+        two_factor=SqlAlchemyUserTwoFactorRepository(uow.session),
+        backup_codes=SqlAlchemyBackupCodeRepository(uow.session),
+        challenges=SqlAlchemyTwoFactorChallengeRepository(uow.session),
     )
 
 
 @pytest.fixture
 def iam_service(
-    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    auth_service: AuthService,
 ) -> IamService:
     def uow_factory() -> UnitOfWork:
         return SqlAlchemyUnitOfWork(session_factory, event_bus)
 
-    return IamService(uow_factory, _iam_repos, AuditLogger(session_factory))
+    return IamService(uow_factory, _iam_repos, AuditLogger(session_factory), auth_service)
 
 
 @pytest.fixture

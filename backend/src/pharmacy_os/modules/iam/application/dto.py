@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 from pharmacy_os.modules.iam.domain import Branch, Role, RoleAssignment, User
@@ -51,6 +52,13 @@ class SessionOutput:
     must_change_password: bool
     accessible_branches: list[BranchOutput]
     token_type: str = "bearer"
+    must_enroll_two_factor: bool = False
+    """Enforcement is on, this account holds a sensitive permission, and it has no
+    active second factor yet.
+
+    A prompt, not a barrier — deliberately the same shape as ``must_change_password``.
+    The session is fully usable; only signing the ledger is refused until enrolment,
+    so turning enforcement on mid-shift never strands staff mid-transaction."""
 
 
 @dataclass(slots=True)
@@ -140,6 +148,73 @@ class RoleAssignmentOutput:
 class ChangePasswordInput:
     current_password: str
     new_password: str
+
+
+class StepUpResult(StrEnum):
+    """Outcome of a re-authentication in front of a sensitive act.
+
+    Five outcomes rather than a bool because the caller must be able to answer the
+    user differently: a wrong password and a missing code need different prompts, and
+    "you must enrol first" is not a failure of the credentials supplied at all.
+    """
+
+    OK = "OK"
+    BAD_PASSWORD = "BAD_PASSWORD"
+    CODE_REQUIRED = "CODE_REQUIRED"
+    """2FA is active on this account and no code was supplied."""
+
+    BAD_CODE = "BAD_CODE"
+    ENROLLMENT_REQUIRED = "ENROLLMENT_REQUIRED"
+    """Enforcement is on and this actor is in scope, but has no active second factor."""
+
+
+@dataclass(slots=True)
+class TwoFactorEnrollmentOutput:
+    """The one and only time the TOTP secret is handed back to the client.
+
+    Both fields carry the same secret: ``secret`` for manual entry when a camera is
+    unavailable, ``provisioning_uri`` for the QR code. Nothing is active yet — the
+    user must return one working code to
+    :meth:`~.auth_service.AuthService.activate_two_factor`.
+    """
+
+    secret: str
+    provisioning_uri: str
+
+
+@dataclass(slots=True)
+class TwoFactorActivationOutput:
+    """Backup codes, shown exactly once.
+
+    Only their hashes are stored, so this response cannot be reproduced — if the user
+    loses them, the way back is an administrator reset, not a re-read.
+    """
+
+    backup_codes: list[str]
+
+
+@dataclass(slots=True)
+class TwoFactorStatusOutput:
+    enrolled: bool
+    active: bool
+    must_enroll: bool
+    """The account holds a sensitive permission, enforcement is on, and it has not
+    enrolled — the client should prompt."""
+
+    unused_backup_codes: int
+
+
+@dataclass(slots=True)
+class TwoFactorLoginInput:
+    """Step 2 of a two-factor login.
+
+    ``code`` accepts either a six-digit TOTP code or one of the backup codes; the
+    service tries them in that order.
+    """
+
+    challenge_token: str
+    code: str
+    client_ip: str | None = None
 
 
 @dataclass(slots=True)

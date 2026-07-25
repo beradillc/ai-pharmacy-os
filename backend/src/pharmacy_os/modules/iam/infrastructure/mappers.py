@@ -6,12 +6,16 @@ from datetime import UTC, datetime
 
 from pharmacy_os.modules.iam.domain import (
     ActivationStatus,
+    BackupCode,
     Branch,
     RefreshSession,
     Role,
     RoleAssignment,
     Tenant,
+    TwoFactorChallenge,
+    TwoFactorStatus,
     User,
+    UserTwoFactor,
 )
 from pharmacy_os.modules.iam.infrastructure.models import (
     BranchORM,
@@ -19,8 +23,11 @@ from pharmacy_os.modules.iam.infrastructure.models import (
     RoleORM,
     RolePermissionORM,
     TenantORM,
+    TwoFactorBackupCodeORM,
+    TwoFactorChallengeORM,
     UserORM,
     UserRoleORM,
+    UserTwoFactorORM,
 )
 
 
@@ -168,4 +175,75 @@ def session_to_orm(session: RefreshSession) -> RefreshTokenORM:
         expires_at=session.expires_at,
         revoked_at=session.revoked_at,
         replaced_by=session.replaced_by,
+    )
+
+
+def two_factor_to_domain(row: UserTwoFactorORM) -> UserTwoFactor:
+    return UserTwoFactor(
+        id=row.id,
+        user_id=row.user_id,
+        tenant_id=row.tenant_id,
+        secret=row.secret,
+        status=TwoFactorStatus(row.status),
+        confirmed_at=_as_utc(row.confirmed_at),
+        last_used_timestep=row.last_used_timestep,
+        created_at=_as_utc(row.created_at) or row.created_at,
+    )
+
+
+def two_factor_to_orm(config: UserTwoFactor) -> UserTwoFactorORM:
+    return UserTwoFactorORM(
+        id=config.id,
+        user_id=config.user_id,
+        tenant_id=config.tenant_id,
+        secret=config.secret,
+        status=config.status.value,
+        confirmed_at=config.confirmed_at,
+        last_used_timestep=config.last_used_timestep,
+    )
+
+
+def backup_code_to_domain(row: TwoFactorBackupCodeORM) -> BackupCode:
+    return BackupCode(
+        id=row.id,
+        two_factor_id=row.two_factor_id,
+        code_hash=row.code_hash,
+        used_at=_as_utc(row.used_at),
+    )
+
+
+def backup_code_to_orm(code: BackupCode) -> TwoFactorBackupCodeORM:
+    return TwoFactorBackupCodeORM(
+        id=code.id,
+        two_factor_id=code.two_factor_id,
+        code_hash=code.code_hash,
+        used_at=code.used_at,
+    )
+
+
+def challenge_to_domain(row: TwoFactorChallengeORM) -> TwoFactorChallenge:
+    return TwoFactorChallenge(
+        id=row.id,
+        user_id=row.user_id,
+        tenant_id=row.tenant_id,
+        branch_id=row.branch_id,
+        token_hash=row.token_hash,
+        attempts=row.attempts,
+        created_at=_as_utc(row.created_at) or row.created_at,
+        expires_at=_as_utc(row.expires_at) or row.expires_at,
+        consumed_at=_as_utc(row.consumed_at),
+    )
+
+
+def challenge_to_orm(challenge: TwoFactorChallenge) -> TwoFactorChallengeORM:
+    return TwoFactorChallengeORM(
+        id=challenge.id,
+        user_id=challenge.user_id,
+        tenant_id=challenge.tenant_id,
+        branch_id=challenge.branch_id,
+        token_hash=challenge.token_hash,
+        attempts=challenge.attempts,
+        created_at=challenge.created_at,
+        expires_at=challenge.expires_at,
+        consumed_at=challenge.consumed_at,
     )

@@ -180,7 +180,27 @@ class SecuritySettings(BaseSettings):
 
     jwt_algorithm: str = "HS256"
     refresh_ttl_days: int = 30
-    require_2fa_roles: list[str] = Field(default_factory=lambda: ["pharmacist", "admin"])
+
+    two_factor_enforced: bool = False
+    """Require 2FA from accounts holding a sensitive permission
+    (``iam.domain.two_factor.TWO_FACTOR_PERMISSIONS`` — signing the controlled-substance
+    ledger, or editing/assigning roles).
+
+    Defaults to **off**, the same shape as ``OUTBOX__RELAY_ENABLED`` and
+    ``NATIONAL_SYNC__RETRY_ENABLED``: turning the feature on is a deployment decision,
+    never a side effect of upgrading. With it off, a user who enrols voluntarily is
+    still challenged — the flag governs *compulsion*, not whether 2FA works.
+
+    Switching it on does **not** lock anybody out. In-scope users who have not enrolled
+    keep logging in and working; they receive ``must_enroll_two_factor`` in the session
+    payload so the client can prompt, and only the legally binding act (signing the
+    ledger) is refused until they enrol. Nudge broadly, block narrowly.
+
+    Replaces the former ``require_2fa_roles``, which was dead code naming two role
+    codes (``pharmacist``/``admin``) that have never existed in this system — the real
+    ones are ``chain_pharmacist``/``branch_pharmacist``/``system_admin``/``cashier``/
+    ``warehouse``. Scope is now derived from permissions held, not a copied list.
+    """
 
     allow_dev_auth: bool = False
     """Accept ``X-Tenant-Id``/``X-Branch-Id``/``X-User-Id`` headers with a full

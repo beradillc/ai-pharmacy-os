@@ -15,6 +15,7 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.errors import ConflictError, NotFoundError
 from pharmacy_os.core.errors import ValidationError as AppValidationError
 from pharmacy_os.core.security import hash_password, require_permission
+from pharmacy_os.modules.iam.application.auth_service import AuthService
 from pharmacy_os.modules.iam.application.dto import (
     AssignRoleInput,
     BootstrapTenantInput,
@@ -52,10 +53,17 @@ class IamService:
         uow_factory: UowFactory,
         repos_factory: ReposFactory,
         audit: AuditLogger,
+        auth: AuthService | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._repos_factory = repos_factory
         self._audit = audit
+        self._auth = auth
+        """``None`` only in contexts that never call :meth:`reset_two_factor` (e.g. a
+        unit test standing up ``IamService`` alone) — composition root always injects
+        it (``interface/register.py``). ``AuthService`` owns 2FA storage; this class
+        owns the ``iam.user.write`` check and tenant validation in front of it, same
+        split as the rest of this file's admin actions."""
 
     # -- users ---------------------------------------------------------------
 
@@ -151,6 +159,21 @@ class IamService:
             await repos.sessions.revoke_all_for_user(user.id, now)
             await uow.commit()
         await self._record(ctx, AuditAction.PASSWORD_RESET, "user", str(user_id))
+
+    async def reset_two_factor(self, user_id: UUID, ctx: RequestContext) -> None:
+        """Admin recovery: clear a user's 2FA entirely (lost phone, lost backup codes).
+
+        Guarded the same way as :meth:`reset_password` — ``iam.user.write``, tenant
+        checked via :meth:`_user_or_404` — but deliberately does **not** revoke
+        sessions or force a password change: this lowers a defence, it does not touch
+        the credential, so an already-logged-in shift is not interrupted by it.
+        """
+        require_permission(ctx, "iam.user.write")
+        assert self._auth is not None, "IamService built without AuthService"
+        async with self._uow_factory() as uow:
+            repos = self._repos_factory(uow)
+            user = await self._user_or_404(repos, user_id, ctx)
+        await self._auth.reset_two_factor_for_user(user, ctx)
 
     # -- roles ---------------------------------------------------------------
 

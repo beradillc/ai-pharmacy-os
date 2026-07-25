@@ -106,6 +106,12 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "ANALYTICS_REORDER_RUN",
         "ANALYTICS_SUGGESTION_MATERIALIZED",
         "ANALYTICS_SUGGESTION_DISMISSED",
+        "TWO_FACTOR_ENROLLED",
+        "TWO_FACTOR_ACTIVATED",
+        "TWO_FACTOR_DISABLED",
+        "TWO_FACTOR_RESET",
+        "TWO_FACTOR_FAILED",
+        "TWO_FACTOR_BACKUP_CODE_USED",
     }
     assert {a.value for a in AuditAction} == expected
 

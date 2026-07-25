@@ -12,10 +12,19 @@ from pharmacy_os.modules.iam.application.dto import (
     RoleAssignmentOutput,
     RoleOutput,
     SessionOutput,
+    StepUpResult,
     SystemRoleSyncOutput,
+    TwoFactorActivationOutput,
+    TwoFactorEnrollmentOutput,
+    TwoFactorLoginInput,
+    TwoFactorStatusOutput,
     UserOutput,
 )
-from pharmacy_os.modules.iam.application.errors import BranchSelectionRequiredError
+from pharmacy_os.modules.iam.application.errors import (
+    BranchSelectionRequiredError,
+    TwoFactorEnrollmentRequiredError,
+    TwoFactorRequiredError,
+)
 from pharmacy_os.modules.iam.application.iam_service import IamService
 from pharmacy_os.modules.iam.application.repositories import (
     IamRepositories,
@@ -39,7 +48,14 @@ __all__ = [
     "RoleAssignmentOutput",
     "RoleOutput",
     "SessionOutput",
+    "StepUpResult",
     "SystemRoleSyncOutput",
+    "TwoFactorActivationOutput",
+    "TwoFactorEnrollmentOutput",
+    "TwoFactorEnrollmentRequiredError",
+    "TwoFactorLoginInput",
+    "TwoFactorRequiredError",
+    "TwoFactorStatusOutput",
     "UowFactory",
     "UserOutput",
     "hash_refresh_token",
