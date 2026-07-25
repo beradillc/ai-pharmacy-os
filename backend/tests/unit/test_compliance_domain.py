@@ -9,6 +9,8 @@ import pytest
 from pharmacy_os.modules.compliance.domain import (
     ComplianceError,
     ControlledLedgerEntry,
+    ControlledSubstance,
+    ControlledSubstanceAppendix,
     ControlledSubstanceCategory,
     CustomerDetail,
     EtcPrescriptionPolicy,
@@ -269,3 +271,102 @@ def test_tenant_compliance_config_ma_co_so_ban_buon_optional() -> None:
 def test_tenant_compliance_config_rejects_blank_ma_co_so_ban_le() -> None:
     with pytest.raises(ValueError, match="ma_co_so_ban_le"):
         TenantComplianceConfig(tenant_id=uuid4(), ma_co_so_ban_le="  ")
+
+
+class TestControlledSubstance:
+    """Danh mục dược chất kiểm soát đặc biệt — TT 18/2026 Phụ lục I/II/III + IV/V/VI."""
+
+    def test_category_suy_ra_tu_phu_luc(self) -> None:
+        gn = ControlledSubstance(
+            name_intl="MORPHINE",
+            scientific_name="(5α,6α)-7,8-didehydro-4,5-epoxy-17-methylmorphinan-3,6-diol",
+            appendix=ControlledSubstanceAppendix.PL_I,
+            limit_concentration_pct=Decimal("0.2"),
+        )
+        ht = ControlledSubstance(
+            name_intl="DIAZEPAM",
+            scientific_name="7-chloro-1,3-dihydro-1-methyl-5-phenyl-2H-1,4-benzodiazepin-2-one",
+            appendix=ControlledSubstanceAppendix.PL_II,
+            limit_per_unit_mg=Decimal("5"),
+        )
+        tc = ControlledSubstance(
+            name_intl="PSEUDOEPHEDRINE",
+            scientific_name="[S-(R*,R*)]--[1-(methylamino)ethyl]-Benzenemethanol",
+            appendix=ControlledSubstanceAppendix.PL_III,
+            limit_per_unit_mg=Decimal("120"),
+            limit_concentration_pct=Decimal("0.5"),
+        )
+        assert gn.category is ControlledSubstanceCategory.GAY_NGHIEN
+        assert ht.category is ControlledSubstanceCategory.HUONG_THAN
+        assert tc.category is ControlledSubstanceCategory.TIEN_CHAT
+
+    def test_khong_co_gioi_han_van_hop_le(self) -> None:
+        """Phần lớn chất trong PL I/II/III không có ngưỡng ở PL IV/V/VI — 60/122 chất."""
+        chat = ControlledSubstance(
+            name_intl="FENTANYL",
+            scientific_name="1-phenethyl- 4- N-propionylanilinopiperidine",
+            appendix=ControlledSubstanceAppendix.PL_I,
+        )
+        assert chat.limit_per_unit_mg is None
+        assert chat.limit_concentration_pct is None
+
+    def test_gioi_han_dang_chuoi_duoc_ep_ve_decimal(self) -> None:
+        chat = ControlledSubstance(
+            name_intl="TRAMADOL",
+            scientific_name="(±)-Trans-2-Dimethylaminomethyl-1-(3-methoxyphenyl)cyclohexan-1-ol",
+            appendix=ControlledSubstanceAppendix.PL_I,
+            limit_per_unit_mg="37.5",  # type: ignore[arg-type]
+        )
+        assert chat.limit_per_unit_mg == Decimal("37.5")
+
+    def test_gioi_han_khong_duong_bi_chan(self) -> None:
+        with pytest.raises(ValueError, match="phải > 0"):
+            ControlledSubstance(
+                name_intl="X",
+                scientific_name="x",
+                appendix=ControlledSubstanceAppendix.PL_II,
+                limit_per_unit_mg=Decimal("0"),
+            )
+
+    def test_ten_rong_bi_chan(self) -> None:
+        with pytest.raises(ValueError, match="không được để trống"):
+            ControlledSubstance(
+                name_intl="  ", scientific_name="x", appendix=ControlledSubstanceAppendix.PL_I
+            )
+
+    def test_moc_hieu_luc_rieng_cua_etomidate_carisoprodol(self) -> None:
+        """TT18 Điều 16.2 — 2 chất này là hướng thần từ 01/6/2026, sớm hơn hiệu lực chung."""
+        etomidate = ControlledSubstance(
+            name_intl="ETOMIDATE",
+            scientific_name="Ethyl3-[(1R)-1-phenylethyl]imidazole-5-carboxylate",
+            appendix=ControlledSubstanceAppendix.PL_II,
+            effective_from=date(2026, 6, 1),
+        )
+        assert etomidate.is_effective_on(date(2026, 5, 31)) is False
+        assert etomidate.is_effective_on(date(2026, 6, 1)) is True
+
+    def test_chat_khong_co_moc_rieng_luon_hieu_luc(self) -> None:
+        chat = ControlledSubstance(
+            name_intl="CODEINE; 3-METHYLMORPHINE",
+            scientific_name="(5α, 6α)-7,8-didehydro-4,5-epoxy-3- methoxy-17-methylmorphinan-6-ol",
+            appendix=ControlledSubstanceAppendix.PL_I,
+            limit_per_unit_mg=Decimal("100"),
+            limit_concentration_pct=Decimal("2.5"),
+        )
+        assert chat.is_effective_on(date(2017, 1, 1)) is True
+
+    def test_ghi_chu_gioi_han_dang_van_ban(self) -> None:
+        """PL IV có 2 dòng ngưỡng là câu điều kiện, không phải số — giữ nguyên văn."""
+        chat = ControlledSubstance(
+            name_intl="DIPHENOXYLATE",
+            scientific_name=(
+                "1-(3-cyano-3,3-diphenylpropyl)-4-phenylpiperidine- 4- carboxylic acid ethyl ester"
+            ),
+            appendix=ControlledSubstanceAppendix.PL_I,
+            limit_note=(
+                "Không quá 2,5 mg Diphenoxylate và với ít nhất 0,025 mg Atropin Sulfat "
+                "trong một đơn vị sản phẩm đã chia liều."
+            ),
+        )
+        assert chat.limit_per_unit_mg is None
+        assert "Atropin Sulfat" in (chat.limit_note or "")

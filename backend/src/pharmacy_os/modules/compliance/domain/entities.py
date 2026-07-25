@@ -44,6 +44,73 @@ class LedgerDirection(StrEnum):
     XUAT = "XUAT"
 
 
+class ControlledSubstanceAppendix(StrEnum):
+    """Phụ lục danh mục dược chất của TT 18/2026 (docs/13 mục C.1).
+
+    Chỉ 3 danh mục hoạt chất — không gồm các phụ lục biểu mẫu sổ sách.
+    """
+
+    PL_I = "PL_I"  # Danh mục dược chất gây nghiện (42 chất)
+    PL_II = "PL_II"  # Danh mục dược chất hướng thần (72 chất)
+    PL_III = "PL_III"  # Danh mục tiền chất dùng làm thuốc (8 chất)
+
+
+_APPENDIX_CATEGORY: dict[ControlledSubstanceAppendix, ControlledSubstanceCategory] = {
+    ControlledSubstanceAppendix.PL_I: ControlledSubstanceCategory.GAY_NGHIEN,
+    ControlledSubstanceAppendix.PL_II: ControlledSubstanceCategory.HUONG_THAN,
+    ControlledSubstanceAppendix.PL_III: ControlledSubstanceCategory.TIEN_CHAT,
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ControlledSubstance:
+    """Một dược chất trong danh mục kiểm soát đặc biệt — dữ liệu tham chiếu DÙNG CHUNG.
+
+    Nguồn: TT 18/2026 Phụ lục I/II/III (danh mục) + Phụ lục IV/V/VI (giới hạn nồng độ,
+    hàm lượng trong thuốc dạng phối hợp). Xem docs/13 mục C.1.
+
+    Không tenant-scoped: danh mục do Bộ Y tế ban hành, mọi cơ sở dùng chung.
+
+    ``limit_per_unit_mg`` / ``limit_concentration_pct`` là **ngưỡng phân loại** theo Phụ lục VII:
+    hàm lượng/nồng độ **không vượt** ngưỡng ⇒ thuốc dạng phối hợp; **vượt** ngưỡng ⇒ thuốc
+    GN/HT/TC nguyên nhóm. ``None`` = phụ lục giới hạn không quy định ngưỡng cho chất này.
+    """
+
+    name_intl: str
+    scientific_name: str
+    appendix: ControlledSubstanceAppendix
+    common_name: str | None = None
+    limit_per_unit_mg: Decimal | None = None
+    limit_concentration_pct: Decimal | None = None
+    limit_note: str | None = None
+    effective_from: date | None = None
+    id: UUID = field(default_factory=uuid4)
+
+    def __post_init__(self) -> None:
+        if not self.name_intl.strip():
+            raise ValueError("Tên quốc tế của dược chất không được để trống")
+        for attr in ("limit_per_unit_mg", "limit_concentration_pct"):
+            value = getattr(self, attr)
+            if value is not None:
+                object.__setattr__(self, attr, Decimal(value))
+                if getattr(self, attr) <= 0:
+                    raise ValueError(f"{attr} phải > 0 nếu có quy định")
+
+    @property
+    def category(self) -> ControlledSubstanceCategory:
+        """Nhóm kiểm soát suy ra từ phụ lục — PL I ⇒ GN, PL II ⇒ HT, PL III ⇒ TC."""
+        return _APPENDIX_CATEGORY[self.appendix]
+
+    def is_effective_on(self, day: date) -> bool:
+        """Chất đã có hiệu lực quản lý tại ngày ``day`` chưa.
+
+        Dùng cho các chất được đưa vào danh mục theo mốc riêng — TT18 Điều 16.2:
+        Etomidate và Carisoprodol là dược chất hướng thần **từ 01/6/2026**, sớm hơn
+        ngày hiệu lực chung của Thông tư (16/7/2026).
+        """
+        return self.effective_from is None or day >= self.effective_from
+
+
 @dataclass(frozen=True, slots=True)
 class NationalDrugRecord:
     """23 trường chuẩn đầu ra Bảng 1 QĐ540 (docs/13 mục B).

@@ -9,6 +9,8 @@ from pharmacy_os.modules.compliance.domain.converters import (
 )
 from pharmacy_os.modules.compliance.domain.entities import (
     ControlledLedgerEntry,
+    ControlledSubstance,
+    ControlledSubstanceAppendix,
     ControlledSubstanceCategory,
     CustomerDetail,
     LedgerDirection,
@@ -47,6 +49,8 @@ __all__ = [
     "to_qld_date",
     "to_qld_datetime",
     "ControlledLedgerEntry",
+    "ControlledSubstance",
+    "ControlledSubstanceAppendix",
     "ControlledSubstanceCategory",
     "CustomerDetail",
     "LedgerDirection",
