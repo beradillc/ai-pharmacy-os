@@ -16,7 +16,7 @@ from pharmacy_os.core.db import OutboxSink, UnitOfWorkFactory, build_engine, bui
 from pharmacy_os.core.di import Container
 from pharmacy_os.core.events import EventBus, InMemoryEventBus
 from pharmacy_os.core.outbox import OutboxEventSink
-from pharmacy_os.core.plugins import PluginLoader
+from pharmacy_os.core.plugins import HookRegistry, PluginLoader
 from pharmacy_os.core.security.jwt import JwtService
 
 
@@ -69,6 +69,10 @@ def build_container(settings: Settings) -> Container:
         lambda c: AuditDashboardService(c.resolve(async_sessionmaker[AsyncSession])),
     )
     container.register_singleton(PluginLoader, lambda _c: PluginLoader())
+    # The registry the loader fills, exposed on its own so a call site can ask "which
+    # plugin backs this port" without reaching through the loader (and without being
+    # able to load anything itself).
+    container.register_singleton(HookRegistry, lambda c: c.resolve(PluginLoader).registry)
     container.register_singleton(
         JwtService,
         lambda c: JwtService(

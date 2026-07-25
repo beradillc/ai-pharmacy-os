@@ -10,7 +10,7 @@ Env var format uses a nested delimiter, e.g. ``AI__API_KEY``, ``DB__URL``.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -147,6 +147,30 @@ class NationalSyncSettings(BaseSettings):
     lease_seconds: float = 300.0
 
 
+class PluginsSettings(BaseSettings):
+    """Which plugins run, and what each one is configured with (docs/09).
+
+    Enablement is deliberately separate from discovery: the loader finds every
+    installed plugin via entry points, but only the keys listed here are loaded. That
+    is what satisfies the Sprint 8 DoD "bật/tắt plugin không sửa lõi" — switching a
+    plugin on or off is a deployment decision, never a code change.
+
+    Defaults to **empty**, matching ``OUTBOX__RELAY_ENABLED`` and
+    ``NATIONAL_SYNC__RETRY_ENABLED``: no plugin runs unless somebody deliberately turns
+    it on. Enabling a plugin that is not installed is fail-fast at startup (see
+    ``PluginLoader.load_enabled``) rather than a silent no-op.
+    """
+
+    enabled: list[str] = Field(default_factory=list)
+    """Entry-point names to load, e.g. ``PLUGINS__ENABLED=["vnpay"]``."""
+
+    config: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    """Per-plugin settings, keyed by the same entry-point name, handed to the plugin as
+    :class:`~pharmacy_os.core.plugins.PluginContext`. A plugin with no entry here still
+    loads, with an empty config. Secrets belong here rather than hard-coded in the
+    plugin (docs/09 mục 6)."""
+
+
 class SecuritySettings(BaseSettings):
     jwt_secret: SecretStr = SecretStr(_PLACEHOLDER)
     jwt_ttl_minutes: int = 60
@@ -185,6 +209,7 @@ class Settings(BaseSettings):
     org: OrgSettings = Field(default_factory=OrgSettings)
     outbox: OutboxSettings = Field(default_factory=OutboxSettings)
     national_sync: NationalSyncSettings = Field(default_factory=NationalSyncSettings)
+    plugins: PluginsSettings = Field(default_factory=PluginsSettings)
 
     @model_validator(mode="after")
     def _fail_fast_in_prod(self) -> Settings:

@@ -28,16 +28,23 @@ from pharmacy_os.modules.compliance.application import NationalSyncRetryRelay
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     container = app.state.container
+    settings: Settings = container.resolve(Settings)
+
+    # Only the plugins an operator switched on, each with its own config — not
+    # everything that happens to be installed (Sprint 8; previously this loaded every
+    # discovered plugin with an empty config, so installing a package was the same as
+    # enabling it). An enabled-but-unloadable plugin raises here and the app refuses
+    # to start, deliberately: see PluginLoader.load_enabled.
     loader: PluginLoader = container.resolve(PluginLoader)
-    discovered = loader.discover()
-    if discovered:
-        loader.load_enabled({name: {} for name in discovered})
+    if settings.plugins.enabled:
+        loader.load_enabled(
+            {name: settings.plugins.config.get(name, {}) for name in settings.plugins.enabled}
+        )
 
     # Two process-lifetime background tasks around the outbox, both tied to the app's
     # lifespan so a shutdown cannot leave one running: the relay delivers events that
     # were committed but not yet dispatched (including whatever a crash left behind),
     # and retention ages finished rows out so the table stops growing.
-    settings: Settings = container.resolve(Settings)
     tasks: list[asyncio.Task[None]] = []
     if settings.outbox.relay_enabled:
         relay: OutboxRelay = container.resolve(OutboxRelay)
