@@ -356,3 +356,45 @@ def test_bien_ban_nhan_lai_thuoc_can_it_nhat_1_dong(client: TestClient) -> None:
 def test_bien_ban_nhan_lai_thuoc_can_token(client: TestClient) -> None:
     r = client.get(f"/api/v1/compliance/drug-returns/{uuid4()}")
     assert r.status_code == 401
+
+
+def test_ket_xuat_cuoi_ngay_co_hash_toan_ven(client: TestClient) -> None:
+    """docs/13 mục C.5 — ghi chú Phụ lục VIII, điều kiện (a) Điều 15.1."""
+    admin = _login(client)
+    drug = str(uuid4())
+    _ghi_so(
+        client,
+        admin,
+        drug_id=drug,
+        quantity="10",
+        transaction_at="2026-07-25T09:00:00Z",
+    )
+    _ghi_so(
+        client,
+        admin,
+        drug_id=drug,
+        quantity="20",
+        transaction_at="2026-07-26T09:00:00Z",
+    )
+
+    r = client.get(
+        "/api/v1/compliance/controlled-ledger/books/PL_VIII/daily-closure",
+        headers=_auth(admin),
+        params={"day": "2026-07-25"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "cuoi-ngay-" in r.headers["content-disposition"]
+    assert len(r.headers["x-content-sha256"]) == 64
+    dong = [d for d in r.text.splitlines() if d.strip()]
+    assert len(dong) == 2  # header + đúng 1 giao dịch ngày 25/7
+    assert dong[1].startswith("2026-07-25,")
+    assert dong[1].split(",")[3] == "10"  # số lượng nhập của giao dịch 25/7, không phải 20
+
+
+def test_ket_xuat_cuoi_ngay_can_token(client: TestClient) -> None:
+    r = client.get(
+        "/api/v1/compliance/controlled-ledger/books/PL_VIII/daily-closure",
+        params={"day": "2026-07-25"},
+    )
+    assert r.status_code == 401

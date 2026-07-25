@@ -6,6 +6,7 @@ as factories at composition time (see the module ``register``).
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable
 from datetime import date
 from uuid import UUID
@@ -16,11 +17,13 @@ from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import NotFoundError, ValidationError
 from pharmacy_os.core.security import require_permission
 from pharmacy_os.modules.compliance.application.csv_export import (
+    render_ledger_book_csv_text,
     to_book_rows,
     to_periodic_report_rows,
 )
 from pharmacy_os.modules.compliance.application.dto import (
     ControlledLedgerEntryOutput,
+    DailyLedgerClosureExport,
     DrugReturnRecordOutput,
     LedgerBookRow,
     PeriodicReportRow,
@@ -177,6 +180,43 @@ class ComplianceService:
                 book_type, from_date=from_date, to_date=to_date, drug_id=drug_id
             )
         return list(to_book_rows(entries))
+
+    async def export_daily_closure(
+        self, book_type: LedgerBookType, *, day: date, ctx: RequestContext
+    ) -> DailyLedgerClosureExport:
+        """Kết xuất cuối ngày (docs/13 mục C.5 — ghi chú Phụ lục VIII: "trích xuất, in cuối
+        mỗi ngày"). Chỉ đáp ứng điều kiện **(a)** của Điều 15.1 (toàn vẹn, có hash) — điều
+        kiện **(d)** (chữ ký số/xác nhận điện tử) là bước 6 riêng, chưa code, chờ Chain chọn
+        hướng. Cho tới lúc đó, nhà thuốc vẫn phải in file này ra và **ký tay** mỗi ngày.
+        """
+        require_permission(ctx, "compliance.ledger.read")
+        async with self._uow_factory() as uow:
+            repo = self._ledger_repo_factory(uow, ctx)
+            entries = await repo.list_for_book(book_type, from_date=day, to_date=day)
+        rows = list(to_book_rows(entries))
+        content = render_ledger_book_csv_text(rows)
+        content_sha256 = hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+        await self._audit.record(
+            AuditEntry(
+                tenant_id=ctx.tenant_id,
+                actor_user_id=ctx.user_id,
+                action=AuditAction.LEDGER_DAILY_CLOSURE_EXPORTED,
+                target_type="ledger_daily_closure",
+                target_id=f"{book_type.value}_{day.isoformat()}",
+            ).with_context(
+                client_ip=ctx.client_ip,
+                branch_id=str(ctx.branch_id),
+                content_sha256=content_sha256,
+            )
+        )
+        return DailyLedgerClosureExport(
+            book_type=book_type.value,
+            day=day,
+            content=content,
+            content_sha256=content_sha256,
+            row_count=len(rows),
+        )
 
     async def export_periodic_report(
         self, *, from_date: date, to_date: date, ctx: RequestContext

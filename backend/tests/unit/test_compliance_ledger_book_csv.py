@@ -7,6 +7,7 @@ from uuid import uuid4
 from pharmacy_os.modules.compliance.application import (
     LEDGER_BOOK_CSV_HEADER,
     ledger_book_row_to_csv,
+    render_ledger_book_csv_text,
     to_book_rows,
 )
 from pharmacy_os.modules.compliance.domain import (
@@ -123,3 +124,34 @@ def test_so_luong_bo_so_0_thua_nhung_giu_so_le_that() -> None:
     assert ledger_book_row_to_csv(nhap)[3] == "100"
     assert ledger_book_row_to_csv(xuat)[4] == "37.5"
     assert ledger_book_row_to_csv(xuat)[5] == "62.5"
+
+
+class TestRenderLedgerBookCsvText:
+    """docs/13 mục C.5 — kết xuất cuối ngày, chuỗi CSV đầy đủ để băm SHA-256."""
+
+    def test_co_header_va_moi_dong(self) -> None:
+        drug = uuid4()
+        rows = list(to_book_rows([_entry(drug, LedgerDirection.NHAP, "5", 4)]))
+        text = render_ledger_book_csv_text(rows)
+        lines = [line for line in text.splitlines() if line]
+        assert lines[0].split(",")[0] == "ngay_thang"
+        assert len(lines) == 2  # header + 1 dòng
+
+    def test_rong_chi_co_header(self) -> None:
+        text = render_ledger_book_csv_text([])
+        lines = [line for line in text.splitlines() if line]
+        assert len(lines) == 1
+
+    def test_cung_noi_dung_cho_ra_cung_hash(self) -> None:
+        """Điều kiện tiên quyết để hash có ý nghĩa làm bằng chứng toàn vẹn: xác định, không
+        phụ thuộc thời điểm gọi hay thứ tự object trong bộ nhớ."""
+        drug = uuid4()
+        rows_a = list(to_book_rows([_entry(drug, LedgerDirection.NHAP, "5", 4)]))
+        rows_b = list(to_book_rows([_entry(drug, LedgerDirection.NHAP, "5", 4)]))
+        assert render_ledger_book_csv_text(rows_a) == render_ledger_book_csv_text(rows_b)
+
+    def test_doi_1_ky_tu_lam_doi_noi_dung(self) -> None:
+        drug = uuid4()
+        rows = list(to_book_rows([_entry(drug, LedgerDirection.NHAP, "5", 4, note="A")]))
+        rows_khac = list(to_book_rows([_entry(drug, LedgerDirection.NHAP, "5", 4, note="B")]))
+        assert render_ledger_book_csv_text(rows) != render_ledger_book_csv_text(rows_khac)

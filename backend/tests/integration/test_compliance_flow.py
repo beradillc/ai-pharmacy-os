@@ -611,3 +611,65 @@ async def test_recording_a_drug_return_leaves_an_audit_row_without_id_number(
         matching = [e for e in entries if e.target_id == str(out.id)]
         assert len(matching) == 1
         assert "079123456789" not in str(matching[0].context)
+
+
+async def test_export_daily_closure_tinh_dung_hash_va_so_dong(
+    compliance_service: ComplianceService, ctx: RequestContext
+) -> None:
+    """docs/13 mục C.5 — kết xuất cuối ngày, điều kiện (a) Điều 15.1 (toàn vẹn, có hash)."""
+    drug = uuid4()
+    await compliance_service.record_controlled_entry(
+        _entry(
+            drug_id=drug,
+            direction=LedgerDirection.NHAP,
+            quantity=Decimal("10"),
+            transaction_at=datetime(2026, 7, 25, 9, 0, tzinfo=UTC),
+        ),
+        ctx,
+    )
+    # Giao dịch khác ngày — không được lẫn vào kết xuất của 25/7.
+    await compliance_service.record_controlled_entry(
+        _entry(
+            drug_id=drug,
+            direction=LedgerDirection.NHAP,
+            quantity=Decimal("99"),
+            transaction_at=datetime(2026, 7, 26, 9, 0, tzinfo=UTC),
+        ),
+        ctx,
+    )
+
+    export = await compliance_service.export_daily_closure(
+        LedgerBookType.PL_VIII, day=date(2026, 7, 25), ctx=ctx
+    )
+    assert export.row_count == 1
+    assert export.day == date(2026, 7, 25)
+    assert len(export.content_sha256) == 64  # hex SHA-256
+    assert "10" in export.content
+    assert "99" not in export.content
+
+
+async def test_export_daily_closure_ngay_trong_khong_co_giao_dich_van_ra_header(
+    compliance_service: ComplianceService, ctx: RequestContext
+) -> None:
+    export = await compliance_service.export_daily_closure(
+        LedgerBookType.PL_VIII, day=date(2026, 1, 1), ctx=ctx
+    )
+    assert export.row_count == 0
+    assert export.content_sha256  # vẫn có hash — chuỗi rỗng cũng băm được, không phải lỗi
+
+
+async def test_export_daily_closure_leaves_an_audit_row_with_hash(
+    compliance_service: ComplianceService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    export = await compliance_service.export_daily_closure(
+        LedgerBookType.PL_VIII, day=date(2026, 7, 25), ctx=ctx
+    )
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        entries = await repo.list(ctx.tenant_id, action=AuditAction.LEDGER_DAILY_CLOSURE_EXPORTED)
+        matching = [e for e in entries if e.target_id == "PL_VIII_2026-07-25"]
+        assert len(matching) == 1
+        assert matching[0].context.get("content_sha256") == export.content_sha256

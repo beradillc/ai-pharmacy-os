@@ -18,6 +18,8 @@ kết xuất phần BẢNG của sổ kèm ``drug_id`` để đối chiếu, ch�
 
 from __future__ import annotations
 
+import csv
+import io
 from collections.abc import Iterable, Iterator, Mapping
 from decimal import Decimal
 from uuid import UUID
@@ -93,6 +95,23 @@ def to_book_rows(entries: Iterable[ControlledLedgerEntry]) -> Iterator[LedgerBoo
             expiry_date=entry.expiry_date,
             note=entry.note,
         )
+
+
+def render_ledger_book_csv_text(rows: Iterable[LedgerBookRow]) -> str:
+    """Toàn bộ nội dung CSV của sổ (header + mọi dòng) thành 1 chuỗi, không streaming.
+
+    Dùng cho báo cáo kết xuất cuối ngày (docs/13 mục C.5, ghi chú Phụ lục VIII: "trích xuất,
+    in cuối mỗi ngày") — cần **chính chuỗi này** để băm SHA-256 rồi phát cùng nội dung tải về,
+    nên phải dựng xong toàn bộ trước khi trả response, khác cách streaming từng dòng của
+    :func:`ledger_book_row_to_csv` dùng cho export theo kỳ dài (không thể băm trước khi biết
+    hết nội dung). An toàn về bộ nhớ vì phạm vi luôn là **1 ngày**, không phải cả kỳ.
+    """
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(LEDGER_BOOK_CSV_HEADER)
+    for row in rows:
+        writer.writerow(ledger_book_row_to_csv(row))
+    return buffer.getvalue()
 
 
 #: Thứ tự cột của báo cáo định kỳ, bám Mẫu số 06 Phụ lục II NĐ163 cột (1)–(12). ``ten_co_so``,

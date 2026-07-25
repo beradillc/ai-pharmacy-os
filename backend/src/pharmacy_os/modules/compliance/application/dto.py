@@ -283,3 +283,20 @@ class DrugReturnRecordOutput:
             handover_at=record.handover_at,
             handover_location=record.handover_location,
         )
+
+
+@dataclass(slots=True)
+class DailyLedgerClosureExport:
+    """Kết xuất cuối ngày của một mẫu sổ (docs/13 mục C.5 — ghi chú Phụ lục VIII).
+
+    ``content`` là toàn bộ file CSV (header + mọi dòng của đúng 1 ngày), ``content_sha256`` là
+    hash SHA-256 hex của ``content`` — bằng chứng toàn vẹn tại thời điểm in, dùng để phát hiện
+    nếu file bị sửa sau khi in ra ký tay. Chưa phải chữ ký số (bước 6 riêng, chờ Chain chọn
+    hướng) — đây chỉ là điều kiện (a) của Điều 15.1 (toàn vẹn dữ liệu), không phải điều kiện (d).
+    """
+
+    book_type: str
+    day: date
+    content: str
+    content_sha256: str
+    row_count: int

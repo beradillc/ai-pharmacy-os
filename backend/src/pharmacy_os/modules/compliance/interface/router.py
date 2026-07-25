@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator, Callable, Sequence
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from fastapi.responses import StreamingResponse
 
 from pharmacy_os.core.context import RequestContext
@@ -92,6 +92,32 @@ def build_router(get_context: ContextDep) -> APIRouter:
             csv_stream_body(LEDGER_BOOK_CSV_HEADER, csv_rows()),
             media_type="text/csv",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    @router.get("/controlled-ledger/books/{book_type}/daily-closure")
+    async def export_daily_closure(
+        book_type: LedgerBookType,
+        day: date = Query(..., description="Ngày kết xuất"),
+        service: ComplianceService = Depends(_compliance_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> Response:
+        """Kết xuất cuối ngày — docs/13 mục C.5, ghi chú Phụ lục VIII: "trích xuất, in thông
+        tin theo dõi vào cuối MỖI NGÀY". Dùng lại quyền ``compliance.ledger.read``.
+
+        Trả CSV của đúng 1 ngày kèm hash SHA-256 ở header ``X-Content-Sha256`` — bằng chứng
+        toàn vẹn tại thời điểm in (điều kiện (a) Điều 15.1). **Chưa phải chữ ký số** (điều
+        kiện (d) — bước 6 riêng, chờ Chain chọn hướng): nhà thuốc vẫn phải in file này ra và
+        ký tay trên từng trang mỗi ngày cho tới khi bước 6 xong.
+        """
+        export = await service.export_daily_closure(book_type, day=day, ctx=ctx)
+        filename = f"so-{book_type.value.lower()}-cuoi-ngay-{ctx.tenant_id}-{day}.csv"
+        return Response(
+            content=export.content,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "X-Content-Sha256": export.content_sha256,
+            },
         )
 
     @router.get("/periodic-report/export")

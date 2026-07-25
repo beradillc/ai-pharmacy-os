@@ -99,6 +99,12 @@ class AuditAction(StrEnum):
     into the audit context, same discipline as :attr:`CONTROLLED_LEDGER_ENTRY_RECORDED`
     keeping the customer's name/address out."""
 
+    LEDGER_DAILY_CLOSURE_EXPORTED = "LEDGER_DAILY_CLOSURE_EXPORTED"
+    """Phụ lục VIII/XVI daily print-and-sign export generated (TT18 Điều 15.1 ghi chú —
+    the mandatory "trích xuất, in cuối mỗi ngày" step). ``context`` carries the SHA-256
+    of the exported content (not PII) so a later dispute over "was this page altered
+    after printing" can be checked against this row."""
+
     # --- sales (bán thuốc — Luật Dược Điều 6.5.h, cùng lý do PRESCRIPTION_DISPENSED) ---
     SALE_COMPLETED = "SALE_COMPLETED"
     """A sale was finalised — the third thing an inspection asks about: "ai đã bán

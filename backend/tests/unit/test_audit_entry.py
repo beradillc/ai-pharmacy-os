@@ -91,6 +91,7 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "TENANT_COMPLIANCE_CONFIG_SET",
         "PERIODIC_REPORT_EXPORTED",
         "DRUG_RETURN_RECORDED",
+        "LEDGER_DAILY_CLOSURE_EXPORTED",
         "SALE_COMPLETED",
         "INVENTORY_STOCK_RECEIVED",
         "INVENTORY_STOCK_DISPENSED",
