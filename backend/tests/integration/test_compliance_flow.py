@@ -1,3 +1,5 @@
+import csv
+import io
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -17,6 +19,7 @@ from pharmacy_os.core.errors import (
 )
 from pharmacy_os.core.events import InMemoryEventBus
 from pharmacy_os.modules.compliance.application import (
+    LEDGER_BOOK_CSV_HEADER,
     ComplianceService,
     CustomerDetailInput,
     RecordControlledEntryInput,
@@ -652,8 +655,14 @@ async def test_export_daily_closure_tinh_dung_hash_va_so_dong(
     assert export.row_count == 1
     assert export.day == date(2026, 7, 25)
     assert len(export.content_sha256) == 64  # hex SHA-256
-    assert "10" in export.content
-    assert "99" not in export.content
+    # Đọc CSV theo cột, không tìm chuỗi con: cột cuối là ``drug_id`` (UUID ngẫu nhiên mỗi
+    # lần chạy), nên `"99" not in content` có lúc trúng ngay trong UUID và đỏ oan —
+    # đã bắt được thật (~8% số lần chạy) khi rà nợ retry DAV, 2026-07-25.
+    header, *data_rows = list(csv.reader(io.StringIO(export.content)))
+    assert tuple(header) == LEDGER_BOOK_CSV_HEADER
+    assert len(data_rows) == 1
+    assert data_rows[0][3] == "10"  # so_luong_nhap của giao dịch 25/7
+    assert "99" not in data_rows[0][3:6]  # không lẫn số lượng của giao dịch 26/7
 
 
 async def test_export_daily_closure_ngay_trong_khong_co_giao_dich_van_ra_header(
