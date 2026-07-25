@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-25** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng, kế tiếp bảo mật → plugin loader → connector → observability → load test (thứ tự đã chốt §7ax).
+> Cập nhật cuối: **2026-07-26** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng. **⚠️ Quy trình đổi (§7az, 2026-07-26):** 4 mục Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` nay qua cổng nghiêm ngặt hơn full-auto (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật), **thứ tự đổi thành Plugin loader trước** (không phải 2FA như §7ax cũ). 2FA đang dở bước 2/4, uncommitted — đọc §7az trước khi động vào. Rate limit/observability/load test vẫn full-auto bình thường, chưa mục nào bắt đầu.
 >
 > **Kế tiếp:** 2 blocker nền cũ (§7j) đã gỡ 1 — RBAC/IAM thật XONG (§7k), nên hồ sơ KH đã làm được và **đã xong**; còn lại **tích điểm KH** (chưa làm, phải qua [docs/14](docs/14_FEATURE_PROCESS.md)) và **`docs/legal/` vẫn thiếu** Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. Nợ mang sang sau Sprint 7 (cập nhật §7ay): ~~report đợt 2~~ **XONG**; ~~retry DAV~~ **XONG (§7ay — relay riêng, không qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API)**; tồn-âm khi outbox async (gộp Sprint 8 load test); `analytics` v2 (Sprint 8/9); FE cho `analytics` (hoãn Sprint 9, quyết định §7ax).
 
@@ -2998,10 +2998,121 @@ Sprint 8 #1–#5 theo thứ tự đã chốt ở trên.
 
 ---
 
+## 7az. ĐIỂM DỪNG PHIÊN (2026-07-26) — Chain đặt quy trình nghiêm ngặt hơn cho 4 mục đụng tiền/khóa mã hóa thật
+
+**Thay đổi quy trình quan trọng nhất phiên này, đọc trước khi làm tiếp bất cứ gì thuộc 4 mục dưới:**
+Chain chốt 4 mục **Plugin loader, 2FA, Mã hóa at-rest, payment_vnpay** đi theo quy trình
+**nghiêm ngặt hơn** full-auto hiện có trong CLAUDE.md, vì đây là chỗ đầu tiên đụng tiền thật/khóa mã
+hóa thật:
+
+- **Thứ tự bắt buộc:** Plugin loader → 2FA → Mã hóa at-rest → payment_vnpay (plugin loader làm nền
+  trước vì payment sẽ chạy như 1 plugin — đảo với thứ tự GĐ tự chọn trước đó ở §7ax, nơi 2FA được ưu
+  tiên vì rủi ro cấp bách nhất; Chain giữ nguyên nhận định rủi ro đó nhưng vẫn chọn Plugin loader làm
+  nền trước vì lý do kỹ thuật/phụ thuộc).
+- **Mỗi mục đúng 4 bước, không bỏ qua dù full-auto đang bật:**
+  1. THIẾT KẾ — phương án + rủi ro + điểm không đảo ngược được bằng `git revert`. DỪNG, không code.
+  2. Chờ **đủ 2 lượt duyệt**: GĐ xác nhận trước, rồi Chain duyệt — không tự suy diễn "GĐ đồng ý là đủ".
+  3. CODE — chỉ sau khi cả 2 duyệt. Stepped-commit, 4 cổng xanh, backup trước mọi migration/thay đổi
+     ảnh hưởng dữ liệu thật (giữ nguyên lưới an toàn #6 full-auto).
+  4. GĐĐH tự kiểm tra kết quả — **không chỉ tin test xanh**, chạy thử thật nếu liên quan tiền/mã hóa
+     (vd: gọi sandbox VNPAY thật, không chỉ mock). Báo cáo, **chỉ sau khi xác nhận** mới mở mục tiếp
+     theo trong danh sách 4 mục.
+- **3 mục còn lại của Sprint 8 (rate limit, observability, load test p95) giữ nguyên full-auto bình
+  thường** — không qua cổng này, làm song song bất cứ lúc nào, không phụ thuộc 4 mục trên.
+- **Quyết định đã chốt sẵn cho bước 1 (thiết kế) của Plugin loader**, để phiên sau không phải hỏi lại:
+  phạm vi bật/tắt plugin là **cờ toàn cục** (`PLUGINS__ENABLED=[...]`, khuôn `OUTBOX__RELAY_ENABLED`),
+  **không** per-tenant — đủ cho DoD Sprint 8 ("bật/tắt plugin không sửa lõi") và đủ cho `payment_vnpay`
+  sắp tới; per-tenant để dành quyết định sau nếu thực tế cần.
+
+### Trạng thái 2FA khi dừng — ĐỌC KỸ TRƯỚC KHI ĐỘNG VÀO
+
+Dừng đúng lúc đang làm dở **bước 2/4** của kế hoạch riêng 2FA (`docs/features/2fa-vai-tro-nhay-cam/
+01_DECISIONS.md`, đã duyệt dưới ủy quyền cũ trước khi có quy trình mới này) — **bước 1/4 domain đã
+commit** (`29080eb`), **bước 2/4 (app+infra+migration) đã code xong nhưng CHƯA commit**, theo đúng
+lựa chọn Chain vừa chốt ("đóng phiên, ghi nhận tiến trình" — không commit, không rollback, không code
+thêm).
+
+**Working tree hiện tại (chưa commit, để nguyên):**
+```
+ M backend/src/pharmacy_os/core/audit/entry.py
+ M backend/src/pharmacy_os/core/config.py
+ M backend/src/pharmacy_os/modules/iam/application/auth_service.py
+ M backend/src/pharmacy_os/modules/iam/application/dto.py
+ M backend/src/pharmacy_os/modules/iam/application/errors.py
+ M backend/src/pharmacy_os/modules/iam/application/iam_service.py
+ M backend/src/pharmacy_os/modules/iam/application/repositories.py
+ M backend/src/pharmacy_os/modules/iam/infrastructure/__init__.py
+ M backend/src/pharmacy_os/modules/iam/infrastructure/mappers.py
+ M backend/src/pharmacy_os/modules/iam/infrastructure/models.py
+ M backend/src/pharmacy_os/modules/iam/infrastructure/repository.py
+ M backend/src/pharmacy_os/modules/iam/interface/register.py
+ M backend/tests/integration/conftest.py
+?? backend/migrations/versions/0028_iam_two_factor.py
+```
+
+**Migration `0028_iam_two_factor` ĐÃ chạy live trên Postgres dev** (3 bảng `user_two_factor`/
+`two_factor_backup_codes`/`two_factor_challenges`), verify bằng `\d` + `alembic check` sạch +
+downgrade→upgrade lại round-trip OK. Backup trước migration: `~/backup_pre_migration_20260726_0023.sql`.
+**DB và git hiện lệch nhau có chủ đích** (migration sống trên DB dev nhưng file migration chưa vào
+git) — chấp nhận được vì đây là máy dev duy nhất đang dùng, nhưng **phiên sau nếu thấy `alembic
+current` là `0028` mà `git log` không có commit nào nhắc `0028` thì đây là lý do, không phải lỗi**.
+
+**Ruff/format/import-linter/mypy đã xác nhận sạch** trên toàn bộ working tree (bao gồm 2FA) tại thời
+điểm dừng. **pytest — CHƯA xác nhận sạch toàn repo, đây là việc phải làm trước tiên khi động lại
+2FA:**
+
+- **Đã xác nhận lại sau khi nối `reset_two_factor` — vẫn fail y hệt, nguyên nhân đã đọc tận file, XÁC
+  ĐỊNH chứ không còn đoán:** 2 test `tests/unit/test_audit_entry.py::
+  test_every_action_the_codebase_emits_has_a_member` (dòng 65, set `expected` liệt kê tay từng
+  `AuditAction`) và `tests/integration/test_audit_persistence.py::
+  test_every_action_emitted_by_iam_reaches_the_table` (dòng 270, set `covered` + `_COVERED_ELSEWHERE`)
+  là **lưới chặn trôi dạt cố ý** — bất cứ ai thêm `AuditAction` mới mà quên cập nhật 2 set này thì đỏ
+  ngay, đúng thiết kế, không phải bug. Agent 2FA thêm **6 action mới**
+  (`TWO_FACTOR_ENROLLED/ACTIVATED/DISABLED/RESET/FAILED/BACKUP_CODE_USED`) vào
+  `core/audit/entry.py` nhưng chưa cập nhật 2 set này. Theo docstring của test thứ hai ("Anything
+  added to `AuditAction` without a persistence test shows up here"), việc cần làm **không chỉ** thêm
+  tên vào set — mà đúng tinh thần test là phải có **test persistence thật** cho cả 6 action (xác nhận
+  ghi được vào bảng `audit_logs`), rồi mới thêm vào `covered`. Việc này thuộc bước 2/4 chưa xong, để
+  lại nguyên cho phiên sau, chưa tự sửa vì "đóng phiên" nghĩa là dừng code, kể cả sửa nhỏ.
+- **Tự phát hiện lỗi phương pháp của chính phiên này, ghi lại để không lặp lại:** nhiều lần "xác nhận
+  pytest xanh" trong phiên dựa vào `pytest -q 2>&1 | tail -N` rồi đọc "completed (exit code 0)" từ
+  thông báo nền — nhưng **exit code đó là của `tail`, không phải của `pytest`** (pipe trả mã của lệnh
+  cuối). `tail` luôn thoát 0 dù pytest bên trong có fail. Ít nhất 1 lần trong phiên này con số đã
+  **sai vì cách đo này** (§7ay ghi "851", con số thật theo agent kiểm lại kỹ hơn là khác — xem §7ay
+  mục "Lệch số"). **Từ phiên sau: luôn dùng `pytest -q; echo "EXIT=$?"` (không pipe qua tail) hoặc
+  đọc trực tiếp dòng cuối "N passed"/"N failed" trong file output, không suy ra từ "exit code" của
+  bash tool khi có pipe.**
+
+### Việc phải làm khi mở lại (đúng thứ tự Chain vừa chốt)
+
+1. **Mở mục Plugin loader trước** (không phải 2FA, dù 2FA đang dở) — bắt đầu bằng bước 1/4: trình bày
+   thiết kế (đã có khung ở trên: cờ toàn cục, mở rộng `core/plugins/` hiện có — xem code khảo sát
+   phiên này: `core/plugins/loader.py`/`interfaces.py` đã có discovery qua entry points + `Plugin`/
+   `PaymentGateway`/`RegulatoryConnector` Protocol, nhưng **chưa từng được gọi** ở đâu trong app —
+   `PluginLoader` đăng ký DI singleton ở `bootstrap.py` nhưng `discover()`/`load_enabled()` không ai
+   gọi). Trình bày rủi ro/điểm không đảo ngược, dừng chờ GĐ xác nhận rồi Chain duyệt — **chưa code**.
+2. 2FA quay lại đúng lượt của nó (sau Plugin loader) — trước khi code tiếp bước 2 (đã có code, chỉ
+   cần re-verify) phải: (a) sửa 2 test audit-completeness ở trên, (b) chạy lại **toàn bộ** pytest với
+   cách đo đúng (không pipe qua tail), (c) mới commit bước 2, rồi làm bước 3 (interface, 5 endpoint)
+   + bước 4 (seam cross-module `sign_daily_closure` step-up) — cả hai bước này giờ cũng phải qua cổng
+   2-lượt-duyệt mới của Chain trước khi code, dù thiết kế gốc `01_DECISIONS.md` đã có sẵn.
+3. Mã hóa at-rest và `payment_vnpay` chưa thiết kế gì — chờ đúng lượt.
+4. 3 mục full-auto bình thường (rate limit, observability, load test) có thể làm bất cứ lúc nào, độc
+   lập với 4 mục trên — chưa mục nào bắt đầu phiên này.
+
+### Hạ tầng dev lúc dừng (xác nhận bằng lệnh thật)
+
+Docker: `postgres`+`redis` **Up (healthy)** — đã bật từ đầu phiên. `alembic current` = `0028_iam_two_factor`
+(head). `git log -1` = `29080eb` (bước 1/4 2FA). `git status` như bảng trên (12 file sửa + 1 file mới,
+chưa stage). pytest: **chưa có con số toàn repo đáng tin** — xem lý do ở trên.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-26 | **DỪNG PHIÊN theo lệnh Chain — quy trình mới cho 4 mục đụng tiền/khóa thật (§7az).** Chain đặt cổng nghiêm ngặt hơn full-auto cho Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật), đảo thứ tự: **Plugin loader trước 2FA** (kỹ thuật: payment sẽ chạy như plugin). Phạm vi loader đã chốt sẵn: cờ toàn cục, không per-tenant. Phiên này trước đó (dưới quy trình cũ) đã: report đợt 2 top thuốc bán chạy XONG (`14af10e`) + phát hiện xuất `ControlledLedgerEntry` đã xong sẵn từ TT18; retry DAV qua outbox XONG (Opus, §7ay, 3 commit, hàng đợi riêng không chung outbox lõi); 2FA bước 1/4 domain XONG+commit (`29080eb`), bước 2/4 app+infra+migration **code xong, migration 0028 live trên Postgres, nhưng CHƯA commit** theo đúng lựa chọn Chain — còn 2 test audit-completeness đỏ (thiếu 6 action 2FA trong 2 set đối chiếu tay, chưa sửa). Tự phát hiện lỗi phương pháp: `pytest \| tail` che mất exit code thật của pytest — từ nay đo trực tiếp, không qua pipe. Chi tiết đầy đủ + việc phải làm khi mở lại: §7az. |
 | 2026-07-25 | **NĐ163+TT33+TT26 đọc xong — ĐẢO NGƯỢC kết luận báo cáo định kỳ (§7as)** — Chain chép 3 văn bản, ủy quyền toàn quyền GĐ chỉ đạo code. **NĐ163 Điều 35.2: bán lẻ CÓ nghĩa vụ báo cáo 6 tháng/năm gửi UBND cấp tỉnh (Mẫu số 06), đã trễ ≥3 kỳ (15/7/2025, 15/1/2026, 15/7/2026)** — đảo ngược kết luận cũ "TT18 không áp cho bán lẻ" (kết luận đó đúng riêng cho TT18, sai khi coi là câu trả lời đầy đủ). **Việc khẩn ngoài phần mềm:** xác nhận BeraLLC đã báo cáo chưa. TT33: không có mục riêng cho sổ KSĐB bán lẻ, nâng sàn retention lên ≥20 năm (suy diễn, an toàn hơn 2 năm cũ). TT26: không phát sinh nghĩa vụ mới, xác nhận 2 tham chiếu lỗi thời tự sửa. Cập nhật docs/13 (mục C.7 mới), docs/legal/README, 3 SUMMARY mới. **Chưa code** — tính năng báo cáo Mẫu số 06 cần qua docs/14_FEATURE_PROCESS trước; hỏi Chain ưu tiên việc này hay bước 4 (biên bản PL XVIII) đã duyệt trước đó. |
 | 2026-07-25 | **TT 18/2026 THAY TT 20/2017 — bước 1/3, chỉ tài liệu (§7ar)** — Chain thả bookmark TT18, yêu cầu chuẩn bị biểu mẫu + hỏi trình tự trước khi code. Trích nguyên văn: TT18 **hiệu lực 16/7/2026, bãi bỏ TT20/2017 + TT27/2024** ⇒ mục C của `docs/13` đang dựa trên văn bản chết 9 ngày. Báo cáo định kỳ **vẫn không áp cho bán lẻ** (Điều 7 thuộc Chương II — cơ sở phi thương mại) nhưng **hạ mức xuống "chưa kết luận được"** vì nghĩa vụ báo cáo của cơ sở kinh doanh nằm ở **NĐ 163/2025** — chưa có văn bản. Cái thật sự bỏ sót là **3 nghĩa vụ khác**: sổ **PL XVI** (Điều 12.3, TT20 không có), **biên bản nhận lại PL XVIII** (trước gạt ngoài phạm vi), **chữ ký số Điều 15.1.d** (không có gì). Lưu trữ mất căn cứ (chờ TT 33/2025 + TT 26/2025). Chain chốt: làm **bước 1–3**, chữ ký số **chỉ thiết kế**, sửa spec **tại chỗ + changelog**, **không bán thuốc độc** ⇒ không seed QĐ 3235. Bước 1 xong: SUMMARY TT18 đầy đủ, `docs/13` mục C viết lại + C.5/C.6 mới + Traceability #22–27 + changelog mục H, `docs/legal/README.md`, bản đề xuất 6 bước. **Bước 2–3 xong cùng ngày:** 122 hoạt chất PL I/II/III + ngưỡng PL IV/V/VI vào bảng `controlled_substances` (mig `0024`; seed **có nhánh cập nhật**, đã ép chạy nhánh đó trên CSDL có dữ liệu sẵn — `created=1, updated=2`); enum **7→9 giá trị** (`THUOC_DOC`, `DANH_MUC_CAM`); `LedgerBookType` **suy từ `category`**, không lưu cột ⇒ không cần migration; endpoint `GET /compliance/controlled-ledger/books/{book_type}/export` kết xuất CSV 2 mẫu sổ, tồn lũy kế reset theo từng thuốc. **Nợ ghi rõ, không tự làm:** phần đầu sổ (tên thuốc, số ĐKLH, ĐVT, nhà sản xuất) chưa xuất được vì phải mở read-port `DrugMasterFacts` — cross-module, chờ duyệt. 4 cổng xanh, pytest **782**, `alembic check` không drift. |
 | 2026-07-25 | **RÀ TOÀN BỘ ĐỘ RỘNG CỘT `varchar` (§7aq)** — GĐ đề xuất cuối §7ap, Chain duyệt. Rà 88 cột/40 bảng: từ vựng đóng (24 enum, permission, role code, event type, target_type, ref_type, hash) **không còn cột nào tràn** sau mig `0023`; nhưng **input người dùng thủng hệ thống** — chỉ 17/159 trường schema có `max_length`, xác nhận live 6/7 endpoint thử trả **500** (`/customers` full_name+phone, `/users` email+full_name, `/drugs` name, `/suppliers` phone). Vá bằng `max_length` khớp độ rộng cột cho 29 trường/8 module (`275cb9a`); verify live 6 request đó nay **422**, chuỗi dài đúng bằng cột vẫn 201 (không chặn thừa). **Cố ý KHÔNG bắt `DBAPIError` đổi thành 4xx** — sẽ nuốt mất lỗi nội bộ vốn cần nổ to. Không chặn mật khẩu/refresh token (không lưu thô) và cột `Text`. 2 cổng chặn tái diễn: test cấu trúc (mọi trường chuỗi request phải chặn hoặc miễn trừ có lý do) + test hành vi (endpoint từng 500 nay 422). 4 cổng xanh, pytest **741**. **Nợ còn mở:** cột `Text` chưa giới hạn (chờ Chain chốt mức nghiệp vụ) · 2 cột dư đúng 1 ký tự · hash sha256 khít 64/64. |
