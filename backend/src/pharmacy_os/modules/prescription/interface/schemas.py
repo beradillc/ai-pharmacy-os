@@ -29,9 +29,9 @@ class CreatePrescriptionRequest(BaseModel):
     doctor_name: str = Field(min_length=1, max_length=200)
     items: list[PrescriptionItemRequest] = Field(min_length=1)
     source: PrescriptionSource = PrescriptionSource.MANUAL
-    doctor_license: str | None = None
-    diagnosis: str | None = None
-    image_url: str | None = None
+    doctor_license: str | None = Field(default=None, max_length=64)
+    diagnosis: str | None = None  # cột Text, không giới hạn
+    image_url: str | None = Field(default=None, max_length=500)
 
     def to_input(self) -> CreatePrescriptionInput:
         return CreatePrescriptionInput(

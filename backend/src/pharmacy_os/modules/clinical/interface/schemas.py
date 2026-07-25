@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -25,7 +26,9 @@ class CheckInteractionsRequest(BaseModel):
     on a catalog ingredient model that does not exist yet (see module ``# BLOCKER``).
     """
 
-    ingredients: list[str] = Field(min_length=1)
+    # Chặn độ dài TỪNG tên (255 = độ rộng cột ``drug_interactions.ingredient_a/_b`` mà
+    # tên này được đem đi so), không phải số phần tử — nên ràng buộc nằm trong Annotated.
+    ingredients: list[Annotated[str, Field(max_length=255)]] = Field(min_length=1)
     context_type: AiContextType = AiContextType.SALE
     context_id: UUID | None = None
 

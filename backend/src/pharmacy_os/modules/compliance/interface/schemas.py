@@ -51,9 +51,9 @@ class RecordControlledEntryRequest(BaseModel):
     transaction_at: datetime
     source_or_destination: str = Field(min_length=1, max_length=255)
     document_no: str = Field(min_length=1, max_length=64)
-    prescription_code: str | None = None
+    prescription_code: str | None = Field(default=None, max_length=64)
     customer: CustomerDetailRequest | None = None
-    note: str | None = None
+    note: str | None = None  # cột Text, không giới hạn
 
     @model_validator(mode="after")
     def _enforce_controlled_sale_rule(self) -> RecordControlledEntryRequest:

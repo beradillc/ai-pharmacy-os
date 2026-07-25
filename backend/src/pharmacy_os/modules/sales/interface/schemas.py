@@ -38,7 +38,7 @@ class CreateSaleRequest(BaseModel):
     payments: list[PaymentRequest] = Field(default_factory=list)
     prescription_ref: UUID | None = None
     customer_id: UUID | None = None
-    currency: str = "VND"
+    currency: str = Field(default="VND", max_length=8)  # độ rộng cột sales_orders.currency
 
     def to_input(self) -> CreateSaleInput:
         return CreateSaleInput(

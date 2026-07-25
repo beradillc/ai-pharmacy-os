@@ -19,8 +19,10 @@ from pharmacy_os.modules.catalog.domain import RxClass
 
 
 class CreateIngredientRequest(BaseModel):
-    name: str
-    name_en: str | None = None
+    # max_length khớp đúng độ rộng cột — không chặn ở đây thì Postgres ném
+    # StringDataRightTruncationError và client nhận 500 thay vì 422 (PROJECT_STATE §7aq).
+    name: str = Field(max_length=255)
+    name_en: str | None = Field(default=None, max_length=255)
 
     def to_input(self) -> CreateIngredientInput:
         return CreateIngredientInput(name=self.name, name_en=self.name_en)
@@ -37,7 +39,7 @@ class ActiveIngredientResponse(BaseModel):
 
 
 class DrugUnitSchema(BaseModel):
-    unit_name: str
+    unit_name: str = Field(max_length=32)
     factor: Decimal = Field(gt=0)
     is_sellable: bool = True
 
@@ -45,18 +47,18 @@ class DrugUnitSchema(BaseModel):
 class DrugIngredientSchema(BaseModel):
     ingredient_id: UUID
     amount: Decimal = Field(gt=0)
-    unit: str
+    unit: str = Field(max_length=32)
 
 
 class CreateDrugRequest(BaseModel):
-    name: str
+    name: str = Field(max_length=255)
     rx_class: RxClass
-    base_unit: str
-    registration_no: str | None = None
-    atc_code: str | None = None
-    form: str | None = None
-    strength: str | None = None
-    barcode: str | None = None
+    base_unit: str = Field(max_length=32)
+    registration_no: str | None = Field(default=None, max_length=64)
+    atc_code: str | None = Field(default=None, max_length=16)
+    form: str | None = Field(default=None, max_length=64)
+    strength: str | None = Field(default=None, max_length=64)
+    barcode: str | None = Field(default=None, max_length=64)
     units: list[DrugUnitSchema] = Field(default_factory=list)
     ingredients: list[DrugIngredientSchema] = Field(default_factory=list)
 

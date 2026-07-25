@@ -25,12 +25,14 @@ from pharmacy_os.modules.procurement.application.dto import (
 
 
 class CreateSupplierRequest(BaseModel):
+    # max_length khớp đúng độ rộng cột — không chặn thì Postgres ném
+    # StringDataRightTruncationError và client nhận 500 thay vì 422 (PROJECT_STATE §7aq).
     name: str = Field(min_length=1, max_length=255)
-    tax_code: str | None = None
-    contact_name: str | None = None
-    phone: str | None = None
-    email: str | None = None
-    address: str | None = None
+    tax_code: str | None = Field(default=None, max_length=32)
+    contact_name: str | None = Field(default=None, max_length=200)
+    phone: str | None = Field(default=None, max_length=32)
+    email: str | None = Field(default=None, max_length=255)
+    address: str | None = None  # cột Text, không giới hạn
 
     def to_input(self) -> CreateSupplierInput:
         return CreateSupplierInput(

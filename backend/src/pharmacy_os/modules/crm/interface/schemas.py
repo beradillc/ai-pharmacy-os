@@ -21,12 +21,14 @@ from pharmacy_os.modules.crm.domain import AllergySeverity, ConsentPurpose
 
 
 class CreateCustomerRequest(BaseModel):
-    full_name: str
-    phone: str | None = None
+    # max_length khớp đúng độ rộng cột — không chặn ở đây thì Postgres ném
+    # StringDataRightTruncationError và client nhận 500 thay vì 422 (PROJECT_STATE §7aq).
+    full_name: str = Field(max_length=255)
+    phone: str | None = Field(default=None, max_length=32)
     dob: date | None = None
-    gender: str | None = None
+    gender: str | None = Field(default=None, max_length=16)
     weight_kg: Decimal | None = Field(default=None, gt=0)
-    national_id_hash: str | None = None
+    national_id_hash: str | None = Field(default=None, max_length=128)
 
     def to_input(self) -> CreateCustomerInput:
         return CreateCustomerInput(
@@ -117,8 +119,8 @@ class AddAllergyRequest(BaseModel):
 
 
 class AddConditionRequest(BaseModel):
-    condition_code: str
-    note: str | None = None
+    condition_code: str = Field(max_length=16)
+    note: str | None = None  # cột Text, không giới hạn
 
     def to_input(self) -> AddConditionInput:
         return AddConditionInput(condition_code=self.condition_code, note=self.note)

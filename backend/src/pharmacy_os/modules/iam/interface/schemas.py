@@ -27,7 +27,9 @@ attempt would reject anyway, and iam never sends mail."""
 
 
 class LoginRequest(BaseModel):
-    email: str = Field(pattern=_EMAIL_PATTERN)
+    # 320 = độ rộng cột ``users.email``: dài hơn thì không tài khoản nào khớp được,
+    # chặn sớm cho đỡ một vòng truy vấn. Không chặn ``password`` (xem CreateUserRequest).
+    email: str = Field(pattern=_EMAIL_PATTERN, max_length=320)
     password: str
     branch_id: UUID | None = None
     """Omit when the account reaches a single branch; required otherwise (the
@@ -98,9 +100,13 @@ class MeResponse(BaseModel):
 
 
 class CreateUserRequest(BaseModel):
-    email: str = Field(pattern=_EMAIL_PATTERN)
+    # max_length khớp đúng độ rộng cột — không chặn ở đây thì Postgres ném
+    # StringDataRightTruncationError và client nhận 500 thay vì 422 (PROJECT_STATE §7aq).
+    # ``password`` KHÔNG chặn trên: nó chỉ đi vào bcrypt (ra 60 ký tự cố định), không
+    # xuống cột nào — chặn ở đây chỉ tổ khoá cửa người đặt mật khẩu rất dài.
+    email: str = Field(pattern=_EMAIL_PATTERN, max_length=320)
     password: str = Field(min_length=MIN_PASSWORD_LENGTH)
-    full_name: str = Field(min_length=1)
+    full_name: str = Field(min_length=1, max_length=255)
 
     def to_input(self) -> CreateUserInput:
         return CreateUserInput(email=self.email, password=self.password, full_name=self.full_name)

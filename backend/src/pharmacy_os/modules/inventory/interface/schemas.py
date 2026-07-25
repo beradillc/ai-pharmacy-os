@@ -20,7 +20,9 @@ from pharmacy_os.modules.inventory.application.dto import (
 
 class ReceiveStockRequest(BaseModel):
     drug_id: UUID
-    lot_no: str
+    # max_length khớp đúng độ rộng cột — không chặn ở đây thì Postgres ném
+    # StringDataRightTruncationError và client nhận 500 thay vì 422 (PROJECT_STATE §7aq).
+    lot_no: str = Field(max_length=64)
     expiry_date: date
     quantity: Decimal = Field(gt=0)
     cost_price: Decimal = Field(ge=0)
@@ -56,7 +58,7 @@ class ReceiptResponse(BaseModel):
 class DispenseRequest(BaseModel):
     drug_id: UUID
     quantity: Decimal = Field(gt=0)
-    ref_type: str | None = None
+    ref_type: str | None = Field(default=None, max_length=32)
     ref_id: UUID | None = None
 
     def to_input(self) -> DispenseInput:
