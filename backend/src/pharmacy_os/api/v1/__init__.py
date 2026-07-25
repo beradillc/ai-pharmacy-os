@@ -16,6 +16,7 @@ from pharmacy_os.api.v1.audit_dashboard import router as audit_dashboard_router
 from pharmacy_os.api.v1.compliance_cross import wire_compliance_sync
 from pharmacy_os.api.v1.cross_module import (
     CatalogDrugInfoProvider,
+    CatalogDrugMasterProvider,
     PrescriptionInfoAdapter,
     wire_goods_receipt_stock_in,
     wire_medication_history,
@@ -72,7 +73,10 @@ def build_api_router(container: Container) -> APIRouter:
     # cross-module subscriber uses further down.
     wire_national_sync(container)
     # Compliance: sổ thuốc kiểm soát đặc biệt + cấu hình tenant + liên thông CSDL Dược.
-    api.include_router(register_compliance(container, get_context))
+    # drug_master: first real wiring of a port defined earlier for QĐ540 Bảng 1 but never
+    # implemented — reused 2026-07-25 for the Mẫu số 06 periodic report (docs/13 mục C.7).
+    drug_master = CatalogDrugMasterProvider(container.resolve(CatalogService))
+    api.include_router(register_compliance(container, get_context, drug_master))
 
     # Catalog is authoritative for a sale's Rx status; prescription for its ref
     # validity (adapters over their services — sales imports neither module).

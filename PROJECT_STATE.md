@@ -2720,7 +2720,25 @@ khẩn hơn về mặt tuân thủ (đã trễ hạn ngoài đời) nhưng cần
 | 5 | **Cột "Hao hụt"** — ledger không phân biệt lý do xuất (bán vs hỏng/vỡ/hết hạn) — mặc định 0, để trống cho người dùng ghi theo kiểm kê thực tế |
 | 6 | `PeriodicReportRow` là **per-drug aggregate theo kỳ**, khác hẳn `LedgerBookRow` (per-transaction) vừa làm ở mạch TT18 — không gộp chung, giữ 2 hàm riêng |
 
-Code chưa bắt đầu tại thời điểm ghi mục này — tiếp tục ở mục changelog khi xong từng bước.
+### ✅ XONG (2026-07-25) — endpoint `GET /compliance/periodic-report/export`
+
+| Phần | Nội dung |
+|---|---|
+| Domain | `LedgerPeriodAggregate` (opening/received/issued + `closing_balance` tính) — port `aggregate_for_period(categories, ...)` nhận thẳng danh sách category, **không dùng `LedgerBookType`** (phạm vi Điều 35.2.a không trùng cách chia PL_VIII/PL_XVI của TT18) |
+| Infra | SQL aggregate (`SUM`/`CASE`) tính trực tiếp trong Postgres, không load lịch sử vào Python; `opening_balance` cộng dồn MỌI giao dịch trước kỳ |
+| Cross-module | **Wiring lần đầu** `DrugMasterProvider` — adapter `CatalogDrugMasterProvider` tại `api/v1/cross_module.py`, gọi cả `get_drug` + `get_drug_ingredients` (ghép sẵn hoạt chất bằng `" + "`) |
+| Application | `PeriodicReportRow`, `to_periodic_report_rows()` (ghép ledger + catalog facts, thuốc không tra được vẫn xuất hiện với tên `[không rõ: <id>]` — không âm thầm bỏ dòng), `ComplianceService.export_periodic_report()` (validate kỳ, gọi repo, ghi audit) |
+| Interface | `GET /compliance/periodic-report/export` — CSV 12 cột đúng Mẫu số 06, tái dùng `compliance.ledger.read` |
+| Audit | `AuditAction.PERIODIC_REPORT_EXPORTED` mới — `target_id` là chuỗi kỳ (`YYYY-MM-DD_YYYY-MM-DD`), không phải UUID (khác các action khác — không có entity nào đại diện cho "một kỳ báo cáo") |
+
+**3 cột luôn để trống** (nước sản xuất, quy cách đóng gói, số công văn cho phép mua) + **hao hụt
+mặc định 0** — không có nguồn dữ liệu, ghi rõ trong docstring + để người dùng điền tay trước khi
+nộp. Không mở rộng schema `catalog`.
+
+Test: unit (`closing_balance`), integration qua service (tính đúng tồn đầu/cuối kỳ qua ranh giới
+kỳ, loại đúng thuốc độc/danh mục cấm, kỳ đảo ngược bị từ chối, audit ghi đúng, ghép tên thuốc qua
+fake `DrugMasterProvider`, thuốc không tra được vẫn xuất hiện), e2e HTTP (200 + header CSV đúng +
+401 không token). 4 cổng xanh: ruff · mypy --strict · import-linter (16) · pytest.
 
 ---
 

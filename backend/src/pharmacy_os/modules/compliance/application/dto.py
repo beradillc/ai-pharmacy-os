@@ -171,3 +171,34 @@ class LedgerBookRow:
     lot_no: str
     expiry_date: date
     note: str | None
+
+
+@dataclass(slots=True)
+class PeriodicReportRow:
+    """Một dòng báo cáo định kỳ Mẫu số 06 (docs/13 mục C.7 — NĐ163 Điều 35.2), 1 dòng/thuốc.
+
+    Khác hẳn ``LedgerBookRow`` (per-transaction, mẫu sổ nội bộ TT18): đây là **tổng theo kỳ 6
+    tháng/năm**, mẫu gửi UBND cấp tỉnh. ``manufacturing_country``/``packaging_spec``/
+    ``purchase_permit_no`` luôn ``None`` — catalog chưa lưu 3 trường này (docs/features/
+    bao-cao-dinh-ky-nd163/01_DECISIONS.md mục "Nợ đã biết"), để trống có chủ đích chứ không phải
+    thiếu sót, người dùng điền tay trước khi nộp. ``shrinkage`` mặc định 0 vì ledger không phân
+    biệt lý do xuất (bán vs hỏng/vỡ/hết hạn) — cần kiểm kê thực tế để điền, không suy ra được.
+    """
+
+    drug_id: UUID
+    drug_name: str
+    dosage_form: str | None
+    active_ingredients: str
+    strength: str | None
+    registration_no: str | None
+    unit: str
+    opening_balance: Decimal
+    received_in_period: Decimal
+    total: Decimal
+    issued_in_period: Decimal
+    closing_balance: Decimal
+    manufacturing_country: str | None = None
+    packaging_spec: str | None = None
+    purchase_permit_no: str | None = None
+    shrinkage: Decimal = Decimal(0)
+    note: str | None = None

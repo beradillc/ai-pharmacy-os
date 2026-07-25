@@ -24,6 +24,7 @@ from pharmacy_os.modules.clinical.application import (
     ClinicalService,
 )
 from pharmacy_os.modules.clinical.domain import AiContextType
+from pharmacy_os.modules.compliance.domain import DrugMasterFacts
 from pharmacy_os.modules.crm.application import CrmService, MedicationHistoryItemInput
 from pharmacy_os.modules.crm.domain import MedicationHistorySource
 from pharmacy_os.modules.inventory.application import (
@@ -398,6 +399,41 @@ class CatalogDrugInfoProvider:
             requires_prescription=drug.prescription_required,
             name=drug.name,
             unit=drug.base_unit,
+        )
+
+
+class CatalogDrugMasterProvider:
+    """Adapter for compliance's ``DrugMasterProvider`` (docs/13 mục B, C.7).
+
+    First real wiring of this port — it was defined alongside ``NationalDrugRecord`` for QĐ540
+    Bảng 1 but never implemented. Reused as-is 2026-07-25 for the Mẫu số 06 periodic report
+    (NĐ163 Điều 35.2), which needs the same catalog facts (name/form/strength/registration_no/
+    base_unit). Same shape as :class:`CatalogDrugInfoProvider` above — compliance never imports
+    catalog directly.
+    """
+
+    def __init__(self, catalog: CatalogService) -> None:
+        self._catalog = catalog
+
+    async def get(self, drug_id: UUID, tenant_id: UUID) -> DrugMasterFacts | None:
+        ctx = RequestContext(
+            tenant_id=tenant_id,
+            branch_id=tenant_id,
+            user_id=_SYSTEM_USER,
+            permissions=frozenset({"catalog.read"}),
+        )
+        try:
+            drug = await self._catalog.get_drug(drug_id, ctx)
+            ingredients = await self._catalog.get_drug_ingredients(drug_id, ctx)
+        except NotFoundError:
+            return None
+        return DrugMasterFacts(
+            registration_no=drug.registration_no,
+            base_unit=drug.base_unit,
+            name=drug.name,
+            form=drug.form,
+            strength=drug.strength,
+            active_ingredients=" + ".join(ref.name for ref in ingredients),
         )
 
 

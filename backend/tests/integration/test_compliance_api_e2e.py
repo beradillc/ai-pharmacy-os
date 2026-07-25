@@ -269,3 +269,31 @@ def test_ket_xuat_so_tu_choi_mau_so_khong_ton_tai(client: TestClient) -> None:
         params={"date_from": "2026-07-01", "date_to": "2026-07-31"},
     )
     assert r.status_code == 422
+
+
+def test_ket_xuat_bao_cao_dinh_ky_mau_so_06(client: TestClient) -> None:
+    """NĐ163 Điều 35.2.a — docs/13 mục C.7."""
+    admin = _login(client)
+    drug = str(uuid4())
+    _ghi_so(client, admin, drug_id=drug, direction="NHAP", quantity="80")
+
+    r = client.get(
+        "/api/v1/compliance/periodic-report/export",
+        headers=_auth(admin),
+        params={"date_from": "2026-07-01", "date_to": "2026-07-31"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "bao-cao-mau06-" in r.headers["content-disposition"]
+    dong = [d for d in r.text.splitlines() if d.strip()]
+    assert dong[0].startswith("tt,ten_thuoc_day_du,nuoc_san_xuat")
+    assert drug in dong[1]
+    assert dong[1].split(",")[0] == "1"  # cột TT
+
+
+def test_ket_xuat_bao_cao_dinh_ky_can_token(client: TestClient) -> None:
+    r = client.get(
+        "/api/v1/compliance/periodic-report/export",
+        params={"date_from": "2026-07-01", "date_to": "2026-07-31"},
+    )
+    assert r.status_code == 401

@@ -15,10 +15,14 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import NotFoundError, ValidationError
 from pharmacy_os.core.security import require_permission
-from pharmacy_os.modules.compliance.application.csv_export import to_book_rows
+from pharmacy_os.modules.compliance.application.csv_export import (
+    to_book_rows,
+    to_periodic_report_rows,
+)
 from pharmacy_os.modules.compliance.application.dto import (
     ControlledLedgerEntryOutput,
     LedgerBookRow,
+    PeriodicReportRow,
     RecordControlledEntryInput,
     SetTenantComplianceConfigInput,
     TenantComplianceConfigOutput,
@@ -26,6 +30,7 @@ from pharmacy_os.modules.compliance.application.dto import (
 from pharmacy_os.modules.compliance.domain import (
     ComplianceError,
     ControlledLedgerEntry,
+    ControlledSubstanceCategory,
     CustomerDetail,
     LedgerBookType,
     LedgerDirection,
@@ -34,12 +39,25 @@ from pharmacy_os.modules.compliance.domain import (
 )
 from pharmacy_os.modules.compliance.domain.ports import (
     ControlledLedgerRepository,
+    DrugMasterFacts,
+    DrugMasterProvider,
     TenantComplianceConfigRepository,
 )
 
 UowFactory = Callable[[], UnitOfWork]
 LedgerRepoFactory = Callable[[UnitOfWork, RequestContext], ControlledLedgerRepository]
 ConfigRepoFactory = Callable[[UnitOfWork, RequestContext], TenantComplianceConfigRepository]
+
+#: Phạm vi NĐ163 Điều 35.2.a — không gồm THUOC_DOC/DANH_MUC_CAM (Điều 35.2.b chỉ bắt bán lẻ
+#: báo cáo phóng xạ, không bắt 2 nhóm đó; cũng không gồm NONE — thuốc không kiểm soát).
+_PERIODIC_REPORT_CATEGORIES = (
+    ControlledSubstanceCategory.GAY_NGHIEN,
+    ControlledSubstanceCategory.HUONG_THAN,
+    ControlledSubstanceCategory.TIEN_CHAT,
+    ControlledSubstanceCategory.PHOI_HOP_GN,
+    ControlledSubstanceCategory.PHOI_HOP_HT,
+    ControlledSubstanceCategory.PHOI_HOP_TC,
+)
 
 
 class ComplianceService:
@@ -49,11 +67,13 @@ class ComplianceService:
         ledger_repo_factory: LedgerRepoFactory,
         config_repo_factory: ConfigRepoFactory,
         audit: AuditLogger,
+        drug_master: DrugMasterProvider | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._ledger_repo_factory = ledger_repo_factory
         self._config_repo_factory = config_repo_factory
         self._audit = audit
+        self._drug_master = drug_master
 
     async def record_controlled_entry(
         self, data: RecordControlledEntryInput, ctx: RequestContext
@@ -149,6 +169,43 @@ class ComplianceService:
                 book_type, from_date=from_date, to_date=to_date, drug_id=drug_id
             )
         return list(to_book_rows(entries))
+
+    async def export_periodic_report(
+        self, *, from_date: date, to_date: date, ctx: RequestContext
+    ) -> list[PeriodicReportRow]:
+        """Báo cáo định kỳ Mẫu số 06 (docs/13 mục C.7 — NĐ163 Điều 35.2.a).
+
+        Phạm vi thuốc: GN/HT/TC + 3 nhóm dạng phối hợp — **không gồm** thuốc độc/danh mục cấm
+        (Điều 35.2.b chỉ bắt bán lẻ báo cáo phóng xạ, không bắt báo cáo 2 nhóm đó; BeraLLC cũng
+        không kinh doanh 2 nhóm này). Cố ý tách khỏi ``LedgerBookType`` — xem
+        :meth:`ControlledLedgerRepository.aggregate_for_period`.
+        """
+        require_permission(ctx, "compliance.ledger.read")
+        if from_date > to_date:
+            raise ValidationError("from_date không được sau to_date")
+        async with self._uow_factory() as uow:
+            repo = self._ledger_repo_factory(uow, ctx)
+            aggregates = await repo.aggregate_for_period(
+                _PERIODIC_REPORT_CATEGORIES, from_date=from_date, to_date=to_date
+            )
+        drug_facts: dict[UUID, DrugMasterFacts] = {}
+        if self._drug_master is not None:
+            for agg in aggregates:
+                facts = await self._drug_master.get(agg.drug_id, ctx.tenant_id)
+                if facts is not None:
+                    drug_facts[agg.drug_id] = facts
+        rows = to_periodic_report_rows(aggregates, drug_facts)
+
+        await self._audit.record(
+            AuditEntry(
+                tenant_id=ctx.tenant_id,
+                actor_user_id=ctx.user_id,
+                action=AuditAction.PERIODIC_REPORT_EXPORTED,
+                target_type="periodic_report",
+                target_id=f"{from_date.isoformat()}_{to_date.isoformat()}",
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+        )
+        return rows
 
     async def set_tenant_config(
         self, data: SetTenantComplianceConfigInput, ctx: RequestContext

@@ -18,11 +18,13 @@ kết xuất phần BẢNG của sổ kèm ``drug_id`` để đối chiếu, ch�
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from decimal import Decimal
+from uuid import UUID
 
-from pharmacy_os.modules.compliance.application.dto import LedgerBookRow
+from pharmacy_os.modules.compliance.application.dto import LedgerBookRow, PeriodicReportRow
 from pharmacy_os.modules.compliance.domain import ControlledLedgerEntry, LedgerDirection
+from pharmacy_os.modules.compliance.domain.ports import DrugMasterFacts, LedgerPeriodAggregate
 
 #: Thứ tự cột của file kết xuất, bám mẫu sổ Phụ lục VIII/XVI cột (1)–(8).
 #: Ổn định: thêm cột mới thì nối vào cuối, không đảo thứ tự.
@@ -91,3 +93,99 @@ def to_book_rows(entries: Iterable[ControlledLedgerEntry]) -> Iterator[LedgerBoo
             expiry_date=entry.expiry_date,
             note=entry.note,
         )
+
+
+#: Thứ tự cột của báo cáo định kỳ, bám Mẫu số 06 Phụ lục II NĐ163 cột (1)–(12). ``ten_co_so``,
+#: kỳ báo cáo, chữ ký... nằm ở phần đầu/cuối mẫu, không phải cột bảng — không xuất ở đây, người
+#: dùng điền khi ghép vào biểu mẫu chính thức.
+PERIODIC_REPORT_CSV_HEADER: tuple[str, ...] = (
+    "tt",  # (1)
+    "ten_thuoc_day_du",  # (2) tên/dạng bào chế/hoạt chất/nồng độ-hàm lượng/quy cách/số ĐKLH
+    "nuoc_san_xuat",  # (3)
+    "don_vi_tinh",  # (4)
+    "so_cong_van_cho_phep_mua",  # (5)
+    "ton_ky_truoc",  # (6)
+    "nhap_trong_ky",  # (7)
+    "tong_so",  # (8)
+    "xuat_trong_ky",  # (9)
+    "ton_cuoi_ky",  # (10)
+    "hao_hut",  # (11)
+    "ghi_chu",  # (12)
+    "drug_id",  # ngoài mẫu — đối chiếu nội bộ
+)
+
+
+def _mo_ta_thuoc(row: PeriodicReportRow) -> str:
+    """Cột (2) Mẫu số 06 — ghép các phần đã biết, bỏ qua phần không có dữ liệu.
+
+    ``packaging_spec``/``registration_no`` có thể ``None`` (chưa lưu ở catalog hoặc thuốc chưa
+    có số ĐKLH) — bỏ qua phần đó thay vì in "None" hay để dấu phẩy trống giữa các phần.
+    """
+    parts = [row.drug_name]
+    if row.dosage_form:
+        parts.append(row.dosage_form)
+    if row.active_ingredients:
+        parts.append(row.active_ingredients)
+    if row.strength:
+        parts.append(row.strength)
+    if row.packaging_spec:
+        parts.append(row.packaging_spec)
+    if row.registration_no:
+        parts.append(f"SĐK {row.registration_no}")
+    return ", ".join(parts)
+
+
+def periodic_report_row_to_csv(index: int, row: PeriodicReportRow) -> list[str]:
+    """Một dòng báo cáo định kỳ thành list ô chuỗi, khớp :data:`PERIODIC_REPORT_CSV_HEADER`.
+
+    ``index`` là số thứ tự (1-based) trong file — không phải thuộc tính của ``row``, vì thứ tự
+    chỉ có ý nghĩa tại thời điểm xuất (phụ thuộc cách sắp xếp của người gọi), không phải dữ liệu
+    cố hữu của một dòng báo cáo.
+    """
+    return [
+        str(index),
+        _mo_ta_thuoc(row),
+        row.manufacturing_country or "",
+        row.unit,
+        row.purchase_permit_no or "",
+        _so_luong(row.opening_balance),
+        _so_luong(row.received_in_period),
+        _so_luong(row.total),
+        _so_luong(row.issued_in_period),
+        _so_luong(row.closing_balance),
+        _so_luong(row.shrinkage) if row.shrinkage else "",
+        row.note or "",
+        str(row.drug_id),
+    ]
+
+
+def to_periodic_report_rows(
+    aggregates: Iterable[LedgerPeriodAggregate],
+    drug_facts: Mapping[UUID, DrugMasterFacts],
+) -> list[PeriodicReportRow]:
+    """Ghép số liệu ledger (đã tổng theo kỳ) với thông tin thuốc từ catalog.
+
+    Thuốc không tra được trong ``drug_facts`` (đã xóa khỏi catalog nhưng còn lịch sử giao dịch)
+    vẫn phải xuất hiện — không được âm thầm bỏ sót một dòng khỏi báo cáo pháp lý chỉ vì thiếu
+    tên hiển thị. Dùng ``drug_id`` làm tên tạm trong trường hợp đó.
+    """
+    rows = []
+    for agg in aggregates:
+        facts = drug_facts.get(agg.drug_id)
+        rows.append(
+            PeriodicReportRow(
+                drug_id=agg.drug_id,
+                drug_name=facts.name if facts is not None else f"[không rõ: {agg.drug_id}]",
+                dosage_form=facts.form if facts is not None else None,
+                active_ingredients=facts.active_ingredients if facts is not None else "",
+                strength=facts.strength if facts is not None else None,
+                registration_no=facts.registration_no if facts is not None else None,
+                unit=facts.base_unit if facts is not None else "",
+                opening_balance=agg.opening_balance,
+                received_in_period=agg.received_in_period,
+                total=agg.opening_balance + agg.received_in_period,
+                issued_in_period=agg.issued_in_period,
+                closing_balance=agg.closing_balance,
+            )
+        )
+    return rows

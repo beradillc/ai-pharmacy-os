@@ -313,11 +313,14 @@ xuất khẩu, nhập khẩu thuốc, nguyên liệu làm thuốc đến khi cơ
 > đây là việc cần xử lý bên ngoài phần mềm trước (liên hệ Sở Y tế/UBND tỉnh), không phải chờ code
 > xong mới xử lý.
 
-**Trạng thái implement:** **CHƯA CÓ** trong code — đây là tính năng hoàn toàn mới, ngoài phạm vi
-6-bước đã duyệt cho mạch TT18 (docs/features/tt18-kiem-soat-dac-biet/). Cần qua cổng
-`docs/14_FEATURE_PROCESS.md` trước khi code (Bước 0-3), dù dữ liệu nguồn (ledger) đã có sẵn qua
-`ControlledLedgerEntry` — phần việc mới là **tổng hợp theo kỳ 6 tháng/năm** + **kết xuất đúng Mẫu
-số 06** + (tùy chọn) nhắc lịch nộp báo cáo trước hạn.
+**Trạng thái implement: ĐÃ XONG (2026-07-25)**, qua đủ cổng `docs/14_FEATURE_PROCESS.md` Bước 0-3
+(`docs/features/bao-cao-dinh-ky-nd163/01_DECISIONS.md`). Endpoint
+`GET /compliance/periodic-report/export` — tổng hợp theo kỳ bằng SQL aggregate (không load lịch
+sử vào Python), ghép tên/đơn vị/hoạt chất từ `catalog` qua wiring **lần đầu tiên** của
+`DrugMasterProvider` (port có sẵn từ trước cho QĐ540 nhưng chưa từng dùng). Mỗi lần xuất ghi 1
+dòng audit `PERIODIC_REPORT_EXPORTED`. 3 cột không có nguồn dữ liệu (nước sản xuất, quy cách đóng
+gói, số công văn cho phép mua) và cột hao hụt để trống có chủ đích — điền tay trước khi nộp, xem
+"Nợ đã biết" trong tài liệu Bước 0-3.
 
 ---
 

@@ -13,9 +13,11 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.http import csv_stream_body
 from pharmacy_os.modules.compliance.application import (
     LEDGER_BOOK_CSV_HEADER,
+    PERIODIC_REPORT_CSV_HEADER,
     ComplianceService,
     NationalSyncService,
     ledger_book_row_to_csv,
+    periodic_report_row_to_csv,
 )
 from pharmacy_os.modules.compliance.domain import LedgerBookType
 from pharmacy_os.modules.compliance.interface.schemas import (
@@ -90,8 +92,41 @@ def build_router(get_context: ContextDep) -> APIRouter:
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
+    @router.get("/periodic-report/export")
+    async def export_periodic_report(
+        date_from: date = Query(..., description="Từ ngày (bao gồm)"),
+        date_to: date = Query(..., description="Đến ngày (bao gồm)"),
+        service: ComplianceService = Depends(_compliance_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> StreamingResponse:
+        """Báo cáo định kỳ Mẫu số 06 dạng CSV — NĐ 163/2025 Điều 35.2.a (docs/13 mục C.7).
+
+        Kỳ 6 tháng (01/01–30/06, nộp trước 15/7) hoặc năm (01/01–31/12, nộp trước 15/01), gửi
+        UBND cấp tỉnh. Dùng lại quyền ``compliance.ledger.read``. Mỗi lần gọi ghi 1 dòng audit
+        ``PERIODIC_REPORT_EXPORTED`` — bằng chứng "đã tạo báo cáo kỳ này lúc nào, ai tạo" khi
+        thanh tra hỏi.
+
+        3 cột không có nguồn dữ liệu trong hệ thống (nước sản xuất, quy cách đóng gói, số công
+        văn cho phép mua trong nước) và cột hao hụt luôn để trống trong file — điền tay theo
+        thực tế trước khi nộp (xem `docs/features/bao-cao-dinh-ky-nd163/01_DECISIONS.md`).
+        """
+        rows = await service.export_periodic_report(from_date=date_from, to_date=date_to, ctx=ctx)
+
+        async def csv_rows() -> AsyncIterator[Sequence[str]]:
+            for index, row in enumerate(rows, start=1):
+                yield periodic_report_row_to_csv(index, row)
+
+        filename = f"bao-cao-mau06-{ctx.tenant_id}-{date_from}_{date_to}.csv"
+        return StreamingResponse(
+            csv_stream_body(PERIODIC_REPORT_CSV_HEADER, csv_rows()),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
     # Khai báo SAU route "books/..." là cố ý: FastAPI khớp theo thứ tự, để trước thì
     # "books" bị bắt làm ``entry_id`` và request kết xuất sổ trả 422 thay vì file.
+    # ("periodic-report/export" ở trên không cần quan tâm thứ tự này — khác hẳn prefix
+    # "/controlled-ledger/", không có đường nào khớp nhầm.)
     @router.get("/controlled-ledger/{entry_id}", response_model=ControlledLedgerEntryResponse)
     async def get_ledger_entry(
         entry_id: UUID,
