@@ -17,7 +17,8 @@
 | Sửa đổi nhiều VB (mỹ phẩm/dược/HIV/ATTP) | 29/2020/TT-BYT | 31/12/2020 | ⚪ Thấp — 2 điểm nhỏ liên quan TT20/2017 | `Thông-tư-29-2020-TT-BYT.SUMMARY.md` |
 | Chuẩn dữ liệu đầu ra liên thông bán lẻ thuốc | 540/QĐ-QLD | 20/8/2018 | 🟢 Đã distill đủ ở docs/13 | `540_QD-QLD_m_391359.SUMMARY.md` |
 | Kế hoạch triển khai CSDL Dược | 1867/QĐ-BYT | 24/6/2026 | 🟢 Đã distill ở docs/13 — có bảng cập nhật blocker | `Quyết-định-1867-QĐ-BYT.SUMMARY.md` |
-| Thuốc/nguyên liệu kiểm soát đặc biệt | 20/2017/TT-BYT | 10/5/2017 | 🟢 Đã distill đủ ở docs/13 | `Thông-tư-20-2017-TT-BYT.SUMMARY.md` |
+| **Thuốc/nguyên liệu kiểm soát đặc biệt (HIỆN HÀNH)** | **18/2026/TT-BYT** | 01/6/2026 (**hiệu lực 16/7/2026**) | 🔴 **Cao** — thay TT20/2017; có nghĩa vụ MỚI cho bán lẻ (sổ PL XVI, biên bản PL XVIII, chữ ký số Điều 15) | `Thông-tư-18-2026-TT-BYT.SUMMARY.md` |
+| ~~Thuốc/nguyên liệu kiểm soát đặc biệt~~ | ~~20/2017/TT-BYT~~ | 10/5/2017 | ⚫ **HẾT HIỆU LỰC 16/7/2026** (TT18 Điều 16.4) — giữ làm lịch sử | `Thông-tư-20-2017-TT-BYT.SUMMARY.md` |
 
 ## Việc tiếp theo cần đọc trước
 
@@ -35,5 +36,7 @@
 | 1 | BeraLLC có cần Giấy chứng nhận đủ điều kiện kinh doanh dịch vụ xử lý DLCN (NĐ356 Điều 21-27) không? | `Nghị-định-356-2025-NĐ-CP.SUMMARY.md` | Cần tư vấn luật sư — không tự kết luận |
 | 2 | Thiết kế đồng ý (consent) tách theo mục đích + delete/export cho `Customer` — chưa có trong `CrmService` | `Luật-91-2025-QH15.SUMMARY.md` | Trợ lý Code thiết kế, GĐ duyệt trước khi code (cross-cutting PII) |
 | 3 | Vẫn thiếu: NĐ 163/2025/NĐ-CP, NĐ 90/2026/NĐ-CP, đặc tả API CSDL Dược, văn bản kê đơn ngoại trú tổng quát | `Quyết-định-1867-QĐ-BYT.SUMMARY.md` | Sếp thả văn bản khi có — không chặn hồ sơ KH/in bill, chỉ chặn wiring liên thông CSDL Dược thật |
+| 6 | ⭐ **(2026-07-25)** Thiếu **NĐ 163/2025** ⇒ **chưa kết luận được** nhà thuốc bán lẻ có nghĩa vụ báo cáo định kỳ hay không (TT18 chỉ hướng dẫn phần cơ sở **phi thương mại**); thiếu **TT 33/2025** + **TT 26/2025** ⇒ policy lưu trữ mất căn cứ | `Thông-tư-18-2026-TT-BYT.SUMMARY.md` mục 8 | Chain thả văn bản khi có — **chặn** mục C.4 và kết luận báo cáo ở docs/13 |
+| 7 | **(2026-07-25)** TT18 Điều 15.1.d buộc ký sổ điện tử bằng **chữ ký số / xác nhận điện tử** — hệ thống chưa có. Chain chốt: **thiết kế trước, chưa code** | `Thông-tư-18-2026-TT-BYT.SUMMARY.md` mục 7 | Trợ lý Code soạn đề xuất 3 hướng, Chain duyệt |
 | 4 | ⭐ **Đã tìm thấy nguồn Luật cho rule "ETC cần đơn thuốc"** (Luật Dược Điều 2.27-28 + Điều 6.5.h — cấm bán lẻ ETC không đơn) mà `docs/13_COMPLIANCE_SPEC.md` dòng 14 đang đánh dấu "KHÔNG TÌM THẤY"; cũng tìm thấy nguồn Luật cấp cao nhất cho yêu cầu liên thông CSDL Dược (Điều 75.2 sửa bởi Luật 44/2024) | `Luật-105-2016-QH13.SUMMARY.md`, `Luật-44-2024-QH15.SUMMARY.md` | Sếp xác nhận có nên cập nhật `docs/13_COMPLIANCE_SPEC.md` (spec đã khóa) hay không — Trợ lý Code không tự sửa |
 | 5 | **"Chuỗi nhà thuốc"** (Luật 44/2024) là khái niệm pháp lý mới, khớp sẵn với kiến trúc `tenant_id`+`branch_id` hiện tại (Customer scope theo tenant, không theo branch — đã validate đúng hướng); nhưng RBAC/IAM khi thiết kế cần role riêng "chuyên môn cấp chuỗi" vs "chuyên môn cấp nhà thuốc" | `Luật-44-2024-QH15.SUMMARY.md` | Đưa vào bài toán thiết kế IAM khi mở (chưa quyết định ngay) |
