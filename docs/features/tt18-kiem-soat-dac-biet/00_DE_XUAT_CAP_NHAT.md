@@ -70,5 +70,13 @@ TT18/2026 có hiệu lực **16/7/2026** và **bãi bỏ TT20/2017**, trong khi 
 | Bước | Trạng thái | Ghi chú |
 |:---:|---|---|
 | 1 — tài liệu | ✅ **XONG 2026-07-25** | `docs/13` mục C viết lại theo TT18 + mục C.5/C.6 mới + Traceability #22–27 + changelog mục H; `docs/legal/README.md` cập nhật; SUMMARY TT18 đầy đủ |
-| 2 — seed danh mục | ⬜ Chưa bắt đầu | PL I (42 GN) + PL II (72 HT) + PL III (8 TC) + giới hạn PL IV/V/VI |
-| 3 — sổ PL XVI | ⬜ Chưa bắt đầu | Enum +2 giá trị, `book_type`, migration, export 2 mẫu sổ |
+| 2 — seed danh mục | ✅ **XONG 2026-07-25** | `8a4f49a` entity `ControlledSubstance` · `10691e7` bảng `controlled_substances` (mig `0024`) + 122 hoạt chất sinh tự động từ văn bản gốc, seed có nhánh cập nhật, đã thử trên CSDL có dữ liệu sẵn |
+| 3 — sổ PL XVI | ✅ **XONG 2026-07-25** | `be763d1` enum 9 giá trị + `LedgerBookType` · `ea85d94` `list_for_book()`, CSV export, endpoint `GET /compliance/controlled-ledger/books/{book_type}/export` |
+
+### Nợ phát sinh khi làm bước 3 (chưa duyệt, không tự làm)
+
+| # | Nợ | Vì sao dừng |
+|---|---|---|
+| 1 | **Phần đầu sổ** (tên thuốc/nồng độ, số ĐKLH, đơn vị tính, nhà sản xuất) chưa kết xuất được ⇒ file CSV hiện là **phần bảng của sổ**, chưa phải sổ hoàn chỉnh để in ra ký | Các trường này thuộc `catalog`; phải mở rộng read-port `DrugMasterFacts` = **cross-module**, kỷ luật 2 buộc đề xuất thiết kế và chờ duyệt |
+| 2 | Tự động suy `category` từ công thức thuốc theo 9 tiêu chí PL VII + ngưỡng PL IV/V/VI (hiện vẫn gán tay) | Cũng cần đọc thành phần hoạt chất từ `catalog` — **cross-module**, và không nằm trong 6 bước Chain đã duyệt |
+| 3 | Xuất Excel (mới có CSV) | Chưa ai yêu cầu; CSV mở được bằng Excel. Chờ Chain nói có cần .xlsx đúng khuôn mẫu để in không |

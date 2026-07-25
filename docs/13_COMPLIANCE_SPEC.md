@@ -190,7 +190,16 @@ Hệ thống phải phủ đủ cột của **3** mẫu sổ bắt buộc (trư�
   `hoat_chat_nong_do`, `don_vi_tinh`, `so_luong_ban`, `ten_khach_hang`, `dia_chi_khach_hang`, `ghi_chu`.
 
 > Phụ lục XIX **vẫn không có cột số CCCD/CMND** — chỉ "Tên khách hàng" và "Địa chỉ". Xem rule C.3.2.
-> ⇒ Ledger cần thêm trường phân loại sổ (`book_type`: `PL_VIII` | `PL_XVI`) để kết xuất đúng mẫu.
+
+**Cách implement `book_type` (chốt khi code 2026-07-25):** `LedgerBookType` (`PL_VIII` | `PL_XVI`)
+là hàm **suy ra từ `category`** (`book_type_for()`), **không lưu thành cột** — lưu thì có 2 nguồn
+sự thật cho cùng một dữ kiện và chúng lệch nhau được. Hệ quả: không cần migration cho phần này.
+
+**Nợ còn mở của phần kết xuất:** hai mẫu sổ có **cùng 8 cột (1)–(8)** nên dùng chung một hàm
+shaping; nhưng **phần ĐẦU SỔ chưa kết xuất được** — `Tên cơ sở`/`Địa chỉ`/`Điện thoại`,
+`Tên thuốc, nồng độ/hàm lượng`, `Số ĐKLH`, `Đơn vị tính` (PL XVI thêm `Nhà sản xuất`) nằm ở
+`catalog`, đọc chúng phải mở rộng read-port `DrugMasterFacts` ⇒ **cross-module, chờ duyệt thiết kế**.
+File CSV hiện tại là **phần bảng của sổ + cột `drug_id`**, chưa phải sổ hoàn chỉnh để in ra ký.
 
 ### C.3 Rule kiểm tra bắt buộc khi tạo giao dịch Bán hàng (Validation Rules)
 1. **Thuốc kê đơn (`RxClass.ETC`):**
@@ -334,9 +343,13 @@ Mỗi lần đẩy 1 bản ghi/lô: `id`, `tenant_id`, `payload_type` (drug/sale
 | 10 | Hạ mức kết luận "bán lẻ miễn báo cáo định kỳ" từ **không áp dụng** → **chưa kết luận được** (chờ NĐ 163/2025) | G, #27 | Thận trọng |
 | 11 | Thêm Traceability #22–27 | Traceability | Đối chiếu |
 
+**Đã implement 2026-07-25 (bước 2–3, Chain duyệt):** mục 3, 4, 5 của bảng trên đã vào code —
+bảng `controlled_substances` (mig `0024`) + seed 122 hoạt chất, enum 9 giá trị, `LedgerBookType`
+suy ra từ `category`, endpoint kết xuất CSV 2 mẫu sổ. Mục 7 (lưu trữ), 8 (chữ ký số), 9 (biên bản
+PL XVIII) **vẫn là nợ**.
+
 **Chưa làm trong đợt này (Chain chốt 2026-07-25):** chữ ký số (chỉ thiết kế), job kết xuất cuối
 ngày, seed danh mục thuốc độc/danh mục cấm (nhà thuốc BeraLLC **không bán** 2 nhóm này — chỉ dựng
 khung enum + sổ PL XVI cho thuốc dạng phối hợp).
 
-**Code CHƯA đổi theo spec này** tại thời điểm ghi changelog — xem
-`docs/features/tt18-kiem-soat-dac-biet/00_DE_XUAT_CAP_NHAT.md` để biết bước nào đã làm.
+Trạng thái từng bước: `docs/features/tt18-kiem-soat-dac-biet/00_DE_XUAT_CAP_NHAT.md` mục 6.

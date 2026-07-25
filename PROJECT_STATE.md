@@ -2589,8 +2589,53 @@ dòng miễn trừ đã chết; (2) test hành vi — đúng các endpoint từn
 | `docs/legal/README.md` | TT18 vào bảng tra (🔴), TT20 gạch "hết hiệu lực"; thêm 2 dòng việc chưa làm |
 | `docs/features/tt18-kiem-soat-dac-biet/00_DE_XUAT_CAP_NHAT.md` | Mới — 6 bước, việc bị chặn, quyết định Chain, nhật ký thực thi |
 
-**Code chưa đổi.** Bước 2 (seed PL I/II/III + giới hạn IV/V/VI) và bước 3 (enum +2, `book_type`,
-migration, export 2 mẫu sổ) **chưa bắt đầu**.
+### Bước 2 — seed danh mục pháp lý (2 commit)
+
+| Commit | Nội dung |
+|---|---|
+| `8a4f49a` | Domain thuần: `ControlledSubstanceAppendix` + entity `ControlledSubstance` (ngưỡng PL IV/V/VI, `limit_note` cho 2 ngưỡng dạng câu điều kiện, `is_effective_on()` cho mốc riêng 01/6/2026) |
+| `10691e7` | Bảng `controlled_substances` (mig `0024`, dùng chung không tenant-scoped) + `seeds/tt18_controlled_substances.py` **sinh tự động từ bản trích văn bản gốc**, không chép tay |
+
+**Số liệu đã đối chiếu:** PL I 42 · PL II 72 · PL III 8 = **122 hoạt chất**; **62** chất có ngưỡng
+(PL IV 13 · PL V 43 · PL VI 6) — khớp đủ, **không dòng ngưỡng nào mồ côi** (bẫy duy nhất: PL II ghi
+`MEPROBAMATE`, PL V ghi `MEPROBAMAT`, đã map alias).
+
+**Thử trên CSDL có dữ liệu sẵn (kỷ luật 7), xác nhận bằng SQL thật — không tin log:**
+
+| Lần chạy | Kết quả |
+|---|---|
+| Lần đầu | `created=122`, đếm theo phụ lục 42/72/8 khớp |
+| Ép nhánh cập nhật (sửa sai 2 dòng, xóa 1 dòng) | `created=1, updated=2` — TRAMADOL về đúng 37,5 mg, ETOMIDATE về đúng mốc 01/6/2026, tổng lại 122 |
+
+Seed **có nhánh cập nhật**, không chỉ insert-nếu-thiếu — đúng bài học §7l: danh mục pháp lý sửa
+ngưỡng thì deployment cũ phải được ghi đè, nếu không sẽ phân loại sai thuốc dạng phối hợp.
+
+### Bước 3 — 2 mẫu sổ + kết xuất (2 commit)
+
+| Commit | Nội dung |
+|---|---|
+| `be763d1` | Domain: enum **7 → 9 giá trị** (`THUOC_DOC`, `DANH_MUC_CAM`); `LedgerBookType` + `book_type_for()`; rule bán ra miễn thông tin khách hàng cho 2 nhóm mới (Điều 12.3 chỉ buộc sổ xuất/nhập/tồn) |
+| `ea85d94` | Port `list_for_book()` + repo; `application/csv_export.py` (tồn lũy kế **reset theo từng thuốc** vì mẫu sổ bắt mỗi thuốc một sổ riêng); endpoint `GET /compliance/controlled-ledger/books/{book_type}/export` |
+
+**3 quyết định tự chốt khi code:**
+
+| # | Quyết định | Lý do |
+|---|---|---|
+| 1 | `book_type` **suy ra từ `category`**, KHÔNG lưu thành cột | Lưu thì có 2 nguồn sự thật cho cùng dữ kiện và lệch nhau được. Hệ quả tốt: bước 3 **không cần migration** |
+| 2 | Route `books/...` khai báo **trước** `/{entry_id}` | FastAPI khớp theo thứ tự — để sau thì "books" bị bắt làm UUID, request kết xuất trả 422 thay vì file |
+| 3 | Số lượng bỏ 0 thừa khi kết xuất (`100.000` → `100`, giữ `37.5`) | Sổ in ra để ký phải đọc như người ghi tay |
+
+### Nợ phát sinh — KHÔNG tự làm, đã ghi rõ trong code lẫn tài liệu
+
+| Nợ | Vì sao dừng |
+|---|---|
+| **Phần đầu sổ** (tên thuốc/nồng độ, số ĐKLH, đơn vị tính, nhà sản xuất) ⇒ CSV hiện là **phần bảng của sổ + `drug_id`**, chưa phải sổ hoàn chỉnh in ra ký | Trường thuộc `catalog`, phải mở rộng read-port `DrugMasterFacts` = **cross-module**, kỷ luật 2 buộc chờ duyệt |
+| Tự động suy `category` từ công thức thuốc theo 9 tiêu chí PL VII | Cũng cross-module; ngoài 6 bước Chain đã duyệt |
+| Xuất Excel đúng khuôn mẫu để in | Chưa ai yêu cầu — CSV mở được bằng Excel |
+| Bước 4 (biên bản PL XVIII), 5 (kết xuất cuối ngày), 6 (chữ ký số) | Chain chốt để đợt sau; chữ ký số **chỉ thiết kế, chưa code** |
+
+**Cổng chất lượng cuối mạch:** ruff · mypy --strict · import-linter (16 contract) · **pytest 782** ·
+`alembic check` không drift.
 
 ---
 
@@ -2598,7 +2643,7 @@ migration, export 2 mẫu sổ) **chưa bắt đầu**.
 
 | Ngày | Thay đổi |
 |------|----------|
-| 2026-07-25 | **TT 18/2026 THAY TT 20/2017 — bước 1/3, chỉ tài liệu (§7ar)** — Chain thả bookmark TT18, yêu cầu chuẩn bị biểu mẫu + hỏi trình tự trước khi code. Trích nguyên văn: TT18 **hiệu lực 16/7/2026, bãi bỏ TT20/2017 + TT27/2024** ⇒ mục C của `docs/13` đang dựa trên văn bản chết 9 ngày. Báo cáo định kỳ **vẫn không áp cho bán lẻ** (Điều 7 thuộc Chương II — cơ sở phi thương mại) nhưng **hạ mức xuống "chưa kết luận được"** vì nghĩa vụ báo cáo của cơ sở kinh doanh nằm ở **NĐ 163/2025** — chưa có văn bản. Cái thật sự bỏ sót là **3 nghĩa vụ khác**: sổ **PL XVI** (Điều 12.3, TT20 không có), **biên bản nhận lại PL XVIII** (trước gạt ngoài phạm vi), **chữ ký số Điều 15.1.d** (không có gì). Lưu trữ mất căn cứ (chờ TT 33/2025 + TT 26/2025). Chain chốt: làm **bước 1–3**, chữ ký số **chỉ thiết kế**, sửa spec **tại chỗ + changelog**, **không bán thuốc độc** ⇒ không seed QĐ 3235. Bước 1 xong: SUMMARY TT18 đầy đủ, `docs/13` mục C viết lại + C.5/C.6 mới + Traceability #22–27 + changelog mục H, `docs/legal/README.md`, bản đề xuất 6 bước. **Code chưa đổi.** |
+| 2026-07-25 | **TT 18/2026 THAY TT 20/2017 — bước 1/3, chỉ tài liệu (§7ar)** — Chain thả bookmark TT18, yêu cầu chuẩn bị biểu mẫu + hỏi trình tự trước khi code. Trích nguyên văn: TT18 **hiệu lực 16/7/2026, bãi bỏ TT20/2017 + TT27/2024** ⇒ mục C của `docs/13` đang dựa trên văn bản chết 9 ngày. Báo cáo định kỳ **vẫn không áp cho bán lẻ** (Điều 7 thuộc Chương II — cơ sở phi thương mại) nhưng **hạ mức xuống "chưa kết luận được"** vì nghĩa vụ báo cáo của cơ sở kinh doanh nằm ở **NĐ 163/2025** — chưa có văn bản. Cái thật sự bỏ sót là **3 nghĩa vụ khác**: sổ **PL XVI** (Điều 12.3, TT20 không có), **biên bản nhận lại PL XVIII** (trước gạt ngoài phạm vi), **chữ ký số Điều 15.1.d** (không có gì). Lưu trữ mất căn cứ (chờ TT 33/2025 + TT 26/2025). Chain chốt: làm **bước 1–3**, chữ ký số **chỉ thiết kế**, sửa spec **tại chỗ + changelog**, **không bán thuốc độc** ⇒ không seed QĐ 3235. Bước 1 xong: SUMMARY TT18 đầy đủ, `docs/13` mục C viết lại + C.5/C.6 mới + Traceability #22–27 + changelog mục H, `docs/legal/README.md`, bản đề xuất 6 bước. **Bước 2–3 xong cùng ngày:** 122 hoạt chất PL I/II/III + ngưỡng PL IV/V/VI vào bảng `controlled_substances` (mig `0024`; seed **có nhánh cập nhật**, đã ép chạy nhánh đó trên CSDL có dữ liệu sẵn — `created=1, updated=2`); enum **7→9 giá trị** (`THUOC_DOC`, `DANH_MUC_CAM`); `LedgerBookType` **suy từ `category`**, không lưu cột ⇒ không cần migration; endpoint `GET /compliance/controlled-ledger/books/{book_type}/export` kết xuất CSV 2 mẫu sổ, tồn lũy kế reset theo từng thuốc. **Nợ ghi rõ, không tự làm:** phần đầu sổ (tên thuốc, số ĐKLH, ĐVT, nhà sản xuất) chưa xuất được vì phải mở read-port `DrugMasterFacts` — cross-module, chờ duyệt. 4 cổng xanh, pytest **782**, `alembic check` không drift. |
 | 2026-07-25 | **RÀ TOÀN BỘ ĐỘ RỘNG CỘT `varchar` (§7aq)** — GĐ đề xuất cuối §7ap, Chain duyệt. Rà 88 cột/40 bảng: từ vựng đóng (24 enum, permission, role code, event type, target_type, ref_type, hash) **không còn cột nào tràn** sau mig `0023`; nhưng **input người dùng thủng hệ thống** — chỉ 17/159 trường schema có `max_length`, xác nhận live 6/7 endpoint thử trả **500** (`/customers` full_name+phone, `/users` email+full_name, `/drugs` name, `/suppliers` phone). Vá bằng `max_length` khớp độ rộng cột cho 29 trường/8 module (`275cb9a`); verify live 6 request đó nay **422**, chuỗi dài đúng bằng cột vẫn 201 (không chặn thừa). **Cố ý KHÔNG bắt `DBAPIError` đổi thành 4xx** — sẽ nuốt mất lỗi nội bộ vốn cần nổ to. Không chặn mật khẩu/refresh token (không lưu thô) và cột `Text`. 2 cổng chặn tái diễn: test cấu trúc (mọi trường chuỗi request phải chặn hoặc miễn trừ có lý do) + test hành vi (endpoint từng 500 nay 422). 4 cổng xanh, pytest **741**. **Nợ còn mở:** cột `Text` chưa giới hạn (chờ Chain chốt mức nghiệp vụ) · 2 cột dư đúng 1 ký tự · hash sha256 khít 64/64. |
 | 2026-07-25 | **MODULE `analytics` XONG — SPRINT 7 ĐÓNG (§7ap)** — nối phiên bị **cúp điện 07:00** cắt ngang giữa bước 7/8. Dự báo trung bình trượt 90 ngày + mốc tái đặt hàng cấp thuốc×chi nhánh, đề xuất sinh **PO nháp** DRAFT trong `procurement`, dashboard doanh thu/top thuốc/cảnh báo tồn. 8 bước, 4 commit trong phiên này (`0bfb41b`→`a40de7e`→`77faa5e`→`97a4560`). **3 lỗi phát hiện khi rà**: (1) cổng ruff đỏ tại HEAD từ bước 4/8; (2) **`audit_logs.action` varchar(32) trong khi 3 action dài 33–36 ký tự → Postgres 500, mà 734 test vẫn xanh vì SQLite bỏ qua độ dài** — 2/3 action có từ trước, bug sống trên deployment thật, vá bằng mig `0023` + test chặn tái diễn; (3) **PO nháp ghi bằng system-user** lệch thiết kế Chain duyệt, mở cửa hậu leo thang quyền — nay ghi bằng identity người bấm. Kỷ luật #7 chạy đủ: seed idempotent + verify SQL (3 role có quyền, cashier/warehouse không) + round-trip API token thật trên PG (materialize sinh PO DRAFT thật, audit ghi đúng người bấm), dữ liệu thử đã dọn. 4 cổng xanh, pytest **734**, import-linter **16/0**, mig `0001`→`0023`. **Nợ mang sang (không tính DoD):** report đợt 2, retry DAV lên outbox, tồn-âm async, `analytics` v2, FE analytics. |
 | 2026-07-25 | **LỌC DOANH THU THEO NHÂN VIÊN XONG (§7ao)** — gỡ nợ §7an. Chain duyệt PA (a): thêm cột `sold_by_user_id` trên `sales_orders` (nullable vĩnh viễn, ghi từ JWT lúc chốt đơn), lọc `GET /reports/revenue/export?sold_by_user_id`. 3 commit stepped (`cd98f7b`→`8771234`→`b76a99b`), migration `0021` live+reversible (đã verify cột/index bằng `psql`, downgrade/upgrade sạch, `alembic check` không drift), backup `~/backup_pre_migration_20260725_0239.sql`. Tái dùng `sales.read` — KHÔNG quyền mới. 4 cổng xanh, pytest **695**. Kỷ luật #7 không áp dụng (thêm cột, không đụng seed/permission). `RevenueRow`/CSV giữ nguyên (chỉ thêm filter, không thêm chiều nhóm). **`analytics` vẫn chờ Opus.** |
