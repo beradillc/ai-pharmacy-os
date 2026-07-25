@@ -121,7 +121,7 @@ phân tích tồn/đề xuất nhập sinh PO nháp.
 - ⬜ `analytics` v2: phát hiện bất thường, mùa vụ/dịch bệnh, override lead-time theo tenant, chạy nền định kỳ
 - ⬜ *Nợ kỹ thuật đã ghi:* cảnh báo/khoá tồn-âm khi chạy outbox chế độ async — xem [TODO.md](TODO.md)
 
-**Cổng chất lượng (2026-07-25):** `pytest` **734** · `mypy --strict` **245 file** · `import-linter`
+**Cổng chất lượng (2026-07-25):** `pytest` **741** · `mypy --strict` **245 file** · `import-linter`
 **16 contract / 0 broken** · `ruff check` + `format --check` sạch · migration `0001`→`0023` live/reversible.
 
 Xem chi tiết & lịch sử: [PROJECT_STATE.md](PROJECT_STATE.md) · lộ trình đầy đủ: [ROADMAP.md](ROADMAP.md).

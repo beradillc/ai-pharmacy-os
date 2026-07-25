@@ -23,7 +23,7 @@
 | Module nghiệp vụ  | ✅ `catalog` (Hexagonal 4 lớp + hoạt chất `ActiveIngredient`/`DrugIngredient` persist được, migration `0008`), `inventory`, `sales`, `prescription` (cross-module: sale→dispense, sale↔prescription-ref S5.4); ✅ `compliance` (C.1–C.5 đủ); ✅ `clinical` (S5.5 A1 đủ 4 lớp + auto-check tương tác/dị ứng cross-module + `TenantAiSettings` feature-flag theo tenant, router `/clinical/*` + `/clinical/settings`, mock LLM); ✅ `crm` (Hexagonal 4 lớp đủ: `Customer`/`Allergy`(theo hoạt chất, FK `active_ingredients`)/`Condition`/`MedicationHistoryEntry`, `CrmService`, router `/customers/*`, migration `0009`); ✅ `procurement` (Hexagonal 4 lớp đủ: `Supplier`/`PurchaseOrder`+`PurchaseOrderItem`/`GoodsReceiptNote`+`GoodsReceiptItem`, `ProcurementService`, router `/suppliers`+`/purchase-orders`+`/goods-receipts`, migration `0011`; **cross-module GRN confirmed → `inventory` tạo lô** ở composition root, migration `0012` bảng `stock_reconciliation_needed`); ✅ `iam` (§7k); ✅ **`analytics`** (Hexagonal 4 lớp đủ: `ReorderSuggestion` + công thức reorder thuần, `AnalyticsService`, bảng `reorder_suggestions` migration `0022`, router `/analytics/*`; **cross-module qua 5 adapter ở `api/v1/analytics_wiring.py`** đọc `sales`/`inventory`/`procurement` và ghi PO nháp — `analytics` KHÔNG import module nghiệp vụ nào, §7ap) |
 | Demo              | ✅ `demo_preview.py` — chạy end-to-end, trung thực (clinical đánh dấu CHƯA làm)                        |
 | Self-Refine       | ✅ docstring use-case + edge-case test; xem [TODO.md](TODO.md)                                         |
-| Chất lượng        | *(2026-07-25)* ✅ ruff · ✅ format (351 file) · ✅ import-linter (**16/0**) · ✅ mypy strict (**245 file**) · ✅ pytest (**734**) |
+| Chất lượng        | *(2026-07-25)* ✅ ruff · ✅ format (353 file) · ✅ import-linter (**16/0**) · ✅ mypy strict (**245 file**) · ✅ pytest (**741**) |
 | Hạ tầng dev       | ✅ docker compose healthy (xác nhận `docker compose ps` 2026-07-25 09:0x — bật lại sau cúp điện 07:00); ✅ alembic `0001`..`0023` (áp live Postgres, `0023` reversible/no-drift); ✅ seed ATC + tương tác mẫu + system roles idempotent |
 | Sprint kế tiếp    | **Sprint 7 ĐÓNG** — kế tiếp **Sprint 8 (Plugin & Liên thông)** theo ROADMAP. **Chưa mở** — chờ lệnh Chain. Trước khi mở, cân nhắc 2 việc nền: FE cho các module đã có backend (hiện chỉ có POS tối thiểu), và `# BLOCKER: AI__API_KEY` thật của Sprint 5. |
 
@@ -2496,10 +2496,68 @@ từng mua ⇒ `can_materialize=false`, không vỡ. Chạy **on-demand**.
 
 ---
 
+## 7aq. Rà toàn bộ độ rộng cột `varchar` — Chain duyệt sau §7ap (2026-07-25)
+
+> GĐ đề xuất cuối §7ap, Chain duyệt ngay. Đích: bịt nốt loại điểm mù mà bug
+> `audit_logs.action` vừa lộ ra — **cột hẹp hơn dữ liệu thật, mà SQLite không bắt được**.
+
+### Phạm vi rà: 88 cột `varchar` có giới hạn trên 40 bảng
+
+| Nhóm dữ liệu đổ vào cột | Cách kiểm | Kết quả |
+|---|---|---|
+| 24 enum chuỗi | So `max(len(value))` với độ rộng cột | ✅ Không cột nào tràn (sau mig `0023`). Sát nhất: `InteractionSeverity` 15/16 và `SyncStatus` 7/8 — **dư đúng 1 ký tự** |
+| Permission (`role_permissions` 64) | `max(ALL_PERMISSIONS)` = 27 | ✅ dư nhiều |
+| Role code (`roles.code` 64) | dài nhất `branch_pharmacist` = 17 | ✅ |
+| Event type (`event_outbox` 100) | 14 event, dài nhất `StockShortfallDetected` = 22 | ✅ |
+| `audit_logs.target_type` (64) | Chuỗi literal tại call site, dài nhất `stock_reconciliation_needed` = 27 | ✅ |
+| `stock_movements.ref_type` (32) | literal, dài nhất 4 | ✅ |
+| Các hash | bcrypt 60/128 · sha256 hex **64/64** | ⚠️ Đúng khít, dư 0 — đổi sang sha512 hoặc thêm tiền tố `sha256:` là gãy |
+| **Input người dùng** | Thử thật bằng token thật | ❌ **Thủng hệ thống — xem dưới** |
+
+### Lỗi tìm được: input người dùng không bị chặn độ dài ở cổng vào
+
+Chỉ **17/159** trường chuỗi trong schema có `max_length`. Chuỗi dài hơn cột đi thẳng
+xuống Postgres → `StringDataRightTruncationError` → **500**. Xác nhận trên PG thật, 6/7
+endpoint thử đều 500:
+
+| Request thử | Cột | Trước | Sau vá |
+|---|---|---|---|
+| `POST /customers` `full_name` 300 ký tự | 255 | **500** | 422 |
+| `POST /customers` `phone` 40 | 32 | **500** | 422 |
+| `POST /users` `email` 405 | 320 | **500** | 422 |
+| `POST /users` `full_name` 300 | 255 | **500** | 422 |
+| `POST /drugs` `name` 300 | 255 | **500** | 422 |
+| `POST /suppliers` `phone` 40 | 32 | **500** | 422 |
+| `POST /suppliers` `name` 300 | 255 | 422 *(vốn đã chặn)* | 422 |
+| `POST /customers` `full_name` **đúng 255** | 255 | — | **201** (không chặn thừa) |
+
+### Cách vá + 3 quyết định tự chốt
+
+| # | Quyết định | Lý do |
+|---|---|---|
+| 1 | Chặn ở **tầng schema** (thêm `max_length` cho 29 trường / 8 module), KHÔNG bắt `DBAPIError` rồi đổi thành 4xx | Bắt kiểu đó sẽ **nuốt luôn** chuỗi quá dài do chính hệ thống sinh ra — mà đúng một ca như thế (`audit_logs.action`) chỉ lộ ra được vì nó nổ thành 500. Giữ cho lỗi nội bộ vẫn ồn |
+| 2 | **Không** chặn mật khẩu / refresh token | Không lưu thô (bcrypt ra 60 ký tự, sha256 ra 64) nên không có cột để tràn. Chặn trên còn có hại: khoá cửa người đặt mật khẩu rất dài |
+| 3 | **Không** chặn các cột `Text` (`note`, `diagnosis`, `address`, `instructions`) | Postgres không giới hạn `Text` → không có ca truncation. *Nhưng đây là nợ còn mở, xem dưới* |
+
+**2 cổng chặn tái diễn:** (1) test cấu trúc — mọi trường chuỗi request phải có
+`max_length` **hoặc** nằm trong danh sách miễn trừ **có ghi lý do**, kèm test phụ bắt
+dòng miễn trừ đã chết; (2) test hành vi — đúng các endpoint từng 500 nay phải trả 422.
+
+### Nợ còn mở sau đợt rà này
+
+| Mục | Ghi chú |
+|---|---|
+| Cột `Text` không giới hạn đầu vào | Client vẫn post được `note`/`diagnosis`/`address` cỡ vài MB. Không phải 500, nhưng là đường DoS rẻ tiền. **Cần Chain chốt giới hạn nghiệp vụ** (bao nhiêu ký tự là hợp lý cho 1 ghi chú dị ứng?) — không tự đặt |
+| 2 cột dư đúng 1 ký tự | `drug_interactions.severity` 16 và `national_sync_logs.status` 8. Thêm 1 giá trị enum dài hơn là gãy; test guard hiện chỉ phủ `AuditAction`, chưa phủ toàn bộ enum↔cột |
+| Hash sha256 khít 64/64 | Đổi thuật toán băm hoặc thêm tiền tố là gãy ngay. Chưa có test chặn |
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-25 | **RÀ TOÀN BỘ ĐỘ RỘNG CỘT `varchar` (§7aq)** — GĐ đề xuất cuối §7ap, Chain duyệt. Rà 88 cột/40 bảng: từ vựng đóng (24 enum, permission, role code, event type, target_type, ref_type, hash) **không còn cột nào tràn** sau mig `0023`; nhưng **input người dùng thủng hệ thống** — chỉ 17/159 trường schema có `max_length`, xác nhận live 6/7 endpoint thử trả **500** (`/customers` full_name+phone, `/users` email+full_name, `/drugs` name, `/suppliers` phone). Vá bằng `max_length` khớp độ rộng cột cho 29 trường/8 module (`275cb9a`); verify live 6 request đó nay **422**, chuỗi dài đúng bằng cột vẫn 201 (không chặn thừa). **Cố ý KHÔNG bắt `DBAPIError` đổi thành 4xx** — sẽ nuốt mất lỗi nội bộ vốn cần nổ to. Không chặn mật khẩu/refresh token (không lưu thô) và cột `Text`. 2 cổng chặn tái diễn: test cấu trúc (mọi trường chuỗi request phải chặn hoặc miễn trừ có lý do) + test hành vi (endpoint từng 500 nay 422). 4 cổng xanh, pytest **741**. **Nợ còn mở:** cột `Text` chưa giới hạn (chờ Chain chốt mức nghiệp vụ) · 2 cột dư đúng 1 ký tự · hash sha256 khít 64/64. |
 | 2026-07-25 | **MODULE `analytics` XONG — SPRINT 7 ĐÓNG (§7ap)** — nối phiên bị **cúp điện 07:00** cắt ngang giữa bước 7/8. Dự báo trung bình trượt 90 ngày + mốc tái đặt hàng cấp thuốc×chi nhánh, đề xuất sinh **PO nháp** DRAFT trong `procurement`, dashboard doanh thu/top thuốc/cảnh báo tồn. 8 bước, 4 commit trong phiên này (`0bfb41b`→`a40de7e`→`77faa5e`→`97a4560`). **3 lỗi phát hiện khi rà**: (1) cổng ruff đỏ tại HEAD từ bước 4/8; (2) **`audit_logs.action` varchar(32) trong khi 3 action dài 33–36 ký tự → Postgres 500, mà 734 test vẫn xanh vì SQLite bỏ qua độ dài** — 2/3 action có từ trước, bug sống trên deployment thật, vá bằng mig `0023` + test chặn tái diễn; (3) **PO nháp ghi bằng system-user** lệch thiết kế Chain duyệt, mở cửa hậu leo thang quyền — nay ghi bằng identity người bấm. Kỷ luật #7 chạy đủ: seed idempotent + verify SQL (3 role có quyền, cashier/warehouse không) + round-trip API token thật trên PG (materialize sinh PO DRAFT thật, audit ghi đúng người bấm), dữ liệu thử đã dọn. 4 cổng xanh, pytest **734**, import-linter **16/0**, mig `0001`→`0023`. **Nợ mang sang (không tính DoD):** report đợt 2, retry DAV lên outbox, tồn-âm async, `analytics` v2, FE analytics. |
 | 2026-07-25 | **LỌC DOANH THU THEO NHÂN VIÊN XONG (§7ao)** — gỡ nợ §7an. Chain duyệt PA (a): thêm cột `sold_by_user_id` trên `sales_orders` (nullable vĩnh viễn, ghi từ JWT lúc chốt đơn), lọc `GET /reports/revenue/export?sold_by_user_id`. 3 commit stepped (`cd98f7b`→`8771234`→`b76a99b`), migration `0021` live+reversible (đã verify cột/index bằng `psql`, downgrade/upgrade sạch, `alembic check` không drift), backup `~/backup_pre_migration_20260725_0239.sql`. Tái dùng `sales.read` — KHÔNG quyền mới. 4 cổng xanh, pytest **695**. Kỷ luật #7 không áp dụng (thêm cột, không đụng seed/permission). `RevenueRow`/CSV giữ nguyên (chỉ thêm filter, không thêm chiều nhóm). **`analytics` vẫn chờ Opus.** |
 | 2026-07-24 | **REPORT XUẤT KHẨU đợt 1 XONG (§7an)** — GĐ giao 1/2 mục Sprint 7 còn treo (Sonnet, full-auto). `GET /reports/revenue/export` (doanh thu ngày/tuần/tháng, lọc chi nhánh) + `GET /reports/inventory/stock/export` (tồn kho theo lô/HSD) — cả hai CSV stream, KHÔNG quyền mới (tái dùng `sales.read`/`inventory.read`), KHÔNG migration. `core/http.py:csv_stream_body` tách từ audit dashboard để dùng chung. 3 commit stepped (`4c45f88`→`be9ada9`→`414269d`), live PG smoke-test khớp 100% với SQL (kỷ luật #7 tinh thần), dữ liệu thử đã dọn sạch. 4 cổng xanh, pytest **690**. **Đợt 2 (top thuốc + `ControlledLedgerEntry`) KHÔNG bắt buộc, chưa làm; lọc "theo nhân viên bán hàng" chặn ở thiếu dữ liệu — cần Chain quyết định hướng. `analytics` KHÔNG đụng — chờ phiên Opus.** |
