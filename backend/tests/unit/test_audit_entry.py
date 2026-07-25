@@ -109,3 +109,17 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
 def test_action_is_a_string_enum_so_it_round_trips_through_the_db() -> None:
     assert AuditAction("ROLE_GRANTED") is AuditAction.ROLE_GRANTED
     assert str(AuditAction.ROLE_GRANTED) == "ROLE_GRANTED"
+
+
+def test_every_action_fits_the_audit_logs_column() -> None:
+    """Postgres rejects an over-long ``action`` with a 500; SQLite (what the rest of
+    the suite runs on) silently accepts it, so nothing else here would catch a new
+    action name that outgrows the column. Three already had — see migration ``0023``.
+    The width is read off the model so the two can never drift apart.
+    """
+    from pharmacy_os.core.audit.models import AuditLogORM
+
+    width = AuditLogORM.__table__.c.action.type.length
+    assert width is not None
+    too_long = sorted(a.value for a in AuditAction if len(a.value) > width)
+    assert too_long == [], f"action names longer than varchar({width}): {too_long}"

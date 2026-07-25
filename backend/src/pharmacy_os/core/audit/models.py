@@ -47,7 +47,9 @@ class AuditLogORM(PkUuidMixin, Base):
 
     tenant_id: Mapped[UUID] = mapped_column(nullable=False)
     actor_user_id: Mapped[UUID | None] = mapped_column()
-    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    #: 64, not 32: three action names already exceed 32 chars and Postgres rejects the
+    #: insert (SQLite silently accepts it, so tests alone never catch it) — mig `0023`.
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
     target_type: Mapped[str] = mapped_column(String(64), nullable=False)
     target_id: Mapped[str | None] = mapped_column(String(64))
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
