@@ -21,6 +21,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from pharmacy_os.core.db.base import Base, PkUuidMixin, TenantScopedMixin, TimestampMixin
+from pharmacy_os.core.db.encrypted_types import EncryptedText
 
 
 class ControlledLedgerEntryORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
@@ -42,8 +43,12 @@ class ControlledLedgerEntryORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, B
     source_or_destination: Mapped[str] = mapped_column(String(255), nullable=False)
     document_no: Mapped[str] = mapped_column(String(64), nullable=False)
     prescription_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    customer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    customer_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Tên/địa chỉ bệnh nhân mua thuốc kiểm soát đặc biệt (Phụ lục XIX) — mã hoá
+    # at-rest từ Sprint 8 mục 3/4. **Đã kiểm: 2 cột này KHÔNG nằm trong CSV sổ được
+    # ký** (mẫu PL VIII/XVI chỉ 8 cột + ``drug_id``), nên mã hoá chúng không thể làm
+    # sai lệch ``content_sha256`` của bất kỳ chữ ký pháp lý nào đã lập.
+    customer_name: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
+    customer_address: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
@@ -174,13 +179,19 @@ class DrugReturnRecordORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
 
     __tablename__ = "drug_return_records"
 
-    returner_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    returner_address: Mapped[str] = mapped_column(String(500), nullable=False)
-    returner_id_number: Mapped[str] = mapped_column(String(32), nullable=False)
-    returner_id_issuer: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Người trả thuốc: PII mạnh nhất hệ thống (có **số CCCD**), mã hoá at-rest từ
+    # Sprint 8 mục 3/4. Dùng ``EncryptedText`` chứ không phải ``EncryptedString(n)``:
+    # ciphertext dài hơn bản rõ ~4/3 lần cộng nonce+tag, mà tiếng Việt có dấu chiếm
+    # 3 byte/ký tự — đoán độ rộng ở đây là tự chuốc lỗi ``StringDataRightTruncation``
+    # mà SQLite không tái hiện (§7ap/§7aq). Giới hạn độ dài **bản rõ** vẫn được giữ
+    # nguyên ở tầng schema (``RecordDrugReturnRequest``), nên không mất kiểm tra nào.
+    returner_name: Mapped[str] = mapped_column(EncryptedText, nullable=False)
+    returner_address: Mapped[str] = mapped_column(EncryptedText, nullable=False)
+    returner_id_number: Mapped[str] = mapped_column(EncryptedText, nullable=False)
+    returner_id_issuer: Mapped[str] = mapped_column(EncryptedText, nullable=False)
     returner_id_issued_at: Mapped[date] = mapped_column(Date, nullable=False)
     returner_is_patient: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    receiving_pharmacist_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    receiving_pharmacist_name: Mapped[str] = mapped_column(EncryptedText, nullable=False)
     handover_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     handover_location: Mapped[str] = mapped_column(String(500), nullable=False)
 

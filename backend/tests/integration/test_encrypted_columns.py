@@ -10,6 +10,8 @@ column with the cipher turned off and looks at what is really stored.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
+from datetime import UTC, date, datetime
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -21,6 +23,10 @@ from pharmacy_os.core.db import (
     reset_field_encryption,
 )
 from pharmacy_os.core.security.crypto import KEY_BYTES, FieldCipher, KeyRing
+from pharmacy_os.modules.compliance.infrastructure.models import (
+    ControlledLedgerEntryORM,
+    DrugReturnRecordORM,
+)
 from pharmacy_os.modules.iam.infrastructure.models import TenantORM, UserORM, UserTwoFactorORM
 
 _SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"  # a realistic 32-char base32 TOTP secret
@@ -166,6 +172,126 @@ async def test_a_ciphertext_column_survives_the_declared_width(
     stored = await _raw_secret(session_factory, row_id)
     declared = UserTwoFactorORM.__table__.c.secret.type.length
     assert len(stored) <= declared, f"ciphertext {len(stored)} vượt cột {declared}"
+
+
+# --- compliance PII -----------------------------------------------------------
+#
+# The sharpest data in the system: a patient's name and address against a
+# controlled-substance purchase (PL XIX), and the returner's **national ID number**
+# (PL XVIII). A dump containing these is a reportable personal-data breach, not an
+# inconvenience.
+
+
+async def _raw_column(
+    session_factory: async_sessionmaker[AsyncSession], table: object, column: str, row_id: object
+) -> str:
+    async with session_factory() as session:
+        result = await session.execute(
+            select(literal_column(column)).select_from(table).where(table.c.id == row_id)  # type: ignore[attr-defined]
+        )
+        return str(result.scalar_one())
+
+
+async def test_a_patients_name_and_address_are_ciphertext_in_the_ledger(
+    session_factory: async_sessionmaker[AsyncSession], cipher_on: FieldCipher
+) -> None:
+    row_id = uuid4()
+    async with session_factory() as session:
+        session.add(
+            ControlledLedgerEntryORM(
+                id=row_id,
+                tenant_id=uuid4(),
+                branch_id=uuid4(),
+                drug_id=uuid4(),
+                category="HUONG_THAN",
+                direction="XUAT",
+                quantity=Decimal("2"),
+                lot_no="L2026",
+                expiry_date=date(2028, 1, 1),
+                transaction_at=datetime(2026, 7, 26, 10, 0, tzinfo=UTC),
+                source_or_destination="Nhà thuốc Bera",
+                document_no="PXK-001",
+                customer_name="Nguyễn Thị Hoà",
+                customer_address="12 Lê Lợi, Quận 1",
+            )
+        )
+        await session.commit()
+
+    table = ControlledLedgerEntryORM.__table__
+    name = await _raw_column(session_factory, table, "customer_name", row_id)
+    address = await _raw_column(session_factory, table, "customer_address", row_id)
+
+    assert "Nguyễn Thị Hoà" not in name
+    assert "Lê Lợi" not in address
+    assert cipher_on.decrypt(name) == "Nguyễn Thị Hoà"
+    assert cipher_on.decrypt(address) == "12 Lê Lợi, Quận 1"
+
+
+async def test_the_returners_national_id_is_ciphertext(
+    session_factory: async_sessionmaker[AsyncSession], cipher_on: FieldCipher
+) -> None:
+    """The single most sensitive identifier the system stores."""
+    row_id = uuid4()
+    async with session_factory() as session:
+        session.add(
+            DrugReturnRecordORM(
+                id=row_id,
+                tenant_id=uuid4(),
+                branch_id=uuid4(),
+                returner_name="Trần Văn B",
+                returner_address="5 Nguyễn Huệ",
+                returner_id_number="079201001234",
+                returner_id_issuer="Công an TP.HCM",
+                returner_id_issued_at=date(2020, 5, 1),
+                returner_is_patient=True,
+                receiving_pharmacist_name="DS. Lê Thị C",
+                handover_at=datetime(2026, 7, 26, 9, 0, tzinfo=UTC),
+                handover_location="Quầy thuốc",
+            )
+        )
+        await session.commit()
+
+    table = DrugReturnRecordORM.__table__
+    id_number = await _raw_column(session_factory, table, "returner_id_number", row_id)
+
+    assert "079201001234" not in id_number
+    assert cipher_on.decrypt(id_number) == "079201001234"
+
+
+async def test_compliance_pii_reads_back_as_plaintext_through_the_orm(
+    session_factory: async_sessionmaker[AsyncSession], cipher_on: FieldCipher
+) -> None:
+    """Encryption must be invisible above the storage boundary, or every rule that
+    reads these values would have to know about ciphertext."""
+    row_id = uuid4()
+    async with session_factory() as session:
+        session.add(
+            DrugReturnRecordORM(
+                id=row_id,
+                tenant_id=uuid4(),
+                branch_id=uuid4(),
+                returner_name="Trần Văn B",
+                returner_address="5 Nguyễn Huệ",
+                returner_id_number="079201001234",
+                returner_id_issuer="Công an TP.HCM",
+                returner_id_issued_at=date(2020, 5, 1),
+                returner_is_patient=True,
+                receiving_pharmacist_name="DS. Lê Thị C",
+                handover_at=datetime(2026, 7, 26, 9, 0, tzinfo=UTC),
+                handover_location="Quầy thuốc",
+            )
+        )
+        await session.commit()
+
+    async with session_factory() as session:
+        row = (
+            await session.execute(
+                select(DrugReturnRecordORM).where(DrugReturnRecordORM.id == row_id)
+            )
+        ).scalar_one()
+        assert row.returner_name == "Trần Văn B"
+        assert row.returner_id_number == "079201001234"
+        assert row.receiving_pharmacist_name == "DS. Lê Thị C"
 
 
 @pytest.fixture(autouse=True)
