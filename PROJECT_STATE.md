@@ -3391,6 +3391,57 @@ tiếp theo."
 
 ---
 
+## 7be. DỪNG PHIÊN đúng nghi thức (2026-07-26) — Chain: "cho đóng phiên toàn bộ đúng quy trình"
+
+Sau khi hỏi Chain hướng xử lý blocker sandbox VNPAY (§7bd), Chain chọn đóng phiên thay vì quyết ngay
+— **không phải chọn 1 trong 2 hướng đã đề xuất** (tự đăng ký / tạm chấp nhận fake-gateway). Quyết
+định sandbox VNPAY **vẫn treo, chưa chọn hướng** — phiên sau đọc §7bd để tiếp tục hỏi, không tự suy
+diễn Chain đã ngầm chọn hướng nào.
+
+### Xác nhận trạng thái đóng phiên (đúng khuôn §7ak)
+
+| Mục | Trạng thái |
+|---|---|
+| Docker | `postgres`+`redis` healthy, chạy 2 giờ liên tục |
+| Git | Sạch, `HEAD` = `9288960` |
+| 4 cổng chất lượng | Xanh (ruff, mypy --strict 252 file backend + 4 file `payment_vnpay`, import-linter 18/0, pytest 1001 EXIT=0) |
+| Tiến trình treo | Không (kiểm `uvicorn`/`ngrok`/`pytest` — rỗng) |
+| Dữ liệu thử | Đã dọn sạch (mục mã hoá backfill §7bc); mục `payment_vnpay` không đụng Postgres thật bằng dữ liệu giả — toàn bộ test dùng SQLite/fake gateway, chỉ migration `0032` (đổi schema, không đổi dữ liệu) chạy trên Postgres thật |
+
+### Toàn bộ quyết định tự chọn trong phiên (để Chain đọc lướt khi rảnh)
+
+**Mục mã hoá at-rest bước 5/N (§7bc):**
+1. Seed 6 dòng dữ liệu thử mô phỏng "ghi trước khi có mã hoá" trực tiếp trên Postgres thật (không
+   phải CSDL rỗng pytest) để bắt lỗi backfill thật — đúng kỷ luật #7, không phải lựa chọn ngoài quy
+   trình.
+2. Cách vá lỗi thiếu import `active_ingredients`: thêm 1 dòng import + comment giải thích, không đổi
+   kiến trúc gì khác.
+
+**Mục `payment_vnpay` (§7bd) — 2 điểm đáng chú ý nhất, vì đây là 2/4 câu hỏi thiết kế đã để NGỎ cho
+Chain chốt mà phiên này tự chọn khi code (không phải Chain trả lời riêng từng câu — chỉ nói "thiết
+kế đã duyệt, tiến hành code"):**
+1. **Thêm `SaleStatus.CANCELLED`** làm trạng thái cuối cho đơn DRAFT thanh toán thất bại/huỷ — thiết
+   kế chỉ đặt câu hỏi "thêm trạng thái mới hay tái dùng cách khác", không có đề xuất mặc định. Tự
+   chọn vì đây là hệ quả tự nhiên của kiến trúc "đơn DRAFT persist thật" đã duyệt, không thấy
+   phương án nào khác hợp lý hơn — nhưng đúng ra nên hỏi lại trước khi code, không phải chỉ ghi vào
+   đây sau. **Nếu Chain có tên/thiết kế khác cho trạng thái này, đổi được dễ dàng (1 giá trị enum).**
+2. **Thêm `PaymentMethod.VNPAY`** riêng (không gộp `EWALLET`/`TRANSFER`) — cùng tình trạng, thiết kế
+   để ngỏ không có đề xuất mặc định. Tự chọn vì phục vụ đúng nhu cầu đối soát GĐ đã nêu lúc duyệt
+   thiết kế (phân biệt tiền qua cổng với tiền mặt/thẻ tại quầy).
+3. Chính sách hết hạn đơn DRAFT bị bỏ ngang: **KHÔNG tự chọn con số** (GĐ có đề xuất 15 phút lúc
+   duyệt thiết kế nhưng không thấy Chain xác nhận rõ) — để nguyên là nợ chưa code, ghi rõ trong
+   §7bd, không âm thầm implement theo đề xuất của GĐ.
+4. Response-code VNPAY (00/01/02/04/97/99) dùng đúng từ vựng công khai của VNPAY, không phải tự đặt
+   — chi tiết kỹ thuật, không phải quyết định nghiệp vụ.
+5. Thêm `backend/src/pharmacy_os/py.typed` — sửa lỗi mypy phát sinh khi có package plugin thật đầu
+   tiên, thuần kỹ thuật, không ảnh hưởng hành vi runtime.
+
+**Việc CHƯA làm, cố tình không tự làm:** đăng ký sandbox VNPAY thật (không tự làm được — cần thông
+tin liên hệ người thật), chạy tunnel công khai (chờ xác nhận trước khi tự mở port ra Internet dù
+chỉ tạm thời), hoàn tiền qua API VNPAY (ngoài phạm vi v1 theo đúng thiết kế đã duyệt).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
