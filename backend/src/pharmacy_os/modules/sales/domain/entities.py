@@ -27,6 +27,13 @@ class SaleStatus(StrEnum):
     COMPLETED = "COMPLETED"
     PARTIALLY_RETURNED = "PARTIALLY_RETURNED"
     RETURNED = "RETURNED"
+    CANCELLED = "CANCELLED"
+    """A ``DRAFT`` order whose asynchronous payment never arrived — the gateway
+    reported failure/cancellation, or (Sprint 8 mục 4/4, ``payment_vnpay``) it sat
+    unpaid past the pending window. Terminal: unlike cash sales, which are only ever
+    persisted already-``COMPLETED``, a gateway-backed sale is persisted ``DRAFT``
+    *before* payment is known, so it needs a resting place for "payment did not
+    happen" that is not just leaving the row ``DRAFT`` forever."""
 
 
 class PaymentMethod(StrEnum):
@@ -34,6 +41,11 @@ class PaymentMethod(StrEnum):
     CARD = "CARD"
     TRANSFER = "TRANSFER"
     EWALLET = "EWALLET"
+    VNPAY = "VNPAY"
+    """Settled through the ``payment_vnpay`` gateway plugin — kept distinct from
+    ``EWALLET``/``TRANSFER`` so revenue/reconciliation reporting can separate
+    gateway-settled money (arrives in the merchant's VNPAY account, reconciled
+    against VNPAY's own statement) from cash/card handled entirely in-store."""
 
 
 @dataclass(slots=True)
@@ -43,6 +55,11 @@ class Payment:
     method: PaymentMethod
     amount: Money
     id: UUID = field(default_factory=uuid4)
+    gateway_ref: str | None = None
+    """The provider's own transaction id (e.g. VNPAY's ``vnp_TransactionNo``),
+    ``None`` for cash/card handled entirely in-store. Unique at the storage layer
+    (``sale_payments.gateway_ref``) — the idempotency guard against a gateway
+    calling its webhook back more than once for the same transaction."""
 
 
 @dataclass(slots=True)
@@ -154,6 +171,17 @@ class SalesOrder:
                 f"Chưa thanh toán đủ: cần {self.subtotal.amount}, đã trả {self.paid_total.amount}"
             )
         self.status = SaleStatus.COMPLETED
+
+    def cancel(self) -> None:
+        """Give up on a pending gateway payment that failed, was cancelled, or expired.
+
+        Only ``DRAFT`` → ``CANCELLED`` (mirrors :meth:`complete`'s own guard). A
+        cash sale never reaches this: it is only ever persisted already-``COMPLETED``,
+        so there is nothing pending to cancel. This exists for the gateway-payment
+        flow, where an order is persisted ``DRAFT`` before the outcome is known.
+        """
+        self._ensure_draft()
+        self.status = SaleStatus.CANCELLED
 
     def register_return(self, line_id: UUID, quantity: Decimal) -> None:
         """Record a (partial) return of a line and update the order status."""

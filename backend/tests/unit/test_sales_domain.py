@@ -108,6 +108,32 @@ def test_cannot_mutate_after_completion() -> None:
         order.add_payment(_pay("1000"))
 
 
+def test_cancel_draft_order_sets_status() -> None:
+    order = _order()
+    order.add_line(_line())
+    order.cancel()
+    assert order.status is SaleStatus.CANCELLED
+
+
+def test_cancel_completed_order_rejected() -> None:
+    order = _order()
+    order.add_line(_line())
+    order.add_payment(_pay("20000"))
+    order.complete()
+    with pytest.raises(InvalidOrderStateError):
+        order.cancel()
+
+
+def test_cannot_add_line_or_payment_after_cancel() -> None:
+    order = _order()
+    order.add_line(_line())
+    order.cancel()
+    with pytest.raises(InvalidOrderStateError):
+        order.add_line(_line())
+    with pytest.raises(InvalidOrderStateError):
+        order.add_payment(_pay("1000"))
+
+
 def test_zero_quantity_line_rejected() -> None:
     with pytest.raises(ValueError):
         SaleLine(drug_id=uuid4(), quantity=Decimal("0"), unit_price=Money(Decimal("1000")))

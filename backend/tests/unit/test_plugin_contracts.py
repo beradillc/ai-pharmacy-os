@@ -15,6 +15,7 @@ from pharmacy_os.core.plugins.hooks import HookRegistry, ProviderConflictError
 from pharmacy_os.core.plugins.interfaces import (
     CORE_PLUGIN_API_VERSION,
     KNOWN_PORTS,
+    PaymentCallbackError,
     PaymentGateway,
     Plugin,
     PluginContext,
@@ -45,6 +46,8 @@ class _FakeGateway:
         return {"order_id": order_id, "amount": amount, "method": method}
 
     async def verify_callback(self, payload: dict[str, Any]) -> str:
+        if payload.get("bad_signature"):
+            raise PaymentCallbackError("chữ ký không hợp lệ")
         return "OK"
 
 
@@ -173,3 +176,10 @@ async def test_gateway_hooks_are_awaitable() -> None:
     charge = await gateway.create_charge("order-1", 50_000, "CARD")
     assert charge["amount"] == 50_000
     assert await gateway.verify_callback({}) == "OK"
+
+
+async def test_bad_callback_raises_the_shared_gateway_agnostic_error() -> None:
+    """A caller in ``sales`` catches this one type regardless of which gateway is
+    active — it cannot import anything plugin-specific (mục 4/4 `payment_vnpay`)."""
+    with pytest.raises(PaymentCallbackError):
+        await _FakeGateway().verify_callback({"bad_signature": True})

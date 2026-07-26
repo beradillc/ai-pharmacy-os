@@ -4,6 +4,7 @@ from pharmacy_os.core.plugins.hooks import HookRegistry, ProviderConflictError
 from pharmacy_os.core.plugins.interfaces import (
     CORE_PLUGIN_API_VERSION,
     KNOWN_PORTS,
+    PaymentCallbackError,
     PaymentGateway,
     Plugin,
     PluginContext,
@@ -18,6 +19,7 @@ __all__ = [
     "HookRegistry",
     "Plugin",
     "PluginContext",
+    "PaymentCallbackError",
     "PaymentGateway",
     "ProviderConflictError",
     "RegulatoryConnector",

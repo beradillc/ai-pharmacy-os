@@ -54,6 +54,19 @@ class Plugin(Protocol):
     def teardown(self) -> None: ...
 
 
+class PaymentCallbackError(Exception):
+    """A gateway callback failed authenticity or shape checks.
+
+    Gateway-agnostic on purpose: :meth:`PaymentGateway.verify_callback` implementations
+    (``payment_vnpay`` today, ``payment_momo`` later) raise this for anything that
+    means the payload cannot be trusted — bad signature, missing required field — so
+    the caller in ``sales`` has one exception type to catch regardless of which
+    gateway is active, rather than importing something plugin-specific (which it
+    cannot: callers live in ``pharmacy_os.modules``, plugins may not be imported
+    from there any more than the reverse).
+    """
+
+
 @runtime_checkable
 class PaymentGateway(Plugin, Protocol):
     """A payment provider (docs/09: ``payment_vnpay``, ``payment_momo``).
@@ -69,7 +82,18 @@ class PaymentGateway(Plugin, Protocol):
 
     async def create_charge(self, order_id: str, amount: int, method: str) -> dict[str, Any]: ...
 
-    async def verify_callback(self, payload: dict[str, Any]) -> str: ...
+    async def verify_callback(self, payload: dict[str, Any]) -> str:
+        """Authenticate a gateway callback and return the order id it names.
+
+        Verifies **only** the message's authenticity (e.g. the provider's HMAC) —
+        it does not interpret whether the payment succeeded. That is a business
+        decision (reading the now-trusted payload's own status field) that belongs
+        to ``sales``, not to a plugin forbidden from importing it. Raises
+        :class:`PaymentCallbackError` on a bad signature or a payload missing a
+        field the implementation needs; never returns a value that has not been
+        cryptographically verified.
+        """
+        ...
 
 
 @runtime_checkable
