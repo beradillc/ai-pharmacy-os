@@ -3605,10 +3605,108 @@ như vậy theo kỷ luật #9 mới, không viết "4 cổng xanh mỗi bước
 
 ---
 
+## 7bh. ⏸️ ĐIỂM DỪNG PHIÊN (2026-07-27) — F-4 THIẾT KẾ XONG, ĐÃ DUYỆT, **CHƯA CODE**
+
+> **Phiên sau đọc mục này rồi bắt tay code ngay — không hỏi lại gì.** Thiết kế đã trình bày đầy đủ và
+> Chain đã chốt. Dừng vì hết hạn mức, không phải vì còn vướng.
+
+### 🔜 ĐIỂM BẮT ĐẦU CHÍNH XÁC CHO PHIÊN SAU
+
+**Bắt đầu code F-4 theo thiết kế B + Tầng 1 đã duyệt.** Bước 1: `tests/concurrency/conftest.py`.
+
+### 3 quyết định Chain đã chốt (2026-07-27) — KHÔNG hỏi lại
+
+| # | Quyết định | Ràng buộc kèm theo |
+|---|---|---|
+| **1** | **Cơ chế B + Phạm vi Tầng 1** cho F-4 | Dùng **Postgres của `docker compose` sẵn có**, CSDL riêng `pharmacy_os_test` — **không** thêm phụ thuộc `testcontainers`. Phạm vi: thư mục **mới** `tests/concurrency/`, **không đụng một dòng nào** trong 1001 test hiện có. testcontainers ghi làm đường nâng cấp khi có remote (đổi 1 fixture URL) |
+| **2** | **`xfail(strict=True)`** cho test tái hiện bug ở F-4 — **có điều kiện CỨNG** | (a) **Phải đóng trước Sprint 9** — không được mang xfail vào pilot; (b) **phải xuất hiện trong `GD-DieuPhoi-GiaoViec.md` ở cột "Đứng yên từ"** (quy tắc R-9 vừa ban hành). Lý do điều kiện: xfail không có hạn dùng là cách một bug đã biết trở thành bug bị quên. Ghi rõ trong README rằng xfail = **bug đã biết**, KHÔNG phải **test đã xanh** |
+| **3** | **Mục tối ưu pytest xếp NGAY SAU F-5**, không để cuối hàng | Đây là **biện pháp phòng ngừa tái phát**, không phải tiện nghi: suite 9 phút đẩy người ta sang `--no-verify` và sang "chạy cổng một lần trên cây cuối" — đúng hai hành vi đã sinh ra C-01 và C-02 |
+
+### Thiết kế F-4 đã duyệt — tóm tắt đủ để code ngay
+
+**Vấn đề thật (không phải "test dùng SQLite"):** fixture dùng `StaticPool` ⇒ **đúng 1 kết nối dùng
+chung** ⇒ hai phiên đồng thời là **bất khả thi về vật lý**. "0 test đồng thời" (B-09) không phải sơ
+suất mà là thứ **không biểu đạt được**. Thêm nữa: `with_for_update(skip_locked=True)` có ở đúng 2 chỗ
+(`core/outbox/repository.py:75`, `compliance/infrastructure/repository.py:291`) và SQLAlchemy **bỏ
+lặng** mệnh đề đó trên SQLite. Còn B-01/B-02 thì **hiện không khoá gì cả** —
+`inventory/infrastructure/repository.py:197-219` (`adjust`: read-modify-write trần) và `:182-189`
+(`exists_for_ref`: check-then-act trần).
+
+**Việc của F-4:** làm cho **kết nối thứ hai tồn tại được**, trên engine có ngữ nghĩa khoá giống prod.
+
+| Bước | Nội dung | Commit |
+|---|---|---|
+| 1 | `tests/concurrency/conftest.py`: engine Postgres + **guard tên CSDL** + fixture 2 phiên độc lập + dọn `TRUNCATE` hẹp; `make test-concurrency`; README | 1 |
+| 2 | 8–10 test tái hiện **B-01/B-02/B-04**, đánh `xfail(strict=True)` | 1 |
+
+**4 rủi ro + cách chặn (đã duyệt):**
+
+| # | Rủi ro | Chặn |
+|---|---|---|
+| 1 | Trỏ nhầm vào `pharmacy_os` dev ⇒ **mất dữ liệu thật** (rủi ro DUY NHẤT không revert được) | Guard cứng trong conftest: **từ chối chạy** nếu tên CSDL không kết thúc `_test`. Fail ngay, không cảnh báo rồi chạy tiếp |
+| 2 | Postgres không chạy ⇒ test **skip lặng** rồi báo xanh | **FAIL TO, KHÔNG SKIP.** Skip lặng đúng là bệnh "niềm tin giả" của cả đợt kiểm toán |
+| 3 | Test đồng thời **chập chờn** | Interleaving **tất định** bằng điểm `await` của asyncio (A đọc → B đọc → A ghi+commit → B ghi+commit), **CẤM dùng `sleep`**. §7ay đã học: 1 test đỏ ngẫu nhiên 8% làm mất giá trị của chính cổng trong 5 giờ |
+| 4 | Test đồng thời **không dùng được** mẹo transaction-rollback (0,5 ms) vì 2 phiên phải thấy commit của nhau | Commit thật + dọn `TRUNCATE` **9 bảng liên quan** = 362 ms/test. Chi phí không tránh được, đã tính vào ước lượng |
+
+**Điểm không đảo ngược được bằng `git revert`: KHÔNG CÓ.** F-4 chỉ thêm file test + 1 CSDL test riêng;
+không migration, không đụng code sản phẩm. Rủi ro duy nhất là mục 1, guard đóng nó.
+
+### Số đo nền — đo thật 2026-07-27, dùng lại làm mốc, đừng đo lại
+
+| Hạng mục | Đo được |
+|---|---|
+| unit 453 test | **3,31 s** ← đây LÀ vòng lặp nhanh, F-4 không đụng |
+| integration 548 test | **531,94 s** |
+| `create_all` SQLite in-memory | 39 ms |
+| `create_all` Postgres | 1.002 ms |
+| `TRUNCATE` cả 48 bảng | 946 ms |
+| `TRUNCATE` 9 bảng (phạm vi test đồng thời) | **362 ms** |
+| transaction + `ROLLBACK` | 0,5 ms |
+| mở 2 kết nối song song | 1,6 ms |
+| `bcrypt.hashpw` rounds=12 (mặc định) | **194 ms** |
+| `bcrypt.hashpw` rounds=4 | 0,8 ms |
+| **F-4 Tầng 1 dự kiến thêm** | **≈ +4 giây** |
+
+**Phát hiện quan trọng cho mục tối ưu (quyết định #3) — đừng đi tìm lại:** profile `--durations=25`
+cho thấy **24/25 mục chậm nhất là `setup`, không phải `call`**, mỗi cái 2,3–3,0 giây. Suite chậm
+**không phải vì engine CSDL** mà vì **fixture function-scoped dựng lại toàn bộ cho từng test**
+(`create_app()` + composition root + `create_all` + bcrypt bootstrap). `create_all` SQLite chỉ 39 ms
+⇒ chỉ ~21 s trong 532 s. **178 test** chạm đường auth (11 file), mỗi lần bcrypt 194 ms.
+Ước lượng thu được nếu làm mục tối ưu: **532 s → dưới 60 s**. Hai việc cần làm ở đó, **cố ý KHÔNG gộp
+vào F-4**: (a) hạ bcrypt rounds **chỉ trong test** — chạm bảo mật, phải chặn cứng để prod không bao
+giờ nhận rounds=4; (b) sửa scope fixture — đụng cả 548 test.
+
+### Trạng thái hạ tầng lúc dừng (xác nhận bằng lệnh thật, kỷ luật #5)
+
+| Mục | Trạng thái |
+|---|---|
+| `docker compose ps` | `postgres` **Up (healthy)** · `redis` **Up (healthy)** |
+| `git status` | **Sạch** cả 2 repo (dự án + vault) |
+| `git log -1` | `9125ce8` (trước khi thêm mục này) |
+| Tiến trình treo | Không — `pytest`/`uvicorn`/`ngrok` rỗng; 2 vòng chờ nền của phiên đã `kill` |
+| CSDL thử `f4_probe` | **Đã xoá** sau khi đo xong |
+| CSDL thử `audit_empty_a` (từ Phiên B) | **Vẫn còn** — không tự xoá vì là hành động phá huỷ và Chain chưa ra lệnh. Xoá tay khi tiện: `DROP DATABASE audit_empty_a;` |
+| CSDL dev `pharmacy_os` | **Không bị chạm** trong cả phiên |
+| Pre-commit hook | Đã cài, đã chạy trên 3 commit thật của phiên, Chain đã tự kiểm chứng chặn được commit lỗi |
+
+### Trạng thái lộ trình khắc phục kiểm toán
+
+| Mục | Trạng thái |
+|---|---|
+| **F-1** phạm vi cổng + cưỡng chế | ✅ **XONG** (§7bg) |
+| **R-1→R-10** vào CLAUDE.md | ✅ **XONG** (§7bg) |
+| **F-4** nền test Postgres | 📐 **Thiết kế XONG + ĐÃ DUYỆT, chưa code** ← phiên sau bắt đầu ở đây |
+| **F-5** vá race tồn âm | ⏸️ Chờ F-4 xong mới mở |
+| Tối ưu pytest 532 s | ⏸️ Chain chốt xếp **ngay sau F-5** |
+| F-2, F-3, F-6, F-8, F-9, F-15, F-16, F-17, F-19 | ⏸️ Chưa bắt đầu. **F-6 là đường găng thật** — câu hỏi pháp lý A-05 đang ở Trợ lý Pháp Lý, chưa có trả lời |
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-27 | **F-4 THIẾT KẾ XONG + ĐÃ DUYỆT, CHƯA CODE — điểm dừng phiên (§7bh).** Chain chốt 3 quyết định, phiên sau **bắt tay code ngay không hỏi lại**: (1) **cơ chế B + Tầng 1** — dùng Postgres `docker compose` sẵn có với CSDL riêng `pharmacy_os_test`, **không** thêm `testcontainers` (lợi ích hermetic của nó là lý thuyết khi CI chưa từng chạy — C-03), phạm vi là thư mục **mới** `tests/concurrency/`, không đụng 1001 test hiện có; (2) **`xfail(strict=True)`** cho test tái hiện bug, **điều kiện cứng**: phải đóng **trước Sprint 9** và phải vào sổ điều phối cột "Đứng yên từ" (R-9) — xfail không hạn dùng là cách bug đã biết thành bug bị quên; (3) **mục tối ưu pytest xếp ngay sau F-5**, không cuối hàng, vì suite 9 phút đẩy người ta sang `--no-verify` và "chạy cổng một lần trên cây cuối" — đúng 2 hành vi sinh ra C-01/C-02. **Khảo sát đo thật:** vấn đề không phải "test dùng SQLite" mà là `StaticPool` ⇒ 1 kết nối dùng chung ⇒ 2 phiên đồng thời **bất khả thi về vật lý** (nên B-09 "0 test đồng thời" là thứ không biểu đạt được, không phải sơ suất); `with_for_update(skip_locked=True)` có đúng 2 chỗ và bị SQLAlchemy bỏ lặng trên SQLite; B-01/B-02 thì **không khoá gì cả**. **Phát hiện bất ngờ:** profile `--durations` cho thấy **24/25 mục chậm nhất là `setup`** (2,3–3,0 s mỗi cái) — suite 532 s chậm vì **fixture function-scoped dựng lại toàn bộ mỗi test**, KHÔNG phải vì engine CSDL (`create_all` SQLite chỉ 39 ms ⇒ ~21 s/532 s); bcrypt 194 ms × 178 test chạm auth. F-4 Tầng 1 chỉ thêm **≈4 giây**; vòng lặp nhanh hằng ngày **đã có sẵn** (`pytest tests/unit` = 3,31 s). Số đo nền ghi đủ trong §7bh để phiên sau không đo lại. **Không viết dòng code nào**; `f4_probe` đã xoá; `pharmacy_os` không bị chạm. |
 | 2026-07-26 | **F-1 + R-1→R-10 — CỔNG CÓ RĂNG (§7bg).** Mục đầu tiên của lộ trình khắc phục kiểm toán, Chain chốt thứ tự. **Phạm vi cổng:** ruff/format chạy từ gốc repo (390 file, trước sót 7), mypy phủ `seeds/` (252→259 file — nơi có `encrypt_backfill.py` ghi đè dữ liệu bệnh nhân thật), pytest thêm 16 test `payment_vnpay` (1001→1017 dưới cổng), gỡ `addopts="-q"` nên dòng "N passed" hiện lại. `ruff.toml` mới ở gốc + `src=["backend/src"]` — sửa đúng nguyên nhân I001 của `demo_preview.py` (file vốn ĐÚNG, `sys.path.insert` phải chạy trước), **không tắt rule không sửa code**. **Cưỡng chế:** `scripts/hooks/pre-commit` + `make hooks`, chặn commit khi ruff/format/import-linter/**mypy** đỏ (~7,3s); có mypy dù chậm vì 3 cổng nhanh chỉ chặn 2/3 ca commit-đỏ lịch sử, thêm mypy chặn 3/3 — ca thứ ba `cd98f7b` là ca duy nhất chưa ai tự khai. **Tự kiểm chứng chạy thật:** file ruff-đỏ → COMMIT_EXIT=1 HEAD không đổi; file mypy-đỏ trong `seeds/` (ruff xanh) → COMMIT_EXIT=1 HEAD không đổi (chứng minh kép: hook có mypy VÀ seeds nay trong cổng); commit thật `285af14` đi qua bình thường. **KHÔNG chặn được commit làm đỏ pytest** (536s, ngoài hook) — ghi rõ, không giấu. **R-1→R-10 vào văn bản có hiệu lực:** kỷ luật **8–13** + bổ sung **#7** (nền test Postgres) vào `AI_Pharmacy_OS/CLAUDE.md`; **R-8/R-9/R-10** (GĐ nghĩa vụ nghiệm thu · sổ thêm cột "Đứng yên từ" · cấm kết luận "không có nghĩa vụ pháp lý" chỉ từ một Thông tư) vào `CLAUDE.md` gốc vault. Đây là mục sửa đúng chỗ hỏng nặng nhất mà kiểm toán chỉ ra: 16 sự cố niềm tin giả → chỉ 1 kỷ luật được thể chế hoá, và đó là bài học duy nhất không tái phát. 3 commit: `285af14` (F-1) · `7c11aa8` (CLAUDE.md dự án) · vault `ef912cf`. 4 cổng xanh trên cây `285af14`: 1001+16 passed EXIT=0, mypy 259 file, import-linter 18/0. **Nợ:** A-08 chưa đóng (F-21), `tests/` vẫn ngoài mypy, chưa có remote nên CI vẫn chưa chạy, 12 mục chặn Sprint 9 chưa bắt đầu. |
 | 2026-07-26 | **KIỂM TOÁN ĐỘC LẬP Phiên A+B XONG — 29 phát hiện, 0 Critical, 6 High (§7bf).** Chain cho chạy đợt audit độc lập: Claude cởi bỏ vai GĐ/Trợ lý Code, mặc định mọi tuyên bố trong tài liệu là **chưa được chứng minh** cho tới khi tự chạy lệnh. **Đọc `docs/audit/00_AUDIT_INDEX.md` trước** (bảng tra cứu 29 phát hiện; 2 file phiên 2.053 dòng chỉ mở khi cần bằng chứng chi tiết). Phiên A = Giai đoạn 0 (bằng chứng nền) + 1 (kiến trúc ISO 25010), 16 phát hiện. Phiên B = Giai đoạn 2 (ASVS L2) + 3 (toàn vẹn dữ liệu) + 4 (chất test), 13 phát hiện, chạy trên **Postgres + uvicorn thật**, database `audit_empty_a` tách riêng, 2 tenant để thử cách ly. **Chain nâng A-02 + A-03 thành 🚫 RELEASE BLOCKER Sprint 9** (prod khởi động được với khoá ký JWT 3 byte / với `ENCRYPTION__ENABLED=false` — vi phạm ý đồ *fail-fast prod* dự án tự tuyên bố từ Sprint 2, và chạm dữ liệu nhạy cảm theo Luật BVDLCN 91/2025); **A-05 đánh dấu ⏸️ QUYẾT ĐỊNH KINH DOANH CHỜ CHAIN** (1 cặp credential VNPAY cho mọi tenant ⇒ tiền mọi nhà thuốc về 1 tài khoản merchant — 2 phương án + hệ quả pháp lý ở Phiên A mục A-05, **phải chốt trước khi mở sandbox VNPAY thật**). Giữ **0 Critical** vì chưa có deployment production. 4 High còn lại: A-01 (toàn bộ 1001 test chạy SQLite ⇒ `FOR UPDATE SKIP LOCKED` bị nuốt im lặng đúng 2 chỗ cần khoá hàng), B-01 (`adjust` mất cập nhật khi ghi đồng thời — chứng minh trên Postgres: IN=10, OUT=16, số dư 0), B-02 (`exists_for_ref` thua race ⇒ 2 dòng xuất kho cùng `ref_id`, không unique index đỡ), B-03 (`.env.example` bật `APP__DEBUG=true` ⇒ SQL echo đổ tên/SĐT/ngày sinh/CCCD bệnh nhân ra log). Nguyên nhân gốc chung của B-01/B-02/B-04: **0 test đồng thời trong 1001 test** (B-09), dù độ phủ dòng 96%. **Audit KHÔNG tìm ra:** 5/5 cổng xanh và số khớp tài liệu 100%, 112/112 hash trích dẫn đúng, 0 secret trong git, 0 import chéo module, 4/4 kiểu giả mạo JWT bị chặn, 0/40 endpoint thiếu kiểm quyền, 5/5 đường chéo tenant trả 404, lỗ hổng `X-Branch-Id` (§7l) và role-seeding (§7l) **đã vá thật**, outbox không mất sự kiện. **Phiên C (Giai đoạn 5 audit quy trình + Giai đoạn 6 báo cáo cuối) CHƯA LÀM — chờ phiên hạn mức đầy** vì là phiên tổng hợp/phán xét toàn dự án, cắt ngang thì báo cáo không dùng được. Điểm bắt đầu + thứ tự file cần đọc: `00_AUDIT_INDEX.md` mục 5. **Không sửa một dòng code nào; `pharmacy_os` (CSDL dev) không bị chạm.** |
 | 2026-07-26 | **`payment_vnpay` CODE XONG cả 4 bước — CHẶN ở tự kiểm tra sandbox thật (§7bd).** Mục 4/4 Sprint 8, thiết kế đã duyệt GĐ+Chain đầu phiên. 4 commit stepped (`07f2d11`→`b5c945d`→`57a1e1e`→`3799626`): domain (`SaleStatus.CANCELLED`, `PaymentMethod.VNPAY`) → app/infra/migration `0032` (`initiate_vnpay_payment`/`confirm_vnpay_callback`, `get_across_tenants` — điểm phá lệ tenant-scoping DUY NHẤT, chỉ webhook dùng) → API (`POST /sales/vnpay/initiate` + `GET /sales/vnpay/callback`, đặt trước route `{order_id}` để không bị nuốt path) → package thật `plugins/payment_vnpay/` + 2 contract import-linter mới (xác nhận có "răng" bằng cách cố tình phá rồi soi lỗi). **1 lỗi thật tự bắt được**: `vnp_Amount` không parse được sẽ 500 thay vì trả lỗi rõ ràng cho VNPAY — đã vá + thêm test. 28 test mới (16 package `payment_vnpay` + 12 integration `sales` dùng fake gateway thật qua `HookRegistry`, không mock nội bộ). 4 cổng xanh, pytest toàn repo **1001 EXIT=0** đo 2 lần bằng `PIPESTATUS[0]` trực tiếp. **CHƯA coi mục 4/4 là XONG**: thiết kế yêu cầu tường minh sandbox VNPAY thật, cần Chain cấp `tmn_code`/`hash_secret` (Claude không tự đăng ký được, giống `# BLOCKER: AI__API_KEY`) + xác nhận cho chạy tunnel công khai tạm thời. Dừng đúng chỗ, không tự sang mục kế tiếp. |
