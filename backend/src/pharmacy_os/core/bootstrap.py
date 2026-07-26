@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from pharmacy_os.core.ai import LLMProvider, MockLLMProvider
 from pharmacy_os.core.audit import AuditDashboardService, AuditLogger, AuditQueryService
+from pharmacy_os.core.config import _PLACEHOLDER as _PLACEHOLDER_SECRET
 from pharmacy_os.core.config import Settings
 from pharmacy_os.core.db import (
     OutboxSink,
@@ -23,7 +24,7 @@ from pharmacy_os.core.di import Container
 from pharmacy_os.core.events import EventBus, InMemoryEventBus
 from pharmacy_os.core.outbox import OutboxEventSink
 from pharmacy_os.core.plugins import HookRegistry, PluginLoader
-from pharmacy_os.core.security.crypto import FieldCipher, KeyRing, decode_key
+from pharmacy_os.core.security.crypto import BlindIndex, FieldCipher, KeyRing, decode_key
 from pharmacy_os.core.security.jwt import JwtService
 
 
@@ -48,6 +49,19 @@ def _build_field_cipher(settings: Settings) -> FieldCipher | None:
     return FieldCipher(ring)
 
 
+def _build_blind_index(settings: Settings) -> BlindIndex | None:
+    """The fingerprinter for searchable encrypted columns, if a key is configured.
+
+    Loaded independently of ``ENCRYPTION__ENABLED`` for the same reason as the cipher:
+    a deployment that has stopped writing ciphertext still has to *find* the rows it
+    already fingerprinted.
+    """
+    raw = settings.encryption.blind_index_key.get_secret_value()
+    if raw == _PLACEHOLDER_SECRET:
+        return None
+    return BlindIndex(decode_key(raw))
+
+
 def build_container(settings: Settings) -> Container:
     container = Container()
     container.register_instance(Settings, settings)
@@ -57,7 +71,9 @@ def build_container(settings: Settings) -> Container:
     # silently store plaintext. Settings has already refused to build if encryption is
     # switched on without a usable key set.
     configure_field_encryption(
-        _build_field_cipher(settings), write_enabled=settings.encryption.enabled
+        _build_field_cipher(settings),
+        write_enabled=settings.encryption.enabled,
+        blind_index=_build_blind_index(settings),
     )
 
     engine = build_engine(settings.db.url, pool_size=settings.db.pool_size, echo=settings.app.debug)

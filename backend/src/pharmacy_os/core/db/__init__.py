@@ -4,6 +4,7 @@ from pharmacy_os.core.db.base import Base
 from pharmacy_os.core.db.encrypted_types import (
     EncryptedString,
     EncryptedText,
+    active_blind_index,
     active_cipher,
     configure_field_encryption,
     encryption_writes_enabled,
@@ -22,6 +23,7 @@ __all__ = [
     "Base",
     "EncryptedString",
     "EncryptedText",
+    "active_blind_index",
     "active_cipher",
     "configure_field_encryption",
     "encryption_writes_enabled",

@@ -29,27 +29,43 @@ from sqlalchemy import String, Text
 from sqlalchemy.engine import Dialect
 from sqlalchemy.types import TypeDecorator
 
-from pharmacy_os.core.security.crypto import FieldCipher
+from pharmacy_os.core.security.crypto import BlindIndex, FieldCipher
 
 _cipher: FieldCipher | None = None
 _write_enabled = False
+_blind_index: BlindIndex | None = None
 
 
-def configure_field_encryption(cipher: FieldCipher | None, *, write_enabled: bool) -> None:
+def configure_field_encryption(
+    cipher: FieldCipher | None,
+    *,
+    write_enabled: bool,
+    blind_index: BlindIndex | None = None,
+) -> None:
     """Install the process-wide cipher used by the column types below.
 
     Called once from the composition root. ``cipher`` may be supplied with
     ``write_enabled=False`` — the useful state during a backfill's early phase, where
     the application can already *read* ciphertext but is not yet producing it.
     """
-    global _cipher, _write_enabled  # noqa: PLW0603 — deliberate process-wide state
+    global _cipher, _write_enabled, _blind_index  # noqa: PLW0603 — deliberate process-wide state
     _cipher = cipher
     _write_enabled = write_enabled and cipher is not None
+    _blind_index = blind_index
 
 
 def reset_field_encryption() -> None:
     """Drop the configured cipher — for tests, so one case cannot leak into the next."""
-    configure_field_encryption(None, write_enabled=False)
+    configure_field_encryption(None, write_enabled=False, blind_index=None)
+
+
+def active_blind_index() -> BlindIndex | None:
+    """The configured fingerprinter, if this deployment has an index key.
+
+    ``None`` means lookups fall back to comparing the column directly, which is
+    correct while encryption is off and during the early phase of a backfill.
+    """
+    return _blind_index
 
 
 def active_cipher() -> FieldCipher | None:

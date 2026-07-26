@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
+from pharmacy_os.core.db import active_blind_index
 from pharmacy_os.modules.crm.domain import Customer
 from pharmacy_os.modules.crm.infrastructure.mappers import to_domain, to_orm
 from pharmacy_os.modules.crm.infrastructure.models import (
@@ -19,13 +20,28 @@ from pharmacy_os.modules.crm.infrastructure.models import (
 )
 
 
+def _fingerprint(phone: str | None) -> str | None:
+    """Searchable fingerprint of *phone*, or ``None`` when there is nothing to index.
+
+    ``None`` covers two different situations on purpose — no phone on the customer,
+    and no index key on the deployment — because both mean the same thing to the
+    caller: there is no fingerprint to match on, fall back to the column itself.
+    """
+    if phone is None:
+        return None
+    index = active_blind_index()
+    return index.fingerprint(phone) if index is not None else None
+
+
 class SqlAlchemyCustomerRepository:
     def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
         self._session = session
         self._ctx = ctx
 
     async def add(self, customer: Customer) -> None:
-        self._session.add(to_orm(customer, self._ctx.tenant_id))
+        row = to_orm(customer, self._ctx.tenant_id)
+        row.phone_fingerprint = _fingerprint(customer.phone)
+        self._session.add(row)
         await self._session.flush()
 
     async def get(self, customer_id: UUID) -> Customer | None:
@@ -36,9 +52,20 @@ class SqlAlchemyCustomerRepository:
         return to_domain(row) if row is not None else None
 
     async def find_by_phone(self, phone: str) -> Customer | None:
-        stmt = select(CustomerORM).where(
-            CustomerORM.phone == phone, CustomerORM.tenant_id == self._ctx.tenant_id
+        """Look a customer up by phone, whether or not the column is encrypted.
+
+        With an index key configured the match is on :attr:`phone_fingerprint` — a
+        randomised ciphertext differs on every write, so comparing ``phone`` directly
+        would never match. Without a key (encryption off, or early in a backfill) it
+        falls back to the plain comparison, which is what the column still holds.
+        """
+        fingerprint = _fingerprint(phone)
+        predicate = (
+            CustomerORM.phone_fingerprint == fingerprint
+            if fingerprint is not None
+            else CustomerORM.phone == phone
         )
+        stmt = select(CustomerORM).where(predicate, CustomerORM.tenant_id == self._ctx.tenant_id)
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return to_domain(row) if row is not None else None
 
@@ -65,6 +92,10 @@ class SqlAlchemyCustomerRepository:
         row = (await self._session.execute(stmt)).scalar_one()
         row.full_name = customer.full_name
         row.phone = customer.phone
+        # Kept in step here rather than in the mapper: the fingerprint is a storage
+        # concern (it exists only so an encrypted column stays searchable), and the
+        # mapper is a pure translation the domain also uses.
+        row.phone_fingerprint = _fingerprint(customer.phone)
         row.dob = customer.dob
         row.gender = customer.gender
         row.weight_kg = customer.weight_kg

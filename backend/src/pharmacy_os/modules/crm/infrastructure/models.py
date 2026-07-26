@@ -21,10 +21,11 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from pharmacy_os.core.db.base import Base, PkUuidMixin, TimestampMixin
+from pharmacy_os.core.db.encrypted_types import EncryptedText
 
 
 class CustomerORM(PkUuidMixin, TimestampMixin, Base):
@@ -34,9 +35,30 @@ class CustomerORM(PkUuidMixin, TimestampMixin, Base):
 
     tenant_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    phone: Mapped[str | None] = mapped_column(String(32), index=True)
+    """**Deliberately NOT encrypted** (Sprint 8 mục 3/4). ``list()`` orders by this
+    column, and ciphertext sorts randomly — encrypting it would silently break
+    alphabetical customer listing across pages, which no blind index can restore
+    (a fingerprint preserves equality, never order). Left plaintext pending a decision
+    on whether alphabetical paging can be given up; recorded as an open debt rather
+    than quietly broken or quietly skipped."""
+
+    phone: Mapped[str | None] = mapped_column(EncryptedText)
+    """Encrypted at rest. Lookup survives via :attr:`phone_fingerprint` — the reason
+    the blind index exists at all."""
+
+    phone_fingerprint: Mapped[str | None] = mapped_column(String(64), index=True)
+    """Deterministic HMAC of the normalised phone, so ``find_by_phone`` still works
+    against an encrypted column. Kept in step with ``phone`` by the repository, which
+    is the only writer. ``NULL`` when the deployment has no index key — lookups then
+    fall back to comparing ``phone`` directly, which is correct while encryption is
+    off and during a backfill."""
+
     dob: Mapped[date | None] = mapped_column(Date)
-    gender: Mapped[str | None] = mapped_column(String(16))
+    """Not encrypted: a ``date`` column would have to become text, losing the type and
+    any future age query, for a weaker piece of PII than the phone. Deferred with the
+    reason recorded, not overlooked."""
+
+    gender: Mapped[str | None] = mapped_column(EncryptedText)
     weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
     national_id_hash: Mapped[str | None] = mapped_column(String(128))
     anonymised_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -97,7 +119,13 @@ class CustomerAllergyORM(PkUuidMixin, Base):
         ForeignKey("active_ingredients.id"), index=True, nullable=False
     )
     severity: Mapped[str] = mapped_column(String(16), nullable=False)
-    note: Mapped[str | None] = mapped_column(Text)
+    note: Mapped[str | None] = mapped_column(EncryptedText)
+    """Dữ liệu sức khoẻ (docs/14) — mã hoá at-rest.
+
+    ``ingredient_id`` ngay trên KHÔNG mã hoá được: nó là khoá ngoại tới
+    ``active_ingredients`` và là thứ ``find_allergy_alerts`` so khớp. Nghĩa là sự thật
+    y tế cốt lõi ("dị ứng hoạt chất nào") vẫn nằm dạng rõ — nói thẳng ra ở đây thay vì
+    để báo cáo ngầm hiểu là đã mã hoá xong dữ liệu dị ứng."""
 
     customer: Mapped[CustomerORM] = relationship(back_populates="allergies")
 
@@ -108,8 +136,10 @@ class CustomerConditionORM(PkUuidMixin, Base):
     customer_id: Mapped[UUID] = mapped_column(
         ForeignKey("customers.id", ondelete="CASCADE"), index=True
     )
-    condition_code: Mapped[str] = mapped_column(String(16), nullable=False)
-    note: Mapped[str | None] = mapped_column(Text)
+    condition_code: Mapped[str] = mapped_column(EncryptedText, nullable=False)
+    """Mã ICD-10 = chẩn đoán bệnh nền, dữ liệu sức khoẻ nhạy cảm nhất trong bảng này."""
+
+    note: Mapped[str | None] = mapped_column(EncryptedText)
 
     customer: Mapped[CustomerORM] = relationship(back_populates="conditions")
 
