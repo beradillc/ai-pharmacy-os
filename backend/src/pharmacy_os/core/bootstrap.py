@@ -28,7 +28,7 @@ from pharmacy_os.core.security.crypto import BlindIndex, FieldCipher, KeyRing, d
 from pharmacy_os.core.security.jwt import JwtService
 
 
-def _build_field_cipher(settings: Settings) -> FieldCipher | None:
+def build_field_cipher(settings: Settings) -> FieldCipher | None:
     """The at-rest cipher, or ``None`` when this deployment has no keys.
 
     Keys are loaded whenever they are present, even with ``ENCRYPTION__ENABLED=false``:
@@ -49,7 +49,7 @@ def _build_field_cipher(settings: Settings) -> FieldCipher | None:
     return FieldCipher(ring)
 
 
-def _build_blind_index(settings: Settings) -> BlindIndex | None:
+def build_blind_index(settings: Settings) -> BlindIndex | None:
     """The fingerprinter for searchable encrypted columns, if a key is configured.
 
     Loaded independently of ``ENCRYPTION__ENABLED`` for the same reason as the cipher:
@@ -71,9 +71,9 @@ def build_container(settings: Settings) -> Container:
     # silently store plaintext. Settings has already refused to build if encryption is
     # switched on without a usable key set.
     configure_field_encryption(
-        _build_field_cipher(settings),
+        build_field_cipher(settings),
         write_enabled=settings.encryption.enabled,
-        blind_index=_build_blind_index(settings),
+        blind_index=build_blind_index(settings),
     )
 
     engine = build_engine(settings.db.url, pool_size=settings.db.pool_size, echo=settings.app.debug)
