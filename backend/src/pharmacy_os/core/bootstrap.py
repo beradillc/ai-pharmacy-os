@@ -12,17 +12,53 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from pharmacy_os.core.ai import LLMProvider, MockLLMProvider
 from pharmacy_os.core.audit import AuditDashboardService, AuditLogger, AuditQueryService
 from pharmacy_os.core.config import Settings
-from pharmacy_os.core.db import OutboxSink, UnitOfWorkFactory, build_engine, build_sessionmaker
+from pharmacy_os.core.db import (
+    OutboxSink,
+    UnitOfWorkFactory,
+    build_engine,
+    build_sessionmaker,
+    configure_field_encryption,
+)
 from pharmacy_os.core.di import Container
 from pharmacy_os.core.events import EventBus, InMemoryEventBus
 from pharmacy_os.core.outbox import OutboxEventSink
 from pharmacy_os.core.plugins import HookRegistry, PluginLoader
+from pharmacy_os.core.security.crypto import FieldCipher, KeyRing, decode_key
 from pharmacy_os.core.security.jwt import JwtService
+
+
+def _build_field_cipher(settings: Settings) -> FieldCipher | None:
+    """The at-rest cipher, or ``None`` when this deployment has no keys.
+
+    Keys are loaded whenever they are present, even with ``ENCRYPTION__ENABLED=false``:
+    that combination is exactly what a deployment needs to *read* already-encrypted
+    columns after switching writing off, and it is the safe direction to fail — a
+    deployment can always stop writing ciphertext, but must never lose the ability to
+    read what it already wrote.
+    """
+    if not settings.encryption.keys:
+        return None
+    ring = KeyRing(
+        keys={
+            version: decode_key(secret.get_secret_value())
+            for version, secret in settings.encryption.keys.items()
+        },
+        current_version=settings.encryption.current_version,
+    )
+    return FieldCipher(ring)
 
 
 def build_container(settings: Settings) -> Container:
     container = Container()
     container.register_instance(Settings, settings)
+
+    # Install the at-rest cipher before anything can touch the database: the encrypted
+    # column types read it at query time, so a session opened before this point would
+    # silently store plaintext. Settings has already refused to build if encryption is
+    # switched on without a usable key set.
+    configure_field_encryption(
+        _build_field_cipher(settings), write_enabled=settings.encryption.enabled
+    )
 
     engine = build_engine(settings.db.url, pool_size=settings.db.pool_size, echo=settings.app.debug)
     container.register_instance(AsyncEngine, engine)

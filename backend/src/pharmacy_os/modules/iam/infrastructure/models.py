@@ -31,6 +31,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from pharmacy_os.core.db.base import Base, PkUuidMixin, TimestampMixin
+from pharmacy_os.core.db.encrypted_types import EncryptedString
 
 _BRANCH_IS_NULL = text("branch_id IS NULL")
 _BRANCH_IS_NOT_NULL = text("branch_id IS NOT NULL")
@@ -206,15 +207,16 @@ class UserTwoFactorORM(PkUuidMixin, TimestampMixin, Base):
     )
     tenant_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
 
-    secret: Mapped[str] = mapped_column(String(64), nullable=False)
-    """Base32 TOTP secret, 32 chars today (160 bits); 64 leaves room without a migration.
+    secret: Mapped[str] = mapped_column(EncryptedString(512), nullable=False)
+    """Base32 TOTP secret (32 chars, 160 bits), **encrypted at rest** since Sprint 8
+    mục 3/4 — this was the ``# TODO(sprint8-1b)`` the 2FA work left behind.
 
-    # TODO(sprint8-1b): mã hóa at-rest cột này.
-    Stored in cleartext deliberately — see ``iam.domain.two_factor.UserTwoFactor``
-    for the full reasoning. Short version: there is no key management in this
-    codebase yet, so encrypting with a key sitting in the same ``.env`` would be
-    theatre; and a database-only leak still does not yield account takeover, because
-    both login and signing also require the password.
+    512 rather than 64: the stored form is ``v{n}:base64(nonce||ciphertext||tag)``,
+    so a 32-character secret occupies ~83. The extra room is for later key versions,
+    and costs nothing in Postgres (``varchar(n)`` stores only what is written).
+
+    Encryption is gated by ``ENCRYPTION__ENABLED``; reads accept plaintext too, so a
+    deployment that has not enabled it — or is mid-backfill — keeps working.
     """
 
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="PENDING")
