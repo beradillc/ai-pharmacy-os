@@ -12,7 +12,11 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.sales.domain import SalesOrder, SaleStatus
 from pharmacy_os.modules.sales.domain.ports import DrugSalesAggRow, OrderRevenueRow
 from pharmacy_os.modules.sales.infrastructure.mappers import to_domain, to_orm
-from pharmacy_os.modules.sales.infrastructure.models import SaleLineORM, SalesOrderORM
+from pharmacy_os.modules.sales.infrastructure.models import (
+    PaymentORM,
+    SaleLineORM,
+    SalesOrderORM,
+)
 
 
 class SqlAlchemySalesRepository:
@@ -34,6 +38,19 @@ class SqlAlchemySalesRepository:
         lines_by_id = {ln.id: ln for ln in row.lines}
         for line in order.lines:
             lines_by_id[line.id].returned_quantity = line.returned_quantity
+        existing_payment_ids = {p.id for p in row.payments}
+        for payment in order.payments:
+            if payment.id in existing_payment_ids:
+                continue
+            row.payments.append(
+                PaymentORM(
+                    id=payment.id,
+                    order_id=order.id,
+                    method=payment.method.value,
+                    amount=payment.amount.amount,
+                    gateway_ref=payment.gateway_ref,
+                )
+            )
         await self._session.flush()
 
     async def get(self, order_id: UUID) -> SalesOrder | None:
@@ -41,6 +58,11 @@ class SqlAlchemySalesRepository:
             SalesOrderORM.id == order_id,
             SalesOrderORM.tenant_id == self._ctx.tenant_id,
         )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return to_domain(row) if row is not None else None
+
+    async def get_across_tenants(self, order_id: UUID) -> SalesOrder | None:
+        stmt = select(SalesOrderORM).where(SalesOrderORM.id == order_id)
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return to_domain(row) if row is not None else None
 

@@ -59,9 +59,31 @@ class DrugSalesAggRow:
 class SalesRepository(Protocol):
     async def add(self, order: SalesOrder) -> None: ...
 
-    async def update(self, order: SalesOrder) -> None: ...
+    async def update(self, order: SalesOrder) -> None:
+        """Persist mutations made to a previously-fetched order: status transitions,
+        line ``returned_quantity``, and any :class:`~.entities.Payment` present on
+        ``order`` that the stored row does not yet have (matched by ``id`` — a
+        payment already in the row is left untouched, so this is safe to call
+        again on a re-fetched order without duplicating tenders)."""
+        ...
 
     async def get(self, order_id: UUID) -> SalesOrder | None: ...
+
+    async def get_across_tenants(self, order_id: UUID) -> SalesOrder | None:
+        """Look up one order by id, **ignoring tenant scoping**.
+
+        The one deliberate exception to the tenant-scoping invariant every other
+        method here upholds — exists solely for the ``payment_vnpay`` webhook
+        (Sprint 8 mục 4/4): a gateway callback carries no ``RequestContext`` (VNPAY
+        is not one of our authenticated users), so there is no tenant to scope by
+        until *after* this call tells the caller which order — and thus which
+        tenant — the callback is even about. Read-only, single-row-by-id: it
+        cannot be used to list or search, so it cannot become a cross-tenant
+        enumeration primitive. Every *write* that follows still goes through the
+        normal tenant-scoped :meth:`update`, once the caller has built a
+        :class:`~pharmacy_os.core.context.RequestContext` from the order's own
+        ``tenant_id``/``branch_id``. Do not add a second call site for this."""
+        ...
 
     async def by_client_uuid(self, client_uuid: str) -> SalesOrder | None: ...
 

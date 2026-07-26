@@ -94,6 +94,8 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "LEDGER_DAILY_CLOSURE_EXPORTED",
         "LEDGER_BOOK_SIGNED",
         "SALE_COMPLETED",
+        "SALE_VNPAY_INITIATED",
+        "SALE_VNPAY_CANCELLED",
         "INVENTORY_STOCK_RECEIVED",
         "INVENTORY_STOCK_DISPENSED",
         "PROCUREMENT_PO_ORDERED",

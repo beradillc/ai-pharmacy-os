@@ -7,6 +7,8 @@ from pharmacy_os.modules.sales.application.dto import (
     SaleLineInput,
     SaleLineOutput,
     SaleOutput,
+    VnpayConfirmOutcome,
+    VnpayInitiateOutput,
 )
 from pharmacy_os.modules.sales.application.service import SalesService
 
@@ -18,4 +20,6 @@ __all__ = [
     "SaleLineOutput",
     "SaleOutput",
     "SalesService",
+    "VnpayConfirmOutcome",
+    "VnpayInitiateOutput",
 ]

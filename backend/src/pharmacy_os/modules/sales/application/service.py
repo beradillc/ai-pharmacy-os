@@ -20,6 +20,7 @@ from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork
 from pharmacy_os.core.errors import ConflictError, NotFoundError, ValidationError
+from pharmacy_os.core.plugins import HookRegistry, PaymentCallbackError, PaymentGateway
 from pharmacy_os.core.security import require_permission
 from pharmacy_os.modules.sales.application.dto import (
     CreateSaleInput,
@@ -31,17 +32,22 @@ from pharmacy_os.modules.sales.application.dto import (
     RevenueRow,
     SaleLineInput,
     SaleOutput,
+    VnpayConfirmOutcome,
+    VnpayInitiateOutput,
 )
 from pharmacy_os.modules.sales.domain import (
     Payment,
+    PaymentMethod,
     SaleCompleted,
     SaleLine,
     SaleReturned,
     SalesError,
     SalesOrder,
+    SaleStatus,
     SoldItem,
     ensure_prescription_valid_for_sale,
 )
+from pharmacy_os.modules.sales.domain.exceptions import EmptyOrderError
 from pharmacy_os.modules.sales.domain.ports import (
     DrugInfoProvider,
     DrugSalesAggRow,
@@ -50,6 +56,20 @@ from pharmacy_os.modules.sales.domain.ports import (
     SalesRepository,
 )
 from pharmacy_os.shared.value_objects import Money
+
+#: Stand-in ``RequestContext`` used only to construct a repository for the one
+#: tenant-unscoped read (:meth:`SalesRepository.get_across_tenants`). Its fields are
+#: never read by that call path — a webhook has no real tenant/branch/user until the
+#: order it names has been looked up, which is exactly what this call is for.
+_LOOKUP_ONLY_CTX = RequestContext(tenant_id=UUID(int=0), branch_id=UUID(int=0), user_id=UUID(int=0))
+
+#: ``RequestContext.user_id`` is required, but a webhook-confirmed order may have no
+#: salesperson to fall back on (a VNPAY payment initiated without a signed-in cashier
+#: is not a case that exists today, but the field is nullable on the order itself —
+#: see ``SalesOrder.sold_by_user_id``). Never used as an audit actor: audit rows for
+#: this path record ``actor_user_id=None`` explicitly, matching other no-human-actor
+#: actions (see ``AuditEntry.actor_user_id``).
+_SYSTEM_ACTOR = UUID(int=0)
 
 #: How many orders a revenue-report page pulls per round-trip while bucketing —
 #: same idea as the audit dashboard's export batch (PROJECT_STATE §7al): bounded
@@ -68,12 +88,14 @@ class SalesService:
         drug_info: DrugInfoProvider | None = None,
         prescription_info: PrescriptionInfoProvider | None = None,
         audit: AuditLogger | None = None,
+        hook_registry: HookRegistry | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._repo_factory = repo_factory
         self._drug_info = drug_info
         self._prescription_info = prescription_info
         self._audit = audit
+        self._hook_registry = hook_registry
 
     async def complete_sale(self, data: CreateSaleInput, ctx: RequestContext) -> SaleOutput:
         """Record and finalise a sale for the caller's tenant/branch.
@@ -161,6 +183,225 @@ class SalesService:
                 target_type="sale",
                 target_id=str(order_id),
             ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+        )
+
+    def _resolve_payment_gateway(self) -> PaymentGateway | None:
+        if self._hook_registry is None:
+            return None
+        return self._hook_registry.resolve(PaymentGateway)  # type: ignore[type-abstract]
+
+    async def initiate_vnpay_payment(
+        self, data: CreateSaleInput, ctx: RequestContext
+    ) -> VnpayInitiateOutput:
+        """Persist a ``DRAFT`` order and return a VNPAY payment link (Sprint 8 mục
+        4/4, ``payment_vnpay``).
+
+        Unlike :meth:`complete_sale`, this **does not** call ``order.complete()`` —
+        the order stays ``DRAFT`` until the gateway's webhook confirms payment
+        (:meth:`confirm_vnpay_callback`), and no :class:`SaleCompleted` is emitted
+        here, so stock is not dispensed before money has actually arrived. This is
+        the only place a ``DRAFT`` order is ever written to the database — every
+        other sale (cash/card, :meth:`complete_sale`) is built and completed
+        in-memory before it is ever persisted.
+
+        Idempotent on ``client_uuid`` like :meth:`complete_sale`: a repeated call
+        against an existing, still-``DRAFT`` order re-issues a fresh payment link
+        for it rather than creating a duplicate. Once the order has moved past
+        ``DRAFT`` (paid or cancelled), re-initiating is refused — the transaction
+        is already settled one way or the other.
+        """
+        require_permission(ctx, "sales.create")
+        if data.payments:
+            raise ValidationError(
+                "Đơn thanh toán qua cổng không nhận tiền tự khai trước — "
+                "số tiền được xác nhận qua callback của cổng thanh toán"
+            )
+        gateway = self._resolve_payment_gateway()
+        if gateway is None:
+            raise ValidationError("Cổng thanh toán chưa được bật (PLUGINS__ENABLED)")
+
+        existing = await self._order_by_client_uuid(data.client_uuid, ctx)
+        if existing is not None:
+            if existing.status is not SaleStatus.DRAFT:
+                raise ConflictError(
+                    f"Đơn {existing.id} đã ở trạng thái {existing.status.value}, "
+                    "không thể khởi tạo lại thanh toán"
+                )
+            order = existing
+        else:
+            order = SalesOrder(
+                tenant_id=ctx.tenant_id,
+                branch_id=ctx.branch_id,
+                client_uuid=data.client_uuid,
+                currency=data.currency,
+                prescription_ref=data.prescription_ref,
+                customer_id=data.customer_id,
+                sold_by_user_id=ctx.user_id,
+            )
+            try:
+                for line in data.lines:
+                    requires_rx = await self._resolve_requires_rx(line, ctx)
+                    order.add_line(
+                        SaleLine(
+                            drug_id=line.drug_id,
+                            quantity=line.quantity,
+                            unit_price=Money(line.unit_price, data.currency),
+                            requires_prescription=requires_rx,
+                        )
+                    )
+                if not order.lines:
+                    raise EmptyOrderError("Không thể khởi tạo thanh toán cho đơn rỗng")
+                await self._verify_prescription_ref(order, ctx)
+            except SalesError as exc:
+                raise ValidationError(str(exc)) from exc
+
+            async with self._uow_factory() as uow:
+                repo = self._repo_factory(uow, ctx)
+                try:
+                    await repo.add(order)
+                    await uow.commit()
+                except Exception as exc:  # unique(tenant, client_uuid) race → treat as replay
+                    await uow.rollback()
+                    replay = await self._order_by_client_uuid(data.client_uuid, ctx)
+                    if replay is None:
+                        raise ConflictError("Không thể khởi tạo đơn") from exc
+                    order = replay
+
+        charge = await gateway.create_charge(
+            order_id=str(order.id), amount=int(order.subtotal.amount * 100), method="vnpay"
+        )
+        await self._record_vnpay_initiated(ctx, order.id)
+        return VnpayInitiateOutput(order_id=order.id, payment_url=str(charge["payment_url"]))
+
+    async def confirm_vnpay_callback(self, raw_payload: dict[str, str]) -> VnpayConfirmOutcome:
+        """Process one VNPAY IPN callback (Sprint 8 mục 4/4).
+
+        No :class:`RequestContext` here — the caller is VNPAY's server, not one of
+        our authenticated users; the gateway's signature is the authentication.
+        Verifies the signature first (never touches the order on a bad one), then
+        looks the order up **across tenants** (the only call site for
+        :meth:`SalesRepository.get_across_tenants` — see its docstring), then
+        re-derives a proper tenant-scoped context from the order itself before any
+        write. Safe to call more than once for the same transaction — VNPAY retries
+        its IPN until it receives an acknowledgement, and this returns
+        :attr:`VnpayConfirmOutcome.ALREADY_CONFIRMED` rather than reprocessing.
+        """
+        gateway = self._resolve_payment_gateway()
+        if gateway is None:
+            return VnpayConfirmOutcome.GATEWAY_NOT_CONFIGURED
+        try:
+            order_id_str = await gateway.verify_callback(dict(raw_payload))
+            order_id = UUID(order_id_str)
+        except (PaymentCallbackError, ValueError):
+            return VnpayConfirmOutcome.INVALID_SIGNATURE
+
+        response_code = raw_payload.get("vnp_ResponseCode")
+        gateway_txn_no = raw_payload.get("vnp_TransactionNo") or order_id_str
+
+        async with self._uow_factory() as uow:
+            lookup_repo = self._repo_factory(uow, _LOOKUP_ONLY_CTX)
+            order = await lookup_repo.get_across_tenants(order_id)
+            if order is None:
+                return VnpayConfirmOutcome.ORDER_NOT_FOUND
+
+            if order.status is not SaleStatus.DRAFT:
+                already = any(p.gateway_ref == gateway_txn_no for p in order.payments)
+                return (
+                    VnpayConfirmOutcome.ALREADY_CONFIRMED
+                    if already or order.status is SaleStatus.CANCELLED
+                    else VnpayConfirmOutcome.ORDER_NOT_PENDING
+                )
+
+            ctx = RequestContext(
+                tenant_id=order.tenant_id,
+                branch_id=order.branch_id,
+                user_id=order.sold_by_user_id or _SYSTEM_ACTOR,
+                permissions=frozenset(),
+            )
+            repo = self._repo_factory(uow, ctx)
+
+            if response_code != "00":
+                order.cancel()
+                await repo.update(order)
+                await uow.commit()
+                await self._record_vnpay_cancelled(ctx, order.id)
+                return VnpayConfirmOutcome.CANCELLED_RECORDED
+
+            # Never trust the gateway's amount alone — cross-check against the
+            # order's own stored subtotal before treating this as paid. A
+            # non-numeric value is folded into the same outcome as a wrong one
+            # (int() raises ValueError on garbage) rather than a 500: the
+            # signature already proves this came from the gateway, but it does
+            # not prove the value parses, and both are equally "cannot proceed".
+            # Left DRAFT untouched either way: this should never happen if
+            # create_charge was called correctly, and cancelling would burn a
+            # possibly-genuine payment sitting at the gateway — needs
+            # investigation, not an automatic decision.
+            expected_amount = int(order.subtotal.amount * 100)
+            try:
+                amount_matches = int(raw_payload["vnp_Amount"]) == expected_amount
+            except (KeyError, ValueError):
+                amount_matches = False
+            if not amount_matches:
+                return VnpayConfirmOutcome.AMOUNT_MISMATCH
+
+            order.add_payment(
+                Payment(
+                    method=PaymentMethod.VNPAY,
+                    amount=order.subtotal,
+                    gateway_ref=gateway_txn_no,
+                )
+            )
+            order.complete()
+            try:
+                await repo.update(order)
+                uow.collect(
+                    SaleCompleted(
+                        tenant_id=order.tenant_id,
+                        order_id=order.id,
+                        branch_id=order.branch_id,
+                        client_uuid=order.client_uuid,
+                        items=tuple(
+                            SoldItem(drug_id=line.drug_id, quantity=line.quantity)
+                            for line in order.lines
+                        ),
+                    )
+                )
+                await uow.commit()
+            except Exception:
+                # unique(gateway_ref) race: a concurrent IPN for the same
+                # transaction already recorded it — VNPAY's own retry behaviour,
+                # not a bug. Treat as the idempotent-replay outcome.
+                await uow.rollback()
+                return VnpayConfirmOutcome.ALREADY_CONFIRMED
+
+        await self._record_sale_completed(ctx, order.id)
+        return VnpayConfirmOutcome.CONFIRMED
+
+    async def _record_vnpay_initiated(self, ctx: RequestContext, order_id: UUID) -> None:
+        if self._audit is None:
+            return
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=AuditAction.SALE_VNPAY_INITIATED,
+                target_type="sale",
+                target_id=str(order_id),
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+        )
+
+    async def _record_vnpay_cancelled(self, ctx: RequestContext, order_id: UUID) -> None:
+        if self._audit is None:
+            return
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=None,  # no human actor — the gateway reported this
+                tenant_id=ctx.tenant_id,
+                action=AuditAction.SALE_VNPAY_CANCELLED,
+                target_type="sale",
+                target_id=str(order_id),
+            ).with_context(branch_id=str(ctx.branch_id))
         )
 
     async def _verify_prescription_ref(self, order: SalesOrder, ctx: RequestContext) -> None:
@@ -262,10 +503,15 @@ class SalesService:
         )
 
     async def _by_client_uuid(self, client_uuid: str, ctx: RequestContext) -> SaleOutput | None:
+        order = await self._order_by_client_uuid(client_uuid, ctx)
+        return SaleOutput.of(order) if order is not None else None
+
+    async def _order_by_client_uuid(
+        self, client_uuid: str, ctx: RequestContext
+    ) -> SalesOrder | None:
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)
-            order = await repo.by_client_uuid(client_uuid)
-        return SaleOutput.of(order) if order is not None else None
+            return await repo.by_client_uuid(client_uuid)
 
     async def get_receipt(self, order_id: UUID, ctx: RequestContext) -> ReceiptSummaryDTO:
         """Build a printable receipt projection for a sale (reuses ``sales.read``).

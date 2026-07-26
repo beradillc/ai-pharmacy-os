@@ -12,6 +12,7 @@ from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork, UnitOfWorkFactory
 from pharmacy_os.core.di import Container
+from pharmacy_os.core.plugins import HookRegistry
 from pharmacy_os.modules.sales.application import SalesService
 from pharmacy_os.modules.sales.domain import DrugInfoProvider, PrescriptionInfoProvider
 from pharmacy_os.modules.sales.infrastructure import SqlAlchemySalesRepository
@@ -30,7 +31,12 @@ def register(
         return SqlAlchemySalesRepository(uow.session, ctx)
 
     service = SalesService(
-        uow_factory, repo_factory, drug_info, prescription_info, container.resolve(AuditLogger)
+        uow_factory,
+        repo_factory,
+        drug_info,
+        prescription_info,
+        container.resolve(AuditLogger),
+        container.resolve(HookRegistry),
     )
     container.register_instance(SalesService, service)
     return build_router(get_context)

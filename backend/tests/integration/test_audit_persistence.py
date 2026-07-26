@@ -232,9 +232,9 @@ async def test_token_replay_is_persisted(
 #: Customer-data, prescription, compliance, sales, inventory, procurement,
 #: clinical and catalog actions belong to their own feature's persistence suite
 #: (test_crm_privacy_api_e2e.py, test_prescription_flow.py, test_compliance_flow.py,
-#: test_sales_flow.py, test_inventory_flow.py, test_procurement_flow.py,
-#: test_clinical_flow.py, test_catalog_repo.py); listing them here keeps the net
-#: below honest about what this file does *not* prove.
+#: test_sales_flow.py, test_sales_vnpay_flow.py, test_inventory_flow.py,
+#: test_procurement_flow.py, test_clinical_flow.py, test_catalog_repo.py); listing
+#: them here keeps the net below honest about what this file does *not* prove.
 _COVERED_ELSEWHERE = {
     AuditAction.CUSTOMER_SENSITIVE_READ,
     AuditAction.CUSTOMER_SENSITIVE_AUTO_CHECK,
@@ -254,6 +254,8 @@ _COVERED_ELSEWHERE = {
     AuditAction.LEDGER_DAILY_CLOSURE_EXPORTED,
     AuditAction.LEDGER_BOOK_SIGNED,
     AuditAction.SALE_COMPLETED,
+    AuditAction.SALE_VNPAY_INITIATED,
+    AuditAction.SALE_VNPAY_CANCELLED,
     AuditAction.INVENTORY_STOCK_RECEIVED,
     AuditAction.INVENTORY_STOCK_DISPENSED,
     AuditAction.PROCUREMENT_PO_ORDERED,

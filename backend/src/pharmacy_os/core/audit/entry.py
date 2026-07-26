@@ -152,6 +152,21 @@ class AuditAction(StrEnum):
     putting it back into sellable stock is a separate, manual decision (existing
     ``POST /inventory/receive``), not wired as a cross-module reaction here."""
 
+    # --- sales via payment gateway (Sprint 8 mục 4/4, payment_vnpay) ---
+    SALE_VNPAY_INITIATED = "SALE_VNPAY_INITIATED"
+    """A ``DRAFT`` order was persisted and a VNPAY payment link issued — money has
+    not moved yet. Worth its own record for the same reason as
+    :attr:`TWO_FACTOR_ENROLLED`: issued-but-not-confirmed is a distinct fact from
+    confirmed, and an inspection asking "was this ever attempted" needs it even if
+    the customer never paid. The confirmed case reuses :attr:`SALE_COMPLETED` — one
+    sale, one completion record, regardless of payment method."""
+
+    SALE_VNPAY_CANCELLED = "SALE_VNPAY_CANCELLED"
+    """A pending VNPAY payment failed, was cancelled at the gateway, or expired
+    unpaid — the order moved ``DRAFT`` → ``CANCELLED``. No cash equivalent exists:
+    a cash sale is only ever persisted already-``COMPLETED``, so there is nothing
+    pending that could fail after the fact."""
+
     # --- inventory (sổ nhập/xuất kho — chỉ hành vi con người gõ tay qua API) ---
     INVENTORY_STOCK_RECEIVED = "INVENTORY_STOCK_RECEIVED"
     """Manual goods receipt (``POST /inventory/receive``) — a person keyed in a batch.

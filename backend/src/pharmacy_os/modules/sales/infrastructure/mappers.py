@@ -41,7 +41,12 @@ def to_domain(row: SalesOrderORM) -> SalesOrder:
         for ln in row.lines
     ]
     order.payments = [
-        Payment(id=p.id, method=PaymentMethod(p.method), amount=Money(p.amount, row.currency))
+        Payment(
+            id=p.id,
+            method=PaymentMethod(p.method),
+            amount=Money(p.amount, row.currency),
+            gateway_ref=p.gateway_ref,
+        )
         for p in row.payments
     ]
     return order
@@ -76,6 +81,7 @@ def to_orm(order: SalesOrder) -> SalesOrderORM:
                 order_id=order.id,
                 method=p.method.value,
                 amount=p.amount.amount,
+                gateway_ref=p.gateway_ref,
             )
             for p in order.payments
         ],

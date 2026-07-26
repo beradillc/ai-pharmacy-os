@@ -63,5 +63,12 @@ class PaymentORM(PkUuidMixin, Base):
     )
     method: Mapped[str] = mapped_column(String(16), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    gateway_ref: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    """The gateway's own transaction id, ``NULL`` for cash/card. ``unique`` is the
+    idempotency guard at the storage layer against a gateway (Sprint 8 mục 4/4,
+    ``payment_vnpay``) calling its webhook back more than once for one transaction —
+    a second insert attempt with the same value fails the constraint rather than
+    silently doubling the payment. Standard SQL treats every ``NULL`` as distinct
+    from every other, so cash/card rows (always ``NULL``) never collide with it."""
 
     order: Mapped[SalesOrderORM] = relationship(back_populates="payments")

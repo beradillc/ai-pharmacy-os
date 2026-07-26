@@ -11,6 +11,32 @@ from uuid import UUID
 from pharmacy_os.modules.sales.domain import PaymentMethod, SalesOrder
 
 
+class VnpayConfirmOutcome(StrEnum):
+    """What happened when a VNPAY callback was processed — gateway-agnostic on
+    purpose (mirrors :class:`~pharmacy_os.core.plugins.interfaces.PaymentCallbackError`):
+    the wire-format response VNPAY expects (``vnp_RspCode``/``Message``) is a
+    protocol detail that belongs to the interface layer, not here."""
+
+    CONFIRMED = "CONFIRMED"
+    """First time processed: payment recorded, order completed, stock will dispense."""
+    ALREADY_CONFIRMED = "ALREADY_CONFIRMED"
+    """A repeat callback for a transaction already recorded — VNPAY retries until it
+    gets an acknowledgement; this is the idempotent no-op path."""
+    CANCELLED_RECORDED = "CANCELLED_RECORDED"
+    """The gateway reported failure/cancellation; the pending order was cancelled."""
+    ORDER_NOT_FOUND = "ORDER_NOT_FOUND"
+    ORDER_NOT_PENDING = "ORDER_NOT_PENDING"
+    """The order exists but is not the ``DRAFT`` this callback expects, and it does
+    not match the "already confirmed, same transaction" replay case either —
+    treated as suspicious rather than silently accepted."""
+    AMOUNT_MISMATCH = "AMOUNT_MISMATCH"
+    """Signature valid, but the amount VNPAY reports does not match the order's own
+    stored subtotal. Should never happen if ``create_charge`` was called correctly;
+    the order is left untouched (``DRAFT``) for investigation, not auto-cancelled."""
+    INVALID_SIGNATURE = "INVALID_SIGNATURE"
+    GATEWAY_NOT_CONFIGURED = "GATEWAY_NOT_CONFIGURED"
+
+
 class RevenueGranularity(StrEnum):
     """How the revenue report buckets orders into periods.
 
@@ -61,6 +87,14 @@ class CreateSaleInput:
     prescription_ref: UUID | None = None
     customer_id: UUID | None = None
     currency: str = "VND"
+
+
+@dataclass(slots=True)
+class VnpayInitiateOutput:
+    """What the POS/FE needs to redirect the customer to VNPAY."""
+
+    order_id: UUID
+    payment_url: str
 
 
 @dataclass(slots=True)
