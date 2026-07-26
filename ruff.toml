@@ -1,0 +1,26 @@
+# Cấu hình ruff cho file Python nằm NGOÀI backend/ và plugins/*/
+# (hai nơi đó đã có [tool.ruff] riêng; ruff dùng config gần nhất theo cây thư mục
+# nên chúng KHÔNG bị file này đè lên).
+#
+# Vì sao cần file này — audit 2026-07-26 mục P0-05 / F-1:
+# Trước đây `make lint` chạy `cd backend && ruff check .`, nên demo_preview.py ở gốc
+# repo chưa bao giờ được cổng lint chạm tới. Nhưng chỉ đổi sang chạy ruff từ gốc repo
+# thì CHƯA đủ: không có file này, demo_preview.py rơi vào bộ quy tắc MẶC ĐỊNH của ruff
+# (thiếu I/UP/B/SIM/C4, line-length 88) — tức là cưỡng chế bằng một bộ cổng khác với
+# bộ cổng dự án quy định. Đó còn tệ hơn không cưỡng chế, vì nó tạo cảm giác an toàn giả.
+#
+# Giữ ĐỒNG BỘ với [tool.ruff] trong backend/pyproject.toml và
+# plugins/payment_vnpay/pyproject.toml. Ba chỗ lệch nhau = cổng lint nói ba thứ khác nhau.
+
+line-length = 100
+target-version = "py312"
+
+# Cho ruff biết `pharmacy_os` là first-party. Thiếu dòng này, isort xếp nó chung nhóm
+# third-party với sqlalchemy rồi báo I001 cho demo_preview.py — trong khi file đó thực ra
+# ĐÚNG: `sys.path.insert(...)` bắt buộc phải chạy trước khi import `pharmacy_os`.
+# Đây là ca mẫu cho việc phải hiểu vì sao cổng đỏ trước khi tắt rule hay sửa code.
+src = ["backend/src"]
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
+ignore = ["B008"]  # FastAPI Depends() trong giá trị mặc định là idiomatic

@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+#
+# pre-commit — cưỡng chế cổng chất lượng bằng MÁY, không bằng trí nhớ.
+# Dựng 2026-07-26 theo audit F-1 / quy tắc R-3.
+#
+# VÌ SAO TỒN TẠI (đọc trước khi gỡ):
+# Kiểm toán độc lập chạy lại 4 cổng tại 12 commit lịch sử qua `git worktree` và tìm ra
+# 3 commit (25%) đã vào repo khi cổng đang ĐỎ:
+#   96ef714  ruff đỏ   (2 lỗi C408)              — đã tự khai ở §7ap
+#   50ea91c  ruff+format đỏ (24 lỗi, 5 file)     — đã tự khai ở §7ai
+#   cd98f7b  mypy đỏ   (2 lỗi)                   — CHƯA TỪNG ĐƯỢC KHAI, §7ao ghi "4 cổng xanh"
+# Cả 3 ca này hook dưới đây đều chặn được.
+#
+# VÌ SAO CÓ mypy DÙ NÓ CHẬM HƠN 3 CỔNG KIA ~34 LẦN:
+#   ruff check + ruff format + lint-imports = ~0,21s   → chặn được 2/3 ca lịch sử
+#   + mypy (cache ấm)                       = ~7,3s    → chặn được 3/3
+# Ca thứ ba (cd98f7b) đúng là ca DUY NHẤT không ai tự khai — tức là ca mà con người
+# kém nhất trong việc tự bắt. Bỏ mypy ra khỏi hook là bỏ đúng cái mà hook có giá trị nhất.
+#
+# KHÔNG chạy pytest ở đây: 536 giây. Cổng đó thuộc `make check` trước khi đóng một mục,
+# không thuộc từng commit. Hệ quả phải nói thẳng: hook này KHÔNG chặn được commit làm đỏ
+# pytest.
+#
+# GIỚI HẠN ĐÃ BIẾT, ghi rõ thay vì để người dùng tự vấp:
+#   1. Hook kiểm CÂY LÀM VIỆC, không phải nội dung đã `git add`. Nếu stage một phần file
+#      thì cái được kiểm không đúng bằng cái được commit. Chấp nhận có chủ đích: cách làm
+#      đúng (checkout index ra thư mục tạm) phức tạp và dễ mất dữ liệu hơn giá trị nó thêm
+#      cho quy trình 1 người hiện tại.
+#   2. `git commit --no-verify` bỏ qua hook. Đây là đường thoát cố ý giữ lại (có lúc cần
+#      commit dở dang để đóng phiên). Dùng nó là một QUYẾT ĐỊNH — ghi lại vào PROJECT_STATE
+#      như mọi quyết định tự chốt khác.
+#   3. core.hooksPath là cấu hình CỤC BỘ, không đi theo `git clone`. Máy mới phải chạy
+#      `make hooks`. Đây đúng là cách .github/workflows/ci.yml đã chết lặng 209 commit
+#      (audit C-03) — file có sẵn, không ai nối dây.
+
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)" || exit 1
+cd "$ROOT" || exit 1
+
+# Ưu tiên venv của dự án; nếu không có thì dùng PATH (CI, máy khác).
+VENV="$ROOT/backend/.venv/bin"
+[ -x "$VENV/ruff" ] && PATH="$VENV:$PATH"
+export PATH
+
+failed=0
+
+# Chạy 1 cổng, in mã thoát THẬT của chính nó.
+# Không pipe qua tail/grep — đó đúng là lỗi phương pháp đã làm hỏng ít nhất 6 lần báo cáo
+# "cổng xanh" trong lịch sử dự án (audit C-08, quy tắc R-1): pipe trả mã thoát của lệnh
+# CUỐI, không phải của cổng.
+run_gate() {
+    local name="$1"; shift
+    local out
+    out="$("$@" 2>&1)"
+    local code=$?
+    if [ $code -ne 0 ]; then
+        printf '\n  ✗ %s  EXIT=%d\n' "$name" "$code"
+        printf '%s\n' "$out" | sed 's/^/      /'
+        failed=1
+    else
+        printf '  ✓ %s\n' "$name"
+    fi
+}
+
+printf '\n── pre-commit: cổng chất lượng ──\n'
+
+run_gate "ruff check      (toàn repo)"  ruff check .
+run_gate "ruff format     (toàn repo)"  ruff format --check .
+run_gate "import-linter   (18 contract)" bash -c 'cd backend && lint-imports'
+run_gate "mypy --strict   (pharmacy_os + seeds)" bash -c 'cd backend && mypy'
+
+if [ $failed -ne 0 ]; then
+    cat <<'MSG'
+
+── COMMIT BỊ CHẶN ──
+Sửa cổng đỏ ở trên rồi commit lại.
+
+Cố tình commit khi đang đỏ (chỉ khi có lý do thật, vd đóng phiên giữa chừng):
+    git commit --no-verify
+→ nếu dùng, GHI LẠI vào PROJECT_STATE như một quyết định tự chốt. Kỷ luật #1 nói
+  "4 cổng xanh trước mỗi commit"; đi vòng qua nó mà không để lại vết chính là thứ
+  đã sinh ra phát hiện C-02 của đợt kiểm toán.
+
+Chưa chạy: pytest (536s). Trước khi đóng một mục, chạy đủ:  make check
+MSG
+    exit 1
+fi
+
+printf '── 4 cổng nhanh XANH (pytest chưa chạy — dùng `make check` trước khi đóng mục) ──\n\n'
+exit 0

@@ -69,7 +69,11 @@ ignore = ["B008"]  # FastAPI Depends() in defaults is idiomatic
 
 [tool.mypy]
 python_version = "3.12"
-packages = ["pharmacy_os"]
+# `seeds` thêm 2026-07-26 (audit P0-04 / F-1): seeds/ nằm ngoài cổng mypy suốt 209 commit,
+# trong khi seeds/encrypt_backfill.py là script GHI ĐÈ dữ liệu bệnh nhân thật bằng bản mã —
+# sai ở đó là mất dữ liệu vĩnh viễn, không revert được.
+# Nợ còn lại: `tests/` vẫn ngoài phạm vi (109 lỗi strict) — việc riêng, không gộp vào F-1.
+packages = ["pharmacy_os", "seeds"]
 mypy_path = "src"
 strict = true
 plugins = ["pydantic.mypy"]
@@ -83,7 +87,10 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["src", "."]
-addopts = "-q"
+# KHÔNG đặt addopts = "-q" (gỡ 2026-07-26, audit P0-01 / F-1b).
+# `-q` ở đây cộng với `-q` gõ thêm ở dòng lệnh thành `-qq`, mà `-qq` bỏ HẲN dòng tổng kết
+# "N passed" — đúng dòng mà quy trình tự kiểm chứng §7az bảo phải đọc. Quy trình chống
+# báo-xanh-vô-căn-cứ tự nó hỏng lặng lẽ ngay tại chỗ nó vừa được dựng lên.
 
 [tool.coverage.run]
 source = ["pharmacy_os"]

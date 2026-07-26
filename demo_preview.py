@@ -161,9 +161,7 @@ async def demo_catalog(catalog: CatalogService, ctx: RequestContext) -> str:
         ),
         ctx,
     )
-    ok(
-        f"Đã tạo — id={str(para.id)[:8]}…  bắt buộc kê đơn: {para.prescription_required}"
-    )
+    ok(f"Đã tạo — id={str(para.id)[:8]}…  bắt buộc kê đơn: {para.prescription_required}")
     info("Quy đổi 3 hộp", "→ 300 viên (3 × 100)")
     info("Quy đổi 2 vỉ", "→ 20 viên (2 × 10)")
 
@@ -177,9 +175,7 @@ async def demo_catalog(catalog: CatalogService, ctx: RequestContext) -> str:
         ),
         ctx,
     )
-    ok(
-        f"Đã tạo — id={str(amox.id)[:8]}…  bắt buộc kê đơn: {amox.prescription_required}"
-    )
+    ok(f"Đã tạo — id={str(amox.id)[:8]}…  bắt buộc kê đơn: {amox.prescription_required}")
     warn(
         "Amoxicillin là ETC → phải có đơn thuốc hợp lệ mới được bán "
         "(rule ensure_rx_for_etc sẽ dùng cờ này ở Sprint 4)."
@@ -323,21 +319,13 @@ def demo_clinical_pending() -> None:
     ok("Điểm tích hợp ĐÃ SẴN SÀNG cho Sprint 5:")
     info("Cờ kê đơn", "Drug.is_prescription_required() (đã có, đã test)")
     info("Cổng AI", "core.ai.LLMProvider port (đã có, chưa nối Claude)")
-    info(
-        "Bảng tri thức", "drug_interactions / drug_knowledge_chunks (đã thiết kế ở ERD)"
-    )
+    info("Bảng tri thức", "drug_interactions / drug_knowledge_chunks (đã thiết kế ở ERD)")
 
 
 async def main() -> None:
-    print(
-        _c("96;1", "\n╔══════════════════════════════════════════════════════════════╗")
-    )
-    print(
-        _c("96;1", "║   AI PHARMACY OS · DEMO PREVIEW · phạm vi Sprint 3 (thật)     ║")
-    )
-    print(
-        _c("96;1", "╚══════════════════════════════════════════════════════════════╝")
-    )
+    print(_c("96;1", "\n╔══════════════════════════════════════════════════════════════╗"))
+    print(_c("96;1", "║   AI PHARMACY OS · DEMO PREVIEW · phạm vi Sprint 3 (thật)     ║"))
+    print(_c("96;1", "╚══════════════════════════════════════════════════════════════╝"))
 
     ctx = _dev_ctx()
     catalog, inventory = await _build_services()
@@ -348,9 +336,7 @@ async def main() -> None:
     demo_clinical_pending()
 
     h1("KẾT LUẬN")
-    ok(
-        "Catalog + Inventory (FEFO, event-sourced) chạy end-to-end trên DB thật (SQLite)."
-    )
+    ok("Catalog + Inventory (FEFO, event-sourced) chạy end-to-end trên DB thật (SQLite).")
     warn("Sales/POS (Sprint 4) và Clinical/Prescription (Sprint 5) CHƯA hiện thực.")
     print()
 
