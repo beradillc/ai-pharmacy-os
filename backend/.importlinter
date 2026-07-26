@@ -1,5 +1,7 @@
 [importlinter]
-root_package = pharmacy_os
+root_packages =
+    pharmacy_os
+    payment_vnpay
 include_external_packages = True
 
 [importlinter:contract:layers]
@@ -194,3 +196,36 @@ source_modules =
     pharmacy_os.modules.iam
 forbidden_modules =
     pharmacy_os.modules.analytics
+
+[importlinter:contract:payment-vnpay-does-not-import-business-modules]
+name = payment_vnpay plugin must not import business modules
+type = forbidden
+source_modules =
+    payment_vnpay
+forbidden_modules =
+    pharmacy_os.modules
+
+# Enumerated, not automatic: import-linter's `forbidden` type has no "everything
+# except X" primitive, so this lists every pharmacy_os.core submodule other than
+# `plugins` by hand. A new core submodule needs a line added here, or this
+# contract silently stops covering it — the same trade-off docs/09 §6 already
+# accepted for the sibling contract above.
+[importlinter:contract:payment-vnpay-only-imports-the-plugin-contract]
+name = payment_vnpay plugin must only import pharmacy_os.core.plugins from core
+type = forbidden
+source_modules =
+    payment_vnpay
+forbidden_modules =
+    pharmacy_os.core.security
+    pharmacy_os.core.db
+    pharmacy_os.core.audit
+    pharmacy_os.core.context
+    pharmacy_os.core.di
+    pharmacy_os.core.errors
+    pharmacy_os.core.events
+    pharmacy_os.core.config
+    pharmacy_os.core.http
+    pharmacy_os.core.ai
+    pharmacy_os.core.bootstrap
+    pharmacy_os.core.privacy
+    pharmacy_os.core.outbox

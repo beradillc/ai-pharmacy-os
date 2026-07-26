@@ -143,18 +143,27 @@ sequenceDiagram
 | Mạch ngắt (circuit breaker) | **HOÃN có chủ đích** — quá tay khi mới có 1 plugin; cần số liệu thật mới đặt ngưỡng đúng | ⏳ Nợ đã ghi |
 | **Sandbox thật** (giới hạn CPU/mạng/tệp) | **KHÔNG có.** Chỉ cô lập lỗi, không cô lập tài nguyên. Chấp nhận vì mọi plugin đều first-party — **giả định dài hạn**, mọi plugin sau này thừa hưởng | ⚠️ Rủi ro đã chấp nhận (Chain duyệt 2026-07-26) |
 
-### Ranh giới phụ thuộc — nợ chưa đóng được
+### Ranh giới phụ thuộc — ĐÃ ĐÓNG cùng `payment_vnpay` (2026-07-26, Sprint 8 mục 4/4)
 
-Lời hứa *"plugin chỉ phụ thuộc contract của lõi, không chạm domain module"* (mục 4) **hiện chưa có
-cổng CI nào cưỡng chế**. `.importlinter` đặt `root_package = pharmacy_os`, nên package plugin nằm
-ngoài cây đó là **vô hình** với cả 16 contract. Đã thử thêm `root_packages` trỏ tới `payment_vnpay`
-và import-linter báo thẳng `Could not find package 'payment_vnpay' in your Python path` — **không thể
-viết contract cho package chưa tồn tại**.
+Lời hứa *"plugin chỉ phụ thuộc contract của lõi, không chạm domain module"* (mục 4) nay **có cổng CI
+cưỡng chế**. `.importlinter` đổi `root_package` (số ít) thành `root_packages` (danh sách) gồm cả
+`pharmacy_os` lẫn `payment_vnpay` — chìa khoá là package plugin phải **cài thật vào venv** (`pip
+install -e plugins/payment_vnpay`) trước khi import-linter thấy được nó; thử với `root_packages` mà
+package chưa cài/chưa tồn tại vẫn báo `Could not find package` như trước.
 
-⇒ **2 contract phải thêm cùng lúc với plugin đầu tiên** (`payment_vnpay`, mục 4/4 Sprint 8), không
-được quên: (1) plugin **cấm** import `pharmacy_os.modules`; (2) plugin chỉ được import
-`pharmacy_os.core.plugins`, cấm phần còn lại của `core`. Đây là lúc ranh giới có động cơ thật để bị
-phá — `payment_vnpay` cần biết về đơn hàng, mà đơn hàng nằm trong `sales`.
+2 contract mới, xác nhận có "răng" bằng cách cố tình phá rồi soi lỗi trước khi phục hồi:
+- `payment-vnpay-does-not-import-business-modules` — cấm import `pharmacy_os.modules`.
+- `payment-vnpay-only-imports-the-plugin-contract` — chỉ cho import `pharmacy_os.core.plugins`, liệt
+  kê tay từng submodule còn lại của `core` vào danh sách cấm (`forbidden` không có kiểu "cấm tất cả
+  trừ X"). **Nợ nhỏ mới phát sinh:** submodule `core` thêm sau này phải tự tay bổ sung vào danh sách,
+  không tự động — đã ghi chú ngay tại contract trong `.importlinter`.
+
+Tác dụng phụ đáng ghi: `pharmacy_os` trước đó **không có `py.typed`**, nên mypy coi nó là thư viện
+không kiểu khi `payment_vnpay` import contract — vô hại trong chính repo `backend/` (mypy đọc thẳng
+mã nguồn qua `mypy_path=src`, không qua cơ chế package-thư-viện) nhưng vỡ ngay khi có package ngoài
+đầu tiên import nó. Đã thêm `backend/src/pharmacy_os/py.typed` (marker rỗng, PEP 561) để mypy strict
+của `payment_vnpay` chạy sạch — đúng dạng lỗi "ranh giới có động cơ thật để bị phá" đã tiên đoán ở
+trên, chỉ khác chỗ hỏng (type-checking, không phải import boundary).
 
 ---
 
@@ -163,7 +172,7 @@ phá — `payment_vnpay` cần biết về đơn hàng, mà đơn hàng nằm tr
 | Plugin | Loại | Trạng thái |
 |--------|------|-----------|
 | `dav_connector` | RegulatoryConnector | Thiết kế |
-| `payment_vnpay` | PaymentGateway | Thiết kế |
+| `payment_vnpay` | PaymentGateway | Code xong, chờ tự kiểm tra trên sandbox VNPAY thật (§7bd) |
 | `payment_momo` | PaymentGateway | Backlog |
 | `hardware_escpos` | HardwareDriver | Backlog |
 | `ehealth_eprescription` | RegulatoryConnector | Backlog |
