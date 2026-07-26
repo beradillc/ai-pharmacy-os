@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 from pharmacy_os.core.config import OrgSettings, Settings
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.modules.sales.application import SalesService
+from pharmacy_os.modules.sales.application import SalesService, VnpayConfirmOutcome
 from pharmacy_os.modules.sales.interface.receipt_rendering import render_pdf, render_thermal_k80
 from pharmacy_os.modules.sales.interface.schemas import (
     CreateSaleRequest,
@@ -18,9 +18,25 @@ from pharmacy_os.modules.sales.interface.schemas import (
     ReceiptResponse,
     RegisterReturnRequest,
     SaleResponse,
+    VnpayInitiateResponse,
 )
 
 ContextDep = Callable[..., RequestContext]
+
+#: VNPAY's own response-code vocabulary (not an HTTP status — VNPAY always expects
+#: 200 OK with this body, and reads ``RspCode`` itself to decide whether to retry
+#: the IPN). Codes are VNPAY's, not invented: "00"/"01"/"02"/"04"/"97" are the ones
+#: their spec defines for exactly these situations; "99" is their catch-all.
+_VNPAY_RSP: dict[VnpayConfirmOutcome, tuple[str, str]] = {
+    VnpayConfirmOutcome.CONFIRMED: ("00", "Confirm Success"),
+    VnpayConfirmOutcome.CANCELLED_RECORDED: ("00", "Confirm Success"),
+    VnpayConfirmOutcome.ALREADY_CONFIRMED: ("02", "Order already confirmed"),
+    VnpayConfirmOutcome.ORDER_NOT_PENDING: ("02", "Order already confirmed"),
+    VnpayConfirmOutcome.ORDER_NOT_FOUND: ("01", "Order not found"),
+    VnpayConfirmOutcome.AMOUNT_MISMATCH: ("04", "Invalid amount"),
+    VnpayConfirmOutcome.INVALID_SIGNATURE: ("97", "Invalid signature"),
+    VnpayConfirmOutcome.GATEWAY_NOT_CONFIGURED: ("99", "Unknown error"),
+}
 
 
 def _service(request: Request) -> SalesService:
@@ -45,6 +61,35 @@ def build_router(get_context: ContextDep) -> APIRouter:
         ctx: RequestContext = Depends(get_context),
     ) -> SaleResponse:
         return SaleResponse.of(await service.complete_sale(body.to_input(), ctx))
+
+    # Sprint 8 mục 4/4 (payment_vnpay): authenticated like `create_sale` — a cashier
+    # starts the checkout — but does not complete the order. See
+    # SalesService.initiate_vnpay_payment for why this is the one place a DRAFT
+    # order is ever persisted.
+    @sales.post(
+        "/vnpay/initiate", response_model=VnpayInitiateResponse, status_code=status.HTTP_201_CREATED
+    )
+    async def initiate_vnpay(
+        body: CreateSaleRequest,
+        service: SalesService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> VnpayInitiateResponse:
+        return VnpayInitiateResponse.of(await service.initiate_vnpay_payment(body.to_input(), ctx))
+
+    # VNPAY's IPN: a GET from VNPAY's own servers, not our authenticated users —
+    # deliberately **no** `Depends(get_context)`. The gateway's HMAC signature
+    # (checked inside confirm_vnpay_callback via the resolved PaymentGateway) is
+    # the authentication for this endpoint; there is no JWT to require. Always
+    # answers 200 with VNPAY's own RspCode vocabulary — VNPAY reads that body, not
+    # the HTTP status, to decide whether to retry.
+    @sales.get("/vnpay/callback")
+    async def vnpay_callback(
+        request: Request,
+        service: SalesService = Depends(_service),
+    ) -> JSONResponse:
+        outcome = await service.confirm_vnpay_callback(dict(request.query_params))
+        rsp_code, message = _VNPAY_RSP[outcome]
+        return JSONResponse(content={"RspCode": rsp_code, "Message": message})
 
     @sales.get("/{order_id}", response_model=SaleResponse)
     async def get_sale(

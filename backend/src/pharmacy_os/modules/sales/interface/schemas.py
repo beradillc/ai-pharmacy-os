@@ -16,6 +16,7 @@ from pharmacy_os.modules.sales.application.dto import (
     RegisterReturnInput,
     SaleLineInput,
     SaleOutput,
+    VnpayInitiateOutput,
 )
 from pharmacy_os.modules.sales.domain import PaymentMethod
 
@@ -57,6 +58,15 @@ class CreateSaleRequest(BaseModel):
             customer_id=self.customer_id,
             currency=self.currency,
         )
+
+
+class VnpayInitiateResponse(BaseModel):
+    order_id: UUID
+    payment_url: str
+
+    @classmethod
+    def of(cls, out: VnpayInitiateOutput) -> VnpayInitiateResponse:
+        return cls(order_id=out.order_id, payment_url=out.payment_url)
 
 
 class RegisterReturnRequest(BaseModel):
