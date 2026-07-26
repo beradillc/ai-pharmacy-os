@@ -3502,10 +3502,114 @@ chỉ tạm thời), hoàn tiền qua API VNPAY (ngoài phạm vi v1 theo đúng
 
 ---
 
+## 7bg. F-1 + R-1→R-10 — cổng có RĂNG, bài học vào văn bản có hiệu lực (2026-07-26, Opus)
+
+Mục đầu tiên của **lộ trình khắc phục kiểm toán**. Chain chốt thứ tự: commit báo cáo → F-1 → dán
+R-1→R-10 vào CLAUDE.md → rồi mới tới 12 mục chặn Sprint 9. Lý do Chain xếp R-1→R-10 lên trước 12 mục
+chặn: *"rẻ, đòn bẩy cao nhất trong cả lộ trình"*.
+
+### F-1 — sửa phạm vi cổng RỒI mới bật cưỡng chế (`285af14`)
+
+Thứ tự này bắt buộc, không phải sở thích: bật cưỡng chế trên một bộ cổng đang thủng thì mua được sự
+cưỡng chế nhưng cưỡng chế đúng cái bộ cổng thủng — an toàn giả còn tệ hơn không có gì.
+
+| Cổng | Trước | Sau | Phát hiện đóng |
+|---|---|---|---|
+| ruff + format | `cd backend` — sót 7 file | **gốc repo**, 390 file | P0-05, A-08 |
+| mypy | 252 file, `seeds/` ngoài phạm vi | **259 file** (+7 seeds) | P0-04 |
+| pytest | 1001 (chỉ backend) | **1001 + 16 plugin = 1017** | P0-03 |
+| dòng "N passed" | **không in ra** (`-q`+`-q` = `-qq`) | hiện lại | P0-01 |
+
+**`ruff.toml` mới ở gốc repo — vì sao cần, không chỉ đổi cwd là xong:** không có nó, `demo_preview.py`
+rơi vào bộ quy tắc **mặc định** của ruff (thiếu `I/UP/B/SIM/C4`, line-length 88) thay vì bộ dự án quy
+định. `src=["backend/src"]` cho ruff biết `pharmacy_os` là first-party — thiếu dòng đó isort báo I001
+cho `demo_preview.py`, **trong khi file ấy vốn ĐÚNG** (`sys.path.insert` bắt buộc chạy trước import
+`pharmacy_os`). Sửa đúng nguyên nhân; **không tắt rule, không sửa code**. Ghi lại vì đây là ca mẫu:
+phải hiểu vì sao cổng đỏ trước khi tắt rule.
+
+**Cổng mở rộng bắt ngay 1 việc thật:** `demo_preview.py` chưa từng được `ruff format --check` chạm
+tới → phải format (thuần xuống dòng, không đổi hành vi). File vẫn crash (A-08) — mục **F-21** riêng.
+
+### Cưỡng chế: `scripts/hooks/pre-commit` + `make hooks`
+
+Chặn commit khi ruff/format/import-linter/**mypy** đỏ (~7,3s). **KHÔNG chạy pytest** (536s) ⇒ **không
+chặn được commit làm đỏ pytest** — ghi thẳng trong hook, không giấu.
+
+**Vì sao có mypy dù chậm hơn 3 cổng kia ~34 lần** (đây là chỗ đi khác khuyến nghị R-3 của chính báo
+cáo, ghi rõ để Chain đọc): 3 cổng nhanh (0,21s) chặn được **2/3** ca commit-đỏ lịch sử; thêm mypy
+chặn **3/3**. Ca thứ ba `cd98f7b` đúng là ca **duy nhất chưa từng ai tự khai** — tức ca con người kém
+nhất trong việc tự bắt. Bỏ mypy ra là bỏ đúng chỗ hook có giá trị nhất.
+
+**Tự kiểm chứng — chạy thật, không phải lời khai** (Chain yêu cầu tự mắt xác nhận; quy trình chạy lại
+ở `scripts/hooks/README.md`):
+
+| Thử | Kết quả |
+|---|---|
+| File ruff-đỏ (`F841` biến không dùng) | `✗ ruff check`, **COMMIT_EXIT=1**, HEAD **không đổi** |
+| File mypy-đỏ **trong `seeds/`** (ruff xanh) | `✗ mypy --strict`, **COMMIT_EXIT=1**, HEAD **không đổi** |
+| Commit thật `285af14` (cây sạch) | 4 cổng ✓, commit **đi qua** — hook không chặn nhầm |
+
+Thử thứ hai chứng minh **kép**: hook có mypy, **và** `seeds/` nay thật sự nằm trong cổng (trước F-1
+thì không). Đã dọn sạch 2 file thử.
+
+**Giới hạn đã biết, ghi thay vì để vấp:** (a) hook kiểm cây làm việc, không phải nội dung đã `git add`
+— stage một phần file thì cái được kiểm ≠ cái được commit; (b) `--no-verify` bỏ qua được, cố ý giữ
+lại, nhưng dùng nó là một quyết định phải ghi vào đây; (c) `core.hooksPath` là cấu hình **cục bộ**,
+không đi theo `git clone` — máy mới phải `make hooks`. Đây đúng là cách `.github/workflows/ci.yml`
+chết lặng 209 commit (**C-03**): file có sẵn, đúng nội dung, không ai nối dây.
+
+### R-1→R-10 vào văn bản CÓ HIỆU LỰC (`7c11aa8` + vault `ef912cf`)
+
+Đây là mục sửa đúng cái kiểm toán chỉ ra là hỏng nặng nhất — **vòng cải tiến không khép**: 16 sự cố
+"niềm tin giả" → đúng **1** kỷ luật được thể chế hoá (6%), và #7 là bài học **duy nhất không tái
+phát**. Tương quan đó không ngẫu nhiên.
+
+| Nơi | Nội dung |
+|---|---|
+| `AI_Pharmacy_OS/CLAUDE.md` | **Kỷ luật 8–13** (R-1→R-6) + **bổ sung #7** về nền test Postgres (R-7); cập nhật bảng "Ngày ban hành" |
+| `CLAUDE.md` gốc vault | **R-8** GĐ có nghĩa vụ nghiệm thu chứ không chỉ giao việc · **R-9** sổ điều phối thêm cột "Đứng yên từ" · **R-10** cấm kết luận "không có nghĩa vụ pháp lý" chỉ từ một Thông tư |
+
+### Quyết định tự chốt (full-auto #3)
+
+| # | Quyết định | Lý do |
+|---|---|---|
+| 1 | Đưa **mypy** vào hook dù R-3 chỉ đề xuất 3 cổng nhanh | Chặn 3/3 ca lịch sử thay vì 2/3; 7,3s là chi phí chấp nhận được cho ca duy nhất không ai tự khai |
+| 2 | `ruff.toml` ở gốc thay vì thêm `[tool.ruff]` vào một `pyproject.toml` mới ở gốc | Không tạo package giả ở gốc repo; ruff ưu tiên `ruff.toml`, và `backend/` + `plugins/*` giữ config riêng không bị đè |
+| 3 | **Không** đưa `tests/` vào mypy (109 lỗi strict) | Việc riêng, không gộp vào F-1 — gộp vào sẽ biến 1 mục 2 giờ thành mục nhiều ngày. Ghi thành nợ tại chỗ trong `pyproject.toml` |
+| 4 | `demo_preview.py`: format nhưng **không** sửa crash | F-21 là mục riêng ở P2; sửa luôn là nới phạm vi không duyệt |
+| 5 | Vault repo: chỉ commit `CLAUDE.md` | 4 file khác đang sửa dở là việc của Chain, không gộp vào commit của mình |
+
+### Nghiệm thu — 4 cổng trên **chính cây** của `285af14`, đo trực tiếp không qua pipe (kỷ luật #8 mới)
+
+```
+ruff check .            EXIT=0
+ruff format --check .   EXIT=0   390 files already formatted
+lint-imports            EXIT=0   Contracts: 18 kept, 0 broken
+mypy                    EXIT=0   Success: no issues found in 259 source files
+pytest (backend)        EXIT=0   1001 passed, 46 warnings in 542.73s (0:09:02)
+pytest (payment_vnpay)  EXIT=0   16 passed in 0.08s
+```
+
+Hai commit sau (`7c11aa8`, vault `ef912cf`) **chỉ sửa markdown** trên cây đã xanh ở trên — nói đúng
+như vậy theo kỷ luật #9 mới, không viết "4 cổng xanh mỗi bước" khi không chạy mỗi bước.
+
+### Còn nợ ngay sau mục này
+
+- **F-1 không đóng A-08** — `demo_preview.py` vẫn crash, nay chỉ được format-check. Mục F-21.
+- **`tests/` vẫn ngoài mypy** (109 lỗi strict).
+- **Hook không phủ pytest** ⇒ vẫn có thể commit làm đỏ pytest. `make check` trước khi đóng mục vẫn bắt buộc.
+- **Chưa có remote ⇒ CI vẫn chưa chạy.** Hook chỉ là thứ thay thế cục bộ.
+- **12 mục chặn Sprint 9 chưa bắt đầu** — F-2 (fail-fast prod), F-3 (`.env.example` DEBUG), F-4 (nền
+  test Postgres), F-5 (khoá hàng + test đồng thời), F-6 (câu hỏi pháp lý A-05 — đường găng thật, đang
+  chờ Trợ lý Pháp Lý), F-8, F-9, F-15, F-16, F-17, F-19.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-26 | **F-1 + R-1→R-10 — CỔNG CÓ RĂNG (§7bg).** Mục đầu tiên của lộ trình khắc phục kiểm toán, Chain chốt thứ tự. **Phạm vi cổng:** ruff/format chạy từ gốc repo (390 file, trước sót 7), mypy phủ `seeds/` (252→259 file — nơi có `encrypt_backfill.py` ghi đè dữ liệu bệnh nhân thật), pytest thêm 16 test `payment_vnpay` (1001→1017 dưới cổng), gỡ `addopts="-q"` nên dòng "N passed" hiện lại. `ruff.toml` mới ở gốc + `src=["backend/src"]` — sửa đúng nguyên nhân I001 của `demo_preview.py` (file vốn ĐÚNG, `sys.path.insert` phải chạy trước), **không tắt rule không sửa code**. **Cưỡng chế:** `scripts/hooks/pre-commit` + `make hooks`, chặn commit khi ruff/format/import-linter/**mypy** đỏ (~7,3s); có mypy dù chậm vì 3 cổng nhanh chỉ chặn 2/3 ca commit-đỏ lịch sử, thêm mypy chặn 3/3 — ca thứ ba `cd98f7b` là ca duy nhất chưa ai tự khai. **Tự kiểm chứng chạy thật:** file ruff-đỏ → COMMIT_EXIT=1 HEAD không đổi; file mypy-đỏ trong `seeds/` (ruff xanh) → COMMIT_EXIT=1 HEAD không đổi (chứng minh kép: hook có mypy VÀ seeds nay trong cổng); commit thật `285af14` đi qua bình thường. **KHÔNG chặn được commit làm đỏ pytest** (536s, ngoài hook) — ghi rõ, không giấu. **R-1→R-10 vào văn bản có hiệu lực:** kỷ luật **8–13** + bổ sung **#7** (nền test Postgres) vào `AI_Pharmacy_OS/CLAUDE.md`; **R-8/R-9/R-10** (GĐ nghĩa vụ nghiệm thu · sổ thêm cột "Đứng yên từ" · cấm kết luận "không có nghĩa vụ pháp lý" chỉ từ một Thông tư) vào `CLAUDE.md` gốc vault. Đây là mục sửa đúng chỗ hỏng nặng nhất mà kiểm toán chỉ ra: 16 sự cố niềm tin giả → chỉ 1 kỷ luật được thể chế hoá, và đó là bài học duy nhất không tái phát. 3 commit: `285af14` (F-1) · `7c11aa8` (CLAUDE.md dự án) · vault `ef912cf`. 4 cổng xanh trên cây `285af14`: 1001+16 passed EXIT=0, mypy 259 file, import-linter 18/0. **Nợ:** A-08 chưa đóng (F-21), `tests/` vẫn ngoài mypy, chưa có remote nên CI vẫn chưa chạy, 12 mục chặn Sprint 9 chưa bắt đầu. |
 | 2026-07-26 | **KIỂM TOÁN ĐỘC LẬP Phiên A+B XONG — 29 phát hiện, 0 Critical, 6 High (§7bf).** Chain cho chạy đợt audit độc lập: Claude cởi bỏ vai GĐ/Trợ lý Code, mặc định mọi tuyên bố trong tài liệu là **chưa được chứng minh** cho tới khi tự chạy lệnh. **Đọc `docs/audit/00_AUDIT_INDEX.md` trước** (bảng tra cứu 29 phát hiện; 2 file phiên 2.053 dòng chỉ mở khi cần bằng chứng chi tiết). Phiên A = Giai đoạn 0 (bằng chứng nền) + 1 (kiến trúc ISO 25010), 16 phát hiện. Phiên B = Giai đoạn 2 (ASVS L2) + 3 (toàn vẹn dữ liệu) + 4 (chất test), 13 phát hiện, chạy trên **Postgres + uvicorn thật**, database `audit_empty_a` tách riêng, 2 tenant để thử cách ly. **Chain nâng A-02 + A-03 thành 🚫 RELEASE BLOCKER Sprint 9** (prod khởi động được với khoá ký JWT 3 byte / với `ENCRYPTION__ENABLED=false` — vi phạm ý đồ *fail-fast prod* dự án tự tuyên bố từ Sprint 2, và chạm dữ liệu nhạy cảm theo Luật BVDLCN 91/2025); **A-05 đánh dấu ⏸️ QUYẾT ĐỊNH KINH DOANH CHỜ CHAIN** (1 cặp credential VNPAY cho mọi tenant ⇒ tiền mọi nhà thuốc về 1 tài khoản merchant — 2 phương án + hệ quả pháp lý ở Phiên A mục A-05, **phải chốt trước khi mở sandbox VNPAY thật**). Giữ **0 Critical** vì chưa có deployment production. 4 High còn lại: A-01 (toàn bộ 1001 test chạy SQLite ⇒ `FOR UPDATE SKIP LOCKED` bị nuốt im lặng đúng 2 chỗ cần khoá hàng), B-01 (`adjust` mất cập nhật khi ghi đồng thời — chứng minh trên Postgres: IN=10, OUT=16, số dư 0), B-02 (`exists_for_ref` thua race ⇒ 2 dòng xuất kho cùng `ref_id`, không unique index đỡ), B-03 (`.env.example` bật `APP__DEBUG=true` ⇒ SQL echo đổ tên/SĐT/ngày sinh/CCCD bệnh nhân ra log). Nguyên nhân gốc chung của B-01/B-02/B-04: **0 test đồng thời trong 1001 test** (B-09), dù độ phủ dòng 96%. **Audit KHÔNG tìm ra:** 5/5 cổng xanh và số khớp tài liệu 100%, 112/112 hash trích dẫn đúng, 0 secret trong git, 0 import chéo module, 4/4 kiểu giả mạo JWT bị chặn, 0/40 endpoint thiếu kiểm quyền, 5/5 đường chéo tenant trả 404, lỗ hổng `X-Branch-Id` (§7l) và role-seeding (§7l) **đã vá thật**, outbox không mất sự kiện. **Phiên C (Giai đoạn 5 audit quy trình + Giai đoạn 6 báo cáo cuối) CHƯA LÀM — chờ phiên hạn mức đầy** vì là phiên tổng hợp/phán xét toàn dự án, cắt ngang thì báo cáo không dùng được. Điểm bắt đầu + thứ tự file cần đọc: `00_AUDIT_INDEX.md` mục 5. **Không sửa một dòng code nào; `pharmacy_os` (CSDL dev) không bị chạm.** |
 | 2026-07-26 | **`payment_vnpay` CODE XONG cả 4 bước — CHẶN ở tự kiểm tra sandbox thật (§7bd).** Mục 4/4 Sprint 8, thiết kế đã duyệt GĐ+Chain đầu phiên. 4 commit stepped (`07f2d11`→`b5c945d`→`57a1e1e`→`3799626`): domain (`SaleStatus.CANCELLED`, `PaymentMethod.VNPAY`) → app/infra/migration `0032` (`initiate_vnpay_payment`/`confirm_vnpay_callback`, `get_across_tenants` — điểm phá lệ tenant-scoping DUY NHẤT, chỉ webhook dùng) → API (`POST /sales/vnpay/initiate` + `GET /sales/vnpay/callback`, đặt trước route `{order_id}` để không bị nuốt path) → package thật `plugins/payment_vnpay/` + 2 contract import-linter mới (xác nhận có "răng" bằng cách cố tình phá rồi soi lỗi). **1 lỗi thật tự bắt được**: `vnp_Amount` không parse được sẽ 500 thay vì trả lỗi rõ ràng cho VNPAY — đã vá + thêm test. 28 test mới (16 package `payment_vnpay` + 12 integration `sales` dùng fake gateway thật qua `HookRegistry`, không mock nội bộ). 4 cổng xanh, pytest toàn repo **1001 EXIT=0** đo 2 lần bằng `PIPESTATUS[0]` trực tiếp. **CHƯA coi mục 4/4 là XONG**: thiết kế yêu cầu tường minh sandbox VNPAY thật, cần Chain cấp `tmn_code`/`hash_secret` (Claude không tự đăng ký được, giống `# BLOCKER: AI__API_KEY`) + xác nhận cho chạy tunnel công khai tạm thời. Dừng đúng chỗ, không tự sang mục kế tiếp. |
 | 2026-07-26 | **MÃ HOÁ AT-REST BƯỚC 5/N MỤC 3/4 — lệnh backfill (§7bc), nối phiên bị mất điện.** Việc dở dang lúc mất điện (`.env.example`+`bootstrap.py`+`seeds/encrypt_backfill.py` mới, chưa test/commit) là lệnh backfill mã hoá dữ liệu cũ. Rà đúng kỷ luật #5 trước resume: docker tắt do mất điện nhưng data nguyên, không mất. **Tự kiểm tra kỷ luật #7 trên Postgres thật có dữ liệu sẵn** (không phải CSDL rỗng pytest) — seed 6 dòng bản rõ mô phỏng dữ liệu ghi trước khi có mã hoá, **bắt được lỗi thật pytest không thấy**: thiếu import model `active_ingredients` (module `catalog`) làm FK từ `customer_allergies.ingredient_id` không resolve, backfill hỏng giữa chừng ở bảng `customers` — nhưng 2FA/ledger/returns đã mã hoá đúng trước đó và transaction `customers` tự rollback sạch (đúng tính chất "an toàn khi ngắt giữa chừng" đã tuyên bố). Vá xong, chạy lại: 6 bảng đúng số cột, `--verify` 0 lỗi, `find_by_phone` vẫn tìm ra khách sau backfill. Dọn sạch dữ liệu thử. 4 cổng xanh, pytest **979 EXIT=0**. Commit `5a3f930`. Nợ: runbook backfill lần đầu trên deployment thật, quyết định thao tác xoay khoá. |
