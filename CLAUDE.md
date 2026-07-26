@@ -18,6 +18,7 @@
 | CHẾ ĐỘ FULL-AUTO (gồm 6 điều kiện giữ nguyên) | Trước 2026-07-23; điều 6 (pg_dump trước mỗi migration) và mục Quyền hạn công cụ bổ sung **2026-07-23** |
 | Quy tắc trình bày báo cáo/tổng hợp | **2026-07-23** (GĐ ban hành) |
 | Xác thực khi chạy thử cục bộ | **2026-07-23** (cùng module `iam`) |
+| Kỷ luật bắt buộc **8–13** + bổ sung kỷ luật **7** (nền test Postgres) | **2026-07-26** — sinh từ kiểm toán độc lập 3 phiên (`docs/audit/2026-07-26_BAO_CAO_KIEM_TOAN.md`, quy tắc R-1→R-7). Chain duyệt cùng ngày, xếp ngay sau F-1 vì *"rẻ, đòn bẩy cao nhất trong cả lộ trình"* |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -66,6 +67,82 @@ multi-tenant).
      hoặc gọi API bằng token thật) rằng thay đổi đã áp dụng — không tin số
      dòng log báo "created: N".
    - *Dọn sau khi thử:* xóa tenant/dữ liệu thử nghiệm, giữ lại dữ liệu dùng chung.
+   - **(bổ sung 2026-07-26, audit R-7)** Kỷ luật này chưa đủ vì nó chỉ nói về *dữ
+     liệu*. Bổ sung về *nền*: **bộ test phải chạy được trên Postgres**, không chỉ
+     SQLite. Chênh lệch dialect đã cho lọt **ít nhất 3 lỗi thật** tới deployment
+     (`audit_logs.action` varchar(32) — 734 test vẫn xanh; tràn cột varchar hàng
+     loạt — 6/7 endpoint thử trả 500; FK không resolve khi backfill mã hoá). Nặng
+     nhất: `FOR UPDATE SKIP LOCKED` bị SQLite **nuốt im lặng ở đúng 2 chỗ cần khoá
+     hàng** (audit A-01) ⇒ 1001 test **về cấu trúc không thể chứng minh** bản vá
+     tồn kho là đúng. Còn nợ — xem lộ trình F-4.
+
+8. **Cấm suy ra kết quả cổng từ lệnh có pipe.** (2026-07-26, audit R-1 — đóng C-08)
+   Mọi lệnh kiểm tra phải ghi mã thoát tường minh của **chính lệnh đó**. CẤM
+   `| tail`, `| grep`, `| head` trên lệnh cổng rồi đọc mã thoát: pipe trả mã thoát
+   của lệnh **cuối**, không phải của cổng.
+   - Đúng: `pytest > out.txt 2>&1; echo "PYTEST_EXIT=$?"` rồi `grep -E "passed|failed" out.txt`
+   - Buộc phải pipe thì dùng `${PIPESTATUS[0]}`, không phải `$?`.
+   - **Báo cáo "N test xanh" mà không kèm mã thoát đọc được là báo cáo không có
+     căn cứ** — ghi "chưa đo được", không ghi con số.
+   - *Vì sao:* lỗi này đã làm hỏng **6 lần** báo cáo "cổng xanh", và **tái phát
+     nguyên vẹn sau đúng 48 giờ** (§7ai 07-24 → §7az 07-26) vì lần đầu chỉ được ghi
+     vào PROJECT_STATE chứ không vào file này.
+
+9. **"4 cổng xanh trước mỗi commit" nghĩa là trước MỖI commit.** (2026-07-26, audit
+   R-2 — đóng C-01/C-02) Kỷ luật #1 đòi cổng xanh **trên cây của từng commit**,
+   không phải trên cây cuối cùng của cả loạt.
+   - Một lượt 4 cổng mất **~9 phút** (đo thật 2026-07-26: pytest 536s + mypy 7,1s +
+     3 cổng nhanh 0,21s). **Nhiều commit cách nhau dưới 9 phút là bằng chứng hiển
+     nhiên rằng cổng không chạy giữa chúng.**
+   - Nếu chỉ chạy cổng trên cây cuối: **ghi đúng như vậy** — *"4 cổng xanh trên cây
+     cuối; các bước trung gian chưa kiểm riêng"*. **CẤM viết "4 cổng xanh mỗi bước"**
+     khi không chạy mỗi bước.
+   - Kiểm cô lập có tiền lệ đúng ở §7al/§7an (`git stash push --include-untracked`
+     phần bước sau) — dùng lại và ghi rõ đã dùng.
+
+10. **Cưỡng chế bằng máy, không bằng trí nhớ.** (2026-07-26, audit R-3 — đóng C-03)
+    - Máy mới: chạy **`make hooks`** một lần. Hook chặn commit khi ruff/format/
+      import-linter/mypy đỏ (~7,3s). Tự kiểm hook có răng thật theo
+      `scripts/hooks/README.md` — **đừng tin lời khai, kể cả lời khai của file này**.
+    - Hook **không** chạy pytest (536s) ⇒ **không chặn được commit làm đỏ pytest**.
+      Trước khi đóng một mục vẫn phải `make check`.
+    - `git commit --no-verify` là đường thoát cố ý giữ lại. Dùng nó là một **quyết
+      định** — ghi vào PROJECT_STATE như mọi quyết định tự chốt khác.
+    - **Phạm vi cổng đã sửa cùng lúc (F-1), đừng thu hẹp lại:** `ruff`/`pytest` chạy
+      từ **gốc repo**, `mypy` phủ `seeds/`. Trước đó cổng bỏ sót `demo_preview.py` và
+      **16 test của `plugins/payment_vnpay/` gồm test thuật toán ký tiền**, còn
+      `seeds/encrypt_backfill.py` — script **ghi đè dữ liệu bệnh nhân thật** — nằm
+      ngoài mypy suốt 209 commit.
+    - *Vì sao gắt:* `.github/workflows/ci.yml` đúng nội dung, nằm sẵn trong repo từ
+      commit **đầu tiên**, và **chưa chạy lần nào** trong 209 commit vì repo không có
+      remote. Hạ tầng viết sẵn mà không nối dây thì bằng không.
+
+11. **Mỗi commit phải truy được model đã thực thi.** (2026-07-26, audit R-4 — đóng
+    C-04/C-05)
+    - Mọi commit phải có dòng `Co-Authored-By: Claude <model>`.
+    - **Nếu model thực thi khác model đã được duyệt** (mục "Chọn model" dưới, hoặc
+      chỉ định trong PROJECT_STATE): ghi lý do vào mục "quyết định tự chốt" của phiên
+      đó theo full-auto #3.
+    - *Vì sao:* 46/209 commit thiếu vết, trong đó **22 commit liền mạch thuộc đúng 4
+      mục đụng tiền/khoá mã hoá PII** — khu vực Chain siết quy trình chặt nhất lại là
+      khu vực duy nhất không truy được ai làm. Và retry DAV được §7ax giao **đích danh
+      Opus** (Chain duyệt) nhưng git ghi **Sonnet 5** cả 3 commit, không dòng nào giải thích.
+
+12. **Cấm mẫu số mở trong đánh số bước.** (2026-07-26, audit R-5 — đóng C-06)
+    CẤM ký hiệu **"bước k/N"** khi `N` chưa xác định. Trước khi bắt đầu một mục nhiều
+    bước, **chốt tổng số bước**; đổi tổng số giữa chừng thì ghi rõ lý do.
+    - *Vì sao:* mục 3/4 mã hoá at-rest đánh số "bước 5/**N**" ⇒ **không tồn tại định
+      nghĩa "xong"** ⇒ mục 4/4 `payment_vnpay` được mở khi mục 3/4 còn nợ đúng phần
+      nguy hiểm nhất (runbook bật mã hoá lần đầu trên deployment sống, quyết định xoay
+      khoá) — trái cổng §7az **và trái chính kế hoạch §7bc viết 86 phút trước đó**.
+
+13. **Bài học phương pháp phải vào FILE NÀY, không vào nhật ký.** (2026-07-26, audit
+    R-6 — đóng C-08 tận gốc) Khi phát hiện **lỗi phương pháp** (không phải bug code) —
+    cách đo sai, cách hiểu sai, bước bị bỏ — ghi vào **CLAUDE.md**, **không chỉ** vào
+    PROJECT_STATE.
+    - *Vì sao:* PROJECT_STATE dài 3.606 dòng và chỉ-ghi-thêm; phiên sau không đọc lại.
+      Thống kê audit: **16 sự cố "niềm tin giả" → đúng 1 kỷ luật được thể chế hoá (#7)**
+      — và #7 là bài học **duy nhất không tái phát**. Tương quan đó không ngẫu nhiên.
 
 ## Xác thực khi chạy thử cục bộ (từ 2026-07-23, module `iam`)
 **Nếu API trả 401 hàng loạt hoặc demo "tự nhiên chết" — kiểm tra chỗ này
