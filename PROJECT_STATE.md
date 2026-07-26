@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-26** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng. **⚠️ Quy trình đổi (§7az, 2026-07-26):** 4 mục Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` nay qua cổng nghiêm ngặt hơn full-auto (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật). **Mục 1/4 Plugin loader ✅ XONG (§7ba)** · **Mục 2/4 2FA ✅ XONG (§7bb, 2026-07-26)** — kế tiếp là **mục 3/4 mã hoá at-rest** (chưa thiết kế; đã có sẵn 1 khách hàng đầu tiên: cột `user_two_factor.secret` mang `# TODO(sprint8-1b)`), rồi mục 4/4 `payment_vnpay`. Rate limit/observability/load test vẫn full-auto bình thường, chưa mục nào bắt đầu.
+> Cập nhật cuối: **2026-07-26** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng. **⚠️ Quy trình đổi (§7az, 2026-07-26):** 4 mục Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` nay qua cổng nghiêm ngặt hơn full-auto (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật). **Mục 1/4 Plugin loader ✅ XONG (§7ba)** · **Mục 2/4 2FA ✅ XONG (§7bb, 2026-07-26)** · **Mục 3/4 mã hoá at-rest ĐANG LÀM — bước 5/N XONG (§7bc, 2026-07-26)**: primitive+cột+2FA+compliance PII+CRM+lệnh backfill đã có (5 commit `27d816f`→`5a3f930`); còn nợ runbook bật trên deployment thật + quyết định thao tác xoay khoá trước khi coi mục 3/4 XONG hẳn, rồi mục 4/4 `payment_vnpay`. Rate limit/observability/load test vẫn full-auto bình thường, chưa mục nào bắt đầu.
 >
 > **Kế tiếp:** 2 blocker nền cũ (§7j) đã gỡ 1 — RBAC/IAM thật XONG (§7k), nên hồ sơ KH đã làm được và **đã xong**; còn lại **tích điểm KH** (chưa làm, phải qua [docs/14](docs/14_FEATURE_PROCESS.md)) và **`docs/legal/` vẫn thiếu** Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. Nợ mang sang sau Sprint 7 (cập nhật §7ay): ~~report đợt 2~~ **XONG**; ~~retry DAV~~ **XONG (§7ay — relay riêng, không qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API)**; tồn-âm khi outbox async (gộp Sprint 8 load test); `analytics` v2 (Sprint 8/9); FE cho `analytics` (hoãn Sprint 9, quyết định §7ax).
 
@@ -3281,10 +3281,53 @@ cột `token_hash varchar(64)`), không miễn trừ bừa. **Một lần `PYTES
 
 ---
 
+## 7bc. Mã hoá at-rest bước 5/N mục 3/4 — lệnh backfill (2026-07-26, Sonnet, nối phiên bị mất điện)
+
+Phiên trước (bước 1–4/N, 4 commit `27d816f`→`c5ebc2e`→`b3a500f`→`c20c679`) bị **mất điện** cắt ngang
+ở bước 5 — working tree còn 3 file chưa commit (`.env.example`, `bootstrap.py`, `seeds/encrypt_backfill.py`
+mới, chưa test). Rà theo đúng kỷ luật #5 trước khi resume: `docker compose ps` (container tắt, data
+còn nguyên — chỉ dừng do mất điện, không mất), `git log`/`git status` xác nhận đúng điểm dừng.
+
+**Việc dở dang là bước 5/N: lệnh `seeds/encrypt_backfill.py`** — đọc-rồi-ghi từng dòng qua ORM để mã
+hoá dữ liệu ghi trước khi bật cờ (hoặc còn khoá cũ), chạy theo lô tự commit, an toàn dừng-và-chạy-lại.
+`bootstrap._build_field_cipher`/`_build_blind_index` đổi public để lệnh này tự lắp cipher giống hệt
+composition root. `.env.example` ghi quy trình 6 bước bật mã hoá trên deployment sống.
+
+**Kỷ luật #7 áp dụng nghiêm vì đây là script ghi đè dữ liệu mã hoá — sai là mất vĩnh viễn, còn nặng
+hơn seed/permission thường:** dựng lại docker, backup (`~/backup_pre_encrypt_backfill_20260726_1156.sql`),
+seed 6 dòng bản rõ mô phỏng dữ liệu **ghi trước khi có mã hoá** (2FA secret, sổ kiểm soát, phiếu trả
+thuốc, khách hàng+SĐT, dị ứng, bệnh nền) trên chính Postgres đang chạy — không phải CSDL rỗng pytest.
+
+**Bắt được lỗi thật pytest không thể thấy:** backfill hỏng ngay ở bảng `customers` —
+`NoReferencedTableError` vì thiếu import model `active_ingredients` (module `catalog`); FK từ
+`customer_allergies.ingredient_id` không resolve được lúc SQLAlchemy cấu hình mapper. pytest xanh vì
+`conftest` import toàn bộ model của mọi module, che mất chỗ thiếu. 2FA/ledger/returns đã mã hoá đúng
+trước khi lỗi xảy ra; transaction của `customers` tự rollback sạch — đúng tính chất "an toàn khi ngắt
+giữa chừng" mà docstring tuyên bố, kiểm chứng được bằng chính sự cố này chứ không chỉ bằng đọc code.
+Vá bằng 1 dòng import + ghi rõ lý do tại chỗ.
+
+Chạy lại sau vá: 6 bảng ghi lại đúng số cột, `--verify` 0 lỗi giải mã, SQL thô xác nhận cột mang tiền
+tố `v1:` và `phone_fingerprint` tính lại đúng, `find_by_phone` (mục đích tồn tại của blind index) vẫn
+tìm ra khách hàng sau backfill kể cả gõ SĐT có khoảng trắng. Dọn sạch dữ liệu thử, xác nhận lại = 0
+dòng bằng SQL; khoá test dùng trong phiên **không** lưu vào `.env`, cờ mặc định vẫn tắt.
+
+4 cổng xanh: ruff+format, import-linter 16/0, mypy --strict 252 file (`seeds/` ngoài phạm vi
+`packages=["pharmacy_os"]` của cấu hình mypy dự án — kiểm riêng bằng `mypy --strict seeds/encrypt_backfill.py`,
+sạch), pytest toàn repo **979 EXIT=0** (không đổi so với trước phiên — không test nào import
+`encrypt_backfill`). Commit `5a3f930`.
+
+**Nợ mang sang bước 6:** quy trình chạy backfill lần đầu trên deployment thật (không phải seed thử)
+chưa viết thành runbook; chưa quyết xoay khoá (rotate) có cần thao tác vận hành riêng hay tái dùng
+đúng lệnh này. Bước 6/N kế tiếp theo đúng thứ tự Chain đặt (§7ax mục 3): hoàn thiện mục 3/4, rồi
+mở mục 4/4 `payment_vnpay`.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-26 | **MÃ HOÁ AT-REST BƯỚC 5/N MỤC 3/4 — lệnh backfill (§7bc), nối phiên bị mất điện.** Việc dở dang lúc mất điện (`.env.example`+`bootstrap.py`+`seeds/encrypt_backfill.py` mới, chưa test/commit) là lệnh backfill mã hoá dữ liệu cũ. Rà đúng kỷ luật #5 trước resume: docker tắt do mất điện nhưng data nguyên, không mất. **Tự kiểm tra kỷ luật #7 trên Postgres thật có dữ liệu sẵn** (không phải CSDL rỗng pytest) — seed 6 dòng bản rõ mô phỏng dữ liệu ghi trước khi có mã hoá, **bắt được lỗi thật pytest không thấy**: thiếu import model `active_ingredients` (module `catalog`) làm FK từ `customer_allergies.ingredient_id` không resolve, backfill hỏng giữa chừng ở bảng `customers` — nhưng 2FA/ledger/returns đã mã hoá đúng trước đó và transaction `customers` tự rollback sạch (đúng tính chất "an toàn khi ngắt giữa chừng" đã tuyên bố). Vá xong, chạy lại: 6 bảng đúng số cột, `--verify` 0 lỗi, `find_by_phone` vẫn tìm ra khách sau backfill. Dọn sạch dữ liệu thử. 4 cổng xanh, pytest **979 EXIT=0**. Commit `5a3f930`. Nợ: runbook backfill lần đầu trên deployment thật, quyết định thao tác xoay khoá. |
 | 2026-07-26 | **2FA VAI TRÒ NHẠY CẢM XONG — mục 2/4 quy trình nghiêm ngặt (§7bb).** Đủ 4 bước cổng; 5 commit (`7f0c5e9`→`8aee076`→`aabe8ea`→`c09ccb4`, nối bước 1/4 `29080eb` của phiên Opus bị ngắt). **Phát hiện lỗ KHOÁ VĨNH VIỄN khi rà thiết kế**: `iam.user.write` chỉ `system_admin` có + `seeds/` không có lệnh reset ⇒ nhà thuốc 1 admin mất cả thiết bị lẫn mã dự phòng thì không ai cứu được; Chain duyệt bổ sung **break-glass CLI** `seeds.reset_two_factor`. TOTP (không SMS — lý do quyết định là POS **offline-first**), phạm vi theo **quyền** không theo danh sách role, cưỡng chế ở **cả login lẫn step-up khi ký sổ**, challenge là **bản ghi CSDL mờ** không phải JWT (JWT challenge sẽ lọt qua `get_context` và cho đổi mật khẩu mà không qua 2FA). Cờ mặc định tắt; bật lên **không khoá ai** — chỉ chặn cứng hành vi ký. **Tự kiểm tra 17 mục trên Postgres + uvicorn THẬT** (không TestClient): ký sổ chỉ mật khẩu ⇒ 401, đủ 2 yếu tố ⇒ 201; 5 lần đoán sai huỷ challenge; mã dự phòng dùng 1 lần; break-glass rồi đăng nhập lại được; secret **không** có trong audit trail; dọn sạch dữ liệu thử. 4 cổng xanh, pytest **939 EXIT=0**. Nợ: mã hoá at-rest secret (mục 3/4), reset không thu hồi phiên, `crm.erase` ngoài phạm vi, rate limit theo IP chưa có. |
 | 2026-07-26 | **PLUGIN LOADER XONG — mục 1/4 quy trình nghiêm ngặt (§7ba).** Chạy đủ 4 bước cổng mới: thiết kế → 2 lượt duyệt → code → GĐĐH tự kiểm tra thật. 3 commit stepped (`c269fe7`→`6449de2`→`9b46140`). Tách **bật/tắt khỏi khám phá**: `PLUGINS__ENABLED` mặc định rỗng, cài package ≠ bật (trước đây nạp mọi plugin tìm thấy với config rỗng). Thêm **validate trước setup** (contract + so khớp major `api_version`) và **fail-fast** — plugin đã bật mà nạp lỗi/chưa cài ⇒ app từ chối khởi động, khớp tiền lệ `ALLOW_DEV_AUTH`. `HookRegistry` mới: 1 plugin/port, xung đột ⇒ lỗi nêu tên cả hai. **Đổi phá vỡ có chủ đích: hook runtime thành `async`** — hook sync gọi mạng đứng cả event loop và không timeout được; chi phí đổi = 0 lúc này, tăng vọt khi có `payment_vnpay` (đúng lý do làm loader trước). **Tự kiểm tra bằng package cài thật** (`pip install` + entry point thật, 12 mục — test đều dùng entry point giả nên không chứng minh được đường thật), dọn sạch sau đó. **Đính chính §7az ghi sai** "discover/load_enabled không ai gọi" (grep bỏ sót `main.py`). Nợ ghi rõ: 2 contract import-linter **không thêm được** cho tới khi có package plugin thật (đã thử, import-linter báo `Could not find package`), event hook, circuit breaker, timeout tại điểm gọi, không sandbox thật. 4 cổng xanh, pytest **908 EXIT=0**, không migration. |
 | 2026-07-26 | **DỪNG PHIÊN theo lệnh Chain — quy trình mới cho 4 mục đụng tiền/khóa thật (§7az).** Chain đặt cổng nghiêm ngặt hơn full-auto cho Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật), đảo thứ tự: **Plugin loader trước 2FA** (kỹ thuật: payment sẽ chạy như plugin). Phạm vi loader đã chốt sẵn: cờ toàn cục, không per-tenant. Phiên này trước đó (dưới quy trình cũ) đã: report đợt 2 top thuốc bán chạy XONG (`14af10e`) + phát hiện xuất `ControlledLedgerEntry` đã xong sẵn từ TT18; retry DAV qua outbox XONG (Opus, §7ay, 3 commit, hàng đợi riêng không chung outbox lõi); 2FA bước 1/4 domain XONG+commit (`29080eb`), bước 2/4 app+infra+migration **code xong, migration 0028 live trên Postgres, nhưng CHƯA commit** theo đúng lựa chọn Chain — còn 2 test audit-completeness đỏ (thiếu 6 action 2FA trong 2 set đối chiếu tay, chưa sửa). Tự phát hiện lỗi phương pháp: `pytest \| tail` che mất exit code thật của pytest — từ nay đo trực tiếp, không qua pipe. Chi tiết đầy đủ + việc phải làm khi mở lại: §7az. |
