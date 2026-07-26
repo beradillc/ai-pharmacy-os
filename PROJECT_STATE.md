@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-26** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng. **⚠️ Quy trình đổi (§7az, 2026-07-26):** 4 mục Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` nay qua cổng nghiêm ngặt hơn full-auto (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật). **Mục 1/4 Plugin loader ✅ XONG (§7ba)** · **Mục 2/4 2FA ✅ XONG (§7bb, 2026-07-26)** · **Mục 3/4 mã hoá at-rest ĐANG LÀM — bước 5/N XONG (§7bc, 2026-07-26)**: primitive+cột+2FA+compliance PII+CRM+lệnh backfill đã có (5 commit `27d816f`→`5a3f930`); còn nợ runbook bật trên deployment thật + quyết định thao tác xoay khoá trước khi coi mục 3/4 XONG hẳn, rồi mục 4/4 `payment_vnpay`. Rate limit/observability/load test vẫn full-auto bình thường, chưa mục nào bắt đầu.
+> Cập nhật cuối: **2026-07-26** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng. **⚠️ Quy trình đổi (§7az, 2026-07-26):** 4 mục Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` nay qua cổng nghiêm ngặt hơn full-auto (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật). **Mục 1/4 Plugin loader ✅ XONG (§7ba)** · **Mục 2/4 2FA ✅ XONG (§7bb, 2026-07-26)** · **Mục 3/4 mã hoá at-rest ĐANG LÀM — bước 5/N XONG (§7bc, 2026-07-26)**: primitive+cột+2FA+compliance PII+CRM+lệnh backfill đã có (5 commit `27d816f`→`5a3f930`); còn nợ runbook bật trên deployment thật + quyết định thao tác xoay khoá trước khi coi mục 3/4 XONG hẳn. **Mục 4/4 `payment_vnpay` — CODE XONG cả 4 bước (§7bd, 2026-07-26), CHẶN ở "GĐĐH tự kiểm tra thật trên sandbox VNPAY"**: cần Chain cấp `tmn_code`/`hash_secret` sandbox (Claude không tự đăng ký được) + xác nhận tunnel công khai tạm thời — chưa coi là XONG, chưa mở mục kế tiếp. Rate limit/observability/load test vẫn full-auto bình thường, chưa mục nào bắt đầu.
 >
 > **Kế tiếp:** 2 blocker nền cũ (§7j) đã gỡ 1 — RBAC/IAM thật XONG (§7k), nên hồ sơ KH đã làm được và **đã xong**; còn lại **tích điểm KH** (chưa làm, phải qua [docs/14](docs/14_FEATURE_PROCESS.md)) và **`docs/legal/` vẫn thiếu** Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. Nợ mang sang sau Sprint 7 (cập nhật §7ay): ~~report đợt 2~~ **XONG**; ~~retry DAV~~ **XONG (§7ay — relay riêng, không qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API)**; tồn-âm khi outbox async (gộp Sprint 8 load test); `analytics` v2 (Sprint 8/9); FE cho `analytics` (hoãn Sprint 9, quyết định §7ax).
 
@@ -3323,10 +3323,79 @@ mở mục 4/4 `payment_vnpay`.
 
 ---
 
+## 7bd. `payment_vnpay` — CODE XONG cả 4 bước, CHẶN ở tự kiểm tra sandbox thật (2026-07-26, Sonnet)
+
+Mục 4/4 quy trình nghiêm ngặt (§7az): thiết kế đã trình bày + GĐ xác nhận + Chain duyệt (đầu phiên
+này), code theo đúng 4 bước stepped-commit, nhưng **CHƯA đạt tới bước cuối "GĐĐH tự kiểm tra thật"**
+— đây là **BLOCKER THẬT SỰ**, không phải việc quên làm.
+
+### 4 commit, 4 cổng xanh mỗi bước
+
+`07f2d11` (domain: `SaleStatus.CANCELLED`, `PaymentMethod.VNPAY`, `PaymentCallbackError`) →
+`b5c945d` (app+infra+migration `0032`: `initiate_vnpay_payment`/`confirm_vnpay_callback`,
+`SalesRepository.get_across_tenants`, `sale_payments.gateway_ref` unique) → `57a1e1e` (interface:
+`POST /sales/vnpay/initiate` + `GET /sales/vnpay/callback`) → `3799626` (package thật
+`plugins/payment_vnpay/` + 2 contract import-linter mới, xác nhận có "răng" bằng cách cố tình phá
+rồi soi lỗi). pytest toàn repo **1001 EXIT=0** đo 2 lần bằng `PIPESTATUS[0]` trực tiếp (không qua
+`| tail` — đúng bài học phương pháp từ §7az). 16 test riêng `plugins/payment_vnpay/tests/` (chữ ký
+HMAC round-trip + chống giả mạo). 12 test integration `sales` dùng **fake `PaymentGateway` thật qua
+`HookRegistry` thật** (không mock nội bộ tầng service) — bao phủ: initiate lưu DRAFT thật lần đầu
+tiên trong `sales`, confirm hoàn tất + xuất kho đúng 1 lần, IPN lặp idempotent (unique `gateway_ref`
+bắt), chữ ký sai/số tiền sai/số tiền không phải số đều KHÔNG đụng đơn (không 500), gateway báo huỷ
+→ `CANCELLED`, đơn lạ bị chặn an toàn không lộ dữ liệu tenant khác.
+
+**1 lỗi thật tự bắt được khi viết, không phải khi test:** `int(vnp_Amount)` không bọc try/except —
+callback chữ ký đúng nhưng `vnp_Amount` không phải số (VNPAY lỗi/bug hiếm) sẽ làm `ValueError` thoát
+ra ngoài `confirm_vnpay_callback` → 500 cho VNPAY thay vì trả `RspCode` rõ ràng. Vá bằng cách gộp
+`KeyError`/`ValueError` vào cùng nhánh `AMOUNT_MISMATCH`, thêm test `test_non_numeric_amount_is_
+rejected_not_500`.
+
+### Vì sao CHƯA coi là XONG
+
+Thiết kế đã duyệt yêu cầu tường minh: **"môi trường sandbox VNPAY để test thật trước khi coi là
+xong (không chỉ mock nội bộ)"** — đây không phải khuyến nghị, là điều kiện. Việc còn thiếu:
+
+1. **Tài khoản merchant sandbox VNPAY** (`tmn_code` + `hash_secret`) — đăng ký tại cổng sandbox
+   chính thức của VNPAY, cần thông tin liên hệ thật (email/số điện thoại) gắn với người/công ty.
+   **Claude không tự đăng ký được** — đúng loại việc `# BLOCKER: AI__API_KEY thật` (Sprint 5) đã gặp:
+   cần một người thật cung cấp.
+2. **Tunnel công khai** (ngrok/cloudflared) để VNPAY sandbox gọi được `ipn_url` tới máy dev sau NAT —
+   làm được về mặt kỹ thuật, nhưng mở 1 cổng ra Internet công khai là hành động đáng cân nhắc trước
+   khi tự làm (dù rủi ro thấp với dữ liệu thử) — chờ xác nhận thay vì tự quyết.
+3. Không có 2 điều trên thì 7 kịch bản test thật đã liệt kê trong thiết kế (thành công/IPN lặp/chữ
+   ký sai/số tiền sai/huỷ/đơn lạ/gateway tắt) **chỉ chạy được với fake gateway** — đã chạy đủ và
+   xanh, nhưng đó là chứng minh **logic `sales` đúng**, không phải chứng minh **tích hợp VNPAY thật
+   đúng** (khác nhau: chữ ký HMAC thật của VNPAY, khuôn dạng `vnp_TxnRef`/độ dài, hành vi retry IPN
+   thật chưa được đối chiếu với bất kỳ response thật nào từ VNPAY).
+
+### Cần Chain quyết định để mở lại
+
+- Cung cấp `tmn_code`/`hash_secret` sandbox VNPAY (Chain tự đăng ký), hoặc cho phép Sonnet đăng ký
+  bằng thông tin Chain cung cấp trước.
+- Xác nhận cho chạy `ngrok`/`cloudflared` tạm thời trên máy dev trong lúc tự kiểm tra (tắt ngay sau).
+- Hoặc: chấp nhận mục 4/4 dừng ở "code xong, kiểm tra bằng fake gateway xanh" làm mức đủ để mở mục
+  tiếp theo, dời sandbox thật sang trước ngày go-live thật — **đây là quyết định nghiệp vụ/rủi ro
+  của Chain, không tự chọn thay** (kỷ luật #3).
+
+### Nợ khác đã ghi trong thiết kế, không chặn v1
+
+- Báo cáo đối soát VNPAY↔sổ sách hệ thống — GĐ nêu lúc duyệt thiết kế, backlog Sprint 9.
+- Chính sách dọn đơn DRAFT bị bỏ ngang (khách rời trang không thanh toán) — chưa có job tự động,
+  hiện chỉ nằm DRAFT vô thời hạn chờ webhook không bao giờ tới.
+- Hoàn tiền qua API VNPAY — ngoài phạm vi v1 theo đúng quyết định đã duyệt (hoàn tiền vẫn làm thủ
+  công ngoài hệ thống, giống mọi phương thức khác).
+
+**KHÔNG mở mục kế tiếp (rate limit/observability/load test vẫn full-auto bình thường, không liên
+quan) cho tới khi mục 4/4 có quyết định rõ ở trên** — đúng yêu cầu Chain: "báo cáo, CHƯA sang mục
+tiếp theo."
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-26 | **`payment_vnpay` CODE XONG cả 4 bước — CHẶN ở tự kiểm tra sandbox thật (§7bd).** Mục 4/4 Sprint 8, thiết kế đã duyệt GĐ+Chain đầu phiên. 4 commit stepped (`07f2d11`→`b5c945d`→`57a1e1e`→`3799626`): domain (`SaleStatus.CANCELLED`, `PaymentMethod.VNPAY`) → app/infra/migration `0032` (`initiate_vnpay_payment`/`confirm_vnpay_callback`, `get_across_tenants` — điểm phá lệ tenant-scoping DUY NHẤT, chỉ webhook dùng) → API (`POST /sales/vnpay/initiate` + `GET /sales/vnpay/callback`, đặt trước route `{order_id}` để không bị nuốt path) → package thật `plugins/payment_vnpay/` + 2 contract import-linter mới (xác nhận có "răng" bằng cách cố tình phá rồi soi lỗi). **1 lỗi thật tự bắt được**: `vnp_Amount` không parse được sẽ 500 thay vì trả lỗi rõ ràng cho VNPAY — đã vá + thêm test. 28 test mới (16 package `payment_vnpay` + 12 integration `sales` dùng fake gateway thật qua `HookRegistry`, không mock nội bộ). 4 cổng xanh, pytest toàn repo **1001 EXIT=0** đo 2 lần bằng `PIPESTATUS[0]` trực tiếp. **CHƯA coi mục 4/4 là XONG**: thiết kế yêu cầu tường minh sandbox VNPAY thật, cần Chain cấp `tmn_code`/`hash_secret` (Claude không tự đăng ký được, giống `# BLOCKER: AI__API_KEY`) + xác nhận cho chạy tunnel công khai tạm thời. Dừng đúng chỗ, không tự sang mục kế tiếp. |
 | 2026-07-26 | **MÃ HOÁ AT-REST BƯỚC 5/N MỤC 3/4 — lệnh backfill (§7bc), nối phiên bị mất điện.** Việc dở dang lúc mất điện (`.env.example`+`bootstrap.py`+`seeds/encrypt_backfill.py` mới, chưa test/commit) là lệnh backfill mã hoá dữ liệu cũ. Rà đúng kỷ luật #5 trước resume: docker tắt do mất điện nhưng data nguyên, không mất. **Tự kiểm tra kỷ luật #7 trên Postgres thật có dữ liệu sẵn** (không phải CSDL rỗng pytest) — seed 6 dòng bản rõ mô phỏng dữ liệu ghi trước khi có mã hoá, **bắt được lỗi thật pytest không thấy**: thiếu import model `active_ingredients` (module `catalog`) làm FK từ `customer_allergies.ingredient_id` không resolve, backfill hỏng giữa chừng ở bảng `customers` — nhưng 2FA/ledger/returns đã mã hoá đúng trước đó và transaction `customers` tự rollback sạch (đúng tính chất "an toàn khi ngắt giữa chừng" đã tuyên bố). Vá xong, chạy lại: 6 bảng đúng số cột, `--verify` 0 lỗi, `find_by_phone` vẫn tìm ra khách sau backfill. Dọn sạch dữ liệu thử. 4 cổng xanh, pytest **979 EXIT=0**. Commit `5a3f930`. Nợ: runbook backfill lần đầu trên deployment thật, quyết định thao tác xoay khoá. |
 | 2026-07-26 | **2FA VAI TRÒ NHẠY CẢM XONG — mục 2/4 quy trình nghiêm ngặt (§7bb).** Đủ 4 bước cổng; 5 commit (`7f0c5e9`→`8aee076`→`aabe8ea`→`c09ccb4`, nối bước 1/4 `29080eb` của phiên Opus bị ngắt). **Phát hiện lỗ KHOÁ VĨNH VIỄN khi rà thiết kế**: `iam.user.write` chỉ `system_admin` có + `seeds/` không có lệnh reset ⇒ nhà thuốc 1 admin mất cả thiết bị lẫn mã dự phòng thì không ai cứu được; Chain duyệt bổ sung **break-glass CLI** `seeds.reset_two_factor`. TOTP (không SMS — lý do quyết định là POS **offline-first**), phạm vi theo **quyền** không theo danh sách role, cưỡng chế ở **cả login lẫn step-up khi ký sổ**, challenge là **bản ghi CSDL mờ** không phải JWT (JWT challenge sẽ lọt qua `get_context` và cho đổi mật khẩu mà không qua 2FA). Cờ mặc định tắt; bật lên **không khoá ai** — chỉ chặn cứng hành vi ký. **Tự kiểm tra 17 mục trên Postgres + uvicorn THẬT** (không TestClient): ký sổ chỉ mật khẩu ⇒ 401, đủ 2 yếu tố ⇒ 201; 5 lần đoán sai huỷ challenge; mã dự phòng dùng 1 lần; break-glass rồi đăng nhập lại được; secret **không** có trong audit trail; dọn sạch dữ liệu thử. 4 cổng xanh, pytest **939 EXIT=0**. Nợ: mã hoá at-rest secret (mục 3/4), reset không thu hồi phiên, `crm.erase` ngoài phạm vi, rate limit theo IP chưa có. |
 | 2026-07-26 | **PLUGIN LOADER XONG — mục 1/4 quy trình nghiêm ngặt (§7ba).** Chạy đủ 4 bước cổng mới: thiết kế → 2 lượt duyệt → code → GĐĐH tự kiểm tra thật. 3 commit stepped (`c269fe7`→`6449de2`→`9b46140`). Tách **bật/tắt khỏi khám phá**: `PLUGINS__ENABLED` mặc định rỗng, cài package ≠ bật (trước đây nạp mọi plugin tìm thấy với config rỗng). Thêm **validate trước setup** (contract + so khớp major `api_version`) và **fail-fast** — plugin đã bật mà nạp lỗi/chưa cài ⇒ app từ chối khởi động, khớp tiền lệ `ALLOW_DEV_AUTH`. `HookRegistry` mới: 1 plugin/port, xung đột ⇒ lỗi nêu tên cả hai. **Đổi phá vỡ có chủ đích: hook runtime thành `async`** — hook sync gọi mạng đứng cả event loop và không timeout được; chi phí đổi = 0 lúc này, tăng vọt khi có `payment_vnpay` (đúng lý do làm loader trước). **Tự kiểm tra bằng package cài thật** (`pip install` + entry point thật, 12 mục — test đều dùng entry point giả nên không chứng minh được đường thật), dọn sạch sau đó. **Đính chính §7az ghi sai** "discover/load_enabled không ai gọi" (grep bỏ sót `main.py`). Nợ ghi rõ: 2 contract import-linter **không thêm được** cho tới khi có package plugin thật (đã thử, import-linter báo `Could not find package`), event hook, circuit breaker, timeout tại điểm gọi, không sandbox thật. 4 cổng xanh, pytest **908 EXIT=0**, không migration. |
