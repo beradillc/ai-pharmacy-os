@@ -1,7 +1,7 @@
 # PROJECT_STATE — AI Pharmacy OS
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-26** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng. **⚠️ Quy trình đổi (§7az, 2026-07-26):** 4 mục Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` nay qua cổng nghiêm ngặt hơn full-auto (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật). **Mục 1/4 Plugin loader ✅ XONG (§7ba)** · **Mục 2/4 2FA ✅ XONG (§7bb, 2026-07-26)** · **Mục 3/4 mã hoá at-rest ĐANG LÀM — bước 5/N XONG (§7bc, 2026-07-26)**: primitive+cột+2FA+compliance PII+CRM+lệnh backfill đã có (5 commit `27d816f`→`5a3f930`); còn nợ runbook bật trên deployment thật + quyết định thao tác xoay khoá trước khi coi mục 3/4 XONG hẳn. **Mục 4/4 `payment_vnpay` — CODE XONG cả 4 bước (§7bd, 2026-07-26), CHẶN ở "GĐĐH tự kiểm tra thật trên sandbox VNPAY"**: cần Chain cấp `tmn_code`/`hash_secret` sandbox (Claude không tự đăng ký được) + xác nhận tunnel công khai tạm thời — chưa coi là XONG, chưa mở mục kế tiếp. Rate limit/observability/load test vẫn full-auto bình thường, chưa mục nào bắt đầu.
+> Cập nhật cuối: **2026-07-26** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng. **⚠️ Quy trình đổi (§7az, 2026-07-26):** 4 mục Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` nay qua cổng nghiêm ngặt hơn full-auto (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật). **Mục 1/4 Plugin loader ✅ XONG (§7ba)** · **Mục 2/4 2FA ✅ XONG (§7bb, 2026-07-26)** · **Mục 3/4 mã hoá at-rest ĐANG LÀM — bước 5/N XONG (§7bc, 2026-07-26)**: primitive+cột+2FA+compliance PII+CRM+lệnh backfill đã có (5 commit `27d816f`→`5a3f930`); còn nợ runbook bật trên deployment thật + quyết định thao tác xoay khoá trước khi coi mục 3/4 XONG hẳn. **Mục 4/4 `payment_vnpay` — CODE XONG cả 4 bước (§7bd, 2026-07-26), CHẶN ở "GĐĐH tự kiểm tra thật trên sandbox VNPAY"**: cần Chain cấp `tmn_code`/`hash_secret` sandbox (Claude không tự đăng ký được) + xác nhận tunnel công khai tạm thời — chưa coi là XONG, chưa mở mục kế tiếp. Rate limit/observability/load test vẫn full-auto bình thường, chưa mục nào bắt đầu. **🔍 KIỂM TOÁN ĐỘC LẬP (2026-07-26): Phiên A+B XONG — 29 phát hiện, 0 Critical, 6 High, 2 mục 🚫 RELEASE BLOCKER Sprint 9 (A-02/A-03) + 1 mục ⏸️ chờ Chain quyết (A-05). Đọc `docs/audit/00_AUDIT_INDEX.md`. Phiên C (audit quy trình + báo cáo cuối) chờ phiên hạn mức đầy — §7bf.**
 >
 > **Kế tiếp:** 2 blocker nền cũ (§7j) đã gỡ 1 — RBAC/IAM thật XONG (§7k), nên hồ sơ KH đã làm được và **đã xong**; còn lại **tích điểm KH** (chưa làm, phải qua [docs/14](docs/14_FEATURE_PROCESS.md)) và **`docs/legal/` vẫn thiếu** Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. Nợ mang sang sau Sprint 7 (cập nhật §7ay): ~~report đợt 2~~ **XONG**; ~~retry DAV~~ **XONG (§7ay — relay riêng, không qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API)**; tồn-âm khi outbox async (gộp Sprint 8 load test); `analytics` v2 (Sprint 8/9); FE cho `analytics` (hoãn Sprint 9, quyết định §7ax).
 
@@ -3391,6 +3391,66 @@ tiếp theo."
 
 ---
 
+## 7bf. KIỂM TOÁN ĐỘC LẬP — Phiên A+B XONG, Phiên C chờ hạn mức đầy (2026-07-26)
+
+Chain cho chạy một đợt **kiểm toán độc lập**: Claude cởi bỏ hoàn toàn vai GĐ và Trợ lý Code, đóng
+vai **kiểm toán viên độc lập**, nguyên tắc *"mọi tuyên bố trong PROJECT_STATE/TODO/ROADMAP là CHƯA
+ĐƯỢC CHỨNG MINH cho tới khi tự chạy lệnh xác minh"*. Không sửa code, không cập nhật tài liệu — chỉ
+ghi phát hiện.
+
+**→ ĐỌC `docs/audit/00_AUDIT_INDEX.md` TRƯỚC.** Đó là bảng tra cứu toàn bộ 29 phát hiện; hai file
+phiên (2.053 dòng) chỉ mở khi cần bằng chứng chi tiết của một ID cụ thể.
+
+| Phiên | Phạm vi | Trạng thái |
+|---|---|---|
+| **A** — `docs/audit/2026-07-26_AUDIT_PHIEN_A.md` | Giai đoạn 0 (bằng chứng nền) + 1 (kiến trúc, ISO 25010) | ✅ XONG |
+| **B** — `docs/audit/2026-07-26_AUDIT_PHIEN_B.md` | Giai đoạn 2 (ASVS L2) + 3 (toàn vẹn dữ liệu) + 4 (chất test) | ✅ XONG |
+| **C** — chưa tạo | Giai đoạn 5 (audit quy trình GĐ+Trợ lý Code) + 6 (báo cáo cuối) | ⏳ **CHỜ PHIÊN HẠN MỨC ĐẦY** |
+
+**Vì sao C phải chờ:** đó là phiên tổng hợp + phán xét toàn dự án; cắt ngang giữa chừng thì báo cáo
+không dùng được (Chain chốt). Điểm bắt đầu + thứ tự file cần đọc: `00_AUDIT_INDEX.md` mục 5.
+
+| Mức | A | B | Tổng |
+|---|---:|---:|---:|
+| Critical | 0 | 0 | **0** |
+| High | 3 | 3 | **6** |
+| Medium | 7 | 7 | **14** |
+| Low | 6 | 3 | **9** |
+
+**2 điều chỉnh Chain ban hành sau khi đọc bản đầu:** (1) **A-02** (prod khởi động được với khoá ký
+JWT 3 byte) và **A-03** (prod khởi động được với `ENCRYPTION__ENABLED=false`) nâng thành **🚫 RELEASE
+BLOCKER Sprint 9** — lý do: vi phạm trực tiếp ý đồ *"fail-fast prod"* dự án tự tuyên bố từ Sprint 2 /
+`docs/10_CONFIG.md`, và liên quan dữ liệu nhạy cảm theo Luật BVDLCN 91/2025. **Sprint 9 không được
+đóng khi hai mục này còn mở.** (2) **A-05** (một cặp credential VNPAY cho mọi tenant) đánh dấu thêm
+**⏸️ QUYẾT ĐỊNH KINH DOANH CHỜ CHAIN** — 2 phương án (merchant riêng từng nhà thuốc vs gom về BeraLLC
+đối soát) + hệ quả pháp lý từng hướng ghi trong Phiên A mục A-05; **phải chốt TRƯỚC khi mở bước
+sandbox VNPAY thật** (§7bd), vì bước đó đăng ký `tmn_code` và chốt luôn hướng đi. Giữ nguyên
+**0 Critical**: chưa có deployment production nào ⇒ mìn cài chờ ngày deploy, không phải lỗ hổng đang
+chảy máu.
+
+**6 phát hiện High:** A-01 toàn bộ 1001 test chạy SQLite nên `FOR UPDATE SKIP LOCKED` bị nuốt im
+lặng ở đúng 2 chỗ cần khoá hàng · A-02 · A-03 · B-01 `StockBalanceRepository.adjust` mất cập nhật
+khi ghi đồng thời (chứng minh trên Postgres: IN=10, OUT=16, số dư 0) · B-02 khoá chống lặp
+`exists_for_ref` thua race ⇒ 2 dòng xuất kho cùng `ref_id`, không unique index đỡ · B-03
+`.env.example` bật `APP__DEBUG=true` ⇒ SQL echo đổ tên/SĐT/ngày sinh/CCCD bệnh nhân ra log.
+
+**Điều đợt audit KHÔNG tìm ra (ghi để phiên sau không làm lại):** 5/5 cổng xanh và **con số khớp tài
+liệu 100%** · 32 migration upgrade/downgrade/check sạch trên DB rỗng · **112/112 hash trích dẫn tồn
+tại thật** · 0 secret trong lịch sử git · 0 import chéo module (kể cả `importlib`/`TYPE_CHECKING`/
+chuỗi config) · 0 vòng phụ thuộc · 4/4 kiểu giả mạo JWT bị chặn · refresh rotation phát hiện tái sử
+dụng và **thu hồi cả chuỗi phiên** (chuẩn ASVS 3.3) · **0/40 endpoint thiếu kiểm quyền** · lỗ hổng
+`X-Branch-Id` (§7l) **đã vá thật**, kiểm bằng HTTP thật · 5/5 đường tấn công chéo tenant trả 404 ·
+idempotency đơn hàng có unique index CSDL đỡ · outbox **không mất sự kiện** khi relay chết (bật lại,
+giao đủ) · không dual-write · lỗ hổng role-seeding §7l **đã vá thật** (chạy `seeds.run` lần 2 trên
+CSDL có dữ liệu: created=0/updated=0) · độ phủ dòng **96%**.
+
+**Môi trường thử:** database **mới** `audit_empty_a` tách hoàn toàn khỏi `pharmacy_os`, 2 tenant thật
+để thử cách ly, `uvicorn` thật cổng 8098 với `ALLOW_DEV_AUTH=false`. **CSDL dev `pharmacy_os` không
+bị chạm ở bất kỳ bước nào.** `audit_empty_a` còn tồn tại — lệnh `DROP` bị chặn ở tầng quyền hạn nên
+kiểm toán viên không xoá được; Chain xoá tay khi tiện (`DROP DATABASE audit_empty_a;`).
+
+---
+
 ## 7be. DỪNG PHIÊN đúng nghi thức (2026-07-26) — Chain: "cho đóng phiên toàn bộ đúng quy trình"
 
 Sau khi hỏi Chain hướng xử lý blocker sandbox VNPAY (§7bd), Chain chọn đóng phiên thay vì quyết ngay
@@ -3446,6 +3506,7 @@ chỉ tạm thời), hoàn tiền qua API VNPAY (ngoài phạm vi v1 theo đúng
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-26 | **KIỂM TOÁN ĐỘC LẬP Phiên A+B XONG — 29 phát hiện, 0 Critical, 6 High (§7bf).** Chain cho chạy đợt audit độc lập: Claude cởi bỏ vai GĐ/Trợ lý Code, mặc định mọi tuyên bố trong tài liệu là **chưa được chứng minh** cho tới khi tự chạy lệnh. **Đọc `docs/audit/00_AUDIT_INDEX.md` trước** (bảng tra cứu 29 phát hiện; 2 file phiên 2.053 dòng chỉ mở khi cần bằng chứng chi tiết). Phiên A = Giai đoạn 0 (bằng chứng nền) + 1 (kiến trúc ISO 25010), 16 phát hiện. Phiên B = Giai đoạn 2 (ASVS L2) + 3 (toàn vẹn dữ liệu) + 4 (chất test), 13 phát hiện, chạy trên **Postgres + uvicorn thật**, database `audit_empty_a` tách riêng, 2 tenant để thử cách ly. **Chain nâng A-02 + A-03 thành 🚫 RELEASE BLOCKER Sprint 9** (prod khởi động được với khoá ký JWT 3 byte / với `ENCRYPTION__ENABLED=false` — vi phạm ý đồ *fail-fast prod* dự án tự tuyên bố từ Sprint 2, và chạm dữ liệu nhạy cảm theo Luật BVDLCN 91/2025); **A-05 đánh dấu ⏸️ QUYẾT ĐỊNH KINH DOANH CHỜ CHAIN** (1 cặp credential VNPAY cho mọi tenant ⇒ tiền mọi nhà thuốc về 1 tài khoản merchant — 2 phương án + hệ quả pháp lý ở Phiên A mục A-05, **phải chốt trước khi mở sandbox VNPAY thật**). Giữ **0 Critical** vì chưa có deployment production. 4 High còn lại: A-01 (toàn bộ 1001 test chạy SQLite ⇒ `FOR UPDATE SKIP LOCKED` bị nuốt im lặng đúng 2 chỗ cần khoá hàng), B-01 (`adjust` mất cập nhật khi ghi đồng thời — chứng minh trên Postgres: IN=10, OUT=16, số dư 0), B-02 (`exists_for_ref` thua race ⇒ 2 dòng xuất kho cùng `ref_id`, không unique index đỡ), B-03 (`.env.example` bật `APP__DEBUG=true` ⇒ SQL echo đổ tên/SĐT/ngày sinh/CCCD bệnh nhân ra log). Nguyên nhân gốc chung của B-01/B-02/B-04: **0 test đồng thời trong 1001 test** (B-09), dù độ phủ dòng 96%. **Audit KHÔNG tìm ra:** 5/5 cổng xanh và số khớp tài liệu 100%, 112/112 hash trích dẫn đúng, 0 secret trong git, 0 import chéo module, 4/4 kiểu giả mạo JWT bị chặn, 0/40 endpoint thiếu kiểm quyền, 5/5 đường chéo tenant trả 404, lỗ hổng `X-Branch-Id` (§7l) và role-seeding (§7l) **đã vá thật**, outbox không mất sự kiện. **Phiên C (Giai đoạn 5 audit quy trình + Giai đoạn 6 báo cáo cuối) CHƯA LÀM — chờ phiên hạn mức đầy** vì là phiên tổng hợp/phán xét toàn dự án, cắt ngang thì báo cáo không dùng được. Điểm bắt đầu + thứ tự file cần đọc: `00_AUDIT_INDEX.md` mục 5. **Không sửa một dòng code nào; `pharmacy_os` (CSDL dev) không bị chạm.** |
 | 2026-07-26 | **`payment_vnpay` CODE XONG cả 4 bước — CHẶN ở tự kiểm tra sandbox thật (§7bd).** Mục 4/4 Sprint 8, thiết kế đã duyệt GĐ+Chain đầu phiên. 4 commit stepped (`07f2d11`→`b5c945d`→`57a1e1e`→`3799626`): domain (`SaleStatus.CANCELLED`, `PaymentMethod.VNPAY`) → app/infra/migration `0032` (`initiate_vnpay_payment`/`confirm_vnpay_callback`, `get_across_tenants` — điểm phá lệ tenant-scoping DUY NHẤT, chỉ webhook dùng) → API (`POST /sales/vnpay/initiate` + `GET /sales/vnpay/callback`, đặt trước route `{order_id}` để không bị nuốt path) → package thật `plugins/payment_vnpay/` + 2 contract import-linter mới (xác nhận có "răng" bằng cách cố tình phá rồi soi lỗi). **1 lỗi thật tự bắt được**: `vnp_Amount` không parse được sẽ 500 thay vì trả lỗi rõ ràng cho VNPAY — đã vá + thêm test. 28 test mới (16 package `payment_vnpay` + 12 integration `sales` dùng fake gateway thật qua `HookRegistry`, không mock nội bộ). 4 cổng xanh, pytest toàn repo **1001 EXIT=0** đo 2 lần bằng `PIPESTATUS[0]` trực tiếp. **CHƯA coi mục 4/4 là XONG**: thiết kế yêu cầu tường minh sandbox VNPAY thật, cần Chain cấp `tmn_code`/`hash_secret` (Claude không tự đăng ký được, giống `# BLOCKER: AI__API_KEY`) + xác nhận cho chạy tunnel công khai tạm thời. Dừng đúng chỗ, không tự sang mục kế tiếp. |
 | 2026-07-26 | **MÃ HOÁ AT-REST BƯỚC 5/N MỤC 3/4 — lệnh backfill (§7bc), nối phiên bị mất điện.** Việc dở dang lúc mất điện (`.env.example`+`bootstrap.py`+`seeds/encrypt_backfill.py` mới, chưa test/commit) là lệnh backfill mã hoá dữ liệu cũ. Rà đúng kỷ luật #5 trước resume: docker tắt do mất điện nhưng data nguyên, không mất. **Tự kiểm tra kỷ luật #7 trên Postgres thật có dữ liệu sẵn** (không phải CSDL rỗng pytest) — seed 6 dòng bản rõ mô phỏng dữ liệu ghi trước khi có mã hoá, **bắt được lỗi thật pytest không thấy**: thiếu import model `active_ingredients` (module `catalog`) làm FK từ `customer_allergies.ingredient_id` không resolve, backfill hỏng giữa chừng ở bảng `customers` — nhưng 2FA/ledger/returns đã mã hoá đúng trước đó và transaction `customers` tự rollback sạch (đúng tính chất "an toàn khi ngắt giữa chừng" đã tuyên bố). Vá xong, chạy lại: 6 bảng đúng số cột, `--verify` 0 lỗi, `find_by_phone` vẫn tìm ra khách sau backfill. Dọn sạch dữ liệu thử. 4 cổng xanh, pytest **979 EXIT=0**. Commit `5a3f930`. Nợ: runbook backfill lần đầu trên deployment thật, quyết định thao tác xoay khoá. |
 | 2026-07-26 | **2FA VAI TRÒ NHẠY CẢM XONG — mục 2/4 quy trình nghiêm ngặt (§7bb).** Đủ 4 bước cổng; 5 commit (`7f0c5e9`→`8aee076`→`aabe8ea`→`c09ccb4`, nối bước 1/4 `29080eb` của phiên Opus bị ngắt). **Phát hiện lỗ KHOÁ VĨNH VIỄN khi rà thiết kế**: `iam.user.write` chỉ `system_admin` có + `seeds/` không có lệnh reset ⇒ nhà thuốc 1 admin mất cả thiết bị lẫn mã dự phòng thì không ai cứu được; Chain duyệt bổ sung **break-glass CLI** `seeds.reset_two_factor`. TOTP (không SMS — lý do quyết định là POS **offline-first**), phạm vi theo **quyền** không theo danh sách role, cưỡng chế ở **cả login lẫn step-up khi ký sổ**, challenge là **bản ghi CSDL mờ** không phải JWT (JWT challenge sẽ lọt qua `get_context` và cho đổi mật khẩu mà không qua 2FA). Cờ mặc định tắt; bật lên **không khoá ai** — chỉ chặn cứng hành vi ký. **Tự kiểm tra 17 mục trên Postgres + uvicorn THẬT** (không TestClient): ký sổ chỉ mật khẩu ⇒ 401, đủ 2 yếu tố ⇒ 201; 5 lần đoán sai huỷ challenge; mã dự phòng dùng 1 lần; break-glass rồi đăng nhập lại được; secret **không** có trong audit trail; dọn sạch dữ liệu thử. 4 cổng xanh, pytest **939 EXIT=0**. Nợ: mã hoá at-rest secret (mục 3/4), reset không thu hồi phiên, `crm.erase` ngoài phạm vi, rate limit theo IP chưa có. |
