@@ -27,6 +27,9 @@ dependencies = [
     # TOTP (RFC 6238) for 2FA on high-trust roles — Sprint 8. Standard implementation
     # rather than hand-rolled HMAC: see core/security/totp.py for the reasoning.
     "pyotp>=2.9",
+    # AES-256-GCM for at-rest field encryption — Sprint 8. The one primitive in this
+    # project that must never be hand-rolled: an AEAD mistake is silent and total.
+    "cryptography>=42",
     "tenacity>=8.3",
     "httpx>=0.27",
     "reportlab>=4.2",

@@ -171,6 +171,34 @@ class PluginsSettings(BaseSettings):
     plugin (docs/09 mục 6)."""
 
 
+class EncryptionSettings(BaseSettings):
+    """Keys for at-rest field encryption (Sprint 8, ``core.security.crypto``).
+
+    **Never commit these and never put them beside a database dump.** Losing them is
+    not a recoverable incident: the encrypted columns become permanently unreadable,
+    and no ``git revert`` helps. Back the keys up separately from the database, and
+    rehearse a restore before enabling this anywhere that holds real data.
+    """
+
+    enabled: bool = False
+    """Encrypt on write. Off by default so an upgrade never starts writing ciphertext
+    a deployment has no key for; reads handle both shapes regardless, which is what
+    lets a backfill run while the application is live."""
+
+    keys: dict[int, SecretStr] = Field(default_factory=dict)
+    """Base64 AES-256 keys by version, e.g.
+    ``ENCRYPTION__KEYS={"1": "<base64>"}``. Several versions coexist so rotation never
+    needs a big-bang re-encryption — old ciphertexts keep their tag and their key."""
+
+    current_version: int = 1
+    """Which version new writes use. Rotating = add the next version, then point here."""
+
+    blind_index_key: SecretStr = SecretStr(_PLACEHOLDER)
+    """Separate base64 key for searchable fingerprints (``BlindIndex``). Deliberately
+    not the encryption key: one key per purpose, so a weakness in one is not a break
+    in the other."""
+
+
 class SecuritySettings(BaseSettings):
     jwt_secret: SecretStr = SecretStr(_PLACEHOLDER)
     jwt_ttl_minutes: int = 60
@@ -230,6 +258,7 @@ class Settings(BaseSettings):
     outbox: OutboxSettings = Field(default_factory=OutboxSettings)
     national_sync: NationalSyncSettings = Field(default_factory=NationalSyncSettings)
     plugins: PluginsSettings = Field(default_factory=PluginsSettings)
+    encryption: EncryptionSettings = Field(default_factory=EncryptionSettings)
 
     @model_validator(mode="after")
     def _fail_fast_in_prod(self) -> Settings:
@@ -255,6 +284,23 @@ class Settings(BaseSettings):
             ]
             if missing:
                 raise ValueError(f"Missing required secrets in prod: {', '.join(missing)}")
+
+        # Applies in every environment, not just prod: writing ciphertext nobody can
+        # read back is unrecoverable, so the misconfiguration must stop the app now
+        # rather than after it has encrypted a day of patient records.
+        if self.encryption.enabled:
+            if not self.encryption.keys:
+                raise ValueError(
+                    "ENCRYPTION__ENABLED=true nhưng ENCRYPTION__KEYS rỗng: "
+                    "sẽ ghi dữ liệu không ai đọc lại được"
+                )
+            if self.encryption.current_version not in self.encryption.keys:
+                raise ValueError(
+                    f"ENCRYPTION__CURRENT_VERSION={self.encryption.current_version} "
+                    f"không có trong ENCRYPTION__KEYS {sorted(self.encryption.keys)}"
+                )
+            if self.encryption.blind_index_key.get_secret_value() == _PLACEHOLDER:
+                raise ValueError("ENCRYPTION__BLIND_INDEX_KEY chưa đặt: tra cứu theo SĐT sẽ hỏng")
         return self
 
 
