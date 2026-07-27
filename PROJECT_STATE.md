@@ -3807,6 +3807,81 @@ Chạy cổng **trên cây của TỪNG commit**, không chỉ cây cuối; cô 
 
 ---
 
+## 7bj. ⏸️ ĐIỂM DỪNG PHIÊN (2026-07-27, phiên 2 trong ngày) — F-4 XONG, F-5 MỞ ĐƯỢC
+
+> Dừng theo lệnh Chain, **không phải vì vướng**. Cây sạch, không tiến trình treo,
+> không việc dở dang giữa chừng.
+
+### 🔜 ĐIỂM BẮT ĐẦU CHÍNH XÁC CHO PHIÊN SAU
+
+**Bắt đầu F-5: vá khoá hàng + unique index.** Bản nghiệm thu đã dựng sẵn — 7 dấu
+`xfail` trong `backend/tests/concurrency/test_inventory_races.py`. Vá đúng thì chúng
+tự chuyển XPASS và làm bộ test **ĐỎ**, buộc quay lại gỡ dấu.
+
+Ba chỗ hỏng đã định vị chính xác, **không phải đi tìm lại**:
+
+| Vị trí | Vấn đề |
+|---|---|
+| `inventory/infrastructure/repository.py:197-219` (`adjust`) | read-modify-write **trần**, không khoá gì |
+| `inventory/infrastructure/repository.py:182-189` (`exists_for_ref`) | check-then-act **trần** |
+| `stock_movements` | thiếu ràng buộc duy nhất đỡ `ref_id` |
+
+⚠️ **Phạm vi unique index — đặt sai là chặn nhầm nghiệp vụ đúng:**
+`(tenant_id, ref_type, ref_id, batch_id)`, **KHÔNG phải** `(tenant_id, ref_type, ref_id)`.
+Xuất FEFO trải nhiều lô ghi nhiều dòng cùng `ref_id` một cách hợp lệ.
+
+**Model cho F-5:** kiểm toán giao **Opus** (toàn vẹn dữ liệu tồn kho, cross-module).
+
+### Quyết định tự chốt trong phiên (full-auto #3) — Chain đọc lướt khi rảnh
+
+| # | Quyết định | Vì sao |
+|---|---|---|
+| 1 | Interleaving bằng **`StatementGate`** móc `before_cursor_execute` + `sqlalchemy.util.await_only` | Thiết kế duyệt chỉ nói "tất định bằng điểm `await`, cấm `sleep`" mà không nói bằng cách nào. Cần chặn **giữa** đọc và ghi *bên trong* một phương thức repository — `asyncio.Barrier` ở tầng test không với tới đó. Đã probe riêng trước khi đưa vào repo |
+| 2 | **Mỗi quầy một engine riêng** (`engine_a`/`engine_b`) + engine trung lập thứ ba | Gate móc vào `engine.sync_engine`; dùng chung 1 engine thì gate chặn nhầm cả hai quầy lẫn bước dựng nền |
+| 3 | Thêm **`raises=AssertionError`** vào cả 7 dấu `xfail` — **ngoài thiết kế đã duyệt** | Bịt lỗ tự phát hiện giữa chừng (xem §7bi). Thiết kế duyệt chỉ có `strict=True`, và chỉ `strict` là **không đủ** |
+| 4 | `test_database_rejects_...` **cố ý không dùng `pytest.raises`** | Nó ném `Failed`, không phải `AssertionError` ⇒ lọt đúng cái lưới vừa dựng ở QĐ 3 |
+| 5 | Conftest **tự tạo** CSDL `pharmacy_os_test` nếu chưa có | Giảm một bước thủ công dễ quên. An toàn vì guard `_test` chạy **trước**, và `CREATE DATABASE` không phá gì |
+| 6 | `TRUNCATE` **trước** mỗi test, không phải sau | Test đỏ để lại dữ liệu để soi tận nơi |
+| 7 | **3 test harness bắt buộc xanh** — thiết kế không liệt kê | Không có chúng thì 7 `xfail` vô nghĩa: harness không thực sự mở 2 kết nối vẫn "đỏ đúng dự đoán" vì lý do khác hẳn |
+
+### ⚠️ Một chỗ LỆCH thiết kế đã duyệt — khai rõ, không lấp
+
+Thiết kế §7bh bước 2 ghi **"8–10 test tái hiện B-01/B-02/B-04"**. Thực tế viết **7**.
+
+- Tổng trong thư mục là 10 test, nhưng đó là **7 test đua + 3 test harness** — harness
+  không tái hiện bug nào, nên **không được đếm bù vào con số 8–10**.
+- Lý do dừng ở 7: mỗi test phủ **một bất biến riêng biệt** (mất cập nhật · sổ tự mâu
+  thuẫn · giao trùng · thiếu ràng buộc CSDL · xuất quá tồn · số dư âm · không dòng đối
+  soát). Thêm test thứ 8 sẽ là biến thể của một trong bảy, **không phủ thêm gì**.
+- **Đây là quyết định của Chain, không phải của Claude.** Muốn đủ 8 thì nói, viết thêm
+  rất nhanh vì nền đã có.
+
+### Trạng thái hạ tầng lúc dừng (xác nhận bằng lệnh thật, kỷ luật #5)
+
+| Mục | Trạng thái |
+|---|---|
+| `git status` dự án | **Sạch**, HEAD `2cc89b8` |
+| `git status` vault | Còn thay đổi **của vai khác** (Công Trình, Pháp Lý) — **không đụng tới** |
+| `docker compose ps` | `postgres` **Up (healthy)** · `redis` **Up (healthy)** |
+| Tiến trình treo | **Không** — `pytest`/`uvicorn`/`ngrok` rỗng |
+| `pharmacy_os` (dev) | **Không bị chạm** trong cả phiên |
+| `pharmacy_os_test` | **Mới tạo**, dùng cho `tests/concurrency` — giữ lại |
+| `f4_probe` · `audit_empty_a` | **Vẫn còn.** Không tự xoá: `DROP DATABASE` nằm trong `deny` của allowlist và là thao tác phá huỷ. Xoá tay khi tiện |
+| Pre-commit hook | Chạy trên cả 3 commit của phiên, 4 cổng nhanh xanh mỗi lần |
+
+### Nợ mang sang phiên sau
+
+| Mục | Ghi chú |
+|---|---|
+| **F-5** | Đường găng kế tiếp, mở được ngay |
+| 7 dấu `xfail` | 🔴 **Hạn CỨNG: đóng trước Sprint 9**, quá hạn ⇒ tự động release blocker |
+| `make check` cần `make up` | Hợp đồng vận hành đã đổi. Quên `make up` ⇒ cổng đỏ ⇒ **rủi ro có người phản xạ `--no-verify`** |
+| Thời gian suite | Đo được 709 s nhưng máy còn tải việc khác ⇒ **"chưa đo được"**. Đo lại lúc máy rảnh trước khi làm mục tối ưu |
+| Tối ưu pytest | Chain chốt xếp **ngay sau F-5** |
+| Nợ cũ chưa động | `tests/` ngoài mypy · repo **chưa có remote** nên CI vẫn chưa chạy lần nào · A-08 (F-21) · `analytics` treo 10 ngày · 3 mục P0 rate limit/restore/incident treo 10 ngày |
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
