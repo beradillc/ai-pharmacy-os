@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import bcrypt
 import pytest
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
@@ -45,6 +46,50 @@ must keep real durability — that suite exists to prove locking behaviour, and 
 weakened storage engine underneath it would quietly hollow out the very thing it
 checks. The guard below keys off the driver, not off which fixture is asking.
 """
+
+
+production_gensalt = bcrypt.gensalt
+"""``bcrypt.gensalt`` thật, giữ lại **trước** khi thay — production dùng đúng cái này.
+
+Không phải để dùng trong test thường. Nó tồn tại để
+``test_password_hashing_cost.py`` khôi phục lại đúng hàm thật và chứng minh
+production **không** bị kéo theo mức rẻ bên dưới. Bỏ tham chiếu này đi là bỏ luôn
+khả năng chứng minh đó.
+"""
+
+TEST_BCRYPT_ROUNDS = 4
+"""Chi phí bcrypt **chỉ trong bộ test**. Đo trên máy này 2026-07-27:
+
+======  =========  ===========
+rounds  băm        kiểm
+======  =========  ===========
+12       290,6 ms   291,6 ms
+10        73,0 ms    72,2 ms
+ 8        18,5 ms    18,1 ms
+ 4         1,2 ms     1,2 ms
+======  =========  ===========
+
+Sau khi vá `fsync`, bcrypt là khoản lớn nhất còn lại: ``hashpw`` 225 lần (65,2 s)
++ ``checkpw`` 232 lần (67,3 s) = **132,5 s, tức 46,6 %** của ``tests/integration``.
+
+**Đây là đánh đổi có thật, không phải bữa trưa miễn phí.** Bộ test không còn chạy
+đúng chi phí băm của production, nên nếu ai đó ghim một mức rẻ vào chính mã sản
+phẩm, những test này sẽ không thấy. Đổi lại, khoảng mù đó **được canh bằng một test
+riêng** (``tests/unit/test_password_hashing_cost.py``) chứ không bỏ ngỏ — điều kiện
+GĐ đặt ra khi duyệt, vì "khoảng mù không ai canh" đúng là hình dạng chung của 16 sự
+cố *niềm tin giả* trong kiểm toán 2026-07-26.
+
+Cái **không** đổi: vẫn là bcrypt thật, vẫn băm rồi kiểm lại thật, ``checkpw`` vẫn
+đọc chi phí từ chính chuỗi hash. Chỉ có số vòng lặp là rẻ đi.
+"""
+
+
+def _fast_gensalt(rounds: int = TEST_BCRYPT_ROUNDS, prefix: bytes = b"2b") -> bytes:
+    """``bcrypt.gensalt`` với mặc định rẻ. Ai truyền ``rounds`` tường minh vẫn được tôn trọng."""
+    return production_gensalt(rounds, prefix)
+
+
+bcrypt.gensalt = _fast_gensalt  # type: ignore[assignment]
 
 
 @event.listens_for(Engine, "connect")
