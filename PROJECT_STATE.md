@@ -3698,7 +3698,10 @@ giờ nhận rounds=4; (b) sửa scope fixture — đụng cả 548 test.
 | **F-4** nền test Postgres | ✅ **XONG** (§7bi) — B-09 + A-01 đóng; 7 test đua đỏ có chủ đích |
 | **F-5** vá race tồn âm | ✅ **XONG** (§7bk) — **B-01 + B-02 + B-04 đóng**; 7/7 `xfail` chuyển xanh thật, 0 dấu còn lại |
 | Tối ưu pytest | ✅ **XONG** (§7bl) — **683 s → 163 s (−76 %, nhanh 4,2 lần)**; nợ `conftest.py`/alembic đóng cùng đợt. `xdist` **cố ý bỏ**, lý do ghi tại §7bl |
-| F-2, F-3, F-6, F-8, F-9, F-15, F-16, F-17, F-19 | ⏸️ Chưa bắt đầu. **F-6 là đường găng thật** — câu hỏi pháp lý A-05 đang ở Trợ lý Pháp Lý, chưa có trả lời |
+| **F-2** fail-fast prod (A-02/A-03) | ✅ **XONG** (§7bm) — khoá ký <32 byte và mã hoá tắt ⇒ prod **không khởi động** |
+| **F-3** `.env.example` `APP__DEBUG` | ✅ **XONG** (§7bm) |
+| **F-15** chặn mock ở prod | ✅ **XONG** (§7bm) — chặn cả 2 điểm nạp |
+| F-6, F-8, F-9, F-16, F-17, F-19 | ⏸️ Chưa bắt đầu. **F-6 là đường găng thật** — câu hỏi pháp lý A-05 đang ở Trợ lý Pháp Lý, chưa có trả lời |
 
 ---
 
@@ -4083,6 +4086,67 @@ vẫn được tôn trọng.
 | `e196283` pragma SQLite | 0 | 0 | 0 | 0 | **0** — 1011 passed, **303,24 s** | 0 — 16 passed |
 | `d29328b` alembic conftest | 0 | 0 | 0 | 0 | **0** — 1011 passed, **296,13 s** | 0 — 16 passed |
 | `30b3445` bcrypt + test canh | 0 | 0 | 0 | 0 | **0** — **1014 passed**, **162,81 s** | 0 — 16 passed |
+
+---
+
+## 7bm. ĐÓNG 3 RELEASE BLOCKER SPRINT 9 — F-2 / F-3 / F-15 (2026-07-27, Opus)
+
+> **Checklist mở Sprint 9: 6/12 mục chặn đã xong.** Còn **F-8, F-9, F-16, F-17, F-19**
+> (+ F-6 chờ Pháp Lý). **CHƯA mở Sprint 9.**
+
+### Đối chiếu 12 mục chặn (§7.7 báo cáo kiểm toán)
+
+| Mục | Trạng thái | Bằng chứng |
+|---|:---:|---|
+| F-1 cổng + cưỡng chế | ✅ | §7bg |
+| F-4 nền test Postgres | ✅ | §7bi |
+| F-5 khoá hàng tồn kho | ✅ | §7bk — 0 decorator `xfail`, 10 test đua xanh |
+| **F-2** fail-fast prod | ✅ **mới** | 9 test dựng `Settings` thật; khoá 3 byte ⇒ nổ |
+| **F-3** `APP__DEBUG` | ✅ **mới** | `.env.example` = `false` + cảnh báo tại chỗ |
+| **F-15** chặn mock prod | ✅ **mới** | 13 test; chặn cả `MockLLMProvider` lẫn `MockNationalDrugDbGateway` |
+| F-6 giấy phép VNPAY | ⏸️ | Chờ Pháp Lý. **Tách được** — pilot tắt `payment_vnpay` |
+| F-8 runbook mã hoá | ❌ | **Bị F-2 kéo theo**: prod nay buộc bật mã hoá ⇒ runbook thành bắt buộc |
+| F-9 rate limit | ❌ | Không có `slowapi`/`limiter` trong `src/` |
+| F-16 thử restore backup | ❌ | Chưa có script/tài liệu |
+| F-17 load test p95 | ❌ | Không có số liệu |
+| F-19 quy trình sự cố | ❌ | Chưa có tài liệu |
+
+### Đã vá gì
+
+| Mục | Trước | Sau |
+|---|---|---|
+| **A-02** | prod khởi động với khoá ký **3 byte** (cổng cũ chỉ hỏi "có phải chuỗi mặc định") | <32 byte ⇒ **từ chối khởi động**. Sàn đo bằng **byte**, không phải ký tự — có test riêng vì 17 ký tự tiếng Việt = 34 byte |
+| **A-03** | quên đặt `ENCRYPTION__ENABLED` ở prod ⇒ dữ liệu bệnh nhân **nguyên văn**, không ai quyết định | mặc định *"quên đặt ⇒ app không chạy"*. Đường thoát `ENCRYPTION__ALLOW_PLAINTEXT_IN_PROD` phải **khai báo thành lời** |
+| **B-03** | `.env.example` `APP__DEBUG=true` ⇒ SQL echo in tham số (họ tên, SĐT, chẩn đoán) ra log | `false` + cảnh báo tại chỗ (Luật BVDLCN 91/2025) |
+| **A-07** | mock lâm sàng + mock DAV nạp ở prod, không một dòng cảnh báo | chặn ở **cả 2 điểm nạp**; đường thoát diễn tập qua **biến môi trường**, cố ý không để trong `Settings` |
+
+**Vì sao A-07 nặng:** mock ở prod **không hỏng ồn ào — nó trả lời**. Cổng lâm sàng giả
+trả *"không có tương tác thuốc"* trông y như thật; cổng liên thông giả trả ACK nên báo
+cáo QĐ1867 coi như đã gửi. Sai sót **im lặng**, loại đắt nhất.
+
+### 🔴 2 test cũ đỏ khi cổng đóng lại — sửa test, không nới cổng
+
+`test_prod_boots_with_secrets` và `test_prod_accepts_the_async_relay_shape` dùng
+`jwt_secret="real"` (**4 byte**). Chúng đỏ **đúng**: đang khẳng định một hợp đồng
+không còn tồn tại. Đã sửa test cho khớp cổng và ghi lý do ngay tại chỗ sửa.
+
+### Cổng chất lượng
+
+| Cây | ruff | format | imports | mypy | pytest backend | plugin |
+|---|---|---|---|---|---|---|
+| `540687b` | 0 | 0 | 0 | 0 | **0** — **1036 passed** (1014 + 22), 163,78 s | 0 — 16 passed |
+
+Lượt đo đầu **ĐỎ** (2 failed) đúng ở 2 test cũ nói trên; sửa rồi **đo lại đủ 4 cổng**.
+
+### Còn lại để mở Sprint 9
+
+| Mục | Loại | Ai làm |
+|---|---|---|
+| **F-8** runbook bật mã hoá + xoay khoá | Tài liệu vận hành | Trợ lý Code (phiên sau) — **đi liền F-2**, không tách được |
+| **F-16** thử restore backup thật | Vận hành | Cần chạy thật, không viết được bằng code |
+| **F-19** quy trình xử lý sự cố | Tài liệu | GĐ + Pháp Lý |
+| **F-9** rate limit · **F-17** load test | Code + đo | Làm song song được với pilot nội bộ |
+| **F-6** giấy phép VNPAY | Pháp lý | Tách khỏi S9 **nếu** pilot tắt `payment_vnpay` — và việc tắt phải **kiểm bằng lệnh thật**, không tin tài liệu |
 
 ---
 
