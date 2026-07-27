@@ -1,12 +1,41 @@
 # 19 — THIẾT KẾ GIAO DIỆN SPRINT 9: Bảng điều hành & Đề xuất đặt hàng
 
-> **Trạng thái: CHỜ CHAIN DUYỆT.** Không viết dòng mã nào trước khi mục §7 được chốt.
+> **Trạng thái: CHỜ CHAIN DUYỆT §7.** Phạm vi gói bàn giao đã chốt ở §0. Không viết dòng mã nào trước khi mục §7 được chốt.
 >
 > Mọi endpoint trích trong tài liệu này **đã xác nhận tồn tại trên staging đang chạy**
 > (`localhost:8001`, đọc trực tiếp từ OpenAPI 2026-07-28). Không màn nào vẽ ra một tính
 > năng chưa có backend.
 >
 > Căn cứ: `docs/16_BRAND_UI_GUIDE.md` · `ROADMAP.md` Sprint 9 · `PROJECT_STATE.md` §7bm–§7br
+
+---
+
+## 0. 🔒 QUYẾT ĐỊNH PHẠM VI — Chain chốt 2026-07-28
+
+```
+DECISION: Gói bàn giao 00-Bookmark/design_handoff_beras/ là THAM KHẢO THỊ GIÁC
+          (giao diện, màu sắc). KHÔNG phải nguồn cấu trúc.
+          Cấu trúc giữ nguyên từ đầu các sprint đã làm.
+STATUS:   LOCKED
+```
+
+**Lấy gì từ gói bàn giao:** bảng màu (§3.1), font (§3.2), bo góc, cách dùng chip/badge —
+tức là **hình thức**.
+
+**Không lấy gì:** bố cục màn hình, điều hướng, cách chia module, luồng dữ liệu. Những thứ
+đó đã được quyết qua Sprint 1–8 và **không mở lại trong Sprint 9**.
+
+### Ba điểm ở bản trước tự giải theo quyết định này
+
+| Điểm cũ | Giải quyết |
+|---|---|
+| **M-1** nền "kem" (`docs/16`) hay `#EDEFE7` (gói bàn giao)? | ✅ **`#EDEFE7` Giấy Tái Sinh.** Màu sắc lấy từ gói bàn giao — đó chính là phần Chain cho phép tham khảo. `docs/16 §2` nói "kem" ở mức mô tả họ màu, giá trị cụ thể do gói bàn giao chốt |
+| **Điểm 9** dashboard nào là dashboard? | ✅ **Dashboard analytics của ROADMAP S9** (bản thiết kế này). `Beras Dashboard.dc.html` là **tham khảo thị giác**, không thay thế cấu trúc — không dựng lại nó trong Sprint 9 |
+| **Điểm 10** khu "Trợ lý AI" trong mockup | ✅ **Không dựng.** Cấu trúc giữ nguyên ⇒ quy tắc `docs/16 §4.1` vẫn hiệu lực: cấm gọi engine tất định là "AI" khi backend còn `MockLLMProvider`. Mockup không đè được quy tắc thương hiệu |
+
+**Còn lại đúng một việc kỹ thuật:** `frontend/src/styles/tokens.css` đang giữ giá trị **tạm**
+do chính nó khai. Thay bằng bảng chốt ở §3.1 là việc **code**, làm ở đầu Sprint 9 —
+không đụng cấu trúc file, chỉ đổi giá trị biến.
 
 ---
 
@@ -89,13 +118,12 @@ nên rủi ro "dấu tụt về font thay thế" mà tôi nêu ở bản nháp k
 
 Card 10–16 px tuỳ kích thước · pill/button 8–10 px · badge 4 px.
 
-### 3.4 🔴 BA MÂU THUẪN PHẢI GIẢI TRƯỚC KHI CODE
+### 3.4 Việc kỹ thuật kèm theo (đầu Sprint 9, không đụng cấu trúc)
 
-| # | Mâu thuẫn | Chi tiết |
-|---|---|---|
-| **M-1** | **Nền: "kem" hay "Giấy Tái Sinh"?** | `docs/16 §2` ghi nền *"Kem / xanh lá nhạt"*. Gói bàn giao ghi `#EDEFE7` và nói thẳng **"KHÔNG phải kem"**. Hai văn bản chính thức nói ngược nhau — **cần Chain chốt văn bản nào thắng** |
-| **M-2** | **`frontend/src/styles/tokens.css` đang là giá trị TẠM** | Chính file đó tự ghi *"Giá trị hex dưới đây là TẠM (chưa chốt thiết kế chính thức)"*. Nay đã có bản chốt ⇒ **phải thay** (`#f5f2e8`→`#EDEFE7`, `#2f5233`→`#1F3D2B`, `#7a4a2b`→`#6B4A32`, `#a3312a`→`#A8452F`, thêm `--beras-warning` `--beras-success`). Là việc **code**, không làm trong phiên này |
-| **M-3** | **Lý do từ chối `next/font/google` trong `tokens.css` sai về mặt sự kiện** | File đó viết *"tải font từ Google lúc build/dev đòi mạng — ngược tinh thần vận hành khi mất kết nối"*. Nhưng `next/font/google` **tự host lúc build**: runtime **không** gọi mạng. Lý do từ chối không đứng vững, và gói bàn giao đã chốt dùng Be Vietnam Pro |
+| Việc | Nội dung |
+|---|---|
+| **Thay giá trị trong `tokens.css`** | File tự khai giá trị của nó là **TẠM**. Đổi: `#f5f2e8`→`#EDEFE7` · `#2f5233`→`#1F3D2B` · `#7a4a2b`→`#6B4A32` · `#a3312a`→`#A8452F`; thêm `--beras-warning` `#B98A2D`, `--beras-success` `#2F7A6B`, `--beras-leaf` `#5B8C51`. **Chỉ đổi giá trị biến** — mọi UI đã tham chiếu qua biến nên không nơi nào khác phải sửa |
+| **Font** | `tokens.css` từ chối `next/font/google` với lý do *"tải font đòi mạng, ngược tinh thần offline"*. Lý do đó **sai về sự kiện**: `next/font` tự host lúc build, runtime không gọi mạng. Đổi sang Be Vietnam Pro / IBM Plex Mono theo bảng chốt |
 
 ## 4. Màn hình 1/2 — Bảng điều hành
 
@@ -219,6 +247,8 @@ thứ mất đi không phải một tính năng — là **lòng tin vào mọi c
 
 ## 7. 🔴 BẢY ĐIỂM CHAIN PHẢI CHỐT TRƯỚC KHI CODE
 
+*(Ba điểm về phạm vi gói bàn giao đã được Chain giải ở §0.)*
+
 Không điểm nào tôi tự quyết được — mỗi cái đổi thì thiết kế đổi theo.
 
 | # | Câu hỏi | Vì sao cần Chain |
@@ -230,9 +260,6 @@ Không điểm nào tôi tự quyết được — mỗi cái đổi thì thiế
 | 5 | **Cột nào bắt buộc mã hoá?** | Diễn tập F-8: `phone` đã mã hoá, **`full_name` vẫn nguyên văn**. Tên người là dữ liệu cá nhân (Luật BVDLCN 91/2025). Chủ đích hay lỗ hổng? Câu trả lời đổi cách màn hình hiển thị tên khách |
 | 6 | **Có cần chế độ tương phản cao?** | Bảng màu đã đạt WCAG AA. Nhưng màn rẻ dưới đèn huỳnh quang vẫn có thể khó đọc — thêm công tắc "nền trắng chữ đen" **rẻ nếu quyết ngay, đắt nếu thêm sau** |
 | 7 | **Mascot gấu xuất hiện ở đâu?** | Gói bàn giao dùng **avatar mascot 40×40 tròn trong nav** + 22 px trong khu AI, và ghi rõ mascot hiện là **placeholder emoji 🐻**, cần asset thật. Xác nhận vị trí này? |
-| 8 | 🔴 **M-1: nền "kem" (`docs/16`) hay `#EDEFE7` "KHÔNG phải kem" (gói bàn giao)?** | Hai văn bản chính thức nói ngược nhau. Mọi màn hình phụ thuộc câu trả lời |
-| 9 | 🔴 **Dashboard nào là dashboard?** | Gói bàn giao đã có **`Beras Dashboard.dc.html`** riêng: khu Bán hàng + Tuân thủ + Trợ lý AI + chỉ báo mạng "Tán Cây". Bản thiết kế này là **dashboard analytics** (doanh thu / top thuốc / cảnh báo tồn / PO nháp) theo ROADMAP S9. **Hai màn khác nhau** — gộp làm một, hay là hai mục menu riêng? |
-| 10 | 🔴 **Khu "Trợ lý AI" trong gói bàn giao có được dựng không?** | Mockup vẽ box tương tác thuốc và gọi thẳng là **"Trợ lý AI Dược sĩ"**. `docs/16 §4.1` **cấm** gọi engine tất định là AI khi backend còn `MockLLMProvider`. Mockup và quy tắc thương hiệu **đang mâu thuẫn** |
 
 ---
 
