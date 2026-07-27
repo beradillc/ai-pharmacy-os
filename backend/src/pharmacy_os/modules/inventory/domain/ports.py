@@ -82,10 +82,24 @@ class BatchRepository(Protocol):
 
 
 class MovementRepository(Protocol):
-    async def add(self, movement: StockMovement) -> None: ...
+    async def add(self, movement: StockMovement) -> None:
+        """Append one movement.
+
+        Raises :class:`DuplicateMovementError` when a movement for the same
+        ``(tenant, ref_type, ref_id, batch_id)`` already exists — the store's own
+        uniqueness, which is what makes idempotency hold under concurrency where
+        :meth:`exists_for_ref` alone cannot (audit B-02). Movements without a
+        ``ref_id`` are never constrained: they carry no identity to be duplicate of.
+        """
+        ...
 
     async def exists_for_ref(self, ref_type: str, ref_id: UUID) -> bool:
-        """True if any movement already references *(ref_type, ref_id)* (idempotency)."""
+        """True if any movement already references *(ref_type, ref_id)* (idempotency).
+
+        A **fast path only**, never the guarantee: between this read and the write
+        that follows, another transaction can insert. The guarantee lives in
+        :meth:`add`'s :class:`DuplicateMovementError`; callers must handle it too.
+        """
         ...
 
 
@@ -93,7 +107,18 @@ class BalanceRepository(Protocol):
     async def adjust(
         self, drug_id: UUID, batch_id: UUID, branch_id: UUID, tenant_id: UUID, delta: Decimal
     ) -> Decimal:
-        """Apply *delta* to the (drug, batch, branch) balance; return new on-hand."""
+        """Apply *delta* to the (drug, batch, branch) balance; return new on-hand.
+
+        Two guarantees the caller may rely on, both enforced by the store rather
+        than by a preceding read (audit B-01/B-04):
+
+        * **No lost update.** Concurrent adjusts compose — 100 − 10 − 10 is 80, not
+          90. Read-then-write in application code cannot promise this.
+        * **Never negative.** A *delta* that would drive the balance below zero is
+          refused with :class:`InsufficientStockError` carrying the quantity that
+          *was* available. A pharmacy cannot hand over stock it does not have, and
+          a ledger that goes negative is a ledger nobody can use.
+        """
 
     async def on_hand(self, drug_id: UUID, branch_id: UUID) -> Decimal:
         """Total on-hand across all batches of a drug at a branch."""

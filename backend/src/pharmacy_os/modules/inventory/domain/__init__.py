@@ -13,6 +13,7 @@ from pharmacy_os.modules.inventory.domain.events import (
     StockShortfallDetected,
 )
 from pharmacy_os.modules.inventory.domain.exceptions import (
+    DuplicateMovementError,
     InsufficientStockError,
     LotExpiryMismatchError,
     ReconciliationAlreadyResolvedError,
@@ -36,6 +37,7 @@ __all__ = [
     "StockMovedOut",
     "LowStockDetected",
     "StockShortfallDetected",
+    "DuplicateMovementError",
     "InsufficientStockError",
     "LotExpiryMismatchError",
     "ReconciliationAlreadyResolvedError",
