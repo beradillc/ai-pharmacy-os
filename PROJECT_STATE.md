@@ -3696,8 +3696,8 @@ giờ nhận rounds=4; (b) sửa scope fixture — đụng cả 548 test.
 | **F-1** phạm vi cổng + cưỡng chế | ✅ **XONG** (§7bg) |
 | **R-1→R-10** vào CLAUDE.md | ✅ **XONG** (§7bg) |
 | **F-4** nền test Postgres | ✅ **XONG** (§7bi) — B-09 + A-01 đóng; 7 test đua đỏ có chủ đích |
-| **F-5** vá race tồn âm | 🔜 **MỞ ĐƯỢC RỒI** ← phiên sau bắt đầu ở đây. 7 `xfail` là bản nghiệm thu sẵn có |
-| Tối ưu pytest 532 s | ⏸️ Chain chốt xếp **ngay sau F-5** |
+| **F-5** vá race tồn âm | ✅ **XONG** (§7bk) — **B-01 + B-02 + B-04 đóng**; 7/7 `xfail` chuyển xanh thật, 0 dấu còn lại |
+| Tối ưu pytest 532 s | 🔜 **MỞ ĐƯỢC RỒI** ← Chain chốt xếp ngay sau F-5. **Chưa mở, chờ Chain xác nhận** |
 | F-2, F-3, F-6, F-8, F-9, F-15, F-16, F-17, F-19 | ⏸️ Chưa bắt đầu. **F-6 là đường găng thật** — câu hỏi pháp lý A-05 đang ở Trợ lý Pháp Lý, chưa có trả lời |
 
 ---
@@ -3707,6 +3707,9 @@ giờ nhận rounds=4; (b) sửa scope fixture — đụng cả 548 test.
 > **Đọc 1 dòng nếu chỉ đọc 1 dòng:** `pytest tests/concurrency` ra **`3 passed, 7 xfailed`**
 > và **EXIT=0**. Con số 0 đó **KHÔNG** có nghĩa là tồn kho đã đúng — nó có nghĩa là
 > **7 lỗi đã biết (B-01/B-02/B-04) vẫn đang hỏng đúng như dự đoán**. Vá ở **F-5**.
+>
+> ⬆️ *Đoạn trên là trạng thái tại thời điểm §7bi (F-4). **Đã hết hiệu lực** — F-5 vá
+> xong ngày 2026-07-27, cùng lệnh đó nay ra **`10 passed`, 0 xfail**. Xem §7bk.*
 
 Code đúng thiết kế B + Tầng 1 mà Chain duyệt ở §7bh, không hỏi lại, không lệch thiết kế.
 
@@ -3882,10 +3885,78 @@ Thiết kế §7bh bước 2 ghi **"8–10 test tái hiện B-01/B-02/B-04"**. T
 
 ---
 
+## 7bk. F-5 — B-01 / B-02 / B-04 ĐÃ VÁ, 7/7 XFAIL ĐÓNG (2026-07-27, Opus)
+
+> **Đọc 1 dòng nếu chỉ đọc 1 dòng:** `pytest tests/concurrency` nay ra **`10 passed`**,
+> **0 `xfail`**, EXIT=0. Bảy dấu của F-4 được gỡ **vì test xanh thật** — cơ chế
+> `strict=True` đã chạy đúng thiết kế: bản vá làm chúng XPASS ⇒ bộ test đỏ ⇒ buộc
+> quay lại gỡ dấu. Không nới một khẳng định nào; `conftest.py`/`test_harness.py`
+> **không sửa một dòng** (điều kiện Chain đặt).
+
+### Ba chỗ hỏng, ba chỗ sửa
+
+| Bug | Vá thế nào | Commit |
+|---|---|---|
+| **B-01** mất cập nhật | Số học vào **trong** câu lệnh: `UPDATE ... SET quantity = quantity + :delta ... RETURNING quantity`. Khoá hàng do chính câu lệnh giữ, không do mã ứng dụng cẩn thận | `a2a8e60` |
+| **B-04** bán vượt tồn / số dư âm | Vị ngữ `quantity + delta >= 0` **cùng câu lệnh đó**. Đặt kiểm tra trước lệnh ghi lại là check-then-act — cùng con bug, chỗ khác. 0 hàng cập nhật ⇒ `InsufficientStockError` kèm số **thật sự** còn | `a2a8e60` |
+| **B-04** không dòng đối soát | `dispense_for_sale` **phát lại giao dịch** (≤3 lần) khi thua cuộc đua, thay vì hỏng lặng. Lần phát lại đọc tồn hiện tại, lấy phần còn lại, phát `StockShortfallDetected` cho phần hụt | `a2a8e60` |
+| **B-02** giao trùng đơn | Migration **0033**: unique **một phần** `(tenant_id, ref_type, ref_id, batch_id) WHERE ref_id IS NOT NULL`. `exists_for_ref` ở lại làm đường nhanh; bảo đảm chuyển xuống `add()`, nơi `IntegrityError` → `DuplicateMovementError` = **đã xong**, không phải lỗi | `66d8899` |
+
+Hợp đồng đặt ở tầng domain **trước** (`58a29b2`), rồi mới bắt hạ tầng giữ — để bản vá
+được nghiệm thu theo hợp đồng chứ không theo mô tả.
+
+### Phạm vi unique index — chỗ Chain cảnh báo, đã kiểm bằng lệnh thật
+
+`batch_id` trong khoá là **bắt buộc**: một lần xuất FEFO trải nhiều lô ghi nhiều dòng
+cùng `ref_id` một cách hợp lệ. Kiểm trên **Postgres có dữ liệu** (kỷ luật #7), sau
+`pg_dump` (full-auto #6):
+
+| Tình huống | Kỳ vọng | Đo được |
+|---|---|---|
+| Giao trùng, **cùng lô** | chặn | ✅ `duplicate key ... "uq_movement_ref_batch"` |
+| Cùng `ref_id`, **khác lô** (FEFO trải lô) | cho qua | ✅ INSERT 0 1 |
+| `ref_id IS NULL` (nhập tay) | cho qua | ✅ INSERT 0 1 |
+| Khác `ref_type` | cho qua | ✅ INSERT 0 1 |
+
+`alembic upgrade` EXIT=0 · `downgrade -1` → 0 hàng `pg_indexes` · `upgrade` lại → 1
+hàng. Dữ liệu thử **đã dọn**, `pharmacy_os` về đúng 0 movement / 0 batch như trước.
+
+### Quyết định tự chốt trong phiên (full-auto #3)
+
+| # | Quyết định | Vì sao |
+|---|---|---|
+| 1 | `receive_from_goods_receipt` **cộng dồn theo lô** rồi mới ghi 1 dòng IN mỗi lô — **ngoài phạm vi 3 bug** | Hai dòng hàng cùng thuốc + lô + HSD của **một** phiếu nhập gộp về một lô ⇒ 2 dòng IN cùng `(grn, batch)` ⇒ đụng chính index vừa đặt. Không làm là **cố ý ship một regression**: phiếu nhập hợp lệ bị rollback + gắn cờ đối soát. Cộng dồn không mất truy vết — dòng IN của GRN vốn không mang `po_item_id`, `StockMovedIn` vẫn phát theo từng dòng hàng |
+| 2 | `dispense_stock` với `ref_id` trùng + cùng lô nay trả **409**, trước đây cho qua | Đúng ngữ nghĩa idempotency mà index mã hoá. Không test cũ nào chạm (0 test dùng `ref_id` khi xuất). **Đổi hành vi API — Chain nên biết** |
+| 3 | Số lần phát lại = **3**, không phải vô hạn | Mỗi lượt thấy tồn nhỏ dần nên hội tụ; hạn chỉ để live-lock không thành handler treo |
+| 4 | Tạo tay `uq_movement_ref_batch` trên `pharmacy_os_test` | CSDL test có sẵn không tự nhận index mới (xem Nợ). `DROP DATABASE` nằm trong `deny` nên không dựng lại được từ đầu |
+
+### Nợ khai rõ, KHÔNG tự sửa
+
+| Nợ | Vì sao để lại |
+|---|---|
+| 🔴 `tests/concurrency/conftest.py` dựng lược đồ bằng `create_all`, **không chạy alembic** ⇒ CSDL test có sẵn từ trước **không nhận index/ràng buộc mới**, và 2 test B-02 sẽ đỏ vì lý do **không liên quan mã sản phẩm** | Sửa là **đụng `conftest.py`** — Chain chốt không đụng trong phạm vi F-5. Đây là nợ của **nền F-4**, cần quyết định riêng. Cách chữa tay đã ghi trong `tests/concurrency/README.md` |
+| `f4_probe` · `audit_empty_a` vẫn còn | `DROP DATABASE` trong `deny` |
+| Thời gian suite | Đo **685 s / 693 s** hai lượt liên tiếp, máy vẫn còn tải khác ⇒ vẫn ghi **"chưa đo được"** làm mốc cho mục tối ưu |
+
+### Cổng chất lượng — mã thoát tường minh, đo trên cây của TỪNG commit
+
+| Cây | ruff | format | imports | mypy | pytest backend | plugin |
+|---|---|---|---|---|---|---|
+| `58a29b2` bước 1/3 | 0 | 0 | 0 | 0 | **0** — 1004 passed, 7 xfailed, 691 s | 0 — 16 passed |
+| `a2a8e60` bước 2/3 | 0 | 0 | 0 | 0 | **0** — 1009 passed, 2 xfailed, 683 s | 0 — 16 passed |
+| `66d8899` bước 3/3 | 0 | 0 | 0 | 0 | **0** — 1011 passed, **0 xfailed**, 686 s | 0 — 16 passed |
+
+🔴 **Lượt đo đầu của cây bước 3/3 ĐỎ** ở `ruff check` (F401 `pytest` thành thừa sau khi
+gỡ hết dấu xfail) và `ruff format` (1 file). Đã sửa rồi **đo lại đủ 4 cổng** — con số
+trong bảng là của lần đo **sau**, không suy ra từ lần trước (kỷ luật #8).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
 |------|----------|
+| 2026-07-27 | **F-5 XONG — B-01/B-02/B-04 ĐÃ VÁ, 7/7 `xfail` đóng (§7bk).** 3 commit stepped (domain → app+infra+migration → app+infra+migration), không lệch phạm vi Chain duyệt. **`pytest tests/concurrency` = `10 passed`, 0 xfail, EXIT=0** — dấu được gỡ **vì test xanh thật**, cơ chế `strict=True` chạy đúng thiết kế (vá xong ⇒ XPASS ⇒ bộ test đỏ ⇒ buộc quay lại gỡ). **Không sửa một dòng nào** trong `conftest.py`/`test_harness.py` (điều kiện Chain đặt). **B-01:** số học đi **vào trong** `UPDATE ... SET quantity = quantity + :delta RETURNING quantity` — khoá hàng do chính câu lệnh giữ; 100−10−10 nay ra **80**, trước ra 90. **B-04:** vị ngữ `quantity + delta >= 0` **cùng câu lệnh đó** (đặt kiểm tra trước lệnh ghi lại là check-then-act — cùng con bug, chỗ khác); tồn 10 nay **không xuất quá 10**, số dư **không âm**. Phần nặng nhất — *"không dòng đối soát"* — vá bằng **phát lại giao dịch ≤3 lần**: bên thua đọc lại tồn hiện tại, lấy phần còn lại và **phát `StockShortfallDetected`** cho phần hụt, thay vì hỏng lặng. **B-02:** migration **0033**, unique **một phần** `(tenant_id, ref_type, ref_id, batch_id) WHERE ref_id IS NOT NULL`; `exists_for_ref` ở lại làm đường nhanh, bảo đảm chuyển xuống `add()` (`IntegrityError` → `DuplicateMovementError` = **đã xong**, không phải lỗi). **Phạm vi index — đúng chỗ Chain cảnh báo — đã kiểm bằng lệnh THẬT trên Postgres CÓ DỮ LIỆU** (kỷ luật #7, sau `pg_dump` theo full-auto #6): giao trùng cùng lô **bị chặn**; cùng `ref_id` **khác lô** (FEFO trải lô) **cho qua**; `ref_id IS NULL` **cho qua**; khác `ref_type` **cho qua**. `upgrade` EXIT=0 · `downgrade -1` gỡ index · `upgrade` lại đặt về; dữ liệu thử **đã dọn**, dev DB về nguyên trạng. **4 quyết định tự chốt:** (1) `receive_from_goods_receipt` **cộng dồn theo lô** — ngoài phạm vi 3 bug nhưng không làm là cố ý ship regression (2 dòng hàng cùng lô của một phiếu ⇒ 2 dòng IN cùng `(grn, batch)` ⇒ đụng chính index vừa đặt); (2) `dispense_stock` với `ref_id` trùng + cùng lô nay **409**, trước cho qua — **đổi hành vi API**; (3) hạn phát lại = 3; (4) tạo tay index trên `pharmacy_os_test`. 🔴 **Nợ khai rõ, không tự sửa:** `conftest.py` dựng lược đồ bằng `create_all`, **không chạy alembic** ⇒ CSDL test có sẵn từ trước **không nhận ràng buộc mới** và 2 test B-02 sẽ đỏ vì lý do không liên quan mã sản phẩm — sửa là đụng `conftest.py`, ngoài phạm vi duyệt. **4 cổng xanh trên cây của TỪNG commit:** 1004→1009→**1011 passed**, xfail 7→2→**0**; ruff/format/imports/mypy = 0 cả ba. 🔴 **Lượt đo đầu của cây cuối ĐỎ** ở ruff (F401 + 1 file cần format); đã sửa rồi **đo lại đủ 4 cổng** — số báo là của lần đo sau, không suy ra từ lần trước (kỷ luật #8). **Hạn CỨNG của Chain (đóng 7 dấu trước Sprint 9) khép lại ngay trong ngày đặt hạn.** Mục **tối ưu pytest** chưa mở — chờ Chain xác nhận. |
 | 2026-07-27 | **F-4 XONG — nền test đồng thời có thật (§7bi).** Code đúng thiết kế B + Tầng 1 Chain duyệt ở §7bh, 2 commit, không lệch. Thư mục **mới** `backend/tests/concurrency/` (10 test), **không sửa dòng nào** trong 1001 test cũ. **Đóng B-09** — nguyên nhân gốc không phải "quên viết test" mà là `StaticPool` ⇒ 1 kết nối dùng chung ⇒ 2 giao dịch đồng thời **bất khả thi về vật lý**; nay `NullPool` + test so `pg_backend_pid()` canh giữ. **Đóng A-01** — `FOR UPDATE SKIP LOCKED` được kiểm chứng **có răng** trên nền mới. **7 test tái hiện B-01/B-02/B-04** đánh `xfail(strict=True, raises=AssertionError)`, đỏ đúng số kiểm toán nêu: 100−10−10 ra **90** · sổ chi tiết 80 vs số dư 90 · 1 đơn giao 2 lần ghi **2** bộ dòng xuất · tồn 10 **xuất được 12** · số dư **−2** · hụt hàng mà **0 sự kiện `StockShortfallDetected`**. Đã kiểm `--runxfail`: **cả 7 đỏ ở khẳng định nghiệp vụ**, không cái nào đỏ vì lỗi dựng test. **Interleaving tất định, 0 `sleep`** — `StatementGate` móc `before_cursor_execute`, 8/8 lượt chạy giống hệt. **Tự kiểm chứng bằng lệnh thật:** guard tên CSDL từ chối `pharmacy_os` (EXIT=1, không chạm dữ liệu dev); tắt Postgres ⇒ **EXIT=1, 10 errors, 0 skipped**. 🔴 **Lỗ hổng tự phát hiện giữa chừng:** bản đầu chỉ `strict=True` ⇒ tắt Postgres cho ra **"7 xfailed, 3 errors"** — hạ tầng hỏng **đội lốt** bug-đã-biết, đúng dạng "niềm tin giả" đang đi sửa, suýt dựng lại ngay trong công cụ đi sửa nó; bịt bằng `raises=AssertionError` ⇒ đo lại ra **10 errors**. **4 cổng xanh trên cây của TỪNG commit** (cô lập bước 2 bằng cách đưa file ra ngoài cây): pytest **1004 passed** EXIT=0 cả hai cây, mypy 259 file, import-linter 18/0, plugins 16 passed. **Hạn dùng CỨNG:** 7 dấu `xfail` phải đóng **trước Sprint 9**, quá hạn ⇒ **tự động release blocker**; đã vào sổ điều phối cột "Đứng yên từ" = 27/07 (R-9). **Nợ ghi rõ:** `make check` nay **cần `make up`** (cái giá đã biết của "fail chứ không skip"); chi phí thật **6,2 s** so với ước 4 s; suite đo được 709 s nhưng máy còn tải việc khác nên **ghi "chưa đo được"**, không ghi con số tăng. |
 | 2026-07-27 | **F-4 THIẾT KẾ XONG + ĐÃ DUYỆT, CHƯA CODE — điểm dừng phiên (§7bh).** Chain chốt 3 quyết định, phiên sau **bắt tay code ngay không hỏi lại**: (1) **cơ chế B + Tầng 1** — dùng Postgres `docker compose` sẵn có với CSDL riêng `pharmacy_os_test`, **không** thêm `testcontainers` (lợi ích hermetic của nó là lý thuyết khi CI chưa từng chạy — C-03), phạm vi là thư mục **mới** `tests/concurrency/`, không đụng 1001 test hiện có; (2) **`xfail(strict=True)`** cho test tái hiện bug, **điều kiện cứng**: phải đóng **trước Sprint 9** và phải vào sổ điều phối cột "Đứng yên từ" (R-9) — xfail không hạn dùng là cách bug đã biết thành bug bị quên; (3) **mục tối ưu pytest xếp ngay sau F-5**, không cuối hàng, vì suite 9 phút đẩy người ta sang `--no-verify` và "chạy cổng một lần trên cây cuối" — đúng 2 hành vi sinh ra C-01/C-02. **Khảo sát đo thật:** vấn đề không phải "test dùng SQLite" mà là `StaticPool` ⇒ 1 kết nối dùng chung ⇒ 2 phiên đồng thời **bất khả thi về vật lý** (nên B-09 "0 test đồng thời" là thứ không biểu đạt được, không phải sơ suất); `with_for_update(skip_locked=True)` có đúng 2 chỗ và bị SQLAlchemy bỏ lặng trên SQLite; B-01/B-02 thì **không khoá gì cả**. **Phát hiện bất ngờ:** profile `--durations` cho thấy **24/25 mục chậm nhất là `setup`** (2,3–3,0 s mỗi cái) — suite 532 s chậm vì **fixture function-scoped dựng lại toàn bộ mỗi test**, KHÔNG phải vì engine CSDL (`create_all` SQLite chỉ 39 ms ⇒ ~21 s/532 s); bcrypt 194 ms × 178 test chạm auth. F-4 Tầng 1 chỉ thêm **≈4 giây**; vòng lặp nhanh hằng ngày **đã có sẵn** (`pytest tests/unit` = 3,31 s). Số đo nền ghi đủ trong §7bh để phiên sau không đo lại. **Không viết dòng code nào**; `f4_probe` đã xoá; `pharmacy_os` không bị chạm. |
 | 2026-07-26 | **F-1 + R-1→R-10 — CỔNG CÓ RĂNG (§7bg).** Mục đầu tiên của lộ trình khắc phục kiểm toán, Chain chốt thứ tự. **Phạm vi cổng:** ruff/format chạy từ gốc repo (390 file, trước sót 7), mypy phủ `seeds/` (252→259 file — nơi có `encrypt_backfill.py` ghi đè dữ liệu bệnh nhân thật), pytest thêm 16 test `payment_vnpay` (1001→1017 dưới cổng), gỡ `addopts="-q"` nên dòng "N passed" hiện lại. `ruff.toml` mới ở gốc + `src=["backend/src"]` — sửa đúng nguyên nhân I001 của `demo_preview.py` (file vốn ĐÚNG, `sys.path.insert` phải chạy trước), **không tắt rule không sửa code**. **Cưỡng chế:** `scripts/hooks/pre-commit` + `make hooks`, chặn commit khi ruff/format/import-linter/**mypy** đỏ (~7,3s); có mypy dù chậm vì 3 cổng nhanh chỉ chặn 2/3 ca commit-đỏ lịch sử, thêm mypy chặn 3/3 — ca thứ ba `cd98f7b` là ca duy nhất chưa ai tự khai. **Tự kiểm chứng chạy thật:** file ruff-đỏ → COMMIT_EXIT=1 HEAD không đổi; file mypy-đỏ trong `seeds/` (ruff xanh) → COMMIT_EXIT=1 HEAD không đổi (chứng minh kép: hook có mypy VÀ seeds nay trong cổng); commit thật `285af14` đi qua bình thường. **KHÔNG chặn được commit làm đỏ pytest** (536s, ngoài hook) — ghi rõ, không giấu. **R-1→R-10 vào văn bản có hiệu lực:** kỷ luật **8–13** + bổ sung **#7** (nền test Postgres) vào `AI_Pharmacy_OS/CLAUDE.md`; **R-8/R-9/R-10** (GĐ nghĩa vụ nghiệm thu · sổ thêm cột "Đứng yên từ" · cấm kết luận "không có nghĩa vụ pháp lý" chỉ từ một Thông tư) vào `CLAUDE.md` gốc vault. Đây là mục sửa đúng chỗ hỏng nặng nhất mà kiểm toán chỉ ra: 16 sự cố niềm tin giả → chỉ 1 kỷ luật được thể chế hoá, và đó là bài học duy nhất không tái phát. 3 commit: `285af14` (F-1) · `7c11aa8` (CLAUDE.md dự án) · vault `ef912cf`. 4 cổng xanh trên cây `285af14`: 1001+16 passed EXIT=0, mypy 259 file, import-linter 18/0. **Nợ:** A-08 chưa đóng (F-21), `tests/` vẫn ngoài mypy, chưa có remote nên CI vẫn chưa chạy, 12 mục chặn Sprint 9 chưa bắt đầu. |
