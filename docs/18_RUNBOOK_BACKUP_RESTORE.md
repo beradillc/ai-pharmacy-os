@@ -66,13 +66,45 @@ docker exec -i -e PGPASSWORD=$PGPASS <container> \
 **Khôi phục vào CSDL mới, không đè.** Đè lên là bỏ mất khả năng so sánh khi phát hiện bản
 backup cũng có vấn đề, và biến một sự cố khôi phục được thành một sự cố mất dữ liệu.
 
-### A.4 Nợ của phần A — ghi rõ
+### A.4 🔒 D-OPS-01 — quyết định Chain KHOÁ 2026-07-28
+
+```
+DECISION: RPO ≤ 1 giờ cho pilot
+STATUS:   LOCKED
+```
+
+**Quyết định kinh doanh, chép nguyên văn:** *"Pilot chấp nhận mất tối đa khoảng 1 giờ
+dữ liệu trong kịch bản thảm họa."*
+
+| Điều kiện Chain đặt | Thực hiện ở đâu |
+|---|---|
+| Backup tự động **mỗi 1 giờ** | `scripts/backup_verify.sh` + cron `0 * * * *` |
+| Giữ `pg_dump` trước mỗi migration làm **điểm backup bổ sung** | Full-auto điều 6, không đổi |
+| Retention **30 ngày** | `RETENTION_DAYS=30`; xoá bản cũ **sau** khi bản mới đã kiểm chứng đạt |
+| **Phát hiện + cảnh báo** khi backup hỏng | `trap ... ERR` → `ALERT_CMD`; mọi nhánh hỏng thoát khác 0 |
+| **Không coi backup là DONE chỉ vì file dump được tạo** | Bước 3 của script: **khôi phục thật** vào CSDL tạm rồi đối chiếu |
+| Phải có **restore verification** | Đối chiếu số bảng · số index · revision alembic; lệch ⇒ báo động, thoát 1 |
+
+**RPO thấp hơn 1 giờ là quyết định MỚI**, không phải chỉnh tham số: nó có thể đòi chuyển
+sang WAL/PITR hoặc kiến trúc backup khác. Không tự hạ xuống.
+
+#### `scripts/backup_verify.sh` — đã chạy thử cả hai nhánh (2026-07-28)
+
+| Nhánh | Lệnh | Kết quả |
+|---|---|---|
+| **Thành công** | `BACKUP_DIR=… ./scripts/backup_verify.sh` | `EXIT=0` · dump 116 KB · gốc `49\|164\|0033…` = khôi phục `49\|164\|0033…` ⇒ **kiểm chứng ĐẠT** · dọn theo retention |
+| **Hỏng** | `PG_DB=khong_ton_tai_dau …` | `EXIT=1` · **ALERT bắn**: *"BACKUP THẤT BẠI … tại dòng 59"* · CSDL tạm **đã dọn** (0 dòng còn lại) |
+
+Nhánh hỏng được kiểm **có chủ đích**: một script backup chỉ báo khi thành công là một
+script không ai biết nó đã chết từ bao giờ.
+
+### A.5 Nợ của phần A — ghi rõ
 
 | Nợ | Vì sao chưa làm |
 |---|---|
-| Diễn tập ở quy mô thật (CSDL **GB**, không phải 12 MB) | Chưa có deployment thật. **Thời gian khôi phục sẽ khác** — 2 giây ở đây không suy ra được thời gian ở quy mô pilot sau vài tháng |
-| Chưa diễn tập với **CSDL đã bật mã hoá** | Xem phần B — bật mã hoá xong thì **phải diễn tập lại**, vì lúc đó bản backup vô dụng nếu thiếu khoá |
-| Chưa có lịch backup tự động | Hiện chỉ có `pg_dump` trước mỗi migration. Pilot cần backup **theo lịch**, tần suất do Chain quyết (RPO) |
+| 🔴 **Dead-man's switch** — thứ theo dõi **ngoài cron** kiểm bản mới nhất không cũ quá 1 giờ | **Cron im lặng khi script không chạy được** (sai đường dẫn, docker chưa lên, hết đĩa). Lúc đó *"không có cảnh báo"* trông **giống hệt** *"backup thành công"* — đúng dạng niềm tin giả cả đợt kiểm toán đang sửa. Cần hạ tầng giám sát, thuộc F-18 |
+| Diễn tập ở quy mô thật (CSDL **GB**, không phải 12 MB) | Chưa có deployment thật. **2 giây không suy ra được** thời gian khôi phục ở quy mô pilot sau vài tháng |
+| Chưa diễn tập với **CSDL đã bật mã hoá** | Xem phần B — bật mã hoá xong **phải diễn tập lại**, vì backup **không kèm khoá** là vô dụng |
 
 ---
 
@@ -144,9 +176,20 @@ ENCRYPTION__CURRENT_VERSION=2
 
 Ghi mới dùng v2; dòng cũ mang thẻ `v1:` vẫn đọc được bằng khoá v1.
 
+```
+DECISION: Chu kỳ xoay khoá tiêu chuẩn 90 ngày
+STATUS:   LOCKED (Chain, 2026-07-28)
+```
+
+**Chain ghi rõ: đây KHÔNG phải nghĩa vụ pháp lý** — là quyết định bảo mật/rủi ro/vận hành.
+Đừng trích nó như một yêu cầu luật định ở bất kỳ đâu.
+
 | Câu hỏi | Quyết định | Vì sao |
 |---|---|---|
-| Bao lâu xoay một lần? | **Chain quyết** — chưa chốt | Không có nghĩa vụ pháp lý về chu kỳ; là quyết định rủi ro/vận hành |
+| Bao lâu xoay một lần? | 🔒 **90 ngày** | Chain khoá 2026-07-28 |
+| Khoá cũ và mới chồng lấn bao lâu? | 🔒 **tối đa 7 ngày** | Để token/session **đang hợp lệ** không bị cắt giữa chừng. Kiến trúc đã đỡ được: nhiều phiên bản khoá sống song song, mỗi ciphertext mang thẻ `v1:`/`v2:` |
+| Xoay có cần vết kiểm toán không? | 🔒 **CÓ, bắt buộc** | Xoay khoá là thao tác chạm toàn bộ dữ liệu nhạy cảm; không có vết thì không ai trả lời được *"khoá này đổi lúc nào, ai đổi"* |
+| Có được hard-code khoá vào mã nguồn/repo? | 🔒 **TUYỆT ĐỐI KHÔNG** | |
 | Có xoá khoá cũ không? | **KHÔNG**, chừng nào còn dòng mang thẻ phiên bản đó | Xoá là làm mất khả năng đọc chính dữ liệu của mình. `encrypt_backfill` báo rõ *"thiếu khoá v mấy"* |
 | Có mã hoá lại dòng cũ sang khoá mới không? | **Không bắt buộc** | Chỉ cần khi nghi khoá cũ đã lộ — lúc đó là **sự cố bảo mật**, chạy theo `docs/17`, không phải thao tác định kỳ |
 | Khi nào bắt buộc xoay ngay? | **Nghi khoá lộ** — người có quyền truy cập rời tổ chức, khoá từng nằm ở nơi không đảm bảo | Đây là ca duy nhất phải mã hoá lại toàn bộ |
@@ -157,7 +200,9 @@ Ghi mới dùng v2; dòng cũ mang thẻ `v1:` vẫn đọc được bằng kho�
 |---|---|
 | Trình tự B.3 | **Chưa chạy trên deployment nào có dữ liệu thật.** Từng bước đều dựa trên mã đã có và đã test, nhưng **cả trình tự thì chưa ai đi hết một lần** |
 | Xoay khoá B.4 | **Chưa diễn tập.** Quy tắc đã rõ, thao tác thật thì chưa |
-| Chu kỳ xoay khoá | **Chờ Chain quyết** |
+| Chu kỳ xoay khoá | 🔒 **Đã khoá: 90 ngày** (D-SEC-01) |
+| 🔴 **Vết kiểm toán cho thao tác xoay khoá** | **Chưa có.** D-SEC-01 đòi *"rotation phải có audit trail"* — hiện `AuditAction` **không có** hành động nào cho việc này. Cần bổ sung trước lần xoay đầu tiên |
+| 🔴 **Cưỡng chế chồng lấn ≤ 7 ngày** | **Chưa có.** Kiến trúc cho nhiều khoá sống song song **vô thời hạn**; giới hạn 7 ngày hiện là **kỷ luật của người vận hành**, không phải thứ hệ thống ép |
 
 **Điều kiện đóng F-8 hoàn toàn:** chạy hết B.3 trên **staging có dữ liệu**, rồi diễn tập
 lại phần A trên bản backup sau khi đã bật mã hoá. Chừng đó chưa làm thì tài liệu này là

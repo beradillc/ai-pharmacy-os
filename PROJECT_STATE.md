@@ -4323,6 +4323,58 @@ thẻ đó. Mã hoá lại toàn bộ chỉ khi **nghi khoá lộ** — lúc đ�
 
 ---
 
+## 7bq. D-OPS-01 + D-SEC-01 KHOÁ · SCRIPT BACKUP TỰ KIỂM CHỨNG (2026-07-28, Opus)
+
+### Hai quyết định Chain KHOÁ — chép nguyên trạng
+
+```
+D-OPS-01  RPO ≤ 1 giờ · backup mỗi 1 giờ · retention 30 ngày
+          · phát hiện+cảnh báo khi hỏng · PHẢI có restore verification
+          · "không coi backup là DONE chỉ vì file dump được tạo"
+STATUS:   LOCKED
+BUSINESS: "Pilot chấp nhận mất tối đa khoảng 1 giờ dữ liệu trong kịch bản thảm họa."
+
+D-SEC-01  Xoay khoá 90 ngày · chồng lấn cũ/mới tối đa 7 ngày
+          · nghi lộ ⇒ xoay NGAY, không chờ đủ 90 ngày
+          · không hard-code secret vào mã nguồn/repo · rotation phải có audit trail
+          · KHÔNG phải nghĩa vụ pháp lý — là quyết định bảo mật/rủi ro/vận hành
+STATUS:   LOCKED
+```
+
+**Không hỏi lại Chain hai điểm này trong S9**, trừ khi implementation phát hiện ràng buộc
+kỹ thuật làm đổi hồ sơ rủi ro.
+
+### `scripts/backup_verify.sh` — D-OPS-01 thành thứ chạy được
+
+Điều kiện *"không coi backup là DONE chỉ vì file dump được tạo"* là điều kiện quan trọng
+nhất, và nó quyết định hình dạng script: mỗi lượt backup **tự khôi phục vào CSDL tạm rồi
+đối chiếu** trước khi coi là xong. Diễn tập F-16 chứng minh đường khôi phục chạy được
+**một lần**; script này biến nó thành **mọi lần**.
+
+**Đã chạy thử cả hai nhánh** (2026-07-28):
+
+| Nhánh | Kết quả |
+|---|---|
+| Thành công | `EXIT=0` · dump 116 KB · gốc `49\|164\|0033…` **=** khôi phục `49\|164\|0033…` ⇒ kiểm chứng ĐẠT · dọn theo retention |
+| Hỏng (`PG_DB` không tồn tại) | `EXIT=1` · **ALERT bắn** *"BACKUP THẤT BẠI … tại dòng 59"* · CSDL tạm **đã dọn** |
+
+Nhánh hỏng kiểm **có chủ đích**: một script backup chỉ báo khi thành công là script không
+ai biết nó chết từ bao giờ.
+
+Hai chi tiết mang bài học F-16 vào script: **`-v ON_ERROR_STOP=1`** (thiếu nó `psql` chạy
+tiếp qua lỗi mà vẫn trả mã thoát 0) và **xoá bản cũ SAU khi bản mới đã kiểm chứng đạt**
+(xoá trước rồi backup hỏng là tự thu hẹp đường lùi của chính mình).
+
+### 🔴 Ba nợ mới sinh ra từ chính hai quyết định vừa khoá
+
+| Nợ | Vì sao nghiêm trọng |
+|---|---|
+| **Dead-man's switch** cho cron | **Cron im lặng khi script không chạy được** (sai đường dẫn, docker chưa lên, hết đĩa). Lúc đó *"không có cảnh báo"* trông **giống hệt** *"backup thành công"* — đúng dạng niềm tin giả cả đợt kiểm toán đang sửa. Thuộc **F-18** (observability) |
+| **Vết kiểm toán cho thao tác xoay khoá** | D-SEC-01 đòi *"rotation phải có audit trail"*; `AuditAction` hiện **không có** hành động nào cho việc này. Cần bổ sung **trước lần xoay đầu tiên** |
+| **Cưỡng chế chồng lấn ≤ 7 ngày** | Kiến trúc cho nhiều khoá sống song song **vô thời hạn**; giới hạn 7 ngày hiện là **kỷ luật của người vận hành**, không phải thứ hệ thống ép |
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
