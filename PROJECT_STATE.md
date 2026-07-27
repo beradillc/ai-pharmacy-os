@@ -3704,7 +3704,9 @@ giờ nhận rounds=4; (b) sửa scope fixture — đụng cả 548 test.
 | **F-19** quy trình sự cố | ✅ **THIẾT KẾ XONG** (§7bn) — `docs/17`, role-based; còn `TBD` bảng gắn người, **không chặn development** |
 | **F-6** giấy phép VNPAY | 🔓 **KHÔNG còn là critical path** — Chain KHOÁ quyết định 28/07: pilot **không có** thanh toán online |
 | **F-9** rate limit | ✅ **XONG** (§7bo) — đóng vector DoS của khoá tài khoản |
-| F-8, F-16, F-17 | ⏸️ Chưa bắt đầu. **F-6 là đường găng thật** — câu hỏi pháp lý A-05 đang ở Trợ lý Pháp Lý, chưa có trả lời |
+| **F-16** thử restore backup | ✅ **XONG** (§7bp) — diễn tập **đã chạy thật**, ứng dụng đọc được bản khôi phục |
+| **F-8** runbook mã hoá | 🟡 **VIẾT XONG, CHƯA CHẠY HẾT** (§7bp) — `docs/18` phần B; đóng hoàn toàn khi chạy trên staging |
+| F-17 load test | ⏸️ Chưa bắt đầu. **F-6 là đường găng thật** — câu hỏi pháp lý A-05 đang ở Trợ lý Pháp Lý, chưa có trả lời |
 
 ---
 
@@ -4264,6 +4266,60 @@ mật khẩu nhiều bậc).
 Test: **11 đơn vị** (thời gian **tiêm vào** qua `now`, **không `sleep`** — test đo bằng
 đồng hồ tường là test đỏ ngẫu nhiên đang chờ ngày xảy ra, §7ay) + **4 e2e HTTP thật**,
 gồm kịch bản C-11 và kịch bản *"hết cửa sổ phải mở lại được"*.
+
+---
+
+## 7bp. F-16 DIỄN TẬP KHÔI PHỤC (ĐÃ CHẠY THẬT) + F-8 RUNBOOK (2026-07-28, Opus)
+
+> `docs/18_RUNBOOK_BACKUP_RESTORE.md`. **F-16 đóng. F-8 viết xong nhưng CHƯA chạy hết —
+> ghi rõ là chưa, không ghi là xong.**
+
+### F-16 — không mô tả một quy trình, mà ghi lại một lần đã chạy
+
+Chỗ hở kiểm toán nêu: đã có `pg_dump` trước mỗi migration từ 2026-07-23, nhưng **chưa
+từng restore lần nào**. Một bản backup chưa khôi phục thử là **giả định**, không phải
+đường lùi.
+
+| Bước | Đo được |
+|---|---|
+| Dữ liệu diễn tập | 50 lô + 50 dòng xuất/nhập + 50 số dư, cạnh dữ liệu sẵn có · CSDL **12 MB** |
+| `pg_dump` | `EXIT=0` · **<1 s** · file **152 KB** |
+| `psql … -v ON_ERROR_STOP=1 < dump` | `EXIT=0` · **2 s** · **0 lỗi/0 fatal** |
+| Đối chiếu **dữ liệu** (9 chỉ số) | **KHỚP TUYỆT ĐỐI**, `diff` rỗng |
+| Đối chiếu **lược đồ** | `uq_movement_ref_batch` **có** · 6 index trên `stock_movements` · **27 khoá ngoại** |
+| **Ứng dụng đọc được** | `build_engine`/`build_sessionmaker` **thật** trỏ vào bản khôi phục, đọc qua ORM ⇒ tenant · user · hash bcrypt `$2b$` 60 ký tự · 50 lô · tồn **5000.000** ⇒ `APP_READ_OK` |
+
+**Bước cuối là bước phân biệt thật/giả.** `psql` đọc được chỉ chứng minh **byte còn
+nguyên**; **ứng dụng** đọc được mới chứng minh lược đồ/kiểu dữ liệu/cột mã hoá vẫn khớp
+mã đang chạy — tức là khôi phục xong thì **bán hàng lại được**.
+
+Hai quy tắc rút ra, đã vào runbook: **`-v ON_ERROR_STOP=1` là bắt buộc** (thiếu nó `psql`
+chạy tiếp qua lỗi và vẫn trả mã thoát **0** — bản khôi phục thiếu dữ liệu kèm dấu hiệu
+"thành công"); **khôi phục vào CSDL MỚI, không đè** (đè là biến một sự cố khôi phục được
+thành một sự cố mất dữ liệu).
+
+### F-8 — viết xong, và nói rõ mình chưa chạy hết
+
+Trình tự bật mã hoá lần đầu (8 bước) + quyết định xoay khoá đã viết. **Nhưng:**
+
+| Nợ | Trạng thái |
+|---|---|
+| Trình tự B.3 | **Chưa chạy trên deployment nào có dữ liệu thật.** Từng bước dựa trên mã đã test, nhưng **cả trình tự chưa ai đi hết một lần** |
+| Xoay khoá | **Chưa diễn tập** |
+| Chu kỳ xoay khoá | **Chờ Chain quyết** — không có nghĩa vụ pháp lý về chu kỳ, là quyết định rủi ro/vận hành |
+
+Quyết định thao tác đã chốt trong runbook: xoay = **thêm** phiên bản rồi trỏ
+`CURRENT_VERSION`, **không** mã hoá lại toàn bộ, **không** xoá khoá cũ khi còn dòng mang
+thẻ đó. Mã hoá lại toàn bộ chỉ khi **nghi khoá lộ** — lúc đó là sự cố bảo mật, chạy theo
+`docs/17`, không phải thao tác định kỳ.
+
+### Nợ chung, ghi rõ
+
+| Nợ | Vì sao |
+|---|---|
+| Diễn tập ở quy mô thật (GB, không phải 12 MB) | **2 giây không suy ra được** thời gian khôi phục ở quy mô pilot sau vài tháng |
+| Chưa diễn tập với CSDL **đã bật mã hoá** | Sau khi bật, backup **không kèm khoá** là vô dụng ⇒ **phải diễn tập lại**, và cặp backup+khoá đó chưa ai thử |
+| Chưa có lịch backup tự động | Hiện chỉ có `pg_dump` trước mỗi migration. Pilot cần backup **theo lịch**; tần suất (RPO) do Chain quyết |
 
 ---
 
