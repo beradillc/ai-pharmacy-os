@@ -3703,7 +3703,8 @@ giờ nhận rounds=4; (b) sửa scope fixture — đụng cả 548 test.
 | **F-15** chặn mock ở prod | ✅ **XONG** (§7bm) — chặn cả 2 điểm nạp |
 | **F-19** quy trình sự cố | ✅ **THIẾT KẾ XONG** (§7bn) — `docs/17`, role-based; còn `TBD` bảng gắn người, **không chặn development** |
 | **F-6** giấy phép VNPAY | 🔓 **KHÔNG còn là critical path** — Chain KHOÁ quyết định 28/07: pilot **không có** thanh toán online |
-| F-8, F-9, F-16, F-17 | ⏸️ Chưa bắt đầu. **F-6 là đường găng thật** — câu hỏi pháp lý A-05 đang ở Trợ lý Pháp Lý, chưa có trả lời |
+| **F-9** rate limit | ✅ **XONG** (§7bo) — đóng vector DoS của khoá tài khoản |
+| F-8, F-16, F-17 | ⏸️ Chưa bắt đầu. **F-6 là đường găng thật** — câu hỏi pháp lý A-05 đang ở Trợ lý Pháp Lý, chưa có trả lời |
 
 ---
 
@@ -4212,6 +4213,57 @@ sự cố xong khi **sổ sách khớp**. Thuốc kiểm soát đặc biệt bá
 | 2 | Chốt nơi lưu hồ sơ Incident | Chặn bước 5 kịch bản |
 | 3 | **Diễn tập một lần** kịch bản §4 trước ngày pilot đầu | 🔴 Quy trình chưa diễn tập là quy trình chưa biết có chạy không — **cùng lý do F-16 đòi restore thật thay vì tài liệu mô tả restore** |
 | 4 | Mẫu phiếu giấy | Chặn bước 3 |
+
+---
+
+## 7bo. F-9 RATE LIMIT — 8/12 (2026-07-28, Opus)
+
+> Mục **code** cuối cùng trong 12 mục chặn. Còn lại **F-8 · F-16 · F-17** đều là
+> **tài liệu/vận hành**, không phải code sản phẩm.
+
+### Lỗ hổng thật, nói bằng lời thường
+
+Hệ thống đã khoá tài khoản sau 5 lần sai mật khẩu. Khoá tài khoản **mà không** giới hạn
+theo IP biến cơ chế phòng thủ thành **vũ khí**: bắn mật khẩu sai vào tài khoản dược sĩ
+trưởng là khoá được người đó ra ngoài; lặp cho từng tài khoản tới khi **cả nhà thuốc
+không ai đăng nhập được**. Không cần đoán trúng mật khẩu nào. Đó là DoS bằng chính tính
+năng bảo mật (kiểm toán C-11).
+
+### Bốn quyết định thiết kế, mỗi cái có test giữ
+
+| Quyết định | Vì sao |
+|---|---|
+| Khoá đếm là **(IP, endpoint)**, không phải (IP, tài khoản) | Đếm theo tài khoản thì bắn vào 100 tài khoản khác nhau từ một IP **vẫn lọt** — đúng hình dạng cuộc tấn công cần chặn |
+| **Cửa sổ trượt**, không phải cửa sổ cố định | Cửa sổ cố định cho bắn **gấp đôi** hạn mức quanh ranh giới: 10 lượt trong 2 giây |
+| Lượt **bị từ chối không tính** vào bộ đếm | Nếu tính, kẻ tấn công bắn liên tục là tự giữ cửa sổ luôn đầy ⇒ người dùng thật **không bao giờ vào lại được**. Hình phạt phải có điểm kết thúc |
+| Chặn **trước** khi chạm mật khẩu/CSDL | Request bị chặn không tốn một lần băm bcrypt ⇒ chi phí kẻ tấn công **cao hơn** chi phí người bị tấn công |
+
+Mặc định **BẬT** — khác `OUTBOX__RELAY_ENABLED`/`ENCRYPTION__ENABLED` vốn tắt mặc định.
+Hai cái kia bật lên là *thêm* tiến trình nền hoặc *đổi* cách ghi dữ liệu; cái này chỉ từ
+chối bớt request, và **tắt nó là mở lại đúng lỗ hổng nó vá**.
+
+**10 lượt/phút** chọn để người thật gõ nhầm vẫn dùng được, trong khi khoá tài khoản đứng
+ở 5 — nên hạn mức IP **không bao giờ** chặn trước khoá tài khoản trong sử dụng bình thường.
+
+Áp cho `/auth/login` **và** `/auth/2fa/login` (mã TOTP 6 chữ số, bề mặt đoán mò hẹp hơn
+mật khẩu nhiều bậc).
+
+### 🟡 Hai giới hạn đã biết — ghi ra, không giấu
+
+| Giới hạn | Hệ quả | Thuộc về |
+|---|---|---|
+| FastAPI kiểm **hình dạng body trước handler** ⇒ bộ đếm chỉ tính request **đúng schema** | Body sai hình dạng không bị tính. Tấn công đoán mã thật luôn gửi body đúng nên hạn mức vẫn có tác dụng | **F-13** (403/429 chạy trước 422), không phải F-9 |
+| Bộ đếm **trong tiến trình** | Nhiều worker ⇒ đếm riêng từng tiến trình, hạn mức thực tế **nhân lên theo số worker** | Đúng phạm vi pilot (1 nhà thuốc, 1 tiến trình). Chỗ đổi sang Redis ghi trong docstring `RateLimiter` — mọi nơi gọi đã qua **đúng một cửa** |
+
+### Cổng chất lượng
+
+| Cây | ruff | format | imports | mypy | pytest backend | plugin |
+|---|---|---|---|---|---|---|
+| `ed9533a` | 0 | 0 | 0 | 0 | **0** — **1051 passed** (1036 + 15), 170,29 s | 0 — 16 passed |
+
+Test: **11 đơn vị** (thời gian **tiêm vào** qua `now`, **không `sleep`** — test đo bằng
+đồng hồ tường là test đỏ ngẫu nhiên đang chờ ngày xảy ra, §7ay) + **4 e2e HTTP thật**,
+gồm kịch bản C-11 và kịch bản *"hết cửa sổ phải mở lại được"*.
 
 ---
 
