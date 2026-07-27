@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import structlog
 
+from pharmacy_os.core.bootstrap import refuse_mock_in_prod
 from pharmacy_os.core.config import Settings
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork, UnitOfWorkFactory
@@ -74,6 +75,11 @@ def wire_national_sync(container: Container) -> None:
     def retry_claimer(uow: UnitOfWork) -> SqlAlchemyNationalSyncRetryClaimer:
         return SqlAlchemyNationalSyncRetryClaimer(uow.session)
 
+    refuse_mock_in_prod(
+        settings,
+        "MockNationalDrugDbGateway",
+        "liên thông CSDL Dược Quốc gia (QĐ1867) — ACK giả nghĩa là báo cáo coi như đã gửi",
+    )
     service = NationalSyncService(
         uow_factory, repo_factory, MockNationalDrugDbGateway(), retry_queue
     )

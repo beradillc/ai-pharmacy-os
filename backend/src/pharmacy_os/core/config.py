@@ -17,6 +17,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _PLACEHOLDER = "__set_me__"
 
+_MIN_JWT_SECRET_BYTES = 32
+"""Độ dài tối thiểu của khoá ký HS256 ở prod (A-02).
+
+32 byte = đúng kích thước digest của SHA-256, mức RFC 2104 §3 khuyến nghị cho HMAC.
+Ngắn hơn digest thì khoá trở thành mắt xích yếu nhất và chữ ký chỉ còn là hình thức."""
+
 
 class AppSettings(BaseSettings):
     env: Literal["dev", "staging", "prod"] = "dev"
@@ -193,6 +199,17 @@ class EncryptionSettings(BaseSettings):
     current_version: int = 1
     """Which version new writes use. Rotating = add the next version, then point here."""
 
+    allow_plaintext_in_prod: bool = False
+    """Đường thoát **cố ý** cho ``ENCRYPTION__ENABLED=false`` ở prod (A-03).
+
+    Tồn tại vì có một tình huống hợp lệ: deployment đang chạy dở dang việc bật mã hoá
+    lần đầu (backfill chưa xong). Nhưng nó phải là một **hành động khai báo**, không
+    phải một biến bị quên — mặc định ``False`` nghĩa là *"quên đặt = ứng dụng không
+    khởi động"*, chứ không phải *"quên đặt = dữ liệu bệnh nhân nằm nguyên văn"*.
+
+    Cùng khuôn với ``SECURITY__ALLOW_DEV_AUTH``: fail-closed, và bật lên là một quyết
+    định có người chịu trách nhiệm."""
+
     blind_index_key: SecretStr = SecretStr(_PLACEHOLDER)
     """Separate base64 key for searchable fingerprints (``BlindIndex``). Deliberately
     not the encryption key: one key per purpose, so a weakness in one is not a break
@@ -284,6 +301,31 @@ class Settings(BaseSettings):
             ]
             if missing:
                 raise ValueError(f"Missing required secrets in prod: {', '.join(missing)}")
+
+            # A-02. "Không phải chuỗi mặc định" là một bài kiểm tra quá dễ: kiểm toán
+            # 2026-07-26 khởi động được prod với JWT_SECRET dài **3 byte**. Một khoá
+            # HS256 ngắn hơn digest của chính nó thì chữ ký chỉ còn là trang trí — mọi
+            # phiên đăng nhập, mọi phân quyền của hệ thống đứng trên nó.
+            secret_bytes = len(self.security.jwt_secret.get_secret_value().encode("utf-8"))
+            if secret_bytes < _MIN_JWT_SECRET_BYTES:
+                raise ValueError(
+                    f"SECURITY__JWT_SECRET chỉ {secret_bytes} byte, tối thiểu "
+                    f"{_MIN_JWT_SECRET_BYTES} byte trong prod (HS256 ký bằng khoá này; "
+                    f"khoá ngắn hơn digest thì chữ ký không còn giá trị bảo vệ). "
+                    f'Sinh khoá: `python -c "import secrets;print(secrets.token_urlsafe(48))"`'
+                )
+
+            # A-03. Mã hoá at-rest **tắt được** ở prod là cách dữ liệu bệnh nhân nằm
+            # nguyên văn trong CSDL mà không ai phải quyết định điều đó — chỉ cần quên
+            # đặt một biến. Bật là mặc định của prod; tắt phải là một hành động cố ý,
+            # khai báo thành lời, và có người chịu trách nhiệm.
+            if not self.encryption.enabled and not self.encryption.allow_plaintext_in_prod:
+                raise ValueError(
+                    "ENCRYPTION__ENABLED=false trong prod: dữ liệu bệnh nhân sẽ nằm "
+                    "nguyên văn trong CSDL (Luật BVDLCN 91/2025). Bật mã hoá, hoặc — nếu "
+                    "thực sự cố ý — đặt ENCRYPTION__ALLOW_PLAINTEXT_IN_PROD=true và ghi "
+                    "lý do vào nhật ký vận hành."
+                )
 
         # Applies in every environment, not just prod: writing ciphertext nobody can
         # read back is unrecoverable, so the misconfiguration must stop the app now

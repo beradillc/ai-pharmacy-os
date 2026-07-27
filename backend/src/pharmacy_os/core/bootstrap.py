@@ -7,6 +7,9 @@ capabilities they need — never constructing kernel objects themselves.
 
 from __future__ import annotations
 
+import os
+
+import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from pharmacy_os.core.ai import LLMProvider, MockLLMProvider
@@ -26,6 +29,44 @@ from pharmacy_os.core.outbox import OutboxEventSink
 from pharmacy_os.core.plugins import HookRegistry, PluginLoader
 from pharmacy_os.core.security.crypto import BlindIndex, FieldCipher, KeyRing, decode_key
 from pharmacy_os.core.security.jwt import JwtService
+
+_log = structlog.get_logger("core.bootstrap")
+
+ALLOW_MOCKS_IN_PROD_ENV = "PHARMACY_ALLOW_MOCKS_IN_PROD"
+"""Đường thoát **cố ý** cho :func:`refuse_mock_in_prod`, đặt qua biến môi trường.
+
+Là biến môi trường chứ không phải trường trong ``Settings``: nó dành cho diễn tập
+vận hành (dựng thử prod-like không có nhà cung cấp thật), và không nên nằm lẫn trong
+file cấu hình mà một ngày nào đó được sao chép lên máy chủ thật.
+"""
+
+
+def refuse_mock_in_prod(settings: Settings, mock_name: str, what_it_fakes: str) -> None:
+    """Từ chối khởi động nếu một cổng giả bị nạp ở ``APP__ENV=prod`` (kiểm toán A-07).
+
+    Mock ở prod không hỏng ồn ào — nó **trả lời**. ``MockLLMProvider`` trả về kết quả
+    kiểm tra tương tác thuốc trông y như thật, nên một nhà thuốc đang chạy pilot sẽ
+    thấy "không có tương tác" và tin. Đó là rủi ro an toàn người bệnh, và nó im lặng.
+
+    Cùng khuôn fail-closed với ``SECURITY__ALLOW_DEV_AUTH``: hỏng lúc khởi động, chỗ
+    có người đang nhìn, thay vì hỏng lúc dược sĩ đang bán thuốc.
+    """
+    if settings.app.env != "prod":
+        return
+    if os.environ.get(ALLOW_MOCKS_IN_PROD_ENV, "").lower() in {"1", "true", "yes"}:
+        _log.warning(
+            "mock_allowed_in_prod",
+            mock=mock_name,
+            fakes=what_it_fakes,
+            detail="Cổng giả chạy ở prod vì có người bật đường thoát. KHÔNG dùng cho "
+            "deployment phục vụ bệnh nhân thật.",
+        )
+        return
+    raise RuntimeError(
+        f"{mock_name} bị nạp khi APP__ENV=prod — nó giả lập {what_it_fakes} và trả lời "
+        f"như thật, nên sai sót sẽ không lộ ra. Nối nhà cung cấp thật, hoặc — nếu đây "
+        f"là diễn tập vận hành — đặt {ALLOW_MOCKS_IN_PROD_ENV}=true."
+    )
 
 
 def build_field_cipher(settings: Settings) -> FieldCipher | None:
@@ -107,6 +148,7 @@ def build_container(settings: Settings) -> Container:
     # LLM port: mock implementation only in S5.5 — no real vendor call is made.
     # BLOCKER: AI__API_KEY thật — swap in the AnthropicProvider here (chosen from
     # settings.ai.provider / api_key) once a live key + the vendor SDK are wired.
+    refuse_mock_in_prod(settings, "MockLLMProvider", "AI lâm sàng (tương tác thuốc, cảnh báo)")
     container.register_singleton(LLMProvider, lambda _c: MockLLMProvider())  # type: ignore[type-abstract]
     container.register_singleton(
         AuditLogger,
