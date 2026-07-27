@@ -194,12 +194,41 @@ STATUS:   LOCKED (Chain, 2026-07-28)
 | Có mã hoá lại dòng cũ sang khoá mới không? | **Không bắt buộc** | Chỉ cần khi nghi khoá cũ đã lộ — lúc đó là **sự cố bảo mật**, chạy theo `docs/17`, không phải thao tác định kỳ |
 | Khi nào bắt buộc xoay ngay? | **Nghi khoá lộ** — người có quyền truy cập rời tổ chức, khoá từng nằm ở nơi không đảm bảo | Đây là ca duy nhất phải mã hoá lại toàn bộ |
 
-### B.5 🔴 Nợ của phần B — chưa chạy thật
+### B.5 ✅ Trình tự B.3 ĐÃ CHẠY HẾT trên staging — 2026-07-28
+
+Chạy trên `docker-compose.staging.yml`, CSDL `pharmacy_os_staging` **có dữ liệu**, đúng
+kịch bản *"bật mã hoá trên deployment đã có dữ liệu"* (khởi động với `ENCRYPTION__ENABLED=false`,
+dựng tenant + 25 dòng PII nguyên văn, rồi mới bật).
+
+| Bước | Kết quả đo |
+|---|---|
+| 1. `pg_dump` trước khi bật | `EXIT=0` · 88 KB |
+| 3. `alembic upgrade head` | `EXIT=0` · chạy tới `0033_movement_ref_batch_uq` |
+| 4. Đặt khoá + `ENCRYPTION__ENABLED=true` + khởi động lại | app trả `HEALTH=200` |
+| 5. `--dry-run` | `EXIT=0` · **quét 25, sẽ ghi lại 25** |
+| 6. `encrypt_backfill` | `EXIT=0` · **quét 25, đã ghi lại 25** |
+| 7. `--verify` | `EXIT=0` · **25 dòng, 0 lỗi giải mã** ⇒ *"Mọi dòng đọc được bằng khoá hiện có"* |
+| 8. Diễn tập khôi phục **lại** (bắt buộc sau khi bật) | `scripts/backup_verify.sh` `EXIT=0` · kiểm chứng ĐẠT · **25/25 dòng vẫn mang thẻ `v1:`** |
+
+**Bằng chứng mã hoá thật sự xảy ra**, đọc thẳng từ CSDL sau backfill:
+
+```
+trước:  Nguyen Van PII 8 | 0900000001
+sau:    Nguyen Van PII 8 | v1:gvbR1XOuHxOmMySgy…
+```
+
+🔴 **Quan sát cần Chain/kiến trúc xác nhận, KHÔNG tự kết luận:** `phone` đã thành
+ciphertext mang thẻ `v1:`, nhưng **`full_name` vẫn nguyên văn**. Có thể là chủ đích (tên
+cần cho hiển thị/tra cứu) — nhưng tên người **là dữ liệu cá nhân** theo Luật BVDLCN
+91/2025. Cần một câu trả lời rõ: cột nào bắt buộc mã hoá, cột nào cố ý không, và vì sao.
+**Chưa có tài liệu nào trong repo nói ra lựa chọn đó.**
+
+### B.6 🔴 Nợ còn lại của phần B
 
 | Nợ | Trạng thái |
 |---|---|
-| Trình tự B.3 | **Chưa chạy trên deployment nào có dữ liệu thật.** Từng bước đều dựa trên mã đã có và đã test, nhưng **cả trình tự thì chưa ai đi hết một lần** |
 | Xoay khoá B.4 | **Chưa diễn tập.** Quy tắc đã rõ, thao tác thật thì chưa |
+| Phạm vi cột được mã hoá | 🔴 **Chưa có tài liệu.** `phone` mã hoá, `full_name` không — cần xác nhận đây là lựa chọn hay lỗ hổng |
 | Chu kỳ xoay khoá | 🔒 **Đã khoá: 90 ngày** (D-SEC-01) |
 | 🔴 **Vết kiểm toán cho thao tác xoay khoá** | **Chưa có.** D-SEC-01 đòi *"rotation phải có audit trail"* — hiện `AuditAction` **không có** hành động nào cho việc này. Cần bổ sung trước lần xoay đầu tiên |
 | 🔴 **Cưỡng chế chồng lấn ≤ 7 ngày** | **Chưa có.** Kiến trúc cho nhiều khoá sống song song **vô thời hạn**; giới hạn 7 ngày hiện là **kỷ luật của người vận hành**, không phải thứ hệ thống ép |
