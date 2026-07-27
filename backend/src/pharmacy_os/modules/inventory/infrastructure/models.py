@@ -6,7 +6,16 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Index,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pharmacy_os.core.db.base import Base, PkUuidMixin, TenantScopedMixin, TimestampMixin
@@ -31,6 +40,32 @@ class StockMovementORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
     """Append-only stock change (the source of truth for on-hand levels)."""
 
     __tablename__ = "stock_movements"
+    __table_args__ = (
+        Index(
+            "uq_movement_ref_batch",
+            "tenant_id",
+            "ref_type",
+            "ref_id",
+            "batch_id",
+            unique=True,
+            postgresql_where=text("ref_id IS NOT NULL"),
+            sqlite_where=text("ref_id IS NOT NULL"),
+        ),
+    )
+    """Replay of the same sale/GRN moves stock **once** — enforced here, not by the
+    ``SELECT`` in :meth:`MovementRepository.exists_for_ref` (audit B-02).
+
+    ``batch_id`` belongs in the key and leaving it out would be the expensive
+    mistake: one FEFO dispense legitimately spans several lots and writes one row
+    per lot, all sharing a ``ref_id``. Keyed without it, the constraint would
+    reject correct pharmacy work — the opposite of the bug it exists to stop.
+
+    Partial on ``ref_id IS NOT NULL`` because a movement without a reference has no
+    identity to be a duplicate of (a manual receive carries ``ref_type='GRN'`` and
+    no id). Postgres would treat those NULLs as distinct anyway; saying so
+    explicitly keeps the index small and keeps SQLite — where the test suite runs —
+    behaving the same way.
+    """
 
     drug_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
     batch_id: Mapped[UUID] = mapped_column(index=True, nullable=False)

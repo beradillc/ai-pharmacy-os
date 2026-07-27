@@ -1,15 +1,15 @@
 # `tests/concurrency` — test đồng thời trên Postgres thật
 
-> ## ⚠️ ĐỌC TRƯỚC KHI DIỄN GIẢI KẾT QUẢ
+> ## ✅ TRẠNG THÁI: B-01 / B-02 / B-04 ĐÃ VÁ (F-5, 2026-07-27)
 >
-> **`xfail` trong thư mục này = BUG ĐÃ BIẾT, CHƯA VÁ. KHÔNG phải "test đã xanh".**
+> `pytest tests/concurrency` nay ra **`10 passed`**, mã thoát **0**, **0 dấu `xfail`**.
+> Bảy dấu do F-4 đặt đã được gỡ **vì test xanh thật**, không phải vì ai nới khẳng
+> định — bằng chứng nằm ở `strict=True`: bản vá làm chúng XPASS ⇒ bộ test **đỏ** ⇒
+> người vá buộc phải quay lại gỡ dấu. Cơ chế đó đã chạy đúng như thiết kế.
 >
-> Chạy `pytest tests/concurrency` hiện ra **`3 passed, 7 xfailed`** và mã thoát **0**.
-> Mã thoát 0 đó **không** có nghĩa là tồn kho đã đúng. Nó có nghĩa là *"7 lỗi đã biết
-> vẫn đang hỏng đúng như dự đoán"*. Bảy dòng `x` đó là **B-01, B-02, B-04** của kiểm
-> toán 2026-07-26 — **tồn kho vẫn sai khi hai quầy bán cùng lúc.**
->
-> Muốn thấy chúng hỏng ra sao: `pytest tests/concurrency --runxfail`.
+> **Quy tắc cho test đua thêm sau này không đổi:** `xfail` ở thư mục này = **BUG ĐÃ
+> BIẾT, CHƯA VÁ**, không phải "test đã xanh"; luôn kèm `strict=True` **và**
+> `raises=AssertionError`, và luôn có hạn đóng (xem mục ⏳ bên dưới).
 
 ---
 
@@ -33,6 +33,19 @@ Nền này sửa đúng hai điều đó, **không đụng một dòng nào** tr
 make up               # BẮT BUỘC — Postgres phải chạy, xem "Fail chứ không skip" bên dưới
 make test-concurrency # hoặc: cd backend && pytest tests/concurrency
 ```
+
+> ⚠️ **CSDL test cũ không tự nhận ràng buộc mới.** Harness dựng lược đồ bằng
+> `Base.metadata.create_all`, mà `create_all` **chỉ tạo bảng còn thiếu** — nó không
+> thêm index vào bảng đã tồn tại và không chạy alembic. Máy nào đã có
+> `pharmacy_os_test` từ trước F-5 sẽ **thiếu `uq_movement_ref_batch`** và 2 test B-02
+> đỏ vì lý do hoàn toàn không liên quan tới mã sản phẩm. Gặp thì xoá CSDL test cho nó
+> dựng lại từ đầu, hoặc thêm tay:
+> ```sql
+> CREATE UNIQUE INDEX IF NOT EXISTS uq_movement_ref_batch ON stock_movements
+>   (tenant_id, ref_type, ref_id, batch_id) WHERE ref_id IS NOT NULL;
+> ```
+> Đây là **nợ đã biết của nền F-4**, chưa sửa vì sửa là đụng `conftest.py` — xem
+> "Nợ" cuối file.
 
 CSDL `pharmacy_os_test` được **tự tạo** ở lần chạy đầu, cạnh CSDL dev `pharmacy_os`,
 trên chính Postgres của `docker compose`. Không thêm phụ thuộc `testcontainers`
@@ -101,49 +114,57 @@ Luôn là `xfail(strict=True, raises=AssertionError)`. **Cả hai tham số đ�
 không dùng `pytest.raises`**: nó ném `Failed`, không phải `AssertionError`, nên sẽ lọt
 qua đúng cái lưới vừa dựng.
 
-### ⏳ Hạn dùng — điều kiện CỨNG của Chain (2026-07-27)
+### ⏳ Hạn dùng — điều kiện CỨNG của Chain (2026-07-27) — **ĐÃ ĐÓNG ĐÚNG HẠN**
 
-**7 dấu `xfail` này PHẢI được đóng TRƯỚC KHI Sprint 9 mở.** Không phải "theo dõi vô
-thời hạn". Nếu tới lúc chuẩn bị Sprint 9 mà còn dấu nào mở, **đó tự động là release
-blocker, không cần bàn lại**.
+Điều kiện đặt ra: **7 dấu `xfail` phải đóng TRƯỚC KHI Sprint 9 mở**, quá hạn thì *tự
+động là release blocker, không cần bàn lại*. Đóng đủ 7/7 trong ngày **2026-07-27**,
+cùng ngày đặt hạn — dòng "Đứng yên từ = 27/07" trong `GD-DieuPhoi-GiaoViec.md` khép
+lại, không đứng yên ngày nào.
 
-Đã ghi vào `GD-DieuPhoi-GiaoViec.md` với cột **"Đứng yên từ" = 2026-07-27** (quy tắc
-R-9). Lý do có hạn dùng: *xfail không hạn dùng là cách một bug đã biết trở thành một
-bug bị quên.*
+Lý do có hạn dùng vẫn giữ nguyên cho mọi dấu `xfail` đặt sau này: *xfail không hạn
+dùng là cách một bug đã biết trở thành một bug bị quên.*
 
 ## Bản đồ 10 test
 
 | Test | Vai trò |
 |---|---|
 | `test_harness.py` (3 test) | **PHẢI XANH.** Nền tự chứng minh nó có thật: hai kết nối khác nhau · hai phiên thấy commit của nhau · `FOR UPDATE SKIP LOCKED` **có răng** (đóng A-01). Không có 3 test này thì 7 test dưới vô nghĩa — một harness không thực sự mở 2 kết nối vẫn "đỏ đúng dự đoán" vì lý do hoàn toàn khác |
-| `test_two_concurrent_adjusts_must_both_land` | **B-01** dạng thuần nhất, tầng repository: 100 − 10 − 10 phải ra 80, hiện ra **90** |
+| `test_two_concurrent_adjusts_must_both_land` | **B-01** dạng thuần nhất, tầng repository: 100 − 10 − 10 phải ra 80 (trước vá: **90**) |
 | `test_ledger_and_balance_must_agree_after_concurrent_dispense` | **B-01** — "sổ kho tự mâu thuẫn": sổ chi tiết nói 80, số dư nói **90** |
 | `test_same_sale_dispatched_twice_writes_one_set_of_movements` | **B-02** — một đơn giao 2 lần ghi **2** bộ dòng xuất thay vì 1 |
-| `test_database_rejects_two_movements_for_same_ref_and_batch` | **B-02** — chống trùng phải có ràng buộc CSDL đỡ, không chỉ một `SELECT` trong code |
-| `test_concurrent_dispense_never_exceeds_stock_on_hand` | **B-04** — tồn 10, xuất được **12** |
-| `test_concurrent_dispense_never_drives_balance_negative` | **B-04** — tồn về **−2** |
+| `test_database_rejects_two_movements_for_same_ref_and_batch` | **B-02** — chống trùng phải có ràng buộc CSDL đỡ, không chỉ một `SELECT` trong code. Nay canh giữ **phạm vi** của index, không chỉ sự tồn tại của nó |
+| `test_concurrent_dispense_never_exceeds_stock_on_hand` | **B-04** — tồn 10, trước vá xuất được **12** |
+| `test_concurrent_dispense_never_drives_balance_negative` | **B-04** — trước vá tồn về **−2** |
 | `test_concurrent_sale_shortfall_leaves_a_trail` | **B-04** phần nặng nhất: hụt 2 viên mà **không sự kiện `StockShortfallDetected` nào** được phát ⇒ *không dòng đối soát*, không ai lần ra được |
 
-## Ghi chú cho F-5 (bước vá tiếp theo)
+## Bản vá F-5 (2026-07-27) — ba chỗ hỏng, ba chỗ sửa
 
-Thứ tự **F-4 trước F-5 là bắt buộc**, không phải sở thích: vá trước rồi mới viết test
-thì bản vá được nghiệm thu bằng chính bộ test không thể nhìn thấy lỗi.
+| Vị trí | Vấn đề (F-4 định vị) | Sửa thế nào |
+|---|---|---|
+| `SqlAlchemyBalanceRepository.adjust` | read-modify-write **trần**, không khoá gì | Số học vào trong `UPDATE ... SET quantity = quantity + :delta RETURNING quantity` — khoá hàng do chính câu lệnh giữ |
+| cùng chỗ, chặn bán vượt tồn | không có | Vị ngữ `quantity + delta >= 0` **cùng câu lệnh đó**; 0 hàng cập nhật ⇒ `InsufficientStockError` kèm số thật sự còn |
+| `exists_for_ref` | check-then-act **trần** | Vẫn là đường nhanh, nhưng bảo đảm chuyển xuống `uq_movement_ref_batch`; `add()` dịch `IntegrityError` thành `DuplicateMovementError` |
+| `dispense_for_sale` thua cuộc đua | hỏng lặng, không dòng đối soát | Phát lại giao dịch tối đa **3 lần**; lần phát lại đọc tồn hiện tại và phát `StockShortfallDetected` cho phần hụt |
+| `stock_movements` | thiếu ràng buộc duy nhất đỡ `ref_id` | Migration **0033**, unique **một phần** trên `(tenant_id, ref_type, ref_id, batch_id) WHERE ref_id IS NOT NULL` |
 
-Ba chỗ hỏng đã định vị chính xác trong khảo sát:
+⚠️ **Phạm vi unique index — đặt sai là chặn nhầm nghiệp vụ đúng.** Khoá phải có
+`batch_id`: một lần xuất FEFO trải trên nhiều lô ghi nhiều dòng cùng `ref_id` một cách
+**hoàn toàn hợp lệ**. Đã kiểm bằng lệnh thật trên Postgres có dữ liệu (2026-07-27):
+giao trùng cùng lô **bị chặn**; cùng `ref_id` khác lô **cho qua**; `ref_id IS NULL`
+**cho qua**; khác `ref_type` **cho qua**.
 
-| Vị trí | Vấn đề |
+Hệ quả kéo theo, ghi để khỏi bất ngờ: `receive_from_goods_receipt` nay cộng dồn theo
+**lô** rồi mới ghi một dòng IN cho mỗi lô. Trước đó nó ghi một dòng mỗi *dòng hàng*, mà
+hai dòng hàng cùng thuốc + cùng lô + cùng HSD của **một** phiếu nhập sẽ gộp về một lô ⇒
+hai dòng IN cùng `(grn, batch)` ⇒ đụng chính index này. Cộng dồn không mất truy vết:
+dòng IN của GRN vốn không mang `po_item_id`, và sự kiện `StockMovedIn` vẫn phát theo
+từng dòng hàng như cũ.
+
+## Nợ
+
+| Nợ | Vì sao chưa làm |
 |---|---|
-| `inventory/infrastructure/repository.py:197-219` (`adjust`) | read-modify-write **trần**, không khoá gì cả |
-| `inventory/infrastructure/repository.py:182-189` (`exists_for_ref`) | check-then-act **trần** |
-| `stock_movements` | thiếu ràng buộc duy nhất đỡ `ref_id` |
-
-⚠️ **Phạm vi unique index — đọc kỹ, đặt sai là chặn nhầm nghiệp vụ đúng.** Ràng buộc
-đúng là trên `(tenant_id, ref_type, ref_id, batch_id)`, **không phải**
-`(tenant_id, ref_type, ref_id)`: một lần xuất FEFO trải trên nhiều lô ghi nhiều dòng
-cùng `ref_id` một cách **hoàn toàn hợp lệ**.
-
-Vá xong, 7 test chuyển XPASS ⇒ bộ test đỏ ⇒ gỡ dấu `xfail`. Chỉ khi đó B-01/B-02/B-04
-mới được coi là đóng.
+| `conftest.py` dựng lược đồ bằng `create_all`, **không chạy alembic** ⇒ CSDL test có sẵn từ trước không nhận index/ràng buộc mới (xem cảnh báo ở mục "Chạy") | Sửa là đụng `conftest.py` — nền F-4 đã kiểm chứng, Chain chốt **không đụng** trong phạm vi F-5. Cần quyết định riêng |
 
 ## Chi phí
 

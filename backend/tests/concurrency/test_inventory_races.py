@@ -1,27 +1,19 @@
-"""Tái hiện B-01 / B-02 / B-04 — bản vá F-5 đang đóng dần các dấu ``xfail`` ở đây.
+"""B-01 / B-02 / B-04 — **đã vá (F-5, 2026-07-27); 7 test này nay canh giữ bản vá**.
 
-> ⚠️ ``xfail(strict=True)`` ở file này nghĩa là **BUG ĐÃ BIẾT, CHƯA VÁ** — KHÔNG
-> phải "test đã xanh". Đọc `README.md` cùng thư mục trước khi diễn giải kết quả.
->
-> **Trạng thái sau F-5 bước 2/3:** B-01 (2 test) và B-04 (3 test) đã vá, dấu
-> ``xfail`` đã gỡ — chúng nay là test xanh thật, canh giữ bản vá. **B-02 (2 test)
-> vẫn ĐỎ có chủ đích**, chờ unique index ở bước 3/3.
+Bảy test dưới đây ra đời ở F-4 với dấu ``xfail(strict=True, raises=AssertionError)``
+và **đỏ thật** — chúng tái hiện được đúng ba con bug kiểm toán 2026-07-26 nêu. F-5
+vá xong thì cả bảy chuyển XPASS ⇒ ``strict=True`` làm bộ test **đỏ** ⇒ buộc người
+vá quay lại gỡ dấu. Đó chính là cơ chế đã hoạt động: dấu được gỡ **vì test xanh
+thật**, không phải vì ai đó nới khẳng định cho nó qua.
 
-Thứ tự bắt buộc do kiểm toán đặt ra (F-4 → F-5): **viết test đua trước, vá khoá
-hàng sau**. Vá trước rồi mới viết test thì bản vá được nghiệm thu bằng chính bộ
-test không thể nhìn thấy lỗi.
+Thứ tự **F-4 trước F-5 là bắt buộc**, không phải sở thích: vá trước rồi mới viết
+test thì bản vá được nghiệm thu bằng chính bộ test không thể nhìn thấy lỗi.
 
-Dấu ở đây luôn là ``xfail(strict=True, raises=AssertionError)`` — **cả hai tham số
-đều bắt buộc**, đừng bỏ bớt khi thêm test mới:
-
-- ``strict=True``: khi F-5 vá xong, test **chuyển từ xfail sang XPASS và bộ test
-  ĐỎ**, buộc người vá quay lại gỡ dấu. Đó là cách duy nhất bản vá được *chứng
-  minh* thay vì được *tin*.
-- ``raises=AssertionError``: chỉ **khẳng định nghiệp vụ** mới được tính là "đỏ
-  đúng dự đoán". Không có nó, tắt Postgres đi là 7 test này báo ``xfailed`` y hệt
-  lúc chạy thật — hạ tầng hỏng đội lốt bug-đã-biết, đúng dạng "niềm tin giả" mà
-  cả đợt kiểm toán đang sửa (đo thật 2026-07-27: trước khi thêm, tắt Postgres cho
-  ra "7 xfailed, 3 errors"; sau khi thêm, 7 test đó thành lỗi thật).
+> ⚠️ **Thêm test đua mới thì vẫn theo hợp đồng cũ** — bug chưa vá đánh
+> ``xfail(strict=True, raises=AssertionError)``, **cả hai tham số**, kèm hạn đóng.
+> ``strict`` để bản vá không lặng lẽ bỏ quên dấu; ``raises`` để hạ tầng hỏng không
+> đội lốt bug-đã-biết (đo thật 2026-07-27: thiếu nó, tắt Postgres ra "7 xfailed,
+> 3 errors" — y hệt lúc chạy thật; có nó, ra "10 errors"). Xem `README.md`.
 
 Interleaving ở đây **tất định**, không có ``sleep``: :class:`StatementGate` chặn
 đúng câu lệnh ghi đầu tiên của mỗi quầy, nên "cả hai đã đọc xong" là một sự kiện
@@ -36,7 +28,6 @@ from datetime import date, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,8 +43,6 @@ from pharmacy_os.modules.inventory.application import (
 from pharmacy_os.modules.inventory.domain.events import StockShortfallDetected
 from pharmacy_os.modules.inventory.infrastructure import SqlAlchemyBalanceRepository
 from tests.concurrency.conftest import RecordingBus, StatementGate, both_arrived, finish
-
-BUG_B02 = "B-02: exists_for_ref là check-then-act, không có unique index đỡ"
 
 _UPDATE_BALANCE = "UPDATE stock_balances"
 _INSERT_MOVEMENT = "INSERT INTO stock_movements"
@@ -122,9 +111,10 @@ async def test_two_concurrent_adjusts_must_both_land(
 ) -> None:
     """Nhập 100, hai quầy cùng trừ 10 ⇒ phải còn 80.
 
-    ``adjust`` đọc số dư rồi ghi lại ``đã_đọc + delta`` mà **không khoá hàng**. Hai
-    giao dịch cùng đọc 100, cùng ghi 90: một lần trừ **biến mất không dấu vết**.
-    Đây là dạng thuần tuý nhất của B-01, ở đúng tầng gây lỗi.
+    Dạng thuần tuý nhất của B-01, ở đúng tầng gây lỗi. ``adjust`` **từng** đọc số dư
+    rồi ghi lại ``đã_đọc + delta`` mà không khoá hàng: hai giao dịch cùng đọc 100,
+    cùng ghi 90, một lần trừ **biến mất không dấu vết**. Nay phép cộng nằm trong
+    chính câu ``UPDATE`` nên người ghi sau đọc lại giá trị người trước đã commit.
     """
     drug_id, batch_id = await _receive(seeder, ctx, "100")
 
@@ -159,10 +149,10 @@ async def test_ledger_and_balance_must_agree_after_concurrent_dispense(
 ) -> None:
     """Sổ chi tiết và sổ tổng phải khớp nhau — đây là "sổ kho tự mâu thuẫn" của kiểm toán.
 
-    Hai quầy cùng xuất 10 trên tồn 100. Mỗi bên ghi đủ dòng OUT của mình (sổ chi
-    tiết đúng: còn 80) nhưng bảng chiếu ``stock_balances`` chỉ nhận một lần trừ
-    (còn 90). Người bán nhìn số dư, kiểm kê nhìn sổ chi tiết, hai bên **không bao
-    giờ khớp** và không ai biết bên nào sai.
+    Hai quầy cùng xuất 10 trên tồn 100. Trước bản vá: mỗi bên ghi đủ dòng OUT của
+    mình (sổ chi tiết đúng: còn 80) nhưng bảng chiếu ``stock_balances`` chỉ nhận một
+    lần trừ (còn 90). Người bán nhìn số dư, kiểm kê nhìn sổ chi tiết, hai bên **không
+    bao giờ khớp** và không ai biết bên nào sai.
     """
     drug_id, batch_id = await _receive(seeder, ctx, "100")
 
@@ -187,7 +177,6 @@ async def test_ledger_and_balance_must_agree_after_concurrent_dispense(
 # ---------------------------------------------------------------------------
 # B-02 — giao trùng một đơn hàng
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=BUG_B02)
 async def test_same_sale_dispatched_twice_writes_one_set_of_movements(
     seeder: InventoryService,
     ctx: RequestContext,
@@ -199,9 +188,10 @@ async def test_same_sale_dispatched_twice_writes_one_set_of_movements(
 ) -> None:
     """Một đơn hàng giao 2 lần (relay at-least-once) phải chỉ trừ kho MỘT lần.
 
-    ``dispense_for_sale`` chống trùng bằng ``exists_for_ref`` — đọc xong rồi mới
-    ghi, không khoá gì ở giữa. Hai bản giao cùng lúc đều thấy "chưa có" nên đều
-    trừ kho: đúng cảnh kiểm toán tái hiện được (nhập 10, xuất 16).
+    ``dispense_for_sale`` **từng** chống trùng chỉ bằng ``exists_for_ref`` — đọc xong
+    rồi mới ghi, không khoá gì ở giữa. Hai bản giao cùng lúc đều thấy "chưa có" nên
+    đều trừ kho: đúng cảnh kiểm toán tái hiện được (nhập 10, xuất 16). Nay bên thua
+    bị ``uq_movement_ref_batch`` chặn và coi đó là **đã xong**, không phải lỗi.
     """
     drug_id, batch_id = await _receive(seeder, ctx, "100")
     order_id = uuid4()
@@ -227,7 +217,6 @@ async def test_same_sale_dispatched_twice_writes_one_set_of_movements(
     assert await _movement_total(observer, batch_id) == Decimal("95.000")
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=BUG_B02)
 async def test_database_rejects_two_movements_for_same_ref_and_batch(
     seeder: InventoryService, ctx: RequestContext, observer: AsyncSession
 ) -> None:
@@ -235,8 +224,9 @@ async def test_database_rejects_two_movements_for_same_ref_and_batch(
 
     Ràng buộc đúng là duy nhất trên ``(tenant_id, ref_type, ref_id, batch_id)``,
     **không phải** trên ``(tenant_id, ref_type, ref_id)``: một lần xuất FEFO trải
-    trên nhiều lô ghi nhiều dòng cùng ``ref_id`` một cách hợp lệ. Ghi rõ ở đây vì
-    F-5 sẽ đặt index này — đặt sai phạm vi là chặn nhầm nghiệp vụ đúng.
+    trên nhiều lô ghi nhiều dòng cùng ``ref_id`` một cách hợp lệ. F-5 đặt đúng phạm
+    vi đó (``uq_movement_ref_batch``, migration 0033) — đặt thiếu ``batch_id`` là
+    chặn nhầm nghiệp vụ đúng, nên test này ở lại canh giữ phạm vi ấy.
     """
     _, batch_id = await _receive(seeder, ctx, "100")
     ref_id = uuid4()
@@ -283,8 +273,9 @@ async def test_concurrent_dispense_never_exceeds_stock_on_hand(
     """Tồn 10, hai quầy cùng xuất 6 ⇒ tổng xuất KHÔNG được quá 10.
 
     Đây là bất biến nghiệp vụ, không phải chi tiết kỹ thuật: nhà thuốc không thể
-    giao 12 viên khi trong kho có 10. Hiện cả hai cùng đọc "còn 10", cùng cho phép,
-    và hàng thiếu 2 viên chỉ lộ ra khi kiểm kê.
+    giao 12 viên khi trong kho có 10. Trước bản vá, cả hai cùng đọc "còn 10", cùng
+    cho phép, và hàng thiếu 2 viên chỉ lộ ra khi kiểm kê. Nay vị ngữ
+    ``quantity + delta >= 0`` nằm trong chính câu ``UPDATE`` nên bên thua bị từ chối.
     """
     drug_id, batch_id = await _receive(seeder, ctx, "10")
 
@@ -368,10 +359,12 @@ async def test_concurrent_sale_shortfall_leaves_a_trail(
     """Thiếu hàng do đua phải phát ``StockShortfallDetected`` — không được im lặng.
 
     ``dispense_for_sale`` **cố ý** không chặn đơn (đơn đã chốt rồi) mà phát sự kiện
-    thiếu hàng để người vận hành lần ra. Nhưng cả hai bên đều đọc "còn đủ 10" nên
-    **không bên nào** thấy mình thiếu: hàng hụt 2 viên và không có một dòng nào
-    trong hệ thống nói rằng điều đó đã xảy ra. Đây là phần *"không dòng đối soát"*
-    của B-04 — nặng hơn con số sai, vì con số sai còn có thể phát hiện khi kiểm kê.
+    thiếu hàng để người vận hành lần ra. Trước bản vá, cả hai bên đều đọc "còn đủ
+    10" nên **không bên nào** thấy mình thiếu: hàng hụt 2 viên và không có một dòng
+    nào trong hệ thống nói rằng điều đó đã xảy ra. Đây là phần *"không dòng đối
+    soát"* của B-04 — nặng hơn con số sai, vì con số sai còn có thể phát hiện khi
+    kiểm kê. Nay bên thua bị từ chối ở lệnh ghi, phát lại giao dịch trên tồn hiện
+    tại, và **chính lần phát lại đó** mới nhìn thấy phần hụt để phát sự kiện.
     """
     drug_id, _ = await _receive(seeder, ctx, "10")
 

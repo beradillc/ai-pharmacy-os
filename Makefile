@@ -49,9 +49,9 @@ test:
 	cd backend && pytest
 	cd plugins/payment_vnpay && pytest
 
-# Test đua B-01/B-02/B-04 trên Postgres THẬT. Đọc backend/tests/concurrency/README.md
-# trước khi diễn giải kết quả: "3 passed, 7 xfailed" + EXIT=0 KHÔNG có nghĩa là tồn kho
-# đã đúng — nó có nghĩa là 7 lỗi đã biết vẫn đang hỏng đúng như dự đoán.
+# Test đua B-01/B-02/B-04 trên Postgres THẬT (đã vá ở F-5 2026-07-27 — 10 passed,
+# 0 xfail). Đọc backend/tests/concurrency/README.md trước khi diễn giải kết quả, và
+# giữ nguyên quy tắc: xfail ở thư mục đó = BUG CHƯA VÁ, không phải "test đã xanh".
 test-concurrency:
 	cd backend && pytest tests/concurrency
 

@@ -7,6 +7,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
@@ -15,7 +16,10 @@ from pharmacy_os.modules.inventory.domain.entities import (
     StockMovement,
     StockReconciliationNeeded,
 )
-from pharmacy_os.modules.inventory.domain.exceptions import InsufficientStockError
+from pharmacy_os.modules.inventory.domain.exceptions import (
+    DuplicateMovementError,
+    InsufficientStockError,
+)
 from pharmacy_os.modules.inventory.domain.fefo import BatchAvailability
 from pharmacy_os.modules.inventory.domain.ports import BatchStockRow, DrugOnHandRow
 from pharmacy_os.modules.inventory.infrastructure.models import (
@@ -158,6 +162,25 @@ class SqlAlchemyBatchRepository:
         ]
 
 
+_DUPLICATE_REF_MARKERS = ("uq_movement_ref_batch", "ref_id")
+"""How the two dialects spell the same violation — measured, not assumed.
+
+Postgres quotes the index: ``duplicate key value violates unique constraint
+"uq_movement_ref_batch"``. SQLite, where the test suite runs, names the columns
+instead and never the index: ``UNIQUE constraint failed: stock_movements.tenant_id,
+stock_movements.ref_type, stock_movements.ref_id, stock_movements.batch_id``
+(checked on sqlite 3.45.1). A primary-key collision or a NOT NULL violation
+mentions neither marker and so keeps travelling as itself — turning *those* into
+"already done" would bury a real bug under an idempotency skip.
+"""
+
+
+def _is_duplicate_ref(exc: IntegrityError) -> bool:
+    """True when ``uq_movement_ref_batch`` is what fired, not some other constraint."""
+    message = str(exc.orig)
+    return any(marker in message for marker in _DUPLICATE_REF_MARKERS)
+
+
 class SqlAlchemyMovementRepository:
     def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
         self._session = session
@@ -178,7 +201,12 @@ class SqlAlchemyMovementRepository:
                 occurred_at=movement.occurred_at,
             )
         )
-        await self._session.flush()
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:
+            if movement.ref_id is None or not _is_duplicate_ref(exc):
+                raise
+            raise DuplicateMovementError(movement.ref_type or "", movement.ref_id) from exc
 
     async def exists_for_ref(self, ref_type: str, ref_id: UUID) -> bool:
         stmt = select(StockMovementORM.id).where(

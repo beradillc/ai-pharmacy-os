@@ -32,6 +32,7 @@ from pharmacy_os.modules.inventory.application.dto import (
     StockReportItem,
 )
 from pharmacy_os.modules.inventory.domain import (
+    DuplicateMovementError,
     InsufficientStockError,
     LotExpiryMismatchError,
     LowStockDetected,
@@ -217,7 +218,7 @@ class InventoryService:
                     await balances.adjust(
                         data.drug_id, alloc.batch_id, ctx.branch_id, ctx.tenant_id, -alloc.quantity
                     )
-            except InsufficientStockError as exc:
+            except (InsufficientStockError, DuplicateMovementError) as exc:
                 raise ConflictError(str(exc)) from exc
 
             on_hand = await balances.on_hand(data.drug_id, ctx.branch_id)
@@ -278,6 +279,12 @@ class InventoryService:
         for attempt in range(1, _SALE_DISPENSE_ATTEMPTS + 1):
             try:
                 await self._dispense_sale_once(items, order_id, ctx)
+                return
+            except DuplicateMovementError:
+                # Another delivery of this same sale got there first — the unique
+                # index caught what ``exists_for_ref`` structurally cannot. This is
+                # success, not failure: the stock has moved, exactly once.
+                _sale_log.info("sale_dispense_already_done", order_id=str(order_id))
                 return
             except InsufficientStockError:
                 _sale_log.info(
@@ -358,7 +365,8 @@ class InventoryService:
 
         Idempotent on ``grn_id`` (skips entirely if this GRN's stock-in already
         ran — every IN movement it writes carries ``ref_type="grn"``,
-        ``ref_id=grn_id``). A line whose ``(drug_id, branch_id, lot_no)`` already
+        ``ref_id=grn_id``, and ``uq_movement_ref_batch`` enforces that even when two
+        deliveries of the event race). A line whose ``(drug_id, branch_id, lot_no)`` already
         exists **and matches expiry** is merged (:meth:`ProductBatch.merge_receipt`);
         a mismatch is **skipped, not merged** and flagged in
         ``stock_reconciliation_needed`` — a confirmed GRN can't be interactively
@@ -377,6 +385,18 @@ class InventoryService:
 
                 if await movements.exists_for_ref("grn", grn_id):
                     return  # this GRN's stock-in already ran
+
+                # Stock-in accumulated per BATCH, written after the loop. Two lines
+                # of one GRN can legitimately fold into the same batch (same drug +
+                # lot + expiry, e.g. two PO items of one delivery), and
+                # ``uq_movement_ref_batch`` allows exactly one movement per
+                # ``(grn, batch)`` — that key is what makes replay safety hold, so
+                # the receipt bends around it rather than the other way round.
+                # Nothing is lost by summing: a GRN movement carries no
+                # ``po_item_id``, so per-line rows were already indistinguishable,
+                # and the per-line ``StockMovedIn`` events below still go out one by
+                # one.
+                stock_in: dict[UUID, tuple[UUID, Decimal]] = {}
 
                 for line in lines:
                     if line.quantity <= 0:
@@ -416,21 +436,8 @@ class InventoryService:
                         )
                         await batches.add(batch)
 
-                    await movements.add(
-                        StockMovement(
-                            drug_id=line.drug_id,
-                            batch_id=batch.id,
-                            branch_id=ctx.branch_id,
-                            tenant_id=ctx.tenant_id,
-                            type=MovementType.IN,
-                            quantity=line.quantity,
-                            ref_type="grn",
-                            ref_id=grn_id,
-                        )
-                    )
-                    await balances.adjust(
-                        line.drug_id, batch.id, ctx.branch_id, ctx.tenant_id, line.quantity
-                    )
+                    _, received_so_far = stock_in.get(batch.id, (line.drug_id, Decimal("0")))
+                    stock_in[batch.id] = (line.drug_id, received_so_far + line.quantity)
                     uow.collect(
                         StockMovedIn(
                             tenant_id=ctx.tenant_id,
@@ -440,7 +447,27 @@ class InventoryService:
                             quantity=line.quantity,
                         )
                     )
+
+                for batch_id, (drug_id, quantity) in stock_in.items():
+                    await movements.add(
+                        StockMovement(
+                            drug_id=drug_id,
+                            batch_id=batch_id,
+                            branch_id=ctx.branch_id,
+                            tenant_id=ctx.tenant_id,
+                            type=MovementType.IN,
+                            quantity=quantity,
+                            ref_type="grn",
+                            ref_id=grn_id,
+                        )
+                    )
+                    await balances.adjust(drug_id, batch_id, ctx.branch_id, ctx.tenant_id, quantity)
                 await uow.commit()
+        except DuplicateMovementError:
+            # Concurrent redelivery of the same GoodsReceived: the other one landed
+            # the stock. Idempotent success — not an anomaly, so no reconciliation
+            # flag and nothing for a human to look at.
+            _log.info("grn_stock_in_already_done", grn_id=str(grn_id))
         except Exception as exc:  # noqa: BLE001 — GRN already confirmed; flag & degrade
             _log.error("grn_stock_in_failed", grn_id=str(grn_id), error=str(exc))
             await self._flag_stock_in_failure(
