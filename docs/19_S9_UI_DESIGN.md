@@ -3,8 +3,8 @@
 > ## ✅ ĐÃ DUYỆT — Chain, 2026-07-28
 >
 > Thiết kế được duyệt **nguyên bản**: mọi đề xuất trong §7 trở thành quyết định.
-> Được phép bắt đầu code Sprint 9. Hai điểm còn chờ dữ liệu (§7.4, §7.5) **không chặn**
-> việc code — xem ghi chú cuối §7. Không viết dòng mã nào trước khi mục §7 được chốt.
+> **Duyệt hết 7/7 điểm** (§7.4 và §7.5 do GĐ chốt dưới uỷ quyền, hướng an toàn).
+> Được phép bắt đầu code Sprint 9 và dựng demo. Hai nợ **backend** sinh kèm — xem cuối §7. Không viết dòng mã nào trước khi mục §7 được chốt.
 >
 > Mọi endpoint trích trong tài liệu này **đã xác nhận tồn tại trên staging đang chạy**
 > (`localhost:8001`, đọc trực tiếp từ OpenAPI 2026-07-28). Không màn nào vẽ ra một tính
@@ -262,20 +262,22 @@ Không điểm nào tôi tự quyết được — mỗi cái đổi thì thiế
 | 1 | ✅ **Đúng hai màn.** Không thêm màn đối soát tồn kho trong S9 | Bám đúng ROADMAP. `GET /inventory/reconciliations` để dành sprint sau |
 | 2 | ✅ **28 ngày** | "Tháng này" làm đầu tháng luôn trông như sụt doanh thu |
 | 3 | ✅ **Giữ nguyên cấu trúc quyền hiện có** | Đúng tinh thần §0: không mở lại quyết định của các sprint trước. Thanh chọn chi nhánh chỉ liệt kê chi nhánh trong `accessible_branches` của token |
-| 4 | ⏳ **Chờ số quầy thật** | Đo: đạt @8 luồng, không đạt @16. **Không chặn code** — chỉ chặn việc *tuyên bố DoD đạt*. Trả lời được khi biết nhà thuốc pilot |
-| 5 | ⏳ **Chờ xác nhận kiến trúc/pháp lý** | F-8: `phone` đã mã hoá, **`full_name` vẫn nguyên văn**. **Không chặn hai màn S9** (không màn nào hiện tên khách). Chặn màn Hồ sơ sức khoẻ ở sprint sau |
+| 4 | ✅ **Mục tiêu: p95 < 300 ms ở 8 phiên đồng thời** (GĐ chốt) | Một nhà thuốc 2–3 quầy + tác vụ nền ⇒ 8 cho **~3 lần dư địa**. Đo thật đã đạt (217,6 ms). **DoD Sprint 8 phải sửa lại kèm mức tải** — số không có mức tải thì không quyết được đạt/không. Đo lại khi biết nhà thuốc thật |
+| 5 | ✅ **Mặc định: `full_name` PHẢI mã hoá** (GĐ chốt, hướng an toàn) | Tên người là dữ liệu cá nhân (Luật BVDLCN 91/2025). Khi chưa có xác nhận, chọn hướng **fail-safe**: coi như phải mã hoá, ghi thành nợ backend. **Không chặn demo** — hai màn S9 không màn nào hiện tên khách. Nếu sau này xác nhận được là cố ý để trần thì nới ra, **không làm ngược lại** |
 | 6 | ✅ **Chừa sẵn, chưa dựng UI** | Token hoá toàn bộ màu (đã làm ở §3.1) là đủ để thêm chế độ tương phản cao sau mà không sửa component. Không thêm công tắc trong S9 |
 | 7 | ✅ **Chỉ màn đăng nhập + trạng thái rỗng** | Trên màn số liệu mascot tranh chỗ với thứ người ta cần nhìn. Asset thật chưa có ⇒ tạm dùng placeholder, **không** chặn code |
 
 ---
 
-### Hai điểm còn chờ — vì sao không chặn
+### Hai nợ backend sinh ra từ §7.4 và §7.5
 
-**§7.4 (mức tải p95)** chặn việc *tuyên bố DoD Sprint 8 đã đạt*, không chặn việc viết giao
-diện. **§7.5 (phạm vi mã hoá)** chặn màn **Hồ sơ sức khoẻ khách hàng** ở sprint sau — hai
-màn của Sprint 9 **không màn nào hiển thị tên khách hàng**, nên không vướng.
+Duyệt xong không có nghĩa là hết việc — hai quyết định trên đẻ ra hai việc **backend**,
+không phải việc giao diện, nên không chặn demo:
 
-Cả hai đã vào `GD-DieuPhoi-GiaoViec.md` chờ Chain, không phải chờ tôi.
+| Nợ | Nội dung |
+|---|---|
+| **Sửa câu chữ DoD Sprint 8** | Đổi *"p95 < 300 ms"* thành *"p95 < 300 ms **ở 8 phiên đồng thời**"*. Không sửa thì tiêu chí vẫn không quyết được đạt/không |
+| **Mã hoá `full_name`** | Thêm cột vào phạm vi `encrypt_backfill`, chạy lại trình tự `docs/18` phần B trên staging. Cần trước khi có **dữ liệu bệnh nhân thật**, không cần trước demo |
 
 ---
 

@@ -4426,6 +4426,47 @@ ra ngoài build context (build **chưa từng chạy được**), và **thiếu 
 
 ---
 
+## 7bs. ĐÓNG PHIÊN 2026-07-28 — S9 mở, thiết kế UI đã duyệt
+
+### Phiên này làm gì
+
+| Mục | Kết quả |
+|---|---|
+| **F-5** khoá hàng tồn kho | B-01/B-02/B-04 đóng · 7/7 `xfail` chuyển xanh thật |
+| **Tối ưu pytest** | **683 s → 163 s** (nhanh 4,2 lần), không đụng mã sản phẩm |
+| **Nợ alembic** trong nền test | Đóng — dựng lược đồ bằng `alembic upgrade head` thật |
+| **F-2 · F-3 · F-15** | 3 release blocker bảo mật đóng, 22 test |
+| **F-19** | Quy trình sự cố role-based, `docs/17` |
+| **F-9** | Rate limit — đóng vector DoS của khoá tài khoản |
+| **F-16 · F-8** | Diễn tập khôi phục **đã chạy thật** · trình tự bật mã hoá chạy hết trên staging |
+| **D-OPS-01 · D-SEC-01** | Chain khoá · `scripts/backup_verify.sh` tự kiểm chứng khôi phục |
+| **Staging** | Dựng xong, đang chạy `localhost:8001` — image build được **lần đầu sau 200+ commit** |
+| **F-17** | p95 **217,6 ms @ 8 luồng** · 490,4 ms @ 16 |
+| **`docs/19`** | Thiết kế UI Sprint 9 — **Chain duyệt 7/7** |
+
+### Trạng thái Sprint 9
+
+**12/12 mục chặn đã chạm tới.** Không còn mục nào chặn ở người viết code.
+
+### Nợ mang sang, xếp theo thứ tự cần
+
+| # | Nợ | Chặn gì |
+|---|---|---|
+| 1 | Thay giá trị `frontend/src/styles/tokens.css` sang bảng chốt + đổi font | **Việc đầu tiên của S9.** Chỉ đổi giá trị biến, không đụng cấu trúc |
+| 2 | Mã hoá `full_name` (GĐ chốt hướng fail-safe) | Trước khi có **dữ liệu bệnh nhân thật**, không chặn demo |
+| 3 | Sửa câu chữ DoD Sprint 8 kèm mức tải | Không sửa thì tiêu chí p95 không quyết được đạt/không |
+| 4 | Bảng gắn người `docs/17` §3 | Chặn **pilot chạy thật** |
+| 5 | Dead-man's switch cho cron backup | Cron im lặng ⇒ "không cảnh báo" trông giống "backup thành công" |
+| 6 | Vết kiểm toán cho thao tác xoay khoá | D-SEC-01 **đòi** audit trail; `AuditAction` chưa có |
+| 7 | `f4_probe` · `audit_empty_a` · `f5_fresh_test` còn nằm lại | `DROP DATABASE` trong `deny` |
+
+### Điểm dừng
+
+Staging **để chạy** cho demo. Tắt khi cần: `docker compose -f docker-compose.staging.yml down`.
+Bí mật staging nằm ở `.env.staging` (đã kiểm: git chặn).
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
