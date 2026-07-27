@@ -54,11 +54,19 @@ from pharmacy_os.modules.inventory.domain.ports import (
 )
 
 _log = structlog.get_logger("inventory.goods_receipt")
+_sale_log = structlog.get_logger("inventory.sale_dispense")
 
 #: How many batches a stock-report page pulls per round-trip — same idea as the
 #: audit dashboard's export batch (PROJECT_STATE §7al): bounded memory regardless
 #: of how many batches match.
 _STOCK_REPORT_BATCH = 500
+
+#: How many times a sale's stock-out is replayed when a concurrent counter takes
+#: the units between our read and our write. Three, not one: the first retry is
+#: the common case (two tills, last box on the shelf), the third is already a
+#: three-way tie. Not unbounded — a bound that never trips is still the thing that
+#: keeps a live-lock from becoming a hung event handler.
+_SALE_DISPENSE_ATTEMPTS = 3
 
 UowFactory = Callable[[], UnitOfWork]
 BatchRepoFactory = Callable[[UnitOfWork, RequestContext], BatchRepository]
@@ -170,7 +178,10 @@ class InventoryService:
         on-hand falls to/below the reorder point) after commit. Raises
         :class:`ValidationError` for a non-positive quantity and
         :class:`ConflictError` when available stock is insufficient — in which
-        case the whole transaction rolls back untouched.
+        case the whole transaction rolls back untouched. "Insufficient" includes
+        *stock that was there when we read it and gone by the time we wrote*: the
+        counter that loses that race is refused rather than allowed to push the
+        batch negative (audit B-04).
         """
         require_permission(ctx, "inventory.dispense")
         if data.quantity <= 0:
@@ -184,27 +195,30 @@ class InventoryService:
             avail = await batches.availabilities(
                 data.drug_id, ctx.branch_id, not_expired_on=date.today()
             )
+            # The allocation and the writes share one ``except``: the FEFO plan can
+            # be refused up front (stock was already short when read) or at the
+            # write (another counter took the same units in between). Same answer to
+            # the caller either way — 409, nothing written.
             try:
                 allocations = allocate_fefo(avail, data.quantity)
+                for alloc in allocations:
+                    await movements.add(
+                        StockMovement(
+                            drug_id=data.drug_id,
+                            batch_id=alloc.batch_id,
+                            branch_id=ctx.branch_id,
+                            tenant_id=ctx.tenant_id,
+                            type=MovementType.OUT,
+                            quantity=alloc.quantity,
+                            ref_type=data.ref_type,
+                            ref_id=data.ref_id,
+                        )
+                    )
+                    await balances.adjust(
+                        data.drug_id, alloc.batch_id, ctx.branch_id, ctx.tenant_id, -alloc.quantity
+                    )
             except InsufficientStockError as exc:
                 raise ConflictError(str(exc)) from exc
-
-            for alloc in allocations:
-                await movements.add(
-                    StockMovement(
-                        drug_id=data.drug_id,
-                        batch_id=alloc.batch_id,
-                        branch_id=ctx.branch_id,
-                        tenant_id=ctx.tenant_id,
-                        type=MovementType.OUT,
-                        quantity=alloc.quantity,
-                        ref_type=data.ref_type,
-                        ref_id=data.ref_id,
-                    )
-                )
-                await balances.adjust(
-                    data.drug_id, alloc.batch_id, ctx.branch_id, ctx.tenant_id, -alloc.quantity
-                )
 
             on_hand = await balances.on_hand(data.drug_id, ctx.branch_id)
             uow.collect(
@@ -246,8 +260,37 @@ class InventoryService:
         line exceeding available stock is dispensed as far as possible and a
         :class:`StockShortfallDetected` event flags the remainder — the sale is
         never blocked (it is already committed) and stock never goes negative.
+
+        **Under concurrency both of those promises need a retry, not just a
+        check.** Two counters selling the last units at once each read "10 left",
+        each think they are within stock, and the loser's write is refused by
+        :meth:`BalanceRepository.adjust`. Aborting there would be the worst of both
+        worlds: the sale stands, the goods leave, and *nothing* records the gap —
+        the "no reconciliation trail" half of audit B-04, which is worse than a
+        wrong number because a wrong number at least shows up at stocktake. So the
+        transaction is rolled back and replayed against what is *now* on the shelf;
+        the second pass takes what is left and raises the shortfall event for the
+        remainder. Bounded by :data:`_SALE_DISPENSE_ATTEMPTS` — each pass sees a
+        strictly smaller availability, so it converges; the bound only stops a
+        pathological live-lock.
         """
         require_permission(ctx, "inventory.dispense")
+        for attempt in range(1, _SALE_DISPENSE_ATTEMPTS + 1):
+            try:
+                await self._dispense_sale_once(items, order_id, ctx)
+                return
+            except InsufficientStockError:
+                _sale_log.info(
+                    "sale_dispense_retry", order_id=str(order_id), attempt=attempt
+                )  # stock moved under us; re-read and re-allocate
+        raise ConflictError(
+            f"Không xuất được kho cho đơn {order_id} sau {_SALE_DISPENSE_ATTEMPTS} lần thử"
+        )
+
+    async def _dispense_sale_once(
+        self, items: list[SaleDispenseItem], order_id: UUID, ctx: RequestContext
+    ) -> None:
+        """One transactional attempt of :meth:`dispense_for_sale` — all or nothing."""
         async with self._uow_factory() as uow:
             batches = self._batches(uow, ctx)
             movements = self._movements(uow, ctx)

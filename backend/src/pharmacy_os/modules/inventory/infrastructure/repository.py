@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
@@ -15,6 +15,7 @@ from pharmacy_os.modules.inventory.domain.entities import (
     StockMovement,
     StockReconciliationNeeded,
 )
+from pharmacy_os.modules.inventory.domain.exceptions import InsufficientStockError
 from pharmacy_os.modules.inventory.domain.fefo import BatchAvailability
 from pharmacy_os.modules.inventory.domain.ports import BatchStockRow, DrugOnHandRow
 from pharmacy_os.modules.inventory.infrastructure.models import (
@@ -197,24 +198,64 @@ class SqlAlchemyBalanceRepository:
     async def adjust(
         self, drug_id: UUID, batch_id: UUID, branch_id: UUID, tenant_id: UUID, delta: Decimal
     ) -> Decimal:
-        stmt = select(StockBalanceORM).where(
+        """One statement does the whole job: read, guard and write, atomically.
+
+        The previous shape — ``SELECT`` the row, add *delta* in Python, write it
+        back — is the textbook lost update (audit B-01), and no amount of care in
+        the calling code can fix it: between the read and the write another
+        transaction commits, and its subtraction disappears without a trace. Two
+        counters each selling 10 out of 100 left **90** on the books.
+
+        Here the arithmetic happens **inside** the ``UPDATE``, so Postgres takes
+        the row lock for the duration and the second writer re-reads the value the
+        first one committed: 100 − 10 − 10 is 80. The ``quantity + delta >= 0``
+        predicate rides along in the same statement and is what stops an oversell
+        (audit B-04) — a check placed before the write would be another
+        check-then-act, i.e. the same bug in a new place.
+
+        Zero rows updated therefore means one of exactly two things, and they need
+        telling apart: the row is not there yet (first movement of a batch — insert
+        it), or it is there and the guard refused (raise, carrying what *was*
+        available).
+        """
+        where = (
             StockBalanceORM.drug_id == drug_id,
             StockBalanceORM.batch_id == batch_id,
             StockBalanceORM.branch_id == branch_id,
             StockBalanceORM.tenant_id == tenant_id,
         )
-        row = (await self._session.execute(stmt)).scalar_one_or_none()
-        if row is None:
-            row = StockBalanceORM(
-                tenant_id=tenant_id,
-                branch_id=branch_id,
-                drug_id=drug_id,
-                batch_id=batch_id,
-                quantity=delta,
+        bumped = (
+            await self._session.execute(
+                update(StockBalanceORM)
+                .where(*where, StockBalanceORM.quantity + delta >= 0)
+                .values(quantity=StockBalanceORM.quantity + delta)
+                .returning(StockBalanceORM.quantity)
+                .execution_options(synchronize_session=False)
             )
-            self._session.add(row)
-        else:
-            row.quantity = row.quantity + delta
+        ).scalar_one_or_none()
+        if bumped is not None:
+            return Decimal(bumped)
+
+        current = (
+            await self._session.execute(select(StockBalanceORM.quantity).where(*where))
+        ).scalar_one_or_none()
+        if current is not None or delta < 0:
+            raise InsufficientStockError(
+                requested=-delta, available=Decimal(current if current is not None else 0)
+            )
+
+        # First movement of this batch. A concurrent insert of the same balance row
+        # loses to ``uq_balance_batch`` and aborts its own transaction — correct, and
+        # in practice unreachable: the batch row itself is created in the same
+        # transaction and ``uq_batch_lot`` settles that race first.
+        row = StockBalanceORM(
+            tenant_id=tenant_id,
+            branch_id=branch_id,
+            drug_id=drug_id,
+            batch_id=batch_id,
+            quantity=delta,
+        )
+        self._session.add(row)
         await self._session.flush()
         return row.quantity
 

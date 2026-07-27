@@ -1,7 +1,11 @@
-"""Tái hiện B-01 / B-02 / B-04 — **mọi test ở đây đang ĐỎ có chủ đích**.
+"""Tái hiện B-01 / B-02 / B-04 — bản vá F-5 đang đóng dần các dấu ``xfail`` ở đây.
 
 > ⚠️ ``xfail(strict=True)`` ở file này nghĩa là **BUG ĐÃ BIẾT, CHƯA VÁ** — KHÔNG
 > phải "test đã xanh". Đọc `README.md` cùng thư mục trước khi diễn giải kết quả.
+>
+> **Trạng thái sau F-5 bước 2/3:** B-01 (2 test) và B-04 (3 test) đã vá, dấu
+> ``xfail`` đã gỡ — chúng nay là test xanh thật, canh giữ bản vá. **B-02 (2 test)
+> vẫn ĐỎ có chủ đích**, chờ unique index ở bước 3/3.
 
 Thứ tự bắt buộc do kiểm toán đặt ra (F-4 → F-5): **viết test đua trước, vá khoá
 hàng sau**. Vá trước rồi mới viết test thì bản vá được nghiệm thu bằng chính bộ
@@ -49,9 +53,7 @@ from pharmacy_os.modules.inventory.domain.events import StockShortfallDetected
 from pharmacy_os.modules.inventory.infrastructure import SqlAlchemyBalanceRepository
 from tests.concurrency.conftest import RecordingBus, StatementGate, both_arrived, finish
 
-BUG_B01 = "B-01: BalanceRepository.adjust không khoá hàng — mất cập nhật khi ghi đồng thời"
 BUG_B02 = "B-02: exists_for_ref là check-then-act, không có unique index đỡ"
-BUG_B04 = "B-04: bán vượt tồn khi đồng thời — không chặn, không phát sự kiện"
 
 _UPDATE_BALANCE = "UPDATE stock_balances"
 _INSERT_MOVEMENT = "INSERT INTO stock_movements"
@@ -109,7 +111,6 @@ async def _out_rows_for_ref(observer: AsyncSession, ref_id: UUID) -> int:
 # ---------------------------------------------------------------------------
 # B-01 — mất cập nhật ở tầng kho (repository)
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=BUG_B01)
 async def test_two_concurrent_adjusts_must_both_land(
     seeder: InventoryService,
     ctx: RequestContext,
@@ -147,7 +148,6 @@ async def test_two_concurrent_adjusts_must_both_land(
     assert await _balance(observer, batch_id) == Decimal("80.000")
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=BUG_B01)
 async def test_ledger_and_balance_must_agree_after_concurrent_dispense(
     seeder: InventoryService,
     ctx: RequestContext,
@@ -271,7 +271,6 @@ async def test_database_rejects_two_movements_for_same_ref_and_batch(
 # ---------------------------------------------------------------------------
 # B-04 — bán vượt tồn
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=BUG_B04)
 async def test_concurrent_dispense_never_exceeds_stock_on_hand(
     seeder: InventoryService,
     ctx: RequestContext,
@@ -320,7 +319,6 @@ async def test_concurrent_dispense_never_exceeds_stock_on_hand(
     assert dispensed <= Decimal("10.000"), f"đã xuất {dispensed} trên tồn 10"
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=BUG_B04)
 async def test_concurrent_dispense_never_drives_balance_negative(
     seeder: InventoryService,
     ctx: RequestContext,
@@ -357,7 +355,6 @@ async def test_concurrent_dispense_never_drives_balance_negative(
     assert await _movement_total(observer, batch_id) >= Decimal("0")
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=BUG_B04)
 async def test_concurrent_sale_shortfall_leaves_a_trail(
     seeder: InventoryService,
     ctx: RequestContext,
