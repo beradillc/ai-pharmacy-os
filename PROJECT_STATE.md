@@ -3706,7 +3706,8 @@ giờ nhận rounds=4; (b) sửa scope fixture — đụng cả 548 test.
 | **F-9** rate limit | ✅ **XONG** (§7bo) — đóng vector DoS của khoá tài khoản |
 | **F-16** thử restore backup | ✅ **XONG** (§7bp) — diễn tập **đã chạy thật**, ứng dụng đọc được bản khôi phục |
 | **F-8** runbook mã hoá | 🟡 **VIẾT XONG, CHƯA CHẠY HẾT** (§7bp) — `docs/18` phần B; đóng hoàn toàn khi chạy trên staging |
-| F-17 load test | ⏸️ Chưa bắt đầu. **F-6 là đường găng thật** — câu hỏi pháp lý A-05 đang ở Trợ lý Pháp Lý, chưa có trả lời |
+| **F-17** load test | ⚠️ **ĐÃ ĐO — ĐẠT CÓ ĐIỀU KIỆN** (§7br): p95 **217,6 ms** ở 8 luồng · **490,4 ms** ở 16 luồng. Ngưỡng DoD 300 ms |
+| *(hết mục chặn code)* | — **F-6 là đường găng thật** — câu hỏi pháp lý A-05 đang ở Trợ lý Pháp Lý, chưa có trả lời |
 
 ---
 
@@ -4372,6 +4373,56 @@ tiếp qua lỗi mà vẫn trả mã thoát 0) và **xoá bản cũ SAU khi bả
 | **Dead-man's switch** cho cron | **Cron im lặng khi script không chạy được** (sai đường dẫn, docker chưa lên, hết đĩa). Lúc đó *"không có cảnh báo"* trông **giống hệt** *"backup thành công"* — đúng dạng niềm tin giả cả đợt kiểm toán đang sửa. Thuộc **F-18** (observability) |
 | **Vết kiểm toán cho thao tác xoay khoá** | D-SEC-01 đòi *"rotation phải có audit trail"*; `AuditAction` hiện **không có** hành động nào cho việc này. Cần bổ sung **trước lần xoay đầu tiên** |
 | **Cưỡng chế chồng lấn ≤ 7 ngày** | Kiến trúc cho nhiều khoá sống song song **vô thời hạn**; giới hạn 7 ngày hiện là **kỷ luật của người vận hành**, không phải thứ hệ thống ép |
+
+---
+
+## 7br. STAGING DỰNG XONG · F-8 CHẠY HẾT · F-17 ĐÃ ĐO (2026-07-28, Opus)
+
+### F-17 — con số, và điều kiện đi kèm con số
+
+| Đồng thời | `GET /drugs` p95 | `GET /on-hand` p95 | `POST /sales` p95 | Kết luận |
+|---:|---:|---:|---:|---|
+| **8** | 61,3 ms | 44,6 ms | **217,6 ms** | ✅ **ĐẠT** (<300 ms) |
+| **16** | 257,6 ms | 173,3 ms | **490,4 ms** | 🔴 KHÔNG ĐẠT |
+| **32** | 651,8 ms | 491,9 ms | **942,8 ms** | 🔴 KHÔNG ĐẠT |
+
+**0 lỗi ở cả ba mức** — hệ thống không hỏng, chỉ chậm dần. Đó là hình dạng của bão hoà
+tài nguyên, không phải của lỗi.
+
+> ⚠️ **Một con số p95 không kèm mức tải là một con số vô nghĩa.** Cùng hệ thống này ĐẠT
+> ở 8 luồng và KHÔNG ĐẠT ở 16. Ai trích lại *"p95 = 217 ms"* mà bỏ mức tải là trích một
+> nửa sự thật. DoD Sprint 8 viết *"p95 < 300ms"* **không nói mức tải nào** — đó là một
+> thiếu sót của chính DoD, phát hiện khi đi đo.
+
+**Điều kiện đo, ghi để về sau kiểm được:** máy 4 nhân, **bộ tạo tải chạy CÙNG máy** với
+container staging ⇒ ở 32 luồng phần lớn là tranh chấp giữa bộ đo và máy chủ, không phải
+năng lực máy chủ thuần. Số ở 8 luồng đáng tin nhất; số ở 32 luồng là **cận dưới bi quan**.
+
+**Đủ cho pilot chưa?** Một nhà thuốc 2–3 quầy sinh đồng thời ~2–3 — **dưới xa mức 8**.
+Nhưng đó là suy luận về quy mô, **không phải phép đo**; nó cần Chain xác nhận số quầy
+thật của nhà thuốc pilot.
+
+Không đo `/auth/login` có chủ đích: F-9 giới hạn 10 lượt/phút mỗi IP nên bắn tải vào đó
+chỉ đo được chính rate limiter. Không đo `/health`: không chạm CSDL, số đẹp mà vô nghĩa.
+
+Bộ đo lưu tại `scripts/load_test_pos.py` để lần sau đo lại được, không phải dựng lại.
+
+### Staging — hạ tầng đã chạy thật
+
+`docker compose -f docker-compose.staging.yml` (cổng 5433/6380/8001, khác hẳn dev).
+Migration `EXIT=0` tới `0033` · app `HEALTH=200` · `bootstrap_tenant` tạo tenant + 5 role.
+
+🔴 **Hai lỗi của image lộ ra khi build lần đầu sau 200+ commit** — đã sửa: `readme` trỏ
+ra ngoài build context (build **chưa từng chạy được**), và **thiếu `seeds/`** (mà
+`bootstrap_tenant` là đường **duy nhất** tạo tài khoản đầu tiên). Cùng dạng C-03.
+
+### Còn lại
+
+| Việc | Chờ ai |
+|---|---|
+| Phạm vi cột mã hoá (`full_name` nguyên văn, `phone` đã mã hoá) | Chain/kiến trúc xác nhận |
+| Mức tải mục tiêu cho DoD p95 | Chain — bao nhiêu quầy đồng thời ở nhà thuốc pilot |
+| Bảng gắn người F-19 | Chain |
 
 ---
 
