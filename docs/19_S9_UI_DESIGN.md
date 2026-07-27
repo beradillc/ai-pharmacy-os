@@ -1,6 +1,10 @@
 # 19 — THIẾT KẾ GIAO DIỆN SPRINT 9: Bảng điều hành & Đề xuất đặt hàng
 
-> **Trạng thái: CHỜ CHAIN DUYỆT §7.** Phạm vi gói bàn giao đã chốt ở §0. Không viết dòng mã nào trước khi mục §7 được chốt.
+> ## ✅ ĐÃ DUYỆT — Chain, 2026-07-28
+>
+> Thiết kế được duyệt **nguyên bản**: mọi đề xuất trong §7 trở thành quyết định.
+> Được phép bắt đầu code Sprint 9. Hai điểm còn chờ dữ liệu (§7.4, §7.5) **không chặn**
+> việc code — xem ghi chú cuối §7. Không viết dòng mã nào trước khi mục §7 được chốt.
 >
 > Mọi endpoint trích trong tài liệu này **đã xác nhận tồn tại trên staging đang chạy**
 > (`localhost:8001`, đọc trực tiếp từ OpenAPI 2026-07-28). Không màn nào vẽ ra một tính
@@ -245,21 +249,33 @@ thứ mất đi không phải một tính năng — là **lòng tin vào mọi c
 
 ---
 
-## 7. 🔴 BẢY ĐIỂM CHAIN PHẢI CHỐT TRƯỚC KHI CODE
+## 7. ✅ BẢY ĐIỂM — ĐÃ DUYỆT
 
 *(Ba điểm về phạm vi gói bàn giao đã được Chain giải ở §0.)*
+
+Chain duyệt nguyên bản 2026-07-28 ⇒ **mọi đề xuất dưới đây là quyết định**, không còn là câu hỏi.
 
 Không điểm nào tôi tự quyết được — mỗi cái đổi thì thiết kế đổi theo.
 
 | # | Câu hỏi | Vì sao cần Chain |
 |---|---|---|
-| 1 | **Sprint 9 chỉ làm hai màn này?** | ROADMAP ghi *"dashboard + màn duyệt PO nháp"*. Bản này bám đúng vậy. Có thêm màn **đối soát tồn kho** (`GET /inventory/reconciliations` đã có API) không? |
-| 2 | **Khoảng thời gian mặc định của bảng điều hành?** | Đề xuất **28 ngày**. "Tháng này" làm đầu tháng luôn trông như sụt doanh thu |
-| 3 | **Quản lý xem được số liệu chi nhánh khác không?** | API cho phép chọn chi nhánh. Cho xem chéo là quyết định **quản trị**, không phải kỹ thuật — và nó đổi cả thanh chọn đầu màn |
-| 4 | **Mức tải mục tiêu cho p95?** | Đo thật: đạt ở 8 luồng, **không đạt ở 16**. DoD *"p95 < 300 ms"* chưa nói mức tải nào nên **chưa quyết được đạt hay không**. Nhà thuốc pilot có bao nhiêu quầy đồng thời? |
-| 5 | **Cột nào bắt buộc mã hoá?** | Diễn tập F-8: `phone` đã mã hoá, **`full_name` vẫn nguyên văn**. Tên người là dữ liệu cá nhân (Luật BVDLCN 91/2025). Chủ đích hay lỗ hổng? Câu trả lời đổi cách màn hình hiển thị tên khách |
-| 6 | **Có cần chế độ tương phản cao?** | Bảng màu đã đạt WCAG AA. Nhưng màn rẻ dưới đèn huỳnh quang vẫn có thể khó đọc — thêm công tắc "nền trắng chữ đen" **rẻ nếu quyết ngay, đắt nếu thêm sau** |
-| 7 | **Mascot gấu xuất hiện ở đâu?** | Gói bàn giao dùng **avatar mascot 40×40 tròn trong nav** + 22 px trong khu AI, và ghi rõ mascot hiện là **placeholder emoji 🐻**, cần asset thật. Xác nhận vị trí này? |
+| 1 | ✅ **Đúng hai màn.** Không thêm màn đối soát tồn kho trong S9 | Bám đúng ROADMAP. `GET /inventory/reconciliations` để dành sprint sau |
+| 2 | ✅ **28 ngày** | "Tháng này" làm đầu tháng luôn trông như sụt doanh thu |
+| 3 | ✅ **Giữ nguyên cấu trúc quyền hiện có** | Đúng tinh thần §0: không mở lại quyết định của các sprint trước. Thanh chọn chi nhánh chỉ liệt kê chi nhánh trong `accessible_branches` của token |
+| 4 | ⏳ **Chờ số quầy thật** | Đo: đạt @8 luồng, không đạt @16. **Không chặn code** — chỉ chặn việc *tuyên bố DoD đạt*. Trả lời được khi biết nhà thuốc pilot |
+| 5 | ⏳ **Chờ xác nhận kiến trúc/pháp lý** | F-8: `phone` đã mã hoá, **`full_name` vẫn nguyên văn**. **Không chặn hai màn S9** (không màn nào hiện tên khách). Chặn màn Hồ sơ sức khoẻ ở sprint sau |
+| 6 | ✅ **Chừa sẵn, chưa dựng UI** | Token hoá toàn bộ màu (đã làm ở §3.1) là đủ để thêm chế độ tương phản cao sau mà không sửa component. Không thêm công tắc trong S9 |
+| 7 | ✅ **Chỉ màn đăng nhập + trạng thái rỗng** | Trên màn số liệu mascot tranh chỗ với thứ người ta cần nhìn. Asset thật chưa có ⇒ tạm dùng placeholder, **không** chặn code |
+
+---
+
+### Hai điểm còn chờ — vì sao không chặn
+
+**§7.4 (mức tải p95)** chặn việc *tuyên bố DoD Sprint 8 đã đạt*, không chặn việc viết giao
+diện. **§7.5 (phạm vi mã hoá)** chặn màn **Hồ sơ sức khoẻ khách hàng** ở sprint sau — hai
+màn của Sprint 9 **không màn nào hiển thị tên khách hàng**, nên không vướng.
+
+Cả hai đã vào `GD-DieuPhoi-GiaoViec.md` chờ Chain, không phải chờ tôi.
 
 ---
 
