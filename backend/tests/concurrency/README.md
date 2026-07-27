@@ -34,18 +34,10 @@ make up               # BẮT BUỘC — Postgres phải chạy, xem "Fail chứ
 make test-concurrency # hoặc: cd backend && pytest tests/concurrency
 ```
 
-> ⚠️ **CSDL test cũ không tự nhận ràng buộc mới.** Harness dựng lược đồ bằng
-> `Base.metadata.create_all`, mà `create_all` **chỉ tạo bảng còn thiếu** — nó không
-> thêm index vào bảng đã tồn tại và không chạy alembic. Máy nào đã có
-> `pharmacy_os_test` từ trước F-5 sẽ **thiếu `uq_movement_ref_batch`** và 2 test B-02
-> đỏ vì lý do hoàn toàn không liên quan tới mã sản phẩm. Gặp thì xoá CSDL test cho nó
-> dựng lại từ đầu, hoặc thêm tay:
-> ```sql
-> CREATE UNIQUE INDEX IF NOT EXISTS uq_movement_ref_batch ON stock_movements
->   (tenant_id, ref_type, ref_id, batch_id) WHERE ref_id IS NOT NULL;
-> ```
-> Đây là **nợ đã biết của nền F-4**, chưa sửa vì sửa là đụng `conftest.py` — xem
-> "Nợ" cuối file.
+Lược đồ CSDL test do **`alembic upgrade head` thật** dựng, không phải `create_all`
+(sửa 2026-07-27 — xem "Lược đồ" bên dưới). Không phải làm gì bằng tay: CSDL chưa có
+thì tự tạo, tụt lại revision thì tự nâng, dựng bằng `create_all` đời cũ thì tự làm lại
+từ số không.
 
 CSDL `pharmacy_os_test` được **tự tạo** ở lần chạy đầu, cạnh CSDL dev `pharmacy_os`,
 trên chính Postgres của `docker compose`. Không thêm phụ thuộc `testcontainers`
@@ -160,11 +152,43 @@ hai dòng IN cùng `(grn, batch)` ⇒ đụng chính index này. Cộng dồn kh
 dòng IN của GRN vốn không mang `po_item_id`, và sự kiện `StockMovedIn` vẫn phát theo
 từng dòng hàng như cũ.
 
+## Lược đồ: `alembic upgrade head`, không phải `create_all` (sửa 2026-07-27)
+
+`create_all` đọc model Python và **chỉ tạo bảng còn thiếu** — không thêm ràng buộc vào
+bảng đã tồn tại, không biết migration là gì. Nó đã cắn thật ngay trong phiên F-5: máy có
+sẵn `pharmacy_os_test` từ trước **không nhận** `uq_movement_ref_batch`, 2 test B-02 đỏ vì
+**hạ tầng** chứ không vì mã sản phẩm — đúng bệnh *"hạ tầng hỏng đội lốt bug thật"* mà
+thư mục này được dựng lên để chống.
+
+Lý do sâu hơn chuyện tiện lợi: bộ test này tồn tại để nói *"cái chạy trên production hành
+xử thế này"*. Lược đồ suy ra từ model Python **không phải** cái chạy trên production —
+cái đó là chuỗi migration. Suy từ model là kiểm chứng hệ thống bằng một bản sao của chính
+niềm tin đang cần kiểm chứng.
+
+Ba đường vào, đã kiểm bằng lệnh thật (2026-07-27):
+
+| Trạng thái CSDL test | Harness làm gì | Đo được |
+|---|---|---|
+| Chưa tồn tại | `CREATE DATABASE` → `upgrade head` | CSDL mới `f5_fresh_test`: **10 passed**, `alembic_version` = `0033…` |
+| Dựng bằng `create_all` đời cũ (48 bảng, **không** `alembic_version`) | `DROP SCHEMA public CASCADE` → dựng lại từ số không | **10 passed**, về đúng `0033…`, index có mặt |
+| Tụt lại revision (giả lập: hạ về `0032…` + xoá index) | `upgrade head` nâng tiếp | Trước: `0032…`, 0 index → sau: **`0033…`, 1 index**, 10 passed |
+
+Đây chính là kịch bản đã cắn ở F-5, nay chạy thẳng không cần ai can thiệp.
+
+**Alembic chạy trong tiến trình con**, không gọi `alembic.command` tại chỗ: `migrations/env.py`
+lấy URL từ `get_settings()`, mà hàm đó có `@lru_cache`. Sửa biến môi trường rồi xoá cache
+ngay trong tiến trình test là để lại quả mìn cho mọi test chạy sau.
+
+⚠️ **Giới hạn còn lại, đừng hiểu nhầm:** alembic đối chiếu theo `alembic_version`, không
+so lược đồ thật. Ai đó xoá tay một index **mà không** hạ revision thì harness không biết —
+`upgrade head` sẽ là no-op. Nó chống **trôi theo migration** (kịch bản có thật), không
+chống **sửa tay lén lút** (chưa từng xảy ra).
+
 ## Nợ
 
 | Nợ | Vì sao chưa làm |
 |---|---|
-| `conftest.py` dựng lược đồ bằng `create_all`, **không chạy alembic** ⇒ CSDL test có sẵn từ trước không nhận index/ràng buộc mới (xem cảnh báo ở mục "Chạy") | Sửa là đụng `conftest.py` — nền F-4 đã kiểm chứng, Chain chốt **không đụng** trong phạm vi F-5. Cần quyết định riêng |
+| `f4_probe` · `audit_empty_a` · `f5_fresh_test` còn nằm lại trên Postgres | `DROP DATABASE` nằm trong `deny` của allowlist công cụ. Xoá tay khi tiện, không ảnh hưởng gì |
 
 ## Chi phí
 

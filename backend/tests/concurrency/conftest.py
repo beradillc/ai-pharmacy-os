@@ -30,11 +30,14 @@ from __future__ import annotations
 
 import asyncio
 import os
+import subprocess
+import sys
 from collections.abc import AsyncIterator, Callable
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import (
@@ -50,7 +53,6 @@ from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.events import InMemoryEventBus
-from pharmacy_os.models_registry import Base
 from pharmacy_os.modules.inventory.application import InventoryService
 from pharmacy_os.modules.inventory.domain.ports import BatchRepository
 from pharmacy_os.modules.inventory.infrastructure import (
@@ -128,24 +130,81 @@ def _ensure_database(sync_url: URL) -> None:
         engine.dispose()
 
 
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+"""Thư mục chứa ``alembic.ini`` — nơi ``alembic upgrade`` phải chạy từ đó."""
+
+
+def _reset_legacy_schema(sync_url: URL) -> None:
+    """Xoá sạch lược đồ nếu CSDL test được dựng bằng ``create_all`` (không có vết alembic).
+
+    Không có ``alembic_version`` mà lại có bảng ⇒ đây là CSDL do bản conftest cũ
+    dựng. Không thể "nâng cấp" nó: alembic sẽ chạy migration đầu tiên và đâm vào
+    bảng đã tồn tại. Đường duy nhất đúng là làm lại từ số không.
+
+    An toàn vì đây là hành động **duy nhất** đứng sau guard tên CSDL — tên không kết
+    thúc ``_test`` thì :func:`_guarded_url` đã nổ từ trước, chưa câu lệnh nào chạm dữ liệu.
+    """
+    engine = create_engine(sync_url, isolation_level="AUTOCOMMIT")
+    try:
+        with engine.connect() as conn:
+            tables = set(inspect(conn).get_table_names())
+            if not tables or "alembic_version" in tables:
+                return
+            conn.execute(text("DROP SCHEMA public CASCADE"))
+            conn.execute(text("CREATE SCHEMA public"))
+    finally:
+        engine.dispose()
+
+
+def _upgrade_to_head(sync_url: URL) -> None:
+    """Chạy ``alembic upgrade head`` thật, trong **tiến trình con**.
+
+    Tiến trình con chứ không phải gọi ``alembic.command`` tại chỗ: ``migrations/env.py``
+    lấy URL từ ``get_settings()``, mà ``get_settings`` có ``@lru_cache``. Đổi biến môi
+    trường rồi xoá cache ngay trong tiến trình test là để lại một quả mìn — mọi test
+    chạy sau sẽ đọc phải cấu hình đã bị sửa. Tiến trình con thì không thể rò rỉ.
+    """
+    env = {**os.environ, "DB__URL": sync_url.render_as_string(hide_password=False)}
+    done = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=BACKEND_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    if done.returncode != 0:
+        raise RuntimeError(
+            "`alembic upgrade head` thất bại trên CSDL test — lược đồ KHÔNG dựng được, "
+            "không có đường vòng nào (dựng bằng `create_all` chính là con bug vừa sửa).\n"
+            f"Mã thoát: {done.returncode}\nstdout:\n{done.stdout}\nstderr:\n{done.stderr}"
+        )
+
+
 @pytest.fixture(scope="session")
 def concurrency_db_url() -> str:
-    """Bootstrap một lần cho cả phiên: guard tên → tạo CSDL nếu thiếu → ``create_all``.
+    """Bootstrap một lần cho cả phiên: guard tên → tạo CSDL nếu thiếu → **alembic upgrade head**.
 
-    Cố ý dùng driver **đồng bộ** (psycopg2) cho phần bootstrap: nó chạy ngoài mọi
-    event loop nên không vướng chuyện loop-scope của ``pytest-asyncio`` khi fixture
-    này là session-scoped.
+    **Vì sao alembic chứ không phải ``create_all``** (nợ nền F-4, đóng 2026-07-27):
+    ``create_all`` đọc model Python và **chỉ tạo bảng còn thiếu** — nó không thêm
+    ràng buộc vào bảng đã tồn tại và không biết migration là gì. Hệ quả đã xảy ra
+    thật ngay trong phiên F-5: máy đã có sẵn ``pharmacy_os_test`` từ trước thì
+    **không nhận** ``uq_movement_ref_batch``, và 2 test B-02 đỏ vì **hạ tầng**, không
+    vì mã sản phẩm — đúng cái bệnh "hạ tầng hỏng đội lốt bug thật" mà chính thư mục
+    này được dựng lên để chống.
+
+    Sâu hơn chuyện tiện lợi: bộ test đồng thời tồn tại để nói *"cái chạy trên
+    production hành xử thế này"*. Lược đồ suy ra từ model Python **không phải** cái
+    chạy trên production — cái đó là chuỗi migration. Suy từ model là kiểm chứng hệ
+    thống bằng một bản sao của chính niềm tin đang cần kiểm chứng.
+
+    Cố ý dùng driver **đồng bộ** (psycopg2): chạy ngoài mọi event loop nên không
+    vướng loop-scope của ``pytest-asyncio`` khi fixture là session-scoped.
     """
     url = _guarded_url()
     sync_url = url.set(drivername="postgresql+psycopg2")
     _ensure_database(sync_url)
-
-    engine = create_engine(sync_url)
-    try:
-        with engine.begin() as conn:
-            Base.metadata.create_all(conn)
-    finally:
-        engine.dispose()
+    _reset_legacy_schema(sync_url)
+    _upgrade_to_head(sync_url)
     return url.render_as_string(hide_password=False)
 
 
