@@ -21,6 +21,7 @@ from pharmacy_os.core.config import Settings, get_settings
 from pharmacy_os.core.errors import register_error_handlers
 from pharmacy_os.core.outbox import OutboxRelay, OutboxRetention
 from pharmacy_os.core.plugins import PluginLoader
+from pharmacy_os.core.security import RateLimiter
 from pharmacy_os.logging import configure_logging
 from pharmacy_os.modules.compliance.application import NationalSyncRetryRelay
 
@@ -108,6 +109,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
     app.state.container = build_container(settings)
+    # Bộ đếm tần suất sống theo vòng đời ứng dụng, không theo request (F-9). Đặt trên
+    # app.state chứ không trong container vì nó là **trạng thái của tiến trình phục vụ
+    # HTTP**, không phải một dịch vụ nghiệp vụ — và vì mỗi TestClient dựng app riêng,
+    # nên bộ test không bị rò bộ đếm từ test này sang test khác.
+    app.state.rate_limiter = RateLimiter()
     register_error_handlers(app)
     app.include_router(build_api_router(app.state.container))
     return app

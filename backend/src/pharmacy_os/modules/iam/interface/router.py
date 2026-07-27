@@ -10,10 +10,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
+from pharmacy_os.core.config import Settings
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.http import client_ip_of
+from pharmacy_os.core.security import RateLimiter, RateLimitRule
 from pharmacy_os.modules.iam.application import AuthService, IamService
 from pharmacy_os.modules.iam.interface.schemas import (
     AssignRoleRequest,
@@ -50,6 +52,37 @@ def _iam(request: Request) -> IamService:
     return service
 
 
+def _throttle(request: Request, endpoint: str) -> None:
+    """Từ chối 429 khi một IP bắn quá hạn mức vào endpoint xác thực (F-9).
+
+    Chạy **trước** khi chạm tới mật khẩu hay CSDL: một request bị chặn ở đây không
+    tốn một lần băm bcrypt nào, nên chi phí của kẻ tấn công cao hơn chi phí của
+    người bị tấn công — điều kiện tối thiểu để một cơ chế phòng thủ có ích.
+
+    Khoá đếm là ``(IP, endpoint)`` chứ không phải ``(IP, tài khoản)``: nếu đếm theo
+    tài khoản thì bắn vào 100 tài khoản khác nhau từ một IP vẫn lọt, mà đó chính là
+    hình dạng của cuộc tấn công cần chặn (kiểm toán C-11).
+    """
+    settings: Settings = request.app.state.container.resolve(Settings)
+    if not settings.security.rate_limit_enabled:
+        return
+    limiter: RateLimiter = request.app.state.rate_limiter
+    ip = client_ip_of(request) or "unknown"
+    verdict = limiter.check(
+        f"{endpoint}:{ip}",
+        RateLimitRule(
+            max_events=settings.security.rate_limit_login_attempts,
+            window_seconds=settings.security.rate_limit_login_window_seconds,
+        ),
+    )
+    if not verdict.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Quá nhiều lượt thử từ địa chỉ này. Vui lòng chờ rồi thử lại.",
+            headers={"Retry-After": str(verdict.retry_after_seconds)},
+        )
+
+
 def build_auth_router(get_context: ContextDep) -> APIRouter:
     router = APIRouter(prefix="/auth", tags=["iam"])
 
@@ -57,6 +90,7 @@ def build_auth_router(get_context: ContextDep) -> APIRouter:
     async def login(
         request: Request, body: LoginRequest, service: AuthService = Depends(_auth)
     ) -> SessionResponse:
+        _throttle(request, "login")
         # The IP comes from the socket, never the body: a failed-login burst is only
         # traceable if the origin cannot be chosen by whoever is causing it.
         data = body.to_input()
@@ -112,6 +146,11 @@ def build_auth_router(get_context: ContextDep) -> APIRouter:
         request: Request, body: TwoFactorLoginRequest, service: AuthService = Depends(_auth)
     ) -> SessionResponse:
         """Step 2: exchange the challenge from ``/auth/login`` plus a code for a session."""
+        # Cùng hạn mức với /auth/login, và ở đây còn cần hơn: mã TOTP chỉ có 6 chữ số,
+        # nên bề mặt đoán mò hẹp hơn mật khẩu nhiều bậc. Thử thách tự nó đã cháy sau 5
+        # lần sai, nhưng cháy-rồi-xin-cái-mới là một vòng lặp không tốn gì của kẻ tấn
+        # công nếu không có gì giới hạn theo IP.
+        _throttle(request, "2fa-login")
         data = body.to_input()
         data.client_ip = client_ip_of(request)
         return SessionResponse.of(await service.complete_two_factor_login(data))

@@ -218,6 +218,25 @@ class EncryptionSettings(BaseSettings):
 
 class SecuritySettings(BaseSettings):
     jwt_secret: SecretStr = SecretStr(_PLACEHOLDER)
+
+    rate_limit_enabled: bool = True
+    """Giới hạn tần suất theo IP cho các endpoint xác thực (F-9, kiểm toán B-10/C-11).
+
+    **Mặc định BẬT** — khác hẳn ``OUTBOX__RELAY_ENABLED`` hay ``ENCRYPTION__ENABLED``
+    vốn tắt mặc định. Lý do: hai cái kia bật lên là *thêm* một tiến trình nền hoặc
+    *đổi* cách ghi dữ liệu, nên phải là quyết định có chủ đích. Cái này chỉ từ chối
+    bớt request, không đụng dữ liệu, và **tắt nó là mở lại đúng lỗ hổng nó vá**."""
+
+    rate_limit_login_attempts: int = 10
+    rate_limit_login_window_seconds: float = 60.0
+    """10 lượt/phút cho mỗi IP trên ``/auth/login``.
+
+    Chọn số này để **người thật gõ nhầm vẫn dùng được**: 10 lần trong một phút là gõ
+    sai liên tục không nghỉ. Trong khi đó, khoá tài khoản đứng ở 5 lần sai — nên hạn
+    mức IP không bao giờ là thứ chặn trước cơ chế khoá tài khoản trong sử dụng bình
+    thường; nó chỉ chặn khi có ai đó bắn vào **nhiều tài khoản khác nhau** từ một chỗ,
+    và đó chính xác là hình dạng của cuộc tấn công DoS mà C-11 nêu."""
+
     jwt_ttl_minutes: int = 60
     """Access-token lifetime. Kept at 60 (docs/15 D2): revoking a role therefore takes
     effect within one hour, which is the accepted trade against an offline-first POS

@@ -356,3 +356,78 @@ def test_deactivating_a_user_blocks_their_next_login(client: TestClient) -> None
         "/api/v1/auth/login", json={"email": "nghi@bera.vn", "password": STAFF_PASSWORD}
     )
     assert r.status_code == 401
+
+
+# --- F-9: giới hạn tần suất theo IP (kiểm toán B-10, C-11) ------------------
+
+
+def test_a_burst_of_wrong_passwords_is_throttled_with_429(client: TestClient) -> None:
+    """Bắn liên tục vào /auth/login từ một IP phải bị chặn bằng 429 kèm Retry-After.
+
+    Mặc định là 10 lượt/phút, còn khoá tài khoản đứng ở 5 lần sai — nên tài khoản bị
+    khoá **trước**, và những lượt sau đó tiếp tục đếm cho tới khi chạm hạn mức IP.
+    """
+    for _ in range(10):
+        client.post("/api/v1/auth/login", json={"email": ADMIN_EMAIL, "password": "sai-be-bet"})
+
+    r = client.post("/api/v1/auth/login", json={"email": ADMIN_EMAIL, "password": "sai-be-bet"})
+    assert r.status_code == 429, r.text
+    assert int(r.headers["Retry-After"]) >= 1
+
+
+def test_the_lockout_dos_vector_is_closed(client: TestClient) -> None:
+    """Đây là **đúng lỗ hổng C-11**, viết thành một test đọc được.
+
+    Khoá tài khoản mà không giới hạn IP nghĩa là kẻ tấn công khoá được **lần lượt từng
+    tài khoản** của cả nhà thuốc mà không cần đoán trúng mật khẩu nào. Bắn vào nhiều
+    tài khoản khác nhau vẫn phải chạm trần, vì bộ đếm khoá theo **(IP, endpoint)** chứ
+    không theo tài khoản.
+    """
+    for i in range(10):
+        client.post(
+            "/api/v1/auth/login",
+            json={"email": f"nan-nhan-{i}@bera.vn", "password": "khong-can-dung"},
+        )
+
+    r = client.post(
+        "/api/v1/auth/login",
+        json={"email": "nan-nhan-moi@bera.vn", "password": "khong-can-dung"},
+    )
+    assert r.status_code == 429, "một IP bắn vào 10 tài khoản khác nhau vẫn lọt — C-11 chưa đóng"
+
+
+def test_the_2fa_code_exchange_is_throttled_too(client: TestClient) -> None:
+    """Mã TOTP chỉ 6 chữ số — bề mặt đoán mò hẹp hơn mật khẩu nhiều bậc.
+
+    ⚠️ **Giới hạn đã biết, ghi ra chứ không giấu:** FastAPI kiểm tra hình dạng body
+    **trước** khi vào handler, nên bộ đếm chỉ tính những request **đúng schema**. Bắn
+    body sai hình dạng vẫn không bị tính — muốn chặn cả loại đó thì phải chuyển sang
+    middleware, và đó là việc của F-13 (403/429 chạy trước 422), không phải F-9. Với
+    tấn công đoán mã thật thì body luôn đúng hình dạng, nên hạn mức vẫn có tác dụng.
+    """
+    body = {"challenge_token": "khong-ton-tai", "code": "000000"}
+    for _ in range(10):
+        client.post("/api/v1/auth/2fa/login", json=body)
+    r = client.post("/api/v1/auth/2fa/login", json=body)
+    assert r.status_code == 429, r.text
+
+
+def test_a_throttled_ip_does_not_lock_everyone_else_out(client: TestClient) -> None:
+    """Hạn mức phải **mở lại được**, nếu không nó chỉ là một kiểu tự chặn mình.
+
+    Reset bộ đếm mô phỏng "cửa sổ đã trôi qua" mà không phải chờ đồng hồ thật — cùng
+    lý do các test đơn vị tiêm ``now`` thay vì ``sleep``.
+    """
+    for _ in range(11):
+        client.post("/api/v1/auth/login", json={"email": ADMIN_EMAIL, "password": "sai"})
+    assert (
+        client.post(
+            "/api/v1/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
+        ).status_code
+        == 429
+    )
+
+    client.app.state.rate_limiter.reset()  # type: ignore[attr-defined]
+
+    r = client.post("/api/v1/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD})
+    assert r.status_code != 429, "hết cửa sổ rồi mà vẫn chặn — hình phạt không có điểm kết thúc"
