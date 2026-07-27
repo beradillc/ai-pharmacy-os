@@ -3701,7 +3701,9 @@ giờ nhận rounds=4; (b) sửa scope fixture — đụng cả 548 test.
 | **F-2** fail-fast prod (A-02/A-03) | ✅ **XONG** (§7bm) — khoá ký <32 byte và mã hoá tắt ⇒ prod **không khởi động** |
 | **F-3** `.env.example` `APP__DEBUG` | ✅ **XONG** (§7bm) |
 | **F-15** chặn mock ở prod | ✅ **XONG** (§7bm) — chặn cả 2 điểm nạp |
-| F-6, F-8, F-9, F-16, F-17, F-19 | ⏸️ Chưa bắt đầu. **F-6 là đường găng thật** — câu hỏi pháp lý A-05 đang ở Trợ lý Pháp Lý, chưa có trả lời |
+| **F-19** quy trình sự cố | ✅ **THIẾT KẾ XONG** (§7bn) — `docs/17`, role-based; còn `TBD` bảng gắn người, **không chặn development** |
+| **F-6** giấy phép VNPAY | 🔓 **KHÔNG còn là critical path** — Chain KHOÁ quyết định 28/07: pilot **không có** thanh toán online |
+| F-8, F-9, F-16, F-17 | ⏸️ Chưa bắt đầu. **F-6 là đường găng thật** — câu hỏi pháp lý A-05 đang ở Trợ lý Pháp Lý, chưa có trả lời |
 
 ---
 
@@ -4147,6 +4149,69 @@ Lượt đo đầu **ĐỎ** (2 failed) đúng ở 2 test cũ nói trên; sửa 
 | **F-19** quy trình xử lý sự cố | Tài liệu | GĐ + Pháp Lý |
 | **F-9** rate limit · **F-17** load test | Code + đo | Làm song song được với pilot nội bộ |
 | **F-6** giấy phép VNPAY | Pháp lý | Tách khỏi S9 **nếu** pilot tắt `payment_vnpay` — và việc tắt phải **kiểm bằng lệnh thật**, không tin tài liệu |
+
+---
+
+## 7bn. PILOT DECISION LOCK + F-19 THIẾT KẾ XONG (2026-07-28, Opus)
+
+### Quyết định Chain KHOÁ — chép nguyên trạng, không diễn giải lại
+
+```
+DECISION: Pilot không có thanh toán online
+STATUS:   LOCKED (Chain, 2026-07-28)
+IMPACT:   S9-C OPEN
+IMPACT:   F-6 KHÔNG phải Critical Path của Pilot
+PILOT_PHARMACY: TBD nếu chưa được cung cấp
+F-19:     thiết kế role-based, bind người thật sau
+```
+
+**Phạm vi bị khoá, không được tự mở rộng:** không tích hợp cổng thanh toán · không xử lý
+tiền trực tuyến · không lưu thông tin thẻ/tài khoản · POS chỉ quản lý nghiệp vụ bán hàng
+và trạng thái giao dịch. Thanh toán online là **Future Scope**, **không được** trở thành
+dependency của pilot. Có yêu cầu mới làm đổi quyết định ⇒ **DỪNG, hỏi Chain**, không tự suy diễn.
+
+### Hệ quả lên checklist Sprint 9
+
+| Mục | Trước | Sau |
+|---|---|---|
+| **S9-C** (pilot nhà thuốc thật) | 🚫 chờ F-6 | ✅ **OPEN** |
+| **F-6** giấy phép trung gian thanh toán | 🔴 đường găng | 🔓 **không còn là critical path của pilot** — vẫn mở với Pháp Lý, nhưng cho *Future Scope* |
+| **F-19** | ❌ chưa có | ✅ **thiết kế xong**, `docs/17_INCIDENT_RESPONSE.md` |
+
+**Chặn còn lại để pilot chạy thật: F-8 · F-9 · F-16 · F-17** (+ bảng gắn người của F-19).
+
+### F-19 — thiết kế theo VAI, gắn người sau
+
+Chain đặt đúng ranh giới: `TBD` thông tin nhà thuốc **không được chặn development**. Nên
+tài liệu thiết kế **5 vai** (R1 người trực quầy · R2 quản lý nhà thuốc · R3 trực kỹ thuật ·
+R4 chỉ huy sự cố · R5 đầu mối dữ liệu/pháp lý), rồi để **đúng một bảng** chờ điền người:
+`Vai → Người → Điện thoại → Kênh → Khung trực → Người thay`.
+
+Kịch bản chuẩn **«21:00 — POS chết giữa ca bán»** trả lời đủ 12 câu Chain nêu, dạng bảng
+15 mốc có hạn từng bước. Ba chỗ đáng nêu vì chúng là quyết định thiết kế, không phải mô tả:
+
+| Quyết định | Vì sao |
+|---|---|
+| **R1 chuyển quầy sang giấy NGAY ở T+3′, không xin phép** | Quy trình bắt người bán chờ quyết định trong khi khách đứng trước quầy **sẽ bị bỏ qua ngoài đời** — và quy trình bị bỏ qua tệ hơn không có, vì nó tạo ảo giác đã có quy trình |
+| **R3 (người sửa) KHÔNG được kiêm R4 (chỉ huy) trong P1** | Người đang cắm đầu vào log không phải người nhìn được toàn cảnh. Cùng lý do: người trực tiếp sửa **không tự đóng** sự cố P1 |
+| **SLA đo từ lúc R1 BÁO, không phải lúc R3 đọc được tin** | Đo từ lúc đọc thì **kênh liên lạc hỏng sẽ không bao giờ hiện ra trong số liệu** |
+
+Kênh chính **phải là thứ đổ chuông**, không phải thứ chờ người mở ra xem; kênh dự phòng
+phải **khác hạ tầng** với kênh chính (cùng dùng internet nhà thuốc thì mất mạng là mất cả hai).
+
+**Đối soát (§6) là phần dễ bỏ nhất:** hệ thống chạy lại **không phải** là sự cố đã xong —
+sự cố xong khi **sổ sách khớp**. Thuốc kiểm soát đặc biệt bán trong lúc mất hệ thống
+**bắt buộc** ghi bù vào sổ TT18/2026: nghĩa vụ pháp lý, không phải việc dọn dẹp.
+**Không có mục đối soát tiền trực tuyến** — đúng theo quyết định đã khoá.
+
+### Việc còn lại của riêng F-19
+
+| # | Việc | Chặn gì |
+|---|---|---|
+| 1 | Điền bảng gắn người §3 | 🔴 Chặn **pilot chạy thật**, **không** chặn development |
+| 2 | Chốt nơi lưu hồ sơ Incident | Chặn bước 5 kịch bản |
+| 3 | **Diễn tập một lần** kịch bản §4 trước ngày pilot đầu | 🔴 Quy trình chưa diễn tập là quy trình chưa biết có chạy không — **cùng lý do F-16 đòi restore thật thay vì tài liệu mô tả restore** |
+| 4 | Mẫu phiếu giấy | Chặn bước 3 |
 
 ---
 
