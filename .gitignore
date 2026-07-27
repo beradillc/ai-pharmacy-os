@@ -18,7 +18,10 @@ coverage.xml
 # Env & secrets
 .env
 .env.*
+# Mẫu cấu hình PHẢI vào git — chúng không chứa bí mật, và một môi trường không có
+# file mẫu trong repo là môi trường chỉ dựng lại được bằng trí nhớ của một người.
 !.env.example
+!.env.staging.example
 
 # Node / Frontend
 node_modules/

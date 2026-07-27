@@ -1,0 +1,64 @@
+# AI Pharmacy OS — STAGING: cấu hình GIỐNG PROD, dữ liệu KHÔNG PHẢI của bệnh nhân thật.
+#
+# Vì sao có file này (S9, 2026-07-28): hai mục chặn Sprint 9 còn lại — F-8 (chạy hết
+# trình tự bật mã hoá) và F-17 (đo p95) — đều **không kiểm được trên máy dev**. Bật mã
+# hoá trên CSDL dev rồi tắt đi không chứng minh gì cho prod; đo p95 trên máy đang chạy
+# bộ test ra một con số không dùng được.
+#
+# Nguyên tắc: staging **khác prod đúng hai thứ** — dữ liệu không phải của bệnh nhân
+# thật, và `APP__ENV=staging` thay vì `prod`. Mọi cổng an toàn khác bật y như prod.
+# Staging dễ dãi hơn prod ở chỗ nào thì chỗ đó **không được kiểm chứng ở đâu cả**.
+#
+# Chạy:
+#   cp .env.staging.example .env.staging   # rồi ĐIỀN KHOÁ THẬT, xem chú thích trong file
+#   docker compose -f docker-compose.staging.yml up -d --build
+#   docker compose -f docker-compose.staging.yml exec backend alembic upgrade head
+#
+# ⚠️ Cổng khác hẳn stack dev (5433/6380/8001) để không bao giờ có chuyện gõ nhầm
+# terminal rồi chạy migration staging vào CSDL dev.
+name: pharmacy-os-staging
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: pharma
+      POSTGRES_PASSWORD: ${STAGING_DB_PASSWORD:?phải đặt STAGING_DB_PASSWORD, không dùng mật khẩu dev}
+      POSTGRES_DB: pharmacy_os_staging
+    ports:
+      - "5433:5432"
+    volumes:
+      - staging-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pharma -d pharmacy_os_staging"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - staging-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+    env_file: ./.env.staging
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports:
+      - "8001:8000"
+    restart: unless-stopped
+
+volumes:
+  staging-postgres-data:
+  staging-redis-data:
