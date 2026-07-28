@@ -16,16 +16,19 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pharmacy_os.api.v1.analytics_wiring import DrugNameAdapter
 from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.errors import ConflictError, NotFoundError, PermissionDeniedError
 from pharmacy_os.core.events import InMemoryEventBus
 from pharmacy_os.modules.analytics.application import AnalyticsService
-from pharmacy_os.modules.analytics.domain import DrugSoldQty, SuggestionStatus
+from pharmacy_os.modules.analytics.domain import DrugNameSource, DrugSoldQty, SuggestionStatus
 from pharmacy_os.modules.analytics.infrastructure.repository import (
     SqlAlchemyReorderSuggestionRepository,
 )
+from pharmacy_os.modules.catalog.application import CatalogService, CreateDrugInput
+from pharmacy_os.modules.catalog.domain import RxClass
 
 _TENANT = uuid4()
 _BRANCH = uuid4()
@@ -118,7 +121,7 @@ def _service(
     supplier: _FakeSupplier | None = None,
     draft_count: _FakeDraftPoCount | None = None,
     sink: _FakeDraftPoSink | None = None,
-    drug_names: _FakeDrugNames | None = None,
+    drug_names: DrugNameSource | None = None,
 ) -> AnalyticsService:
     def uow_factory() -> UnitOfWork:
         return SqlAlchemyUnitOfWork(session_factory, event_bus)
@@ -458,3 +461,41 @@ async def test_unresolvable_drug_name_is_none_not_an_error(
     assert len(listed) == 1
     assert listed[0].drug_name is None
     assert listed[0].drug_id == gone
+
+
+async def test_reader_needs_no_catalog_grant_to_see_names(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    catalog_service: CatalogService,
+    ctx: RequestContext,
+) -> None:
+    """The permission half of G-1, proven with the REAL adapter over the REAL catalog.
+
+    Not an e2e test on purpose: every seeded role that carries ``analytics.read`` also
+    carries ``catalog.read``, so going over HTTP could not tell the two apart. Here the
+    caller's context holds ``analytics.read`` and nothing else — if the adapter did not
+    supply its own ``catalog.read``, this raises ``PermissionDeniedError``.
+    """
+    drug = await catalog_service.create_drug(
+        CreateDrugInput(name="Paracetamol 500mg", rx_class=RxClass.OTC, base_unit="viên"), ctx
+    )
+    reader = RequestContext(
+        tenant_id=ctx.tenant_id,
+        branch_id=ctx.branch_id,
+        user_id=uuid4(),
+        permissions=frozenset({"analytics.read", "analytics.reorder.run"}),
+    )
+    svc = _service(
+        session_factory,
+        event_bus,
+        sales=_FakeSales([DrugSoldQty(drug.id, Decimal("90"), Decimal("900000"))]),
+        stock=_FakeStock({drug.id: Decimal("1")}),
+        supplier=_FakeSupplier({drug.id: uuid4()}),
+        drug_names=DrugNameAdapter(catalog_service),
+    )
+
+    await svc.run_reorder(reader)
+    listed = await svc.list_suggestions(reader)
+
+    assert "catalog.read" not in reader.permissions
+    assert [s.drug_name for s in listed] == ["Paracetamol 500mg"]

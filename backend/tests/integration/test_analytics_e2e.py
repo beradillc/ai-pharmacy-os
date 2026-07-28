@@ -230,3 +230,58 @@ def test_cashier_is_refused_analytics(client: TestClient) -> None:
         ).status_code
         == 403
     )
+
+
+# --- G-1 (docs/19): hai màn Sprint 9 phải in TÊN, không in UUID ----------------
+
+
+def _create_drug(client: TestClient, admin: Any, name: str) -> str:
+    r = client.post(
+        "/api/v1/drugs",
+        headers=_auth(admin),
+        json={"name": name, "rx_class": "OTC", "base_unit": "viên"},
+    )
+    assert r.status_code == 201, r.text
+    drug_id: str = r.json()["id"]
+    return drug_id
+
+
+def test_suggestion_and_dashboard_expose_drug_name_over_http(client: TestClient) -> None:
+    """Reads the wired app, not the service: proves the catalog adapter is connected."""
+    admin = _login(client)
+    drug = _create_drug(client, admin, "Amoxicillin 500mg")
+    _supplier_for_drug(client, admin, drug)
+    _receive(client, admin, drug, qty=100)
+    _sell(client, admin, drug, qty=90, price=1000)
+    client.post(_RUN, headers=_auth(admin))
+
+    suggestions = client.get(_SUGGESTIONS, headers=_auth(admin), params={"status": "PENDING"})
+    assert suggestions.status_code == 200, suggestions.text
+    assert suggestions.json()[0]["drug_name"] == "Amoxicillin 500mg"
+
+    today = date.today()
+    dash = client.get(
+        _DASHBOARD,
+        headers=_auth(admin),
+        params={
+            "date_from": (today - timedelta(days=30)).isoformat(),
+            "date_to": today.isoformat(),
+        },
+    )
+    assert dash.status_code == 200, dash.text
+    assert dash.json()["top_drugs"][0]["drug_name"] == "Amoxicillin 500mg"
+
+
+def test_drug_with_no_catalog_row_returns_null_name_not_an_error(client: TestClient) -> None:
+    """Stock can exist for an id catalog never knew (the other tests in this file rely
+    on exactly that). The screen must degrade to a null label, not to a 500."""
+    admin = _login(client)
+    drug = str(uuid4())
+    _supplier_for_drug(client, admin, drug)
+    _receive(client, admin, drug, qty=100)
+    _sell(client, admin, drug, qty=90, price=1000)
+    client.post(_RUN, headers=_auth(admin))
+
+    suggestions = client.get(_SUGGESTIONS, headers=_auth(admin), params={"status": "PENDING"})
+    assert suggestions.status_code == 200, suggestions.text
+    assert suggestions.json()[0]["drug_name"] is None

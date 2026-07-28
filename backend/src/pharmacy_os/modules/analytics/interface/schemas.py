@@ -45,12 +45,16 @@ class SuggestionResponse(BaseModel):
     po_id: UUID | None
     can_materialize: bool
     calculated_at: datetime
+    #: ``null`` when the drug can no longer be resolved — the UI shows the id then,
+    #: rather than the row vanishing.
+    drug_name: str | None
 
     @classmethod
     def of(cls, s: SuggestionOutput) -> SuggestionResponse:
         return cls(
             id=s.id,
             drug_id=s.drug_id,
+            drug_name=s.drug_name,
             avg_daily_velocity=s.avg_daily_velocity,
             reorder_point=s.reorder_point,
             on_hand_at_calc=s.on_hand_at_calc,
@@ -76,10 +80,17 @@ class TopDrugResponse(BaseModel):
     drug_id: UUID
     quantity_sold: Decimal
     revenue: Decimal
+    #: See :attr:`SuggestionResponse.drug_name`.
+    drug_name: str | None
 
     @classmethod
     def of(cls, t: TopDrug) -> TopDrugResponse:
-        return cls(drug_id=t.drug_id, quantity_sold=t.quantity_sold, revenue=t.revenue)
+        return cls(
+            drug_id=t.drug_id,
+            quantity_sold=t.quantity_sold,
+            revenue=t.revenue,
+            drug_name=t.drug_name,
+        )
 
 
 class DashboardResponse(BaseModel):
