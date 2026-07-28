@@ -4929,15 +4929,45 @@ dòng, ghi lại 7 giá trị"* → `--verify` **0 lỗi** → đọc thẳng đ
 `GET /customers` (*"không màn hình nào cần CCCD khi liệt kê khách"*). Đó là đổi **hình dạng API**,
 ngoài phạm vi phát hiện B-06.
 
+#### ✅ B-07 · A-06 cũng đã đóng (28/07, `0b84ade` · `f049858`)
+
+**B-07 — `branch_id ∈ tenant`.** Kiểm toán ký token `tenant=A` + `branch=` chi nhánh của tenant V
+rồi **ghi được hàng tồn kho vào chi nhánh lạ** (201). Ba tầng đều không chặn.
+
+🔴 Điều nguy hiểm **không** phải khả năng khai thác (phải có secret ký) mà là hậu quả **không đảo
+ngược bằng `git revert`**: dòng dữ liệu lai tenant nằm im trong CSDL, **không báo cáo nào hiển thị**
+vì mọi báo cáo đều lọc theo chi nhánh người xem.
+
+Đã kiểm và ghi rõ: **đường cấp token hôm nay đã đúng** — `_load_access` chỉ liệt kê chi nhánh trong
+tenant, `_choose_branch` đòi chi nhánh nằm trong danh sách đó. **Vẫn vá**, vì đó là tính chất của
+*một đường mã nguồn hôm nay*, không phải một **ràng buộc**. `BranchScopeGuard` biến nó thành ràng
+buộc cho mọi đường vào, kể cả đường chưa được viết. Cache theo **cặp đã xác nhận** (cặp hợp lệ thì
+vĩnh viễn hợp lệ); cặp **không** hợp lệ **không bao giờ** được cache — nếu không, một lần tra hụt
+tạm thời sẽ tự khoá mình lại. `get_context` thành async ⇒ `ContextDep` của **10 router** đổi sang
+`Awaitable`; FastAPI tự await nên không route nào phải sửa.
+
+**A-06 — timeout plugin.** Docstring nói `async` *"biến timeout từ nguyện vọng thành thứ cưỡng chế
+được"* — đúng kỹ thuật, nhưng khiến người đọc tin rằng **đã có** timeout, trong khi **không nơi nào**
+gọi `asyncio.wait_for`. `async` làm timeout **khả thi**; nó không tạo ra timeout nào. Trần nay ở
+**người gọi** (`PLUGINS__CALL_TIMEOUT_SECONDS`, mặc định 10 s) — plugin không được tự quyết mình
+được phép treo bao lâu. Thêm `GATEWAY_TIMEOUT`, khác hẳn `GATEWAY_NOT_CONFIGURED`.
+
+#### 🔴 #14 bắt được lỗi trong chính test của tôi — lần thứ hai trong ngày
+
+Test A-06 bản đầu chỉ `pytest.raises(TimeoutError)`. Khi gỡ trần ra để kiểm, nó **treo vô hạn** thay
+vì đỏ — tệ hơn đỏ, vì làm nghẽn cả bộ test mà không nói vì sao. Thêm guard 2 giây của riêng test thì
+sinh vấn đề khác: `TimeoutError` của guard **cũng lọt qua** `pytest.raises` ⇒ **xanh vì lý do sai**.
+
+Bản cuối khẳng định **thời gian trôi**: sản phẩm cắt thì xong trong mili giây; guard của test cắt
+thì mất 2 giây và đỏ kèm đúng thông điệp đó. Đo thật: mutant đỏ sau 2,66 s.
+
 #### Phát hiện kiểm toán còn mở
 
 | Còn mở | Ghi chú |
 |---|---|
-| **B-07** `branch_id ∈ tenant` không ràng buộc ở tầng nào | Cách ly tenant — nên làm tiếp |
 | **B-08** kiểm quyền ở service ⇒ 422 chạy trước 403, lộ schema | |
 | **B-13** token không ràng `sub↔tenant↔branch`, không `jti` | |
 | **A-04** repository `iam` không tenant-scope theo cấu trúc | |
-| **A-06** docstring hứa timeout plugin, không có `asyncio.wait_for` | Sửa docstring hoặc làm thật |
 | **A-08** `demo_preview.py` crash | F-21 |
 | **A-05** VNPAY dùng chung credential | ⏸️ chờ Pháp Lý |
 | Bỏ CCCD khỏi `GET /customers` | Sinh từ B-06 hôm nay |
