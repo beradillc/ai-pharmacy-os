@@ -4589,9 +4589,41 @@ nhận `po_id` **đọc từ chính bản ghi suggestion**, không nhận `po_id
 đang `MATERIALIZED`. Người có `analytics.reorder.run` vì thế huỷ được **đúng đơn mình vừa tạo**,
 không huỷ được gì khác.
 
-### H. Điểm dừng
+### H. ✅ B1 XONG — 1/13 bước (28/07)
 
-Bắt đầu **B1**.
+| Commit | Bước | Nội dung |
+|---|---|---|
+| `569424f` | 1/3 | `catalog`: `DrugRepository.names_by_ids` + `CatalogService.drug_names` — chiếu tên theo **lô id**, 1 truy vấn |
+| `d609ea7` | 2/3 | `analytics`: port `DrugNameSource` + `DrugNameAdapter` ở composition root + enrich `dashboard`/`list_suggestions` |
+| `b20194a` | 3/3 | interface: `drug_name` trong `SuggestionResponse` + `TopDrugResponse` |
+
+**Cổng: chạy `make check` trên cây của TỪNG commit** (không phải chỉ cây cuối), mã thoát ghi
+tường minh theo kỷ luật #8: `MAKE_CHECK_EXIT=0` cả 3 lần · pytest **1051 → 1056 → 1059 → 1062
+passed** + 16 passed (`payment_vnpay`) · mypy 260 file · 18 contract.
+
+#### Ba điều đáng ghi lại từ B1
+
+1. **`drug_name_source` là tham số BẮT BUỘC**, không mặc định `None`. Một nguồn tên vắng mặt lặng
+   lẽ sẽ in UUID lên màn hình mà **không cổng nào đỏ** — đúng hình dạng "niềm tin giả".
+2. **Adapter chạy dưới danh tính hệ thống** ⇒ dược sĩ chỉ có `analytics.read` vẫn thấy tên, không
+   phải cấp `catalog.read` trên toàn bộ danh mục thuốc. Đây là **nửa quyền hạn** của G-1, quan
+   trọng ngang nửa hiệu năng.
+3. 🔴 **Một định lý KHÔNG kiểm được bằng e2e — đã ghi thay vì lờ đi.** Định lý ở điểm 2 không thể
+   chứng minh qua HTTP: **mọi vai seed sẵn mang `analytics.read` đều mang kèm `catalog.read`**, nên
+   test e2e sẽ **xanh vì lý do sai**. Đã **bỏ** test e2e đó và thay bằng test tầng dịch vụ dựng
+   `RequestContext` chỉ có `analytics.*` rồi gọi `DrugNameAdapter` **thật** — không tự cấp quyền
+   thì nổ `PermissionDeniedError`. Bài học: *test xanh vì lý do sai còn tệ hơn không có test*.
+
+#### Phát hiện phụ khi chạy cổng
+
+`docker compose ps` rỗng đầu phiên ⇒ 10 test `tests/concurrency` **fail** (không skip) — đúng thiết
+kế "fail chứ không skip" của F-4. Đã bật Postgres, cổng xanh trở lại. Ghi lại vì §7bs khai staging
+"đang chạy" nhưng thực tế **không container nào sống**.
+
+### I. Điểm dừng
+
+**Còn 12/13 bước.** Kế tiếp: **B2** (tên nhà cung cấp) → **B3** (mã PO tuần tự + test đồng thời) →
+**B4** → **B5** → **F1–F8**.
 
 ---
 
