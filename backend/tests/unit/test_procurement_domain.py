@@ -35,7 +35,13 @@ def _po_item(*, qty: str = "100", price: str = "5000") -> PurchaseOrderItem:
 
 
 def _po(**kw: object) -> PurchaseOrder:
-    return PurchaseOrder(tenant_id=uuid4(), branch_id=uuid4(), supplier_id=uuid4(), **kw)  # type: ignore[arg-type]
+    return PurchaseOrder(
+        tenant_id=uuid4(),
+        branch_id=uuid4(),
+        supplier_id=uuid4(),
+        code="PO-0001",
+        **kw,  # type: ignore[arg-type]
+    )
 
 
 def _grn_item(po_item: PurchaseOrderItem, *, qty: str) -> GoodsReceiptItem:

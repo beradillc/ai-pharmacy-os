@@ -123,23 +123,29 @@ class ProcurementService:
     ) -> PurchaseOrderOutput:
         """Create a DRAFT purchase order, optionally with its initial lines."""
         require_permission(ctx, "procurement.po.create")
-        po = PurchaseOrder(
-            tenant_id=ctx.tenant_id, branch_id=ctx.branch_id, supplier_id=data.supplier_id
-        )
-        try:
-            for item in data.items:
-                po.add_item(
-                    PurchaseOrderItem(
-                        drug_id=item.drug_id,
-                        quantity_ordered=item.quantity_ordered,
-                        unit_price=item.unit_price,
-                    )
-                )
-        except ProcurementError as exc:
-            raise ValidationError(str(exc)) from exc
-
         async with self._uow_factory() as uow:
             repo = self._po_repo_factory(uow, ctx)
+            # Allocated inside the same transaction as the insert: a rollback gives the
+            # number back up (leaving a gap, which is fine) instead of committing a
+            # counter bump for an order that never existed.
+            po = PurchaseOrder(
+                tenant_id=ctx.tenant_id,
+                branch_id=ctx.branch_id,
+                supplier_id=data.supplier_id,
+                code=await repo.next_code(),
+            )
+            try:
+                for item in data.items:
+                    po.add_item(
+                        PurchaseOrderItem(
+                            drug_id=item.drug_id,
+                            quantity_ordered=item.quantity_ordered,
+                            unit_price=item.unit_price,
+                        )
+                    )
+            except ProcurementError as exc:
+                raise ValidationError(str(exc)) from exc
+
             await repo.add(po)
             await uow.commit()
         return PurchaseOrderOutput.of(po)

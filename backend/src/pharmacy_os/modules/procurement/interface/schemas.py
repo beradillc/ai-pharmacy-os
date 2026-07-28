@@ -115,6 +115,9 @@ class PurchaseOrderItemResponse(BaseModel):
 
 class PurchaseOrderResponse(BaseModel):
     id: UUID
+    #: Human-readable order number ("PO-0001"), unique per tenant. This is what a
+    #: pharmacist reads out to a supplier — docs/19 khe hở G-2.
+    code: str
     supplier_id: UUID
     status: str
     items: list[PurchaseOrderItemResponse]
@@ -125,6 +128,7 @@ class PurchaseOrderResponse(BaseModel):
     def of(cls, out: PurchaseOrderOutput) -> PurchaseOrderResponse:
         return cls(
             id=out.id,
+            code=out.code,
             supplier_id=out.supplier_id,
             status=out.status,
             items=[PurchaseOrderItemResponse.of(it) for it in out.items],

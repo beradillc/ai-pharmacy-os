@@ -70,6 +70,7 @@ class PurchaseOrderItemOutput:
 @dataclass(slots=True)
 class PurchaseOrderOutput:
     id: UUID
+    code: str
     supplier_id: UUID
     status: str
     items: list[PurchaseOrderItemOutput]
@@ -80,6 +81,7 @@ class PurchaseOrderOutput:
     def of(cls, po: PurchaseOrder) -> PurchaseOrderOutput:
         return cls(
             id=po.id,
+            code=po.code,
             supplier_id=po.supplier_id,
             status=po.status.value,
             items=[

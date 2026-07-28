@@ -31,6 +31,15 @@ class SupplierRepository(Protocol):
 
 
 class PurchaseOrderRepository(Protocol):
+    async def next_code(self) -> str:
+        """Allocate the tenant's next order number ("PO-0001").
+
+        Must be safe under concurrent creates — two pharmacists pressing "tạo đơn" at
+        once must never receive the same number. Gaps are acceptable (a rolled-back
+        transaction burns a number); collisions are not.
+        """
+        ...
+
     async def add(self, purchase_order: PurchaseOrder) -> None: ...
 
     async def update(self, purchase_order: PurchaseOrder) -> None: ...

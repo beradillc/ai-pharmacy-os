@@ -103,6 +103,10 @@ class PurchaseOrder:
     tenant_id: UUID
     branch_id: UUID
     supplier_id: UUID
+    #: Human-readable order number, unique per tenant ("PO-0001"). Required, not
+    #: optional: an order a pharmacist cannot name over the phone is not finished being
+    #: created. Allocated by the repository's counter — see ``next_code``.
+    code: str
     status: PurchaseOrderStatus = PurchaseOrderStatus.DRAFT
     items: list[PurchaseOrderItem] = field(default_factory=list)
     id: UUID = field(default_factory=uuid4)

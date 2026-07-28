@@ -80,9 +80,12 @@ TRUNCATED_TABLES = (
     "sale_payments",
     "event_outbox",
     "audit_logs",
+    "purchase_orders",
+    "purchase_order_counters",
 )
-"""9 bảng trong phạm vi test đồng thời. ``TRUNCATE`` cả 9 = 362 ms/test (đo
-2026-07-27); ``TRUNCATE`` cả 48 bảng = 946 ms — không cần, nên không làm.
+"""11 bảng trong phạm vi test đồng thời (9 từ F-4, +2 khi B3 thêm cấp phát mã PO).
+``TRUNCATE`` cả 9 = 362 ms/test (đo 2026-07-27); ``TRUNCATE`` cả 48 bảng = 946 ms —
+không cần, nên không làm.
 
 Mẹo "mở giao dịch rồi ``ROLLBACK``" (0,5 ms) **không dùng được ở đây**: hai phiên
 phải nhìn thấy commit của nhau, nên phải commit thật rồi dọn thật."""

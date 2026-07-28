@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
@@ -26,6 +27,7 @@ from pharmacy_os.modules.procurement.infrastructure.mappers import (
 from pharmacy_os.modules.procurement.infrastructure.models import (
     GoodsReceiptItemORM,
     GoodsReceiptORM,
+    PurchaseOrderCounterORM,
     PurchaseOrderItemORM,
     PurchaseOrderORM,
     SupplierORM,
@@ -83,10 +85,58 @@ class SqlAlchemySupplierRepository:
         return {row.id: row.name for row in rows}
 
 
+#: Width of the numeric part of a PO code. Four digits reads well on a screen and over
+#: the phone; the format widens rather than wraps past PO-9999 (``PO-10000``), so the
+#: number stays unique — never reused — which is the only property that matters.
+_PO_CODE_DIGITS = 4
+
+
 class SqlAlchemyPurchaseOrderRepository:
     def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
         self._session = session
         self._ctx = ctx
+
+    async def next_code(self) -> str:
+        """Allocate this tenant's next PO number.
+
+        The arithmetic lives **inside** the ``UPDATE`` (``last_value = last_value + 1``),
+        so the row lock that makes it safe is held by the statement itself — no
+        read-then-write gap for a second transaction to slip into. This is the same
+        shape as the stock fix in F-5 (audit B-01), and it is chosen for the same
+        reason: a SELECT-then-UPDATE here would hand two pharmacists the same order
+        number under exactly the load where it matters.
+
+        The first PO of a tenant has no counter row yet. That insert races too, so a
+        loser sees the unique violation on ``tenant_id`` and simply retries the UPDATE,
+        which by then finds the row the winner created.
+        """
+        for _ in range(2):
+            stmt = (
+                update(PurchaseOrderCounterORM)
+                .where(PurchaseOrderCounterORM.tenant_id == self._ctx.tenant_id)
+                .values(last_value=PurchaseOrderCounterORM.last_value + 1)
+                .returning(PurchaseOrderCounterORM.last_value)
+            )
+            value = (await self._session.execute(stmt)).scalar_one_or_none()
+            if value is not None:
+                return f"PO-{value:0{_PO_CODE_DIGITS}d}"
+
+            savepoint = await self._session.begin_nested()
+            try:
+                self._session.add(
+                    PurchaseOrderCounterORM(tenant_id=self._ctx.tenant_id, last_value=1)
+                )
+                await self._session.flush()
+            except IntegrityError:
+                # Another transaction created the counter first — roll back only this
+                # insert (not the caller's work) and go round to the UPDATE branch.
+                await savepoint.rollback()
+                continue
+            else:
+                await savepoint.commit()
+                return f"PO-{1:0{_PO_CODE_DIGITS}d}"
+
+        raise RuntimeError("Không cấp phát được mã đơn mua sau 2 lần thử")
 
     async def add(self, purchase_order: PurchaseOrder) -> None:
         self._session.add(purchase_order_to_orm(purchase_order))

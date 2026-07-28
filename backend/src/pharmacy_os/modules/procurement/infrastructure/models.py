@@ -13,7 +13,16 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from pharmacy_os.core.db.base import Base, PkUuidMixin, TenantScopedMixin, TimestampMixin
@@ -34,9 +43,32 @@ class SupplierORM(PkUuidMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
+class PurchaseOrderCounterORM(Base):
+    """One row per tenant holding the last purchase-order number handed out.
+
+    A table rather than a database ``SEQUENCE`` on purpose: sequences are global to
+    the database, and this number is **per tenant** — two pharmacies must each start
+    at PO-0001 and never see each other's counter. Allocation is a single
+    ``UPDATE … RETURNING`` so the row lock that makes it safe is held by the statement
+    itself (the technique F-5 proved, PROJECT_STATE §7bk).
+    """
+
+    __tablename__ = "purchase_order_counters"
+
+    tenant_id: Mapped[UUID] = mapped_column(primary_key=True)
+    #: Last number issued. Starts at 1 for a tenant's first PO — never 0, so the value
+    #: read back is always the number actually used.
+    last_value: Mapped[int] = mapped_column(nullable=False)
+
+
 class PurchaseOrderORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
     __tablename__ = "purchase_orders"
+    __table_args__ = (UniqueConstraint("tenant_id", "code", name="uq_po_tenant_code"),)
 
+    #: Human-readable order number, unique per tenant ("PO-0001"). This is the string a
+    #: pharmacist reads out to a supplier over the phone, so it must not be derived from
+    #: the UUID — see docs/19 khe hở G-2.
+    code: Mapped[str] = mapped_column(String(24), nullable=False)
     supplier_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(24), nullable=False)
     ordered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
