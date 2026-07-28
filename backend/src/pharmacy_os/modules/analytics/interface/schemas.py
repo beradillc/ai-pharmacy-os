@@ -48,6 +48,9 @@ class SuggestionResponse(BaseModel):
     #: ``null`` when the drug can no longer be resolved — the UI shows the id then,
     #: rather than the row vanishing.
     drug_name: str | None
+    #: ``null`` both for "chưa có NCC" and for an unresolvable id; ``supplier_id``
+    #: distinguishes the two.
+    supplier_name: str | None
 
     @classmethod
     def of(cls, s: SuggestionOutput) -> SuggestionResponse:
@@ -55,6 +58,7 @@ class SuggestionResponse(BaseModel):
             id=s.id,
             drug_id=s.drug_id,
             drug_name=s.drug_name,
+            supplier_name=s.supplier_name,
             avg_daily_velocity=s.avg_daily_velocity,
             reorder_point=s.reorder_point,
             on_hand_at_calc=s.on_hand_at_calc,

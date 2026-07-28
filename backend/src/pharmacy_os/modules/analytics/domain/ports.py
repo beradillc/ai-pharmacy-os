@@ -71,10 +71,17 @@ class DrugNameSource(Protocol):
 
 
 class SupplierSource(Protocol):
-    """The drug→last-supplier lookup for materialising a draft PO (adapter over
-    procurement). Returns ``None`` for a never-ordered drug."""
+    """Everything analytics needs to know about suppliers (adapter over procurement):
+    which one to order a drug from, and what to call it on screen."""
 
-    async def last_supplier_for_drug(self, tenant_id: UUID, drug_id: UUID) -> UUID | None: ...
+    async def last_supplier_for_drug(self, tenant_id: UUID, drug_id: UUID) -> UUID | None:
+        """Supplier of the drug's most recent placed PO; ``None`` if never ordered."""
+        ...
+
+    async def names_for(self, tenant_id: UUID, supplier_ids: Sequence[UUID]) -> dict[UUID, str]:
+        """Display labels, same contract as :meth:`DrugNameSource.names_for` — bulk,
+        and missing ids omitted rather than raised."""
+        ...
 
 
 class DraftPoCountSource(Protocol):

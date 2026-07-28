@@ -102,10 +102,12 @@ class DrugNameAdapter:
 
 
 class SupplierAdapter:
-    """``SupplierSource`` over ``ProcurementService`` (reads ``procurement.po.read``).
+    """``SupplierSource`` over ``ProcurementService``.
 
-    ``last_supplier_for_drug`` is tenant-wide, so branch is a placeholder (the tenant
-    id) — the same stand-in ``cross_module.py`` uses for branch-less system reads."""
+    Both reads are tenant-wide, so branch is a placeholder (the tenant id) — the same
+    stand-in ``cross_module.py`` uses for branch-less system reads. Each call carries
+    **only** the grant it needs (``procurement.po.read`` to pick a supplier,
+    ``procurement.supplier.read`` to label one), not the union of both."""
 
     def __init__(self, procurement: ProcurementService) -> None:
         self._procurement = procurement
@@ -113,6 +115,10 @@ class SupplierAdapter:
     async def last_supplier_for_drug(self, tenant_id: UUID, drug_id: UUID) -> UUID | None:
         ctx = _ctx(tenant_id, tenant_id, frozenset({"procurement.po.read"}))
         return await self._procurement.last_supplier_for_drug(drug_id, ctx)
+
+    async def names_for(self, tenant_id: UUID, supplier_ids: Sequence[UUID]) -> dict[UUID, str]:
+        ctx = _ctx(tenant_id, tenant_id, frozenset({"procurement.supplier.read"}))
+        return await self._procurement.supplier_names(supplier_ids, ctx)
 
 
 class DraftPoCountAdapter:

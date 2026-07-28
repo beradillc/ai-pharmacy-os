@@ -258,6 +258,7 @@ def test_suggestion_and_dashboard_expose_drug_name_over_http(client: TestClient)
     suggestions = client.get(_SUGGESTIONS, headers=_auth(admin), params={"status": "PENDING"})
     assert suggestions.status_code == 200, suggestions.text
     assert suggestions.json()[0]["drug_name"] == "Amoxicillin 500mg"
+    assert suggestions.json()[0]["supplier_name"] == "NCC Chính"
 
     today = date.today()
     dash = client.get(

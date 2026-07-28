@@ -63,11 +63,17 @@ class _FakeStock:
 
 
 class _FakeSupplier:
-    def __init__(self, mapping: dict[UUID, UUID]) -> None:
+    def __init__(self, mapping: dict[UUID, UUID], names: dict[UUID, str] | None = None) -> None:
         self.mapping = mapping
+        self.names = names or {}
+        self.name_calls: list[list[UUID]] = []
 
     async def last_supplier_for_drug(self, tenant_id: UUID, drug_id: UUID) -> UUID | None:
         return self.mapping.get(drug_id)
+
+    async def names_for(self, tenant_id: UUID, supplier_ids: Sequence[UUID]) -> dict[UUID, str]:
+        self.name_calls.append(list(supplier_ids))
+        return {i: self.names[i] for i in supplier_ids if i in self.names}
 
 
 class _FakeDraftPoCount:
@@ -499,3 +505,76 @@ async def test_reader_needs_no_catalog_grant_to_see_names(
 
     assert "catalog.read" not in reader.permissions
     assert [s.drug_name for s in listed] == ["Paracetamol 500mg"]
+
+
+async def test_suggestion_carries_supplier_name_and_looks_it_up_in_bulk(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    a, b = uuid4(), uuid4()
+    sup = uuid4()
+    supplier = _FakeSupplier({a: sup, b: sup}, names={sup: "Dược Hậu Giang"})
+    svc = _service(
+        session_factory,
+        event_bus,
+        sales=_FakeSales(
+            [
+                DrugSoldQty(a, Decimal("90"), Decimal("900000")),
+                DrugSoldQty(b, Decimal("90"), Decimal("900000")),
+            ]
+        ),
+        stock=_FakeStock({a: Decimal("1"), b: Decimal("1")}),
+        supplier=supplier,
+    )
+
+    await svc.run_reorder(_ctx("analytics.reorder.run"))
+    supplier.name_calls.clear()
+    listed = await svc.list_suggestions(_ctx("analytics.read"))
+
+    assert [s.supplier_name for s in listed] == ["Dược Hậu Giang", "Dược Hậu Giang"]
+    assert len(supplier.name_calls) == 1
+
+
+async def test_suggestion_with_no_supplier_has_no_supplier_name(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    """ "Chưa có NCC" (docs/19 §5): the row still renders, both id and label empty."""
+    thin = uuid4()
+    svc = _service(
+        session_factory,
+        event_bus,
+        sales=_FakeSales([DrugSoldQty(thin, Decimal("2"), Decimal("20000"))]),  # < threshold
+        stock=_FakeStock({thin: Decimal("0")}),
+        supplier=_FakeSupplier({}),
+    )
+
+    await svc.run_reorder(_ctx("analytics.reorder.run"))
+    listed = await svc.list_suggestions(_ctx("analytics.read"))
+
+    assert len(listed) == 1
+    assert listed[0].supplier_id is None
+    assert listed[0].supplier_name is None
+    assert listed[0].can_materialize is False
+
+
+async def test_dismiss_response_carries_labels_too(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    """One field must not mean "unresolvable" on one endpoint and "not looked up" on
+    another — that ambiguity is what makes a UI print "—" for a drug with a real name."""
+    drug, sup = uuid4(), uuid4()
+    svc = _service(
+        session_factory,
+        event_bus,
+        sales=_FakeSales([DrugSoldQty(drug, Decimal("90"), Decimal("900000"))]),
+        stock=_FakeStock({drug: Decimal("1")}),
+        supplier=_FakeSupplier({drug: sup}, names={sup: "Traphaco"}),
+        drug_names=_FakeDrugNames({drug: "Amoxicillin 500mg"}),
+    )
+    run = _ctx("analytics.reorder.run")
+    await svc.run_reorder(run)
+    sug = (await svc.list_suggestions(_ctx("analytics.read")))[0]
+
+    dismissed = await svc.dismiss(sug.id, run)
+
+    assert dismissed.drug_name == "Amoxicillin 500mg"
+    assert dismissed.supplier_name == "Traphaco"

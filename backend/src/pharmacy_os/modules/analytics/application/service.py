@@ -158,15 +158,27 @@ class AnalyticsService:
         """List a branch's reorder suggestions, optionally by status. Requires
         ``analytics.read``.
 
-        Drug names are resolved in **one** extra lookup for the whole page, not one per
-        row (docs/19 khe hở G-1)."""
+        Labels cost **two** lookups for the whole page — one for drugs, one for suppliers
+        — never one per row (docs/19 khe hở G-1)."""
         require_permission(ctx, "analytics.read")
         target = branch_id if branch_id is not None else ctx.branch_id
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)
             items = await repo.list_by_branch(ctx.tenant_id, target, status=status)
-        names = await self._drug_names.names_for(ctx.tenant_id, [s.drug_id for s in items])
-        return [SuggestionOutput.of(s, drug_name=names.get(s.drug_id)) for s in items]
+        drug_names = await self._drug_names.names_for(ctx.tenant_id, [s.drug_id for s in items])
+        supplier_names = await self._supplier.names_for(
+            ctx.tenant_id, [s.supplier_id for s in items if s.supplier_id is not None]
+        )
+        return [
+            SuggestionOutput.of(
+                s,
+                drug_name=drug_names.get(s.drug_id),
+                supplier_name=(
+                    supplier_names.get(s.supplier_id) if s.supplier_id is not None else None
+                ),
+            )
+            for s in items
+        ]
 
     async def materialize(self, suggestion_id: UUID, ctx: RequestContext) -> MaterializeOutput:
         """Turn a PENDING suggestion into a DRAFT purchase order via procurement
@@ -207,7 +219,12 @@ class AnalyticsService:
         return MaterializeOutput(suggestion_id=suggestion_id, po_id=po_id)
 
     async def dismiss(self, suggestion_id: UUID, ctx: RequestContext) -> SuggestionOutput:
-        """Dismiss a non-terminal suggestion. Requires ``analytics.reorder.run``."""
+        """Dismiss a non-terminal suggestion. Requires ``analytics.reorder.run``.
+
+        Labels are resolved here too, cheap as it is for one row: otherwise ``drug_name
+        = None`` would mean "unresolvable" on the list endpoint and "never looked up"
+        here, and one field with two meanings is how a UI ends up printing "—" for a
+        drug that has a perfectly good name."""
         require_permission(ctx, "analytics.reorder.run")
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)
@@ -226,7 +243,7 @@ class AnalyticsService:
         await self._record(
             ctx, AuditAction.ANALYTICS_SUGGESTION_DISMISSED, "reorder_suggestion", suggestion_id
         )
-        return SuggestionOutput.of(suggestion)
+        return await self._with_labels(ctx, suggestion)
 
     async def dashboard(
         self,
@@ -275,6 +292,21 @@ class AnalyticsService:
             near_expiry_count=near_expiry,
             low_stock_count=low_stock,
             draft_po_count=draft_po,
+        )
+
+    async def _with_labels(
+        self, ctx: RequestContext, suggestion: ReorderSuggestion
+    ) -> SuggestionOutput:
+        """Attach drug/supplier display names to a single suggestion."""
+        drug_names = await self._drug_names.names_for(ctx.tenant_id, [suggestion.drug_id])
+        supplier_name = None
+        if suggestion.supplier_id is not None:
+            supplier_names = await self._supplier.names_for(ctx.tenant_id, [suggestion.supplier_id])
+            supplier_name = supplier_names.get(suggestion.supplier_id)
+        return SuggestionOutput.of(
+            suggestion,
+            drug_name=drug_names.get(suggestion.drug_id),
+            supplier_name=supplier_name,
         )
 
     async def _record(

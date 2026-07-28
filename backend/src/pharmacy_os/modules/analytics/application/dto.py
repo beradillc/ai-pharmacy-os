@@ -26,9 +26,19 @@ class SuggestionOutput:
     #: Display label resolved from catalog. ``None`` means "not resolvable" (drug gone),
     #: never "not looked up" — the service always attempts the lookup.
     drug_name: str | None = None
+    #: Display label for :attr:`supplier_id`. ``None`` both when there is no supplier yet
+    #: ("chưa có NCC") and when the id no longer resolves — the UI tells them apart by
+    #: looking at ``supplier_id`` itself.
+    supplier_name: str | None = None
 
     @classmethod
-    def of(cls, s: ReorderSuggestion, *, drug_name: str | None = None) -> SuggestionOutput:
+    def of(
+        cls,
+        s: ReorderSuggestion,
+        *,
+        drug_name: str | None = None,
+        supplier_name: str | None = None,
+    ) -> SuggestionOutput:
         return cls(
             id=s.id,
             drug_id=s.drug_id,
@@ -42,6 +52,7 @@ class SuggestionOutput:
             can_materialize=s.can_materialize,
             calculated_at=s.calculated_at,
             drug_name=drug_name,
+            supplier_name=supplier_name,
         )
 
 
