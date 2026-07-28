@@ -16,7 +16,7 @@ from pharmacy_os.core.config import Settings
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.http import client_ip_of
 from pharmacy_os.core.security import RateLimiter, RateLimitRule
-from pharmacy_os.modules.iam.application import AuthService, IamService
+from pharmacy_os.modules.iam.application import AuthService, IamService, StepUpResult
 from pharmacy_os.modules.iam.interface.schemas import (
     AssignRoleRequest,
     ChangePasswordRequest,
@@ -25,10 +25,12 @@ from pharmacy_os.modules.iam.interface.schemas import (
     MeResponse,
     RefreshRequest,
     ResetPasswordRequest,
+    ResetTwoFactorRequest,
     RoleAssignmentResponse,
     RoleResponse,
     SessionResponse,
     SetUserActiveRequest,
+    StepUpFields,
     SwitchBranchRequest,
     TwoFactorActivateResponse,
     TwoFactorCodeRequest,
@@ -192,6 +194,31 @@ def build_auth_router(get_context: ContextDep) -> APIRouter:
     return router
 
 
+#: Thông điệp 403 khi step-up trượt. Cố ý KHÔNG nói trượt vì mật khẩu hay vì mã —
+#: người bấm hợp lệ biết mình vừa nhập gì, còn kẻ dò thì không nên được kể thêm.
+_STEP_UP_DENIED = "Xác thực lại thất bại — thao tác này cần mật khẩu và mã 2FA của chính bạn"
+
+
+async def _require_step_up(auth: AuthService, ctx: RequestContext, body: StepUpFields) -> None:
+    """Chặn thao tác cho tới khi người GỌI chứng minh lại danh tính (audit B-05).
+
+    Vì sao hai endpoint hạ phòng thủ của người khác lại cần chính cơ chế đó: chuỗi tấn
+    công kiểm toán dựng ra chỉ cần **một phiên đang mở** của tài khoản có
+    ``iam.user.write`` — máy quầy bỏ trống, đúng mối đe doạ mà step-up sinh ra để chống.
+    Từ đó: gỡ 2FA của dược sĩ → đặt lại mật khẩu của họ → đăng nhập như họ, **không còn
+    yếu tố thứ hai** → ký sổ kiểm soát đặc biệt. Bảo đảm của TT18 Điều 15.1.d khi đó
+    rút xuống thành "tin phiên đăng nhập của quản trị viên".
+
+    Lệnh break-glass ở máy chủ (``seeds.reset_two_factor``) vẫn KHÔNG cần step-up, và
+    đó không phải mâu thuẫn: ai chạy được nó đã có credential CSDL. Lập luận ấy đúng cho
+    CLI và **không** áp dụng cho một endpoint chỉ cần access token — §7bb đã dùng nhầm
+    nó cho cả hai.
+    """
+    result = await auth.verify_step_up(ctx, body.current_password, body.totp_code)
+    if result is not StepUpResult.OK:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_STEP_UP_DENIED)
+
+
 def build_admin_router(get_context: ContextDep) -> APIRouter:
     router = APIRouter(tags=["iam"])
 
@@ -235,15 +262,21 @@ def build_admin_router(get_context: ContextDep) -> APIRouter:
         user_id: UUID,
         body: ResetPasswordRequest,
         service: IamService = Depends(_iam),
+        auth: AuthService = Depends(_auth),
         ctx: RequestContext = Depends(get_context),
     ) -> Response:
+        """Đặt lại mật khẩu người khác. Đòi step-up của **người gọi** — xem
+        :func:`_require_step_up`: đây là bước thứ hai của chuỗi tấn công B-05."""
+        await _require_step_up(auth, ctx, body)
         await service.reset_password(user_id, body.new_password, ctx)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @router.post("/users/{user_id}/2fa/reset", status_code=status.HTTP_204_NO_CONTENT)
     async def reset_two_factor(
         user_id: UUID,
+        body: ResetTwoFactorRequest,
         service: IamService = Depends(_iam),
+        auth: AuthService = Depends(_auth),
         ctx: RequestContext = Depends(get_context),
     ) -> Response:
         """Clear another user's second factor after they lost their device.
@@ -255,7 +288,12 @@ def build_admin_router(get_context: ContextDep) -> APIRouter:
         Cannot rescue the last remaining administrator — nobody would hold the
         permission to call it. That case is covered by the server-side break-glass
         command (``python -m seeds.reset_two_factor``), not by this endpoint.
+
+        Đòi **step-up của người gọi** kể từ 2026-07-28 (audit B-05): trước đó endpoint
+        này gỡ được yếu tố thứ hai của người khác mà không cần yếu tố thứ hai nào của
+        chính mình — yếu hơn hẳn thứ nó đang bảo vệ.
         """
+        await _require_step_up(auth, ctx, body)
         await service.reset_two_factor(user_id, ctx)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 

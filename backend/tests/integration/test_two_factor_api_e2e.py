@@ -377,7 +377,11 @@ def test_an_admin_can_reset_another_users_two_factor(client: TestClient) -> None
         json={"email": "ds@bera.vn", "password": STAFF_PASSWORD, "full_name": "Dược Sĩ"},
     ).json()["id"]
 
-    r = client.post(f"/api/v1/users/{user_id}/2fa/reset", headers=_auth(admin))
+    r = client.post(
+        f"/api/v1/users/{user_id}/2fa/reset",
+        headers=_auth(admin),
+        json={"current_password": ADMIN_PASSWORD},
+    )
     assert r.status_code == 204
 
 
@@ -397,5 +401,77 @@ def test_a_cashier_cannot_reset_someone_elses_two_factor(client: TestClient) -> 
     )
     cashier = _login(client, "tn2@bera.vn", STAFF_PASSWORD)
 
-    r = client.post(f"/api/v1/users/{user_id}/2fa/reset", headers=_auth(cashier))
+    r = client.post(
+        f"/api/v1/users/{user_id}/2fa/reset",
+        headers=_auth(cashier),
+        json={"current_password": STAFF_PASSWORD},
+    )
     assert r.status_code == 403
+
+
+# --- B-05: hạ phòng thủ của người khác phải qua chính cơ chế đó ---------------
+
+
+def test_reset_two_factor_refuses_without_step_up(client: TestClient) -> None:
+    """Chuỗi tấn công B-05 bắt đầu ở đây: chiếm một phiên ĐANG MỞ của tài khoản có
+    `iam.user.write` (máy quầy bỏ trống) rồi gỡ 2FA của dược sĩ mà không phải chứng
+    minh lại gì. Nay thân yêu cầu thiếu step-up ⇒ 422; sai mật khẩu ⇒ 403."""
+    admin = _login(client)
+    user_id = client.post(
+        "/api/v1/users",
+        headers=_auth(admin),
+        json={"email": "ds2@bera.vn", "password": STAFF_PASSWORD, "full_name": "Dược Sĩ"},
+    ).json()["id"]
+
+    no_body = client.post(f"/api/v1/users/{user_id}/2fa/reset", headers=_auth(admin))
+    assert no_body.status_code == 422, no_body.text
+
+    wrong = client.post(
+        f"/api/v1/users/{user_id}/2fa/reset",
+        headers=_auth(admin),
+        json={"current_password": "SaiMatKhau2026"},
+    )
+    assert wrong.status_code == 403, wrong.text
+
+
+def test_reset_password_refuses_without_step_up(client: TestClient) -> None:
+    """Bước thứ hai của cùng chuỗi tấn công — gỡ 2FA xong thì đặt lại mật khẩu."""
+    admin = _login(client)
+    user_id = client.post(
+        "/api/v1/users",
+        headers=_auth(admin),
+        json={"email": "ds3@bera.vn", "password": STAFF_PASSWORD, "full_name": "Dược Sĩ"},
+    ).json()["id"]
+
+    wrong = client.post(
+        f"/api/v1/users/{user_id}/reset-password",
+        headers=_auth(admin),
+        json={"new_password": "MatKhauMoi2026", "current_password": "SaiMatKhau2026"},
+    )
+    assert wrong.status_code == 403, wrong.text
+
+    ok = client.post(
+        f"/api/v1/users/{user_id}/reset-password",
+        headers=_auth(admin),
+        json={"new_password": "MatKhauMoi2026", "current_password": ADMIN_PASSWORD},
+    )
+    assert ok.status_code == 204, ok.text
+
+
+def test_step_up_error_does_not_say_which_factor_failed(client: TestClient) -> None:
+    """Người bấm hợp lệ biết mình vừa nhập gì; kẻ dò thì không nên được kể thêm."""
+    admin = _login(client)
+    user_id = client.post(
+        "/api/v1/users",
+        headers=_auth(admin),
+        json={"email": "ds4@bera.vn", "password": STAFF_PASSWORD, "full_name": "Dược Sĩ"},
+    ).json()["id"]
+
+    r = client.post(
+        f"/api/v1/users/{user_id}/2fa/reset",
+        headers=_auth(admin),
+        json={"current_password": "SaiMatKhau2026"},
+    )
+
+    detail = r.json()["detail"].lower()
+    assert "mật khẩu" in detail and "mã 2fa" in detail  # nói cần cả hai, không nói cái nào sai

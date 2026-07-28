@@ -45,6 +45,11 @@ _EXEMPT: dict[str, str] = {
     "ChangePasswordRequest.new_password": "chỉ đi vào bcrypt",
     "SignLedgerBookRequest.current_password": "chỉ đi vào bcrypt (re-auth ký sổ, bước 6 TT18)",
     "TwoFactorDisableRequest.current_password": "chỉ đi vào bcrypt (tắt 2FA đòi cả 2 yếu tố)",
+    # Step-up trước khi hạ phòng thủ của NGƯỜI KHÁC (audit B-05). Cùng lý do: mật khẩu
+    # chỉ đi vào bcrypt để so sánh, không xuống cột nào.
+    "StepUpFields.current_password": "chỉ đi vào bcrypt (step-up B-05)",
+    "ResetTwoFactorRequest.current_password": "chỉ đi vào bcrypt (step-up B-05)",
+    "ResetPasswordRequest.current_password": "chỉ đi vào bcrypt (step-up B-05)",
     "RefreshRequest.refresh_token": "chỉ đi vào sha256",
     "SwitchBranchRequest.refresh_token": "chỉ đi vào sha256",
     # Chỉ đi vào sha256 rồi tra theo `token_hash` (cột varchar(64) lưu bản băm, không

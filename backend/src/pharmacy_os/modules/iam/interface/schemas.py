@@ -126,8 +126,34 @@ class SetUserActiveRequest(BaseModel):
     active: bool
 
 
-class ResetPasswordRequest(BaseModel):
+class StepUpFields(BaseModel):
+    """Xác thực lại ngay trước một thao tác nhạy cảm (audit B-05).
+
+    Vì sao là **thân yêu cầu** chứ không phải header: mật khẩu không được nằm trong
+    header — header hay bị ghi lại nguyên văn ở proxy và log truy cập, đúng chỗ mà
+    `APP__DEBUG` (audit B-03) vừa bị siết vì lý do y hệt.
+    """
+
+    current_password: str = Field(min_length=1)
+    totp_code: str | None = Field(
+        default=None,
+        min_length=6,
+        max_length=32,
+        description="Mã xác thực hai lớp hoặc mã dự phòng; bắt buộc nếu tài khoản đã bật 2FA",
+    )
+    """Bắt buộc khi tài khoản người GỌI đang bật 2FA. Không phải mã của người bị thao
+    tác — step-up chứng minh *ai đang bấm*, không chứng minh gì về nạn nhân.
+
+    Cùng ràng buộc độ dài với ``SignLedgerBookRequest.totp_code``: cả hai nhận TOTP lẫn
+    mã dự phòng, và người đọc mã trên giấy không phải chọn đúng ô."""
+
+
+class ResetPasswordRequest(StepUpFields):
     new_password: str = Field(min_length=MIN_PASSWORD_LENGTH)
+
+
+class ResetTwoFactorRequest(StepUpFields):
+    """Không có trường nào ngoài step-up — thân yêu cầu tồn tại chỉ để mang nó."""
 
 
 class ChangePasswordRequest(BaseModel):
