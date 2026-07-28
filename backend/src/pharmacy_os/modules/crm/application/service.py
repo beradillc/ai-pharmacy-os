@@ -77,7 +77,7 @@ class CrmService:
                 dob=data.dob,
                 gender=data.gender,
                 weight_kg=data.weight_kg,
-                national_id_hash=data.national_id_hash,
+                national_id=data.national_id,
             )
         except CrmError as exc:
             raise ValidationError(str(exc)) from exc

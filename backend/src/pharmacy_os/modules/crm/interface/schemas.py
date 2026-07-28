@@ -28,7 +28,7 @@ class CreateCustomerRequest(BaseModel):
     dob: date | None = None
     gender: str | None = Field(default=None, max_length=16)
     weight_kg: Decimal | None = Field(default=None, gt=0)
-    national_id_hash: str | None = Field(default=None, max_length=128)
+    national_id: str | None = Field(default=None, max_length=128)
 
     def to_input(self) -> CreateCustomerInput:
         return CreateCustomerInput(
@@ -37,7 +37,7 @@ class CreateCustomerRequest(BaseModel):
             dob=self.dob,
             gender=self.gender,
             weight_kg=self.weight_kg,
-            national_id_hash=self.national_id_hash,
+            national_id=self.national_id,
         )
 
 
@@ -155,7 +155,7 @@ class CustomerResponse(BaseModel):
     dob: date | None
     gender: str | None
     weight_kg: Decimal | None
-    national_id_hash: str | None
+    national_id: str | None
     allergies: list[AllergyResponse]
     conditions: list[ConditionResponse]
     history: list[MedicationHistoryResponse]
@@ -172,7 +172,7 @@ class CustomerResponse(BaseModel):
             dob=out.dob,
             gender=out.gender,
             weight_kg=out.weight_kg,
-            national_id_hash=out.national_id_hash,
+            national_id=out.national_id,
             allergies=[
                 AllergyResponse(
                     id=a.id, ingredient_id=a.ingredient_id, severity=a.severity, note=a.note

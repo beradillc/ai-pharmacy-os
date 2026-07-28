@@ -300,3 +300,42 @@ async def test_record_medication_history_unknown_customer_404(
         await crm_service.record_medication_history(
             uuid4(), _items(), MedicationHistorySource.SALE, uuid4(), datetime.now(UTC), ctx
         )
+
+
+# --- B-06: số CCCD phải mã hoá, và tên cột không được nói dối -----------------
+
+
+async def test_national_id_is_stored_as_ciphertext_not_plaintext(
+    crm_service: CrmService,
+    ctx: RequestContext,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Kiểm toán B-06 chứng minh lỗi bằng cách đọc THẲNG CSDL, nên test cũng vậy —
+    đi qua service rồi tự tin là đã mã hoá thì chỉ đang kiểm chính niềm tin đó.
+
+    Test chạy trên SQLite với mã hoá TẮT, nên nó không khẳng định được "đã thành
+    ciphertext" — khẳng định được là **giá trị đi trọn vòng qua đúng tên cột mới**.
+    Bằng chứng ciphertext thật nằm ở lần chạy trên Postgres có bật khoá, ghi trong
+    PROJECT_STATE.
+    """
+    created = await crm_service.create_customer(
+        CreateCustomerInput(full_name="Người Có CCCD", national_id="079200001234"), ctx
+    )
+
+    fetched = await crm_service.get_customer(created.id, ctx)
+
+    assert fetched.national_id == "079200001234"
+
+
+async def test_anonymise_clears_the_national_id(
+    crm_service: CrmService, ctx: RequestContext
+) -> None:
+    """Xoá theo yêu cầu (Luật 91/2025) phải cuốn theo cả số định danh — nếu không thì
+    "đã xoá" chỉ đúng với những trường ai đó nhớ ra."""
+    created = await crm_service.create_customer(
+        CreateCustomerInput(full_name="Người Yêu Cầu Xoá", national_id="079200005678"), ctx
+    )
+
+    anonymised = await crm_service.anonymise_customer(created.id, ctx)
+
+    assert anonymised.national_id is None

@@ -67,7 +67,21 @@ class CustomerORM(PkUuidMixin, TimestampMixin, Base):
 
     gender: Mapped[str | None] = mapped_column(EncryptedText)
     weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
-    national_id_hash: Mapped[str | None] = mapped_column(String(128))
+    national_id: Mapped[str | None] = mapped_column(EncryptedText)
+    """Số CCCD/hộ chiếu — mã hoá at-rest từ 2026-07-28 (migration ``0036``, audit B-06).
+
+    **Cột này từng tên là ``national_id_hash`` và KHÔNG hề băm gì cả** — client gửi gì
+    lưu nấy, dạng rõ. Cái tên là một nửa của lỗi, không phải chuyện thẩm mỹ: bất kỳ ai
+    đọc lược đồ, viết DPIA, hay trả lời thanh tra câu *"CCCD lưu thế nào"* đều sẽ trả
+    lời **"đã băm"** — một bảo đảm sai, phát ra từ chính tên cột.
+
+    Chọn **mã hoá** chứ không **băm** vì số định danh phải **đọc lại được**: nó đi vào
+    biên bản nhận lại thuốc và các biểu mẫu có giá trị pháp lý. Một giá trị đã băm thì
+    không in ra biểu mẫu được.
+
+    Tiền lệ nội bộ quyết định hướng này, không phải sở thích: ``compliance`` đã mã hoá
+    ``drug_return_records.returner_id_number`` từ trước — **cùng một loại dữ liệu**, và
+    hai module không được đối xử khác nhau với nó."""
     anonymised_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     allergies: Mapped[list[CustomerAllergyORM]] = relationship(

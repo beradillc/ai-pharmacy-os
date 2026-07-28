@@ -39,7 +39,7 @@ def to_domain(row: CustomerORM) -> Customer:
         dob=row.dob,
         gender=row.gender,
         weight_kg=row.weight_kg,
-        national_id_hash=row.national_id_hash,
+        national_id=row.national_id,
         anonymised_at=_as_utc(row.anonymised_at),
     )
     customer.allergies = [
@@ -89,7 +89,7 @@ def to_orm(customer: Customer, tenant_id: UUID) -> CustomerORM:
         dob=customer.dob,
         gender=customer.gender,
         weight_kg=customer.weight_kg,
-        national_id_hash=customer.national_id_hash,
+        national_id=customer.national_id,
         anonymised_at=customer.anonymised_at,
         consents=[
             CustomerConsentORM(

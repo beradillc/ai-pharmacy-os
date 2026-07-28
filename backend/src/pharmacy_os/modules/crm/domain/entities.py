@@ -154,7 +154,7 @@ class Customer:
     dob: date | None = None
     gender: str | None = None
     weight_kg: Decimal | None = None
-    national_id_hash: str | None = None
+    national_id: str | None = None
     id: UUID = field(default_factory=uuid4)
     allergies: list[Allergy] = field(default_factory=list)
     conditions: list[Condition] = field(default_factory=list)
@@ -243,7 +243,7 @@ class Customer:
         self.dob = None
         self.gender = None
         self.weight_kg = None
-        self.national_id_hash = None
+        self.national_id = None
         self.allergies.clear()
         self.conditions.clear()
         self.anonymised_at = now

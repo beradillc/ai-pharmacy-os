@@ -109,7 +109,7 @@ TARGETS: tuple[_Target, ...] = (
     ),
     _Target(
         CustomerORM,
-        ("full_name", "phone", "gender"),
+        ("full_name", "phone", "gender", "national_id"),
         fingerprints=(("phone", "phone_fingerprint"),),
     ),
     _Target(CustomerAllergyORM, ("note",)),

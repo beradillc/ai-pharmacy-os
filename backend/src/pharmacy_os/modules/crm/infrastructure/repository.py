@@ -107,7 +107,7 @@ class SqlAlchemyCustomerRepository:
         row.dob = customer.dob
         row.gender = customer.gender
         row.weight_kg = customer.weight_kg
-        row.national_id_hash = customer.national_id_hash
+        row.national_id = customer.national_id
         row.anonymised_at = customer.anonymised_at
 
         # Anonymisation empties these collections; the id-diff below is insert-only,

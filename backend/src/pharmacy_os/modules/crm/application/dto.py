@@ -22,7 +22,7 @@ class CreateCustomerInput:
     dob: date | None = None
     gender: str | None = None
     weight_kg: Decimal | None = None
-    national_id_hash: str | None = None
+    national_id: str | None = None
 
 
 @dataclass(slots=True)
@@ -126,7 +126,7 @@ class CustomerOutput:
     dob: date | None
     gender: str | None
     weight_kg: Decimal | None
-    national_id_hash: str | None
+    national_id: str | None
     allergies: list[AllergyOutput]
     conditions: list[ConditionOutput]
     history: list[MedicationHistoryOutput]
@@ -156,7 +156,7 @@ class CustomerOutput:
             dob=customer.dob,
             gender=customer.gender,
             weight_kg=customer.weight_kg,
-            national_id_hash=customer.national_id_hash,
+            national_id=customer.national_id,
             allergies=[]
             if not include_sensitive
             else [

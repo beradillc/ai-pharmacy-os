@@ -280,14 +280,14 @@ def test_revoking_consent_does_not_silently_delete_existing_data() -> None:
 
 
 def test_anonymise_strips_identity_and_health_data() -> None:
-    c = _customer(phone="0900000000", national_id_hash="hash", weight_kg=Decimal("60"))
+    c = _customer(phone="0900000000", national_id="hash", weight_kg=Decimal("60"))
     c.add_allergy(Allergy(ingredient_id=uuid4(), severity=AllergySeverity.SEVERE))
     c.add_condition(Condition(condition_code="E11"))
 
     c.anonymise(NOW)
 
     assert c.full_name == ANONYMISED_NAME
-    assert (c.phone, c.dob, c.gender, c.weight_kg, c.national_id_hash) == (
+    assert (c.phone, c.dob, c.gender, c.weight_kg, c.national_id) == (
         None,
         None,
         None,
