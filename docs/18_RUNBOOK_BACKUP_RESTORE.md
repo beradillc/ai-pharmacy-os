@@ -102,7 +102,7 @@ script không ai biết nó đã chết từ bao giờ.
 
 | Nợ | Vì sao chưa làm |
 |---|---|
-| 🔴 **Dead-man's switch** — thứ theo dõi **ngoài cron** kiểm bản mới nhất không cũ quá 1 giờ | **Cron im lặng khi script không chạy được** (sai đường dẫn, docker chưa lên, hết đĩa). Lúc đó *"không có cảnh báo"* trông **giống hệt** *"backup thành công"* — đúng dạng niềm tin giả cả đợt kiểm toán đang sửa. Cần hạ tầng giám sát, thuộc F-18 |
+| ✅ **Dead-man's switch** | **ĐÃ CÓ (2026-07-28)** — `scripts/backup_deadman.sh`, chạy lệch 15 phút (`15 * * * *`) so với backup. Script **riêng** chứ không thêm vào `backup_verify.sh`: thứ giám sát nằm bên trong thứ nó giám sát thì im lặng cùng lúc với nó. Chỉ nhìn dấu vết trên đĩa, kiểm 3 điều theo thứ tự nghiêm trọng — chưa có bản nào · bản mới nhất quá cũ (>90 phút = RPO 1 giờ + dung sai) · bản mới nhất rỗng bất thường. **Đã kiểm chứng 5/5 ca theo kỷ luật #14** (4 ca hỏng đỏ đúng chỗ, 1 ca hợp lệ xanh) — và chính lần kiểm đó **bắt được một bug thật**: `local msg="…$msg"` tự tham chiếu dưới `set -u` làm cảnh báo mất sạch nội dung trong khi mã thoát vẫn đúng bằng 1. ⚠️ Giới hạn khai rõ: chạy bằng cron thì **chính nó cũng im lặng được** — đặt `PING_URL` trỏ vào dịch vụ ngoài (healthchecks.io/Uptime Kuma) mới đóng hẳn lỗ hổng |
 | Diễn tập ở quy mô thật (CSDL **GB**, không phải 12 MB) | Chưa có deployment thật. **2 giây không suy ra được** thời gian khôi phục ở quy mô pilot sau vài tháng |
 | Chưa diễn tập với **CSDL đã bật mã hoá** | Xem phần B — bật mã hoá xong **phải diễn tập lại**, vì backup **không kèm khoá** là vô dụng |
 
