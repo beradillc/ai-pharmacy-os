@@ -39,6 +39,7 @@ export type NavIconName =
   | "stock"
   | "purchase"
   | "suggest"
+  | "report"
   | "more";
 
 export const NAV_GROUP_LABEL: Record<NavGroup, string> = {
@@ -76,12 +77,25 @@ export const NAV: readonly NavItem[] = [
     icon: "stock",
   },
   {
+    href: "/bao-cao",
+    label: "Báo cáo",
+    short: "Báo cáo",
+    permission: "sales.read",
+    group: "quan-tri",
+    primary: true,
+    icon: "report",
+  },
+  {
     href: "/hoa-don",
     label: "Hoá đơn",
     short: "Hoá đơn",
     permission: "sales.read",
     group: "ban-hang",
-    primary: true,
+    // `false` tường minh: bốn ô của thanh dưới đã chốt là Tổng quan · Bán hàng ·
+    // Kho · Báo cáo. Để `true` rồi trông chờ `slice(0, 4)` cắt bớt thì mô hình
+    // nói một đằng, hành vi một nẻo — và người sửa sau sẽ đổi thứ tự mà không
+    // biết mình vừa đổi cả thanh điều hướng.
+    primary: false,
     icon: "receipt",
   },
   {

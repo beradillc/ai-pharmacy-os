@@ -1,6 +1,7 @@
 # Sổ quỹ tiền mặt — Bước 0-3 của `docs/14_FEATURE_PROCESS.md`
 
-> **Trạng thái: BƯỚC 0-3 XONG, CHƯA CODE MỘT DÒNG NÀO** (2026-07-29).
+> **Trạng thái: BƯỚC 0-3 ✅ ĐÃ DUYỆT (GĐ, dưới uỷ quyền của Chain 2026-07-29).
+> CHƯA CODE MỘT DÒNG NÀO** — mở sprint sau khi đóng đợt UI đang chạy.
 > Sinh từ nhận xét của Chain sau demo Sprint 10: *"chưa thấy sổ quỹ, báo cáo và một
 > số tính năng khác trong tiến trình."* Đúng — sổ quỹ **không tồn tại** ở bất kỳ
 > đâu: không trong mã, không trong `ROADMAP.md`. `grep` toàn repo cho "quỹ",
@@ -93,3 +94,56 @@ biểu** không được code.
 
 Chưa làm — chờ Chain duyệt Bước 0-3, đặc biệt là **cách xử lý blocker pháp lý**
 (xây công cụ vận hành, không tuyên bố giá trị kế toán) và **R1–R5**.
+
+
+---
+
+## ✅ DUYỆT — GĐ, dưới uỷ quyền Chain (2026-07-29)
+
+Chain: *"Uỷ quyền GĐ duyệt."*
+
+### D1. Duyệt phạm vi, KHÔNG duyệt tuyên bố pháp lý
+
+Duyệt xây **công cụ vận hành**, tên trong giao diện là **"Đối chiếu tiền mặt cuối
+ca"**. Blocker ở Bước 1 mục 1/8 **không được coi là đã gỡ** — nó chỉ được đặt ra
+ngoài phạm vi:
+
+| ✅ Được code ngay | ⛔ Khoá tới khi Trợ lý Kế toán trả lời |
+|---|---|
+| Mở ca · đếm tiền cuối ca · tính lệch · phiếu thu/chi | Bản in theo **mẫu chế độ kế toán** (Phiếu thu 01-TT, Phiếu chi 02-TT, Sổ quỹ tiền mặt) |
+| Lịch sử ca, ai trực, lệch bao nhiêu | Bất kỳ câu nào ngụ ý *"thay được sổ kế toán"* |
+| Xuất CSV nội bộ | Đặt tên tính năng là "Sổ quỹ" trong giao diện |
+
+**Điều kiện đi kèm, không phải khuyến nghị:** trong mã và trong giao diện, **cấm
+xuất hiện chữ "Sổ quỹ"** cho tới khi có ba câu trả lời của Kế toán. Một cái tên
+phát ra lời hứa mà hệ thống chưa giữ được — đúng họ lỗi B-06 (tên cột hứa một
+bảo đảm mã không thực hiện) của kiểm toán 28/07.
+
+### D2. Duyệt R1–R5 đúng như đề xuất
+
+| # | Chốt |
+|---|---|
+| R1 | Ca gắn với **chi nhánh**, không gắn với người. Ghi riêng người mở / người đóng |
+| R2 | **Cấm** hai ca `OPEN` cùng lúc ở một chi nhánh — ràng buộc ở **cửa CSDL**, không chỉ kiểm ở service |
+| R3 | Lệch tiền **chỉ ghi**, bắt buộc nhập lý do khi vượt ngưỡng. **Không chặn đóng ca** |
+| R4 | Bán hàng **không** phụ thuộc sổ quỹ. Đơn ngoài ca hiện ở mục "ngoài ca" |
+| R5 | Chỉ tiền mặt. Chuyển khoản/thẻ đối chiếu sao kê — việc khác, chưa làm |
+
+**Lý do GĐ duyệt R3 y nguyên:** chặn đóng ca khi lệch nghe có vẻ chặt chẽ hơn,
+nhưng nó không làm tiền quay lại — nó chỉ dạy nhân viên nhập số khớp với số hệ
+thống. Khi đó sổ đẹp tuyệt đối và **vô giá trị**. Cơ chế nào đo con người mà tạo
+áp lực khai sai thì cái nó đo được không còn là sự thật.
+
+### D3. Thứ tự — làm SAU đợt UI
+
+Đóng U3 (màn Báo cáo) trước rồi mới mở sprint sổ quỹ. Lý do: sổ quỹ là **module
+mới + bảng mới + migration**, tức là mở một mặt trận thứ hai trong lúc mặt trận
+giao diện đang có phản hồi người dùng chạy vào từng ngày. Hai việc lớn song song
+là cách chắc chắn nhất để cả hai cùng dở dang.
+
+### D4. Việc phải giao ra ngoài — GĐ ghi vào sổ điều phối
+
+Trợ lý Kế toán trả lời ba câu: (a) nhà thuốc BeraLLC áp chế độ kế toán nào ·
+(b) sổ quỹ tiền mặt có bắt buộc theo mẫu không · (c) bản điện tử có được chấp
+nhận không. **Chưa có ba câu đó thì phần mẫu biểu không được code** — và cũng
+không được hứa với khách hàng nào.

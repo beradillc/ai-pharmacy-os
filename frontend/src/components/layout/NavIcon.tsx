@@ -80,6 +80,14 @@ export function NavIcon({ name, filled = false }: { name: NavIconName; filled?: 
           <path d="M10 21h4" />
         </svg>
       );
+    case "report":
+      return (
+        <svg {...common}>
+          <path d="M5 3.5h9l5 5v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-16a1 1 0 0 1 1-1z" />
+          <path d="M14 3.5v5h5" />
+          <path d="M8.5 17v-3M12 17v-5M15.5 17v-2" />
+        </svg>
+      );
     case "more":
       return (
         <svg {...common}>
