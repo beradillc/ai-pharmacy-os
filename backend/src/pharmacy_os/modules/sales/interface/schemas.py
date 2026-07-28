@@ -18,7 +18,7 @@ from pharmacy_os.modules.sales.application.dto import (
     SaleOutput,
     VnpayInitiateOutput,
 )
-from pharmacy_os.modules.sales.domain import PaymentMethod
+from pharmacy_os.modules.sales.domain import PaymentMethod, SalesOrderListRow
 
 
 class SaleLineRequest(BaseModel):
@@ -121,6 +121,41 @@ class SaleResponse(BaseModel):
                 )
                 for ln in out.lines
             ],
+        )
+
+
+class SaleListItemResponse(BaseModel):
+    """One line of the till list — deliberately **not** :class:`SaleResponse`.
+
+    No ``lines`` array: a day's list of orders would otherwise carry every item of
+    every order, which is the payload the screen least needs and most pays for. The
+    detail view already fetches one order in full via ``GET /sales/{id}``.
+    """
+
+    id: UUID
+    branch_id: UUID
+    created_at: datetime
+    status: str
+    currency: str
+    subtotal: Decimal
+    paid_total: Decimal
+    line_count: int
+    customer_id: UUID | None
+    sold_by_user_id: UUID | None
+
+    @classmethod
+    def of(cls, row: SalesOrderListRow) -> SaleListItemResponse:
+        return cls(
+            id=row.order_id,
+            branch_id=row.branch_id,
+            created_at=row.created_at,
+            status=row.status,
+            currency=row.currency,
+            subtotal=row.subtotal,
+            paid_total=row.paid_total,
+            line_count=row.line_count,
+            customer_id=row.customer_id,
+            sold_by_user_id=row.sold_by_user_id,
         )
 
 

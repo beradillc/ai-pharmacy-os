@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
@@ -17,6 +18,7 @@ from pharmacy_os.modules.sales.interface.schemas import (
     ReceiptFormat,
     ReceiptResponse,
     RegisterReturnRequest,
+    SaleListItemResponse,
     SaleResponse,
     VnpayInitiateResponse,
 )
@@ -92,6 +94,35 @@ def build_router(get_context: ContextDep) -> APIRouter:
         outcome = await service.confirm_vnpay_callback(dict(request.query_params))
         rsp_code, message = _VNPAY_RSP[outcome]
         return JSONResponse(content={"RspCode": rsp_code, "Message": message})
+
+    # Đăng ký TRƯỚC "/{order_id}" không phải để tránh va đường dẫn ("" và
+    # "/{order_id}" không va nhau) mà để đọc theo đúng thứ tự người ta dùng:
+    # danh sách trước, chi tiết sau.
+    @sales.get("", response_model=list[SaleListItemResponse])
+    async def list_sales(
+        service: SalesService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+        date_from: date | None = Query(default=None),
+        date_to: date | None = Query(default=None),
+        branch_id: UUID | None = Query(default=None),
+        limit: int = Query(50, ge=1, le=200),
+        offset: int = Query(0, ge=0),
+    ) -> list[SaleListItemResponse]:
+        """Danh sách đơn bán, mới nhất trước.
+
+        Bỏ trống ngày ⇒ **hôm nay** ở cả hai đầu: màn quầy mở ra là thấy ca đang
+        chạy, không phải toàn bộ lịch sử. Muốn xem xa hơn thì truyền ngày, và
+        khoảng ngày đóng cả hai đầu."""
+        today = date.today()
+        rows = await service.list_sales(
+            ctx,
+            date_from=date_from or today,
+            date_to=date_to or today,
+            branch_id=branch_id,
+            limit=limit,
+            offset=offset,
+        )
+        return [SaleListItemResponse.of(r) for r in rows]
 
     @sales.get("/{order_id}", response_model=SaleResponse)
     async def get_sale(

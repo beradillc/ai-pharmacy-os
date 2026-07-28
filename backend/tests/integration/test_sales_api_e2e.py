@@ -185,3 +185,43 @@ def test_register_return_unknown_order_404(client: TestClient) -> None:
         f"/api/v1/sales/{uuid4()}/returns", json={"line_id": str(uuid4()), "quantity": "1"}
     )
     assert resp.status_code == 404
+
+
+def test_list_sales_no_params_returns_todays_orders(client: TestClient) -> None:
+    """`GET /sales` không tham số trả về đơn vừa tạo, mới nhất trước (Sprint 10, D1).
+
+    🔴 PHẠM VI, đọc trước khi tin: test này KHÔNG chứng minh cửa sổ mặc định đúng
+    bằng **một ngày**. Đơn tạo trong test luôn là hôm nay, nên một mặc định rộng
+    hơn (7 ngày, 30 ngày) cũng làm nó xanh y hệt. Cái nó chứng minh là: không
+    tham số thì có kết quả, đúng thứ tự, đúng hình dạng. Chứng minh biên một ngày
+    cần một đơn mang ``created_at`` của hôm qua, mà ``created_at`` do CSDL đặt —
+    ghi ra đây thay vì để câu docstring nói quá (đúng họ lỗi A-06).
+    """
+    created = [client.post("/api/v1/sales", json=_payload(f"list-{i}")).json() for i in range(3)]
+
+    resp = client.get("/api/v1/sales")
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()
+
+    assert {r["id"] for r in rows} == {c["id"] for c in created}
+    # Không khẳng định một cặp cụ thể: created_at là now() phân giải 1 giây trên
+    # SQLite, nên ba đơn liền nhau có thể cùng mốc (xem test_sales_list.py).
+    keys = [(r["created_at"], r["id"]) for r in rows]
+    assert keys == sorted(keys, reverse=True)
+    assert rows[0]["line_count"] == 1
+    assert rows[0]["subtotal"] == "20000.00"
+    assert rows[0]["paid_total"] == "20000.00"
+    assert "lines" not in rows[0]  # danh sách KHÔNG kéo theo từng dòng hàng
+
+
+def test_list_sales_window_excludes_other_days(client: TestClient) -> None:
+    client.post("/api/v1/sales", json=_payload("win-1"))
+
+    empty = client.get("/api/v1/sales", params={"date_from": "2020-01-01", "date_to": "2020-01-02"})
+    assert empty.status_code == 200
+    assert empty.json() == []
+
+
+def test_list_sales_rejects_reversed_range(client: TestClient) -> None:
+    resp = client.get("/api/v1/sales", params={"date_from": "2026-01-02", "date_to": "2026-01-01"})
+    assert resp.status_code == 422, resp.text
