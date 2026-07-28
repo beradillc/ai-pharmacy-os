@@ -4854,14 +4854,43 @@ nghĩa. Đây không phải chi phí kỹ thuật — nó là chức năng ngư�
 [Trợ lý Code] Không tự quyết được: đây là đánh đổi **tuân thủ pháp lý ↔ chức năng nghiệp vụ**, đúng
 phạm vi kỷ luật #3.
 
+### P-bis. ✅ CHAIN CHỌN (a) — `full_name` ĐÃ MÃ HOÁ (28/07, `3fa6bde` · `eceb85f`)
+
+Mã hoá, **chấp nhận bỏ sắp xếp theo bảng chữ cái**. `list()` nay sắp theo
+`created_at DESC, id` — `id` để hai khách tạo cùng mili giây không hoán chỗ giữa các trang.
+Migration **`0035`** nới `varchar(255)` → `text`; `full_name` vào phạm vi `encrypt_backfill`.
+
+#### 🔴 Bản sửa test ĐẦU TIÊN của tôi cũng sai — ghi lại vì đúng loại lỗi #14 sinh ra để bắt
+
+Hai test cũ đỏ khi đổi hợp đồng (chúng khẳng định thứ tự bảng chữ cái). Sửa test cho khớp quyết
+định là đúng. Nhưng bản sửa đầu khẳng định một **thứ tự cứng** — trong khi `created_at` do CSDL đặt
+bằng `now()`, nên năm dòng tạo trong cùng một giây có giá trị **bằng nhau**, và thứ tự thật do `id`
+(UUID ngẫu nhiên) quyết định. **Test đó là tung đồng xu.**
+
+Bản cuối khẳng định đúng tính chất mà phân trang dựa vào: **thứ tự toàn phần và ổn định** — hai lần
+gọi ra cùng thứ tự, ba trang không lặp không sót.
+
+#### Kiểm trên CSDL CÓ DỮ LIỆU SẴN (kỷ luật #7)
+
+| Kiểm | Kết quả |
+|---|---|
+| `pg_dump` trước migration · `alembic upgrade` | `EXIT=0` |
+| Backfill `--dry-run` → chạy thật → `--verify` | *"sẽ ghi lại 4 giá trị"* → *"đã ghi lại 4"* → **`2 dòng, 0 lỗi giải mã`** |
+| Đọc **thẳng đĩa** | `full_name = v1:HbGnF/UvG/uz4qEU…` (trước là `Nguyễn Văn Khách`) |
+| **Ứng dụng đọc lại** qua ORM | `'Nguyễn Văn Khách'` — mã hoá không phá đường đọc |
+| Kỷ luật #14 | trả lại `order_by(full_name)` ⇒ test đỏ đúng chỗ; khôi phục ⇒ xanh |
+
+⚠️ **Máy dev nay đã BẬT mã hoá** (`backend/.env`, không vào git): `ENCRYPTION__ENABLED=true` +
+khoá v1 + `BLIND_INDEX_KEY`. Mất tệp đó là **mất luôn dữ liệu khách trên máy này** — không phải sự
+cố khôi phục được bằng `git revert`.
+
 ### Q. Điểm dừng
 
-Còn **ba việc không phải code**:
+Còn **hai việc không phải code**:
 
 1. **Chain bấm thử 2 màn** — `http://localhost:3000/login` · `demo@bera.vn` / `NhaThuocDemo2026`.
    Đang chạy: Postgres (docker) · uvicorn `:8000` · next dev `:3000`.
-2. **Chain quyết `full_name`** (mục P).
-3. **Chain dọn 3 CSDL thử** (`DROP DATABASE` nằm trong `deny`, đúng thiết kế):
+2. **Chain dọn 4 CSDL thử** (`DROP DATABASE` nằm trong `deny`, đúng thiết kế):
    ```
    docker exec -e PGPASSWORD=pharma ai_pharmacy_os-postgres-1 \
      psql -U pharma -d postgres -v ON_ERROR_STOP=1 \
