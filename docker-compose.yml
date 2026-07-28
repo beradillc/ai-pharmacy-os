@@ -1,6 +1,17 @@
 # AI Pharmacy OS — local development stack (Sprint 2).
 # Brings up Postgres (with pgvector) + Redis. The backend image is provided but
 # commented until the app is wired against a live DB in Sprint 3.
+#
+# 🔴 CỔNG CSDL CHỈ MỞ TRÊN LOOPBACK (sửa 2026-07-29, chế độ LAN development).
+# Trước đây `"5432:5432"` nghĩa là Docker bind `0.0.0.0` — Postgres nghe trên MỌI
+# giao diện mạng, kể cả Wi-Fi. Đo thật lúc kiểm:
+#     LISTEN 0 4096 0.0.0.0:5432 → mọi điện thoại cùng Wi-Fi kết nối được
+# với đúng cặp `pharma/pharma` ghi ngay dưới đây. Chừng nào máy còn ở nhà và
+# firewall còn chặn thì chưa ai vào được, nhưng đó là **hai lớp phòng thủ ngoài
+# tầm kiểm soát của dự án** đang che một cổng lẽ ra không nên mở.
+#
+# Ứng dụng vẫn nối bình thường: backend chạy trên chính máy này, `DB__URL` trỏ
+# `localhost`. Chỉ thiết bị khác trong mạng là mất đường vào — đúng ý định.
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -9,7 +20,7 @@ services:
       POSTGRES_PASSWORD: pharma
       POSTGRES_DB: pharmacy_os
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +32,9 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      # Cùng lý do với Postgres ở trên. Redis mặc định KHÔNG có mật khẩu, nên nó
+      # còn hở hơn: bất kỳ ai vào được cổng này đều đọc/ghi/xoá được toàn bộ.
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
