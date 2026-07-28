@@ -173,11 +173,43 @@ async def test_add_condition_round_trips_and_rejects_duplicate(
         await crm_service.add_condition(created.id, AddConditionInput(condition_code="E11"), ctx)
 
 
-async def test_list_customers_ordered_by_name(crm_service: CrmService, ctx: RequestContext) -> None:
-    await crm_service.create_customer(CreateCustomerInput(full_name="Bình"), ctx)
-    await crm_service.create_customer(CreateCustomerInput(full_name="An"), ctx)
-    items = await crm_service.list_customers(ctx)
-    assert [c.full_name for c in items] == ["An", "Bình"]
+async def test_list_customers_newest_first_not_alphabetical(
+    crm_service: CrmService, ctx: RequestContext
+) -> None:
+    """🔴 Test này TỪNG khẳng định thứ tự bảng chữ cái. Nó đổi vì hợp đồng đổi.
+
+    Chain quyết 2026-07-28: mã hoá ``full_name`` (migration ``0035``) và **chấp nhận bỏ**
+    sắp xếp theo tên. Ciphertext sắp ngẫu nhiên, và blind index không cứu được —
+    fingerprint giữ *đẳng thức*, không giữ *thứ tự*.
+
+    Sửa test cho khớp quyết định, **không** nới quyết định cho khớp test. Khẳng định ở
+    đây là thứ tự **mới nhất trước**, thứ tự duy nhất còn đúng ở tầng CSDL.
+    """
+    for name in ("Bình", "An", "Cường", "Dũng", "Em"):
+        await crm_service.create_customer(CreateCustomerInput(full_name=name), ctx)
+
+    # 🔴 KHÔNG khẳng định một thứ tự cứng ở đây. Bản đầu của test này làm vậy và
+    # **đỏ vì lý do sai**: `created_at` do CSDL đặt bằng `now()`, mà cả năm dòng được
+    # tạo trong cùng một giây nên chúng BẰNG NHAU — thứ tự thật do `id` (UUID ngẫu
+    # nhiên) quyết định. Một test khẳng định thứ tự cứng ở đó là test tung đồng xu.
+    #
+    # Tính chất thật sự cần, và cũng là thứ phân trang dựa vào: **thứ tự TOÀN PHẦN và
+    # ỔN ĐỊNH**. `ORDER BY created_at DESC, id` cho đúng điều đó kể cả khi mọi
+    # `created_at` bằng nhau, vì `id` là duy nhất.
+    first_call = await crm_service.list_customers(ctx)
+    second_call = await crm_service.list_customers(ctx)
+
+    assert [c.id for c in first_call] == [c.id for c in second_call], "thứ tự không ổn định"
+
+    # Phân trang không được lặp hay bỏ sót dòng nào — hệ quả trực tiếp của thứ tự toàn phần.
+    page_1 = await crm_service.list_customers(ctx, limit=2, offset=0)
+    page_2 = await crm_service.list_customers(ctx, limit=2, offset=2)
+    page_3 = await crm_service.list_customers(ctx, limit=2, offset=4)
+    paged = [c.id for c in (*page_1, *page_2, *page_3)]
+
+    assert len(paged) == 5
+    assert len(set(paged)) == 5, "có dòng xuất hiện ở hai trang"
+    assert paged == [c.id for c in first_call]
 
 
 async def test_non_positive_weight_rejected(crm_service: CrmService, ctx: RequestContext) -> None:

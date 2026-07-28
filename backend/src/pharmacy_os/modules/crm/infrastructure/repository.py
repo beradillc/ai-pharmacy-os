@@ -70,10 +70,18 @@ class SqlAlchemyCustomerRepository:
         return to_domain(row) if row is not None else None
 
     async def list(self, *, limit: int = 50, offset: int = 0) -> list[Customer]:
+        """Newest customers first.
+
+        🔴 **Không đổi lại thành ``order_by(full_name)``.** Cột đó nay là ciphertext
+        (migration ``0035``, Chain quyết 2026-07-28) nên sắp theo nó ra **thứ tự ngẫu
+        nhiên** — tệ hơn hẳn không sắp, vì trông vẫn như một danh sách có trật tự. Sắp
+        theo ``created_at`` là thứ tự duy nhất còn **đúng** ở tầng CSDL; kèm ``id`` để
+        hai khách tạo cùng mili giây không hoán chỗ giữa các trang.
+        """
         stmt = (
             select(CustomerORM)
             .where(CustomerORM.tenant_id == self._ctx.tenant_id)
-            .order_by(CustomerORM.full_name)
+            .order_by(CustomerORM.created_at.desc(), CustomerORM.id)
             .limit(limit)
             .offset(offset)
         )

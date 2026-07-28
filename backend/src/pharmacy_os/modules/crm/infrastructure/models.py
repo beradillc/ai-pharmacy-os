@@ -34,13 +34,20 @@ class CustomerORM(PkUuidMixin, TimestampMixin, Base):
     __tablename__ = "customers"
 
     tenant_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
-    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    """**Deliberately NOT encrypted** (Sprint 8 mục 3/4). ``list()`` orders by this
-    column, and ciphertext sorts randomly — encrypting it would silently break
-    alphabetical customer listing across pages, which no blind index can restore
-    (a fingerprint preserves equality, never order). Left plaintext pending a decision
-    on whether alphabetical paging can be given up; recorded as an open debt rather
-    than quietly broken or quietly skipped."""
+    full_name: Mapped[str] = mapped_column(EncryptedText, nullable=False)
+    """Encrypted at rest since 2026-07-28 (migration ``0035``).
+
+    **Alphabetical paging was given up to get here, deliberately** — Chain chose that
+    trade-off after it was put in front of them, and this docstring exists so nobody
+    later "fixes" the ordering by decrypting the column again.
+
+    Ciphertext sorts randomly, and no blind index restores order (a fingerprint
+    preserves *equality*, never *order*). ``list()`` therefore orders by ``created_at``
+    now. What made the trade acceptable: pharmacies look customers up by **phone** far
+    more than by name, and that path is untouched — ``phone_fingerprint`` still answers
+    exact lookups. What tipped it: a patient's name sitting in plaintext travels inside
+    every database dump, i.e. outside the pharmacy, where Luật BVDLCN 91/2025 applies
+    and an ordering convenience does not."""
 
     phone: Mapped[str | None] = mapped_column(EncryptedText)
     """Encrypted at rest. Lookup survives via :attr:`phone_fingerprint` — the reason

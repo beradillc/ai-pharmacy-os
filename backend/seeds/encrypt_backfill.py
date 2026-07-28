@@ -107,7 +107,11 @@ TARGETS: tuple[_Target, ...] = (
             "receiving_pharmacist_name",
         ),
     ),
-    _Target(CustomerORM, ("phone", "gender"), fingerprints=(("phone", "phone_fingerprint"),)),
+    _Target(
+        CustomerORM,
+        ("full_name", "phone", "gender"),
+        fingerprints=(("phone", "phone_fingerprint"),),
+    ),
     _Target(CustomerAllergyORM, ("note",)),
     _Target(CustomerConditionORM, ("condition_code", "note")),
 )

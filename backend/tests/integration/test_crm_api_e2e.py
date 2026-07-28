@@ -84,11 +84,17 @@ def test_create_customer_add_allergy_and_condition_round_trip(client: TestClient
 
 
 def test_list_customers(client: TestClient) -> None:
+    """Không còn khẳng định thứ tự bảng chữ cái: `full_name` nay là ciphertext
+    (migration `0035`, Chain quyết 2026-07-28) nên `list()` sắp theo `created_at DESC,
+    id`. Khẳng định ở đây là thứ kiểm được qua HTTP — trả đủ, không lặp."""
     client.post("/api/v1/customers", json={"full_name": "Bình"})
     client.post("/api/v1/customers", json={"full_name": "An"})
+
     resp = client.get("/api/v1/customers")
+
     assert resp.status_code == 200
-    assert [c["full_name"] for c in resp.json()] == ["An", "Bình"]
+    names = [c["full_name"] for c in resp.json()]
+    assert sorted(names) == ["An", "Bình"]
 
 
 def test_get_unknown_customer_404(client: TestClient) -> None:
