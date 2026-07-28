@@ -55,6 +55,7 @@ from pharmacy_os.modules.sales.domain.ports import (
     DrugSalesAggRow,
     OrderRevenueRow,
     PrescriptionInfoProvider,
+    SalesOrderListRow,
     SalesRepository,
 )
 from pharmacy_os.shared.value_objects import Money
@@ -607,6 +608,49 @@ class SalesService:
         if granularity is RevenueGranularity.WEEK:
             return day - timedelta(days=day.weekday())  # Monday of that week
         return day.replace(day=1)  # RevenueGranularity.MONTH
+
+    async def list_sales(
+        self,
+        ctx: RequestContext,
+        *,
+        date_from: date,
+        date_to: date,
+        branch_id: UUID | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[SalesOrderListRow]:
+        """Till list of orders over ``[date_from, date_to]`` (inclusive both ends),
+        newest first — what the "Hoá đơn" screen shows (Sprint 10, D1).
+
+        Requires ``sales.read``: the same grant that already lets :meth:`get_sale`
+        open any single order, so listing them adds no new exposure — it only saves
+        the reader from guessing ids.
+
+        Drafts are included and carry their ``status``, unlike
+        :meth:`revenue_report_rows`, which counts recognised revenue only. A shift
+        handover wants to see the sale someone started and walked away from; a
+        revenue figure must not. Both readings stay available because the row says
+        which it is.
+
+        ``branch_id`` narrows to one branch; omitted, the list spans every branch in
+        the tenant — the same chain-level default the revenue report uses, for the
+        same reason (``sales.read`` already reads across branches).
+        """
+        require_permission(ctx, "sales.read")
+        if date_from > date_to:
+            raise ValidationError("Khoảng thời gian không hợp lệ: 'từ' sau 'đến'")
+        created_from = datetime.combine(date_from, time.min, tzinfo=UTC)
+        created_to = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=UTC)
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            return await repo.list_orders(
+                ctx.tenant_id,
+                branch_id=branch_id,
+                created_from=created_from,
+                created_to=created_to,
+                limit=limit,
+                offset=offset,
+            )
 
     async def revenue_report_rows(
         self,
