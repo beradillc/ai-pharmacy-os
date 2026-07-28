@@ -70,6 +70,17 @@ def build_router(get_context: ContextDep) -> APIRouter:
     ) -> MaterializeResponse:
         return MaterializeResponse.of(await service.materialize(suggestion_id, ctx))
 
+    @router.post("/reorder/suggestions/{suggestion_id}/undo", response_model=SuggestionResponse)
+    async def undo(
+        suggestion_id: UUID,
+        service: AnalyticsService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> SuggestionResponse:
+        """Hoàn tác việc tạo đơn mua nháp: huỷ đơn nháp, đề xuất về lại PENDING.
+
+        Không nhận ``po_id`` từ client — đơn cần huỷ đọc từ chính bản ghi đề xuất."""
+        return SuggestionResponse.of(await service.undo_materialize(suggestion_id, ctx))
+
     @router.post("/reorder/suggestions/{suggestion_id}/dismiss", response_model=SuggestionResponse)
     async def dismiss(
         suggestion_id: UUID,

@@ -176,6 +176,22 @@ class DraftPoSinkAdapter:
         )
         return DraftPoCreated(po_id=out.id, code=out.code)
 
+    async def cancel_draft_po(self, tenant_id: UUID, branch_id: UUID, *, po_id: UUID) -> None:
+        """Undo, under the **system** identity — the one write here that does.
+
+        Deliberately asymmetric with ``create_draft_po`` above, and the asymmetry is the
+        whole of Chain's G-3 decision (2026-07-28): creating a purchase order is a new
+        commitment, so procurement must vet the real human's ``procurement.po.create``;
+        retracting one the same flow just made is the *removal* of a commitment, and
+        gating it behind a second, wider grant would leave people able to commit but not
+        to take it back.
+
+        The narrowing that makes this safe is not here — it is at the call site, which
+        passes a ``po_id`` read from the stored suggestion, plus procurement's own refusal
+        to cancel anything past DRAFT."""
+        ctx = _ctx(tenant_id, branch_id, frozenset({"procurement.po.write"}))
+        await self._procurement.cancel_purchase_order(po_id, ctx)
+
 
 def wire_analytics(container: Container) -> None:
     """Build ``AnalyticsService`` from adapters over the other modules and register it.

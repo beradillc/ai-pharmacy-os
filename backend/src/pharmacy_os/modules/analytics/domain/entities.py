@@ -66,5 +66,16 @@ class ReorderSuggestion:
         self.status = SuggestionStatus.MATERIALIZED
         self.po_id = po_id
 
+    def mark_undone(self) -> None:
+        """Undo a materialisation: back to PENDING, no PO attached.
+
+        Deliberately returns to ``PENDING`` rather than to a new "UNDONE" state — the
+        suggestion is once again a thing the pharmacist may act on, which is exactly
+        what PENDING means. A separate state would only add a case every screen has to
+        handle to say the same thing.
+        """
+        self.status = SuggestionStatus.PENDING
+        self.po_id = None
+
     def mark_dismissed(self) -> None:
         self.status = SuggestionStatus.DISMISSED

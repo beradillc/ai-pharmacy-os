@@ -17,12 +17,12 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pharmacy_os.api.v1.analytics_wiring import DrugNameAdapter
-from pharmacy_os.core.audit import AuditLogger
+from pharmacy_os.core.audit import AuditAction, AuditLogger, SqlAlchemyAuditLogRepository
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.errors import ConflictError, NotFoundError, PermissionDeniedError
 from pharmacy_os.core.events import InMemoryEventBus
-from pharmacy_os.modules.analytics.application import AnalyticsService
+from pharmacy_os.modules.analytics.application import AnalyticsService, SuggestionOutput
 from pharmacy_os.modules.analytics.domain import (
     DraftPoCreated,
     DrugNameSource,
@@ -94,6 +94,7 @@ class _FakeDraftPoSink:
         self.created: list[tuple[UUID, UUID, Decimal]] = []
         self.actors: list[tuple[UUID, frozenset[str]]] = []
         self.codes: list[str] = []
+        self.cancelled: list[UUID] = []
 
     async def create_draft_po(
         self,
@@ -111,6 +112,9 @@ class _FakeDraftPoSink:
         self.actors.append((actor_user_id, actor_permissions))
         self.codes.append(f"PO-{len(self.created):04d}")
         return DraftPoCreated(po_id=po_id, code=self.codes[-1])
+
+    async def cancel_draft_po(self, tenant_id: UUID, branch_id: UUID, *, po_id: UUID) -> None:
+        self.cancelled.append(po_id)
 
 
 class _FakeDrugNames:
@@ -585,3 +589,124 @@ async def test_dismiss_response_carries_labels_too(
 
     assert dismissed.drug_name == "Amoxicillin 500mg"
     assert dismissed.supplier_name == "Traphaco"
+
+
+# --- B5 / G-3: hoàn tác nằm trong phạm vi analytics, không mở cửa sau ----------
+
+
+async def _materialized(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    sink: _FakeDraftPoSink,
+) -> tuple[AnalyticsService, SuggestionOutput, RequestContext]:
+    """Dựng sẵn một đề xuất ĐÃ tạo đơn nháp — điểm xuất phát của mọi test hoàn tác."""
+    drug, sup = uuid4(), uuid4()
+    svc = _service(
+        session_factory,
+        event_bus,
+        sales=_FakeSales([DrugSoldQty(drug, Decimal("90"), Decimal("900000"))]),
+        stock=_FakeStock({drug: Decimal("1")}),
+        supplier=_FakeSupplier({drug: sup}, names={sup: "Traphaco"}),
+        drug_names=_FakeDrugNames({drug: "Amoxicillin 500mg"}),
+        sink=sink,
+    )
+    run = _ctx("analytics.reorder.run")
+    await svc.run_reorder(run)
+    pending = (await svc.list_suggestions(_ctx("analytics.read")))[0]
+    await svc.materialize(pending.id, run)
+    return svc, pending, run
+
+
+async def test_undo_cancels_the_draft_and_reopens_the_suggestion(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    sink = _FakeDraftPoSink()
+    svc, sug, run = await _materialized(session_factory, event_bus, sink)
+
+    undone = await svc.undo_materialize(sug.id, run)
+
+    assert len(sink.cancelled) == 1
+    assert undone.status == SuggestionStatus.PENDING.value
+    assert undone.po_id is None
+    assert undone.can_materialize is True  # bấm lại được ngay
+    assert undone.drug_name == "Amoxicillin 500mg"  # vẫn có nhãn
+
+
+async def test_undo_cancels_exactly_the_po_recorded_on_the_suggestion(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    """Cốt lõi an toàn của G-3: đơn bị huỷ đọc từ BẢN GHI, không từ yêu cầu."""
+    sink = _FakeDraftPoSink()
+    svc, sug, run = await _materialized(session_factory, event_bus, sink)
+    materialized = (await svc.list_suggestions(_ctx("analytics.read")))[0]
+
+    await svc.undo_materialize(sug.id, run)
+
+    assert sink.cancelled == [materialized.po_id]
+
+
+async def test_undo_twice_is_refused(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    """Một đơn nháp chỉ hoàn tác được một lần qua đường này."""
+    sink = _FakeDraftPoSink()
+    svc, sug, run = await _materialized(session_factory, event_bus, sink)
+    await svc.undo_materialize(sug.id, run)
+
+    with pytest.raises(ConflictError):
+        await svc.undo_materialize(sug.id, run)
+
+    assert len(sink.cancelled) == 1
+
+
+async def test_undo_refuses_a_suggestion_that_was_never_materialized(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    drug = uuid4()
+    sink = _FakeDraftPoSink()
+    svc = _service(
+        session_factory,
+        event_bus,
+        sales=_FakeSales([DrugSoldQty(drug, Decimal("90"), Decimal("900000"))]),
+        stock=_FakeStock({drug: Decimal("1")}),
+        supplier=_FakeSupplier({drug: uuid4()}),
+        sink=sink,
+    )
+    run = _ctx("analytics.reorder.run")
+    await svc.run_reorder(run)
+    pending = (await svc.list_suggestions(_ctx("analytics.read")))[0]
+
+    with pytest.raises(ConflictError):
+        await svc.undo_materialize(pending.id, run)
+
+    assert sink.cancelled == []
+
+
+async def test_undo_requires_the_reorder_permission_not_merely_read(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    sink = _FakeDraftPoSink()
+    svc, sug, _ = await _materialized(session_factory, event_bus, sink)
+
+    with pytest.raises(PermissionDeniedError):
+        await svc.undo_materialize(sug.id, _ctx("analytics.read"))
+
+    assert sink.cancelled == []
+
+
+async def test_undo_leaves_its_own_audit_row(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    """Huỷ chạy dưới danh tính HỆ THỐNG, nên thiếu dòng này thì vết kiểm toán sẽ cho
+    thấy một đơn mua bị huỷ bởi không ai cả."""
+    sink = _FakeDraftPoSink()
+    svc, sug, run = await _materialized(session_factory, event_bus, sink)
+
+    await svc.undo_materialize(sug.id, run)
+
+    async with session_factory() as session:
+        repo = SqlAlchemyAuditLogRepository(session)
+        rows = await repo.list(run.tenant_id, action=AuditAction.ANALYTICS_SUGGESTION_UNDONE)
+        matching = [r for r in rows if r.target_id == str(sug.id)]
+        assert len(matching) == 1
+        assert matching[0].actor_user_id == run.user_id

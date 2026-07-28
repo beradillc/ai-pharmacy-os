@@ -128,6 +128,27 @@ class DraftPoSink(Protocol):
         quantity: Decimal,
     ) -> DraftPoCreated: ...
 
+    async def cancel_draft_po(self, tenant_id: UUID, branch_id: UUID, *, po_id: UUID) -> None:
+        """Cancel a draft this analytics flow created — the "hoàn tác" of docs/19 §5.
+
+        🔴 **Read this before widening the signature.** Unlike :meth:`create_draft_po`,
+        this one runs under the **system** identity holding ``procurement.po.write``:
+        Chain's G-3 decision was to keep the undo inside the ``analytics.*`` grant
+        rather than hand every reorder user write access to all purchase orders.
+        Letting someone create a commitment they cannot retract is worse than not
+        letting them create it — but the fix must not become a side door.
+
+        Three things keep it from being one, and all three are load-bearing:
+
+        1. ``po_id`` comes from the **stored suggestion**, never from the request — the
+           service reads it off the record it just loaded and tenant-scoped.
+        2. Procurement's own ``cancel`` refuses anything past ``DRAFT``, so an order
+           already placed with a supplier cannot be cancelled through here.
+        3. The suggestion must still be ``MATERIALIZED``, so one draft can be undone at
+           most once through this path.
+        """
+        ...
+
 
 class ReorderSuggestionRepository(Protocol):
     """Analytics' own persistence for :class:`ReorderSuggestion`."""

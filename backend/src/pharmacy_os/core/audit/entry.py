@@ -233,6 +233,12 @@ class AuditAction(StrEnum):
     ANALYTICS_SUGGESTION_DISMISSED = "ANALYTICS_SUGGESTION_DISMISSED"
     """A human decided not to act on a suggestion."""
 
+    ANALYTICS_SUGGESTION_UNDONE = "ANALYTICS_SUGGESTION_UNDONE"
+    """A human undid a materialisation: the draft PO was cancelled and the suggestion
+    went back to PENDING. Audited separately from the cancel that procurement records,
+    because this path cancels under the **system** identity — without a row here, the
+    trail would show a purchase order cancelled by nobody."""
+
 
 @dataclass(frozen=True, slots=True)
 class AuditEntry:

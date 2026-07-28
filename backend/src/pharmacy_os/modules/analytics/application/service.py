@@ -220,6 +220,43 @@ class AnalyticsService:
             suggestion_id=suggestion_id, po_id=created.po_id, po_code=created.code
         )
 
+    async def undo_materialize(self, suggestion_id: UUID, ctx: RequestContext) -> SuggestionOutput:
+        """Cancel the draft PO a materialisation created and put the suggestion back to
+        PENDING — the "hoàn tác" of docs/19 §5. Requires ``analytics.reorder.run``.
+
+        **No time window is enforced here, on purpose.** The design shows a 10-second
+        undo affordance, but a server-side stopwatch would make the operation fail for
+        reasons the user cannot see (a slow network makes a legitimate undo bounce) and
+        would still not stop anything a determined caller wants to do. The real limit is
+        a state, not a clock: the order must still be a **draft**, and procurement is the
+        one that enforces that. A draft already placed with a supplier cannot be
+        retracted here — and should not be, since at that point a human at the supplier
+        may already be acting on it.
+
+        ``po_id`` is read off the stored suggestion, never taken from the caller — see
+        :meth:`DraftPoSink.cancel_draft_po` for why that matters.
+        """
+        require_permission(ctx, "analytics.reorder.run")
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            suggestion = await repo.get(suggestion_id)
+            if suggestion is None:
+                raise NotFoundError(f"Không tìm thấy đề xuất {suggestion_id}")
+            if suggestion.status is not SuggestionStatus.MATERIALIZED or suggestion.po_id is None:
+                raise ConflictError("Chỉ hoàn tác được đề xuất vừa tạo đơn mua nháp")
+
+            await self._draft_po_sink.cancel_draft_po(
+                ctx.tenant_id, suggestion.branch_id, po_id=suggestion.po_id
+            )
+            suggestion.mark_undone()
+            await repo.update(suggestion)
+            await uow.commit()
+
+        await self._record(
+            ctx, AuditAction.ANALYTICS_SUGGESTION_UNDONE, "reorder_suggestion", suggestion_id
+        )
+        return await self._with_labels(ctx, suggestion)
+
     async def dismiss(self, suggestion_id: UUID, ctx: RequestContext) -> SuggestionOutput:
         """Dismiss a non-terminal suggestion. Requires ``analytics.reorder.run``.
 

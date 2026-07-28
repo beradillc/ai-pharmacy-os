@@ -306,3 +306,65 @@ def test_materialize_returns_a_readable_po_code_not_just_a_uuid(client: TestClie
     # The code belongs to the PO that was really created, not a string invented here.
     po = client.get(f"/api/v1/purchase-orders/{body['po_id']}", headers=_auth(admin)).json()
     assert po["code"] == body["po_code"]
+
+
+# --- B5 / G-3: hoàn tác qua app đã ráp dây thật -------------------------------
+
+
+def _materialize_one(client: TestClient, admin: Any, name: str) -> tuple[str, str]:
+    """Chạy trọn đường: tạo thuốc → có NCC → nhập → bán → tính → tạo đơn nháp.
+    Trả (suggestion_id, po_id)."""
+    drug = _create_drug(client, admin, name)
+    _supplier_for_drug(client, admin, drug)
+    _receive(client, admin, drug, qty=100)
+    _sell(client, admin, drug, qty=90, price=1000)
+    client.post(_RUN, headers=_auth(admin))
+    sug = client.get(_SUGGESTIONS, headers=_auth(admin), params={"status": "PENDING"}).json()[0]
+    mat = client.post(f"{_SUGGESTIONS}/{sug['id']}/materialize", headers=_auth(admin))
+    assert mat.status_code == 200, mat.text
+    return sug["id"], mat.json()["po_id"]
+
+
+def test_undo_over_http_cancels_the_draft_and_reopens_the_row(client: TestClient) -> None:
+    admin = _login(client)
+    suggestion_id, po_id = _materialize_one(client, admin, "Ibuprofen 400mg")
+
+    undo = client.post(f"{_SUGGESTIONS}/{suggestion_id}/undo", headers=_auth(admin))
+    assert undo.status_code == 200, undo.text
+    assert undo.json()["status"] == "PENDING"
+    assert undo.json()["po_id"] is None
+
+    po = client.get(f"/api/v1/purchase-orders/{po_id}", headers=_auth(admin)).json()
+    assert po["status"] == "CANCELLED"
+
+
+def test_undo_cannot_retract_an_order_already_placed_with_the_supplier(
+    client: TestClient,
+) -> None:
+    """🔴 Đây là test quan trọng nhất của G-3.
+
+    Cửa hoàn tác chạy dưới danh tính hệ thống, nên nó phải chỉ mở đúng lúc còn là
+    NHÁP. Đơn đã gửi NCC thì bên kia có thể đang chuẩn bị hàng — rút lại bằng một
+    nút bấm trong phần mềm không làm điều đó biến mất ngoài đời.
+    """
+    admin = _login(client)
+    suggestion_id, po_id = _materialize_one(client, admin, "Metformin 500mg")
+
+    placed = client.post(f"/api/v1/purchase-orders/{po_id}/place", headers=_auth(admin))
+    assert placed.status_code == 200, placed.text
+
+    undo = client.post(f"{_SUGGESTIONS}/{suggestion_id}/undo", headers=_auth(admin))
+    assert undo.status_code == 422, undo.text
+
+    po = client.get(f"/api/v1/purchase-orders/{po_id}", headers=_auth(admin)).json()
+    assert po["status"] == "ORDERED", "đơn đã gửi NCC bị huỷ qua cửa hoàn tác"
+
+
+def test_cashier_cannot_use_undo(client: TestClient) -> None:
+    admin = _login(client)
+    suggestion_id, _ = _materialize_one(client, admin, "Loratadine 10mg")
+    _make_staff(client, admin, "tn2@bera.vn", CASHIER)
+    cashier = _login(client, "tn2@bera.vn", STAFF_PASSWORD)
+
+    undo = client.post(f"{_SUGGESTIONS}/{suggestion_id}/undo", headers=_auth(cashier))
+    assert undo.status_code == 403
