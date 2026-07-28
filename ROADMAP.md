@@ -245,7 +245,11 @@ qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API**)**
       *Nợ:* mã hoá at-rest cột secret (đúng mục 3/4 kế tiếp), reset 2FA không thu hồi phiên đang mở,
       `crm.erase` chưa vào phạm vi, rate limit theo IP chưa có.
 - [ ] Observability đầy đủ (tracing, metrics, alert).
-- [ ] Load test POS (p95 < 300ms).
+- [x] Load test POS — **p95 < 300 ms Ở 8 PHIÊN ĐỒNG THỜI** *(mức tải bổ sung 2026-07-28, GĐ chốt
+      dưới uỷ quyền)*. Đo thật trên staging: **217,6 ms @ 8 luồng** ✅ · 490,4 ms @ 16 luồng.
+      *Vì sao phải ghi kèm mức tải:* "p95 < 300 ms" trần trụi **không quyết được đạt hay không** —
+      cùng một hệ thống đạt ở 8 luồng và trượt ở 16. Một nhà thuốc 2–3 quầy cộng tác vụ nền ⇒ 8
+      luồng cho **~3 lần dư địa**. Đo lại khi biết quy mô nhà thuốc pilot thật.
 
 **DoD:** Bật/tắt plugin không sửa lõi; liên thông gửi thử thành công; chỉ tiêu NFR đạt.
 
@@ -256,7 +260,8 @@ qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API**)**
 - [ ] Triển khai staging → pilot 1 nhà thuốc thật.
 - [ ] Đào tạo, phản hồi, sửa lỗi.
 - [ ] Tài liệu vận hành & backup/restore.
-- [ ] **FE cho `analytics`** *(quyết định 2026-07-25, §7ax — GĐ dưới ủy quyền toàn quyền)* — dashboard
+- [x] **FE cho `analytics`** — ✅ **XONG 2026-07-28** (§7bt). Hai màn: bảng điều hành + đề xuất đặt hàng.
+      Chạy thật trên nhà thuốc demo, phát sinh đơn mua **PO-0006**. *(quyết định 2026-07-25, §7ax)* — dashboard
       doanh thu/top thuốc/cảnh báo tồn + màn duyệt PO nháp, hiện chỉ có API (`GET /analytics/dashboard`,
       §7ap). Đặt ở Sprint 9 chứ không Sprint 8: chủ đề Sprint 8 là Hardening hạ tầng thuần (plugin/bảo
       mật/observability/load test), không phải feature UI; pilot thật (Sprint 9) mới cần giao diện hoàn

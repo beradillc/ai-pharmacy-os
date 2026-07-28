@@ -19,6 +19,7 @@
 | Quy tắc trình bày báo cáo/tổng hợp | **2026-07-23** (GĐ ban hành) |
 | Xác thực khi chạy thử cục bộ | **2026-07-23** (cùng module `iam`) |
 | Kỷ luật bắt buộc **8–13** + bổ sung kỷ luật **7** (nền test Postgres) | **2026-07-26** — sinh từ kiểm toán độc lập 3 phiên (`docs/audit/2026-07-26_BAO_CAO_KIEM_TOAN.md`, quy tắc R-1→R-7). Chain duyệt cùng ngày, xếp ngay sau F-1 vì *"rẻ, đòn bẩy cao nhất trong cả lộ trình"* |
+| Kỷ luật bắt buộc **14** (cổng phải thấy đỏ một lần vì lý do đúng) | **2026-07-28** — GĐ đề nghị sau khi cơ chế này bắt được 2 ca thật trong 2 phiên (test e2e xanh vì lý do sai · test đua xanh với bản cài đặt sai). Chain duyệt cùng ngày |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -143,6 +144,29 @@ multi-tenant).
     - *Vì sao:* PROJECT_STATE dài 3.606 dòng và chỉ-ghi-thêm; phiên sau không đọc lại.
       Thống kê audit: **16 sự cố "niềm tin giả" → đúng 1 kỷ luật được thể chế hoá (#7)**
       — và #7 là bài học **duy nhất không tái phát**. Tương quan đó không ngẫu nhiên.
+
+14. **Một cổng mới chỉ được tính là CÓ RĂNG sau khi đã thấy nó ĐỎ ít nhất một lần vì
+    lý do đúng.** (2026-07-28, GĐ đề nghị, Chain duyệt) Khi thêm một test/kiểm tra để
+    canh một tính chất, **cố ý phá tính chất đó** rồi xác nhận cổng đỏ — **rồi mới**
+    khôi phục. Ghi cả hai mã thoát vào commit.
+    - Áp cho: test đua, cổng fail-fast, ràng buộc CSDL, khẳng định bảo mật, và **mọi
+      lần "build xanh"** được dùng làm bằng chứng cho một tính chất khác (font đã nhúng,
+      biến đã phục vụ, cấu hình đã áp).
+    - **Không** áp cho test hồi quy thường (test đi kèm một bản vá đã đỏ sẵn trước khi
+      vá — nó đã thoả điều kiện này rồi).
+    - Chi phí đo thật: **~1 phút/cổng**. Trong 2 phiên đầu áp dụng, nó bắt được **2 ca
+      thật trên 4 lần chạy**.
+    - *Vì sao:* ba ca cùng một hình dạng, cách nhau vài giờ, trong cùng phiên 28/07:
+      (a) test e2e "chỉ cần `analytics.read` là thấy tên" **xanh vì lý do sai** — mọi vai
+      seed sẵn có `analytics.read` đều kèm `catalog.read`, nên nó không phân biệt được
+      hai trường hợp; (b) test đua mã PO **xanh cả với bản cài đặt sai** (đo thật
+      `MUTANT_PYTEST_EXIT=0`, `4 passed`) vì `asyncio.gather` không ép xen kẽ; (c)
+      `docker exec` thiếu cờ `-i` ⇒ heredoc không vào `psql`, lệnh trả `EXIT=0`, bảng
+      rỗng, migration chạy qua nhánh backfill **không có dòng nào**.
+    - Ba ca đó khác nhau về kỹ thuật, **giống hệt nhau về cấu trúc**: một tín hiệu xanh
+      chứng minh một mệnh đề **khác** với mệnh đề người đọc tưởng nó chứng minh. Kiểm
+      toán 26/07 đếm được 16 ca cùng họ. Bổ sung cho #8: #8 nói *mã thoát phải của
+      chính lệnh đó*; #14 nói *mã thoát đó phải biết đổi màu*.
 
 ## Xác thực khi chạy thử cục bộ (từ 2026-07-23, module `iam`)
 **Nếu API trả 401 hàng loạt hoặc demo "tự nhiên chết" — kiểm tra chỗ này
