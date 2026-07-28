@@ -4467,6 +4467,90 @@ Bí mật staging nằm ở `.env.staging` (đã kiểm: git chặn).
 
 ---
 
+## 7bt. GĐ RÀ SOÁT LAPTRINH + KẾ HOẠCH S9-FE (2026-07-28, phiên 2 trong ngày, Opus)
+
+Chain: *"GĐ rà soát LapTrinh, lập kế hoạch triển khai ngay phần khó hạn mức còn 90%, kiểm kê
+ghi nhận đúng quy trình."* Phiên này **chưa viết dòng mã sản phẩm nào** — rà soát, chốt kế
+hoạch, đính chính sổ.
+
+### A. Trạng thái nền — xác nhận bằng lệnh thật (kỷ luật #5)
+
+| Kiểm | Kết quả |
+|---|---|
+| `git status` | sạch |
+| `git log -1` | `fa76b07` — đóng phiên 28/07 |
+| `docker compose ps` | **rỗng** — không container nào chạy ở compose mặc định. §7bs nói staging "đang chạy" ⇒ nếu cần staging phải dựng lại bằng `docker-compose.staging.yml`, **không tin dòng cũ** |
+
+### B. 🔴 Hai dòng sổ điều phối SAI SỰ THẬT — đính chính theo R-8
+
+| Dòng | Sổ ghi | Thực tế kiểm bằng git | Trễ |
+|---|---|---|---|
+| `analytics` Sprint 7 | 📌 "CHƯA bắt đầu", đứng yên **10 ngày** 🔴 | **Backend xong 25/07**: 4 commit `d99aca7`→`97a4560`, đủ 4 tầng, 5 endpoint, quyền `analytics.read`/`analytics.reorder.run` có trong `system_roles.py` | **3 ngày** |
+| Nợ P0 (rate limit · restore · sự cố) | 📌 "Chưa giao", đứng yên **10 ngày** 🔴 | **Đóng cả 3 ngày 28/07** — F-9 · F-16 · F-19 | **1 ngày** |
+
+**Bài học phương pháp (đưa lên CLAUDE.md nếu tái phát — kỷ luật #13):** R-9 đặt cột *"Đứng yên
+từ"* để bắt dòng **không đổi trạng thái**. Cả hai ca trên là hình dạng **ngược lại**: trạng
+thái đã đổi từ lâu, **không ai ghi**, nên cột "đứng yên" vẫn đếm tiếp và **tự nó tạo ra một
+báo động giả trông y hệt báo động thật**. Cột "đứng yên" đo *sổ*, không đo *repo* — nó không
+thể tự phát hiện sổ sai. Chỉ có đối chiếu **git ↔ sổ** mới bắt được, và đó đúng là việc R-8
+yêu cầu làm mỗi lần mở phiên.
+
+### C. Kiểm kê phần việc còn lại — 3 mức
+
+| Mức | Mục | Vì sao xếp ở đây |
+|---|---|---|
+| **KHÓ — cần phiên hạn mức đầy** | **S9-FE: 2 màn analytics** | FE hiện **21 file / 2 màn** (login + POS). Không có: khuôn màn số liệu, bảng dữ liệu, chọn chi nhánh, gating menu theo quyền, hạ tầng test. Đúng định nghĩa *"thiết kế mới hoàn toàn chưa có khuôn mẫu"* ⇒ **Opus** |
+| **KHÓ — nhưng là rà soát, không phải triển khai** | **Kiểm toán Phiên C** (audit quy trình + báo cáo cuối) | Treo từ 26/07. Mục "Chọn model" xếp *rà soát/audit* vào **Sonnet** ⇒ **không nên tiêu hạn mức Opus vào đây** |
+| **VỪA/NHỎ — không cần Opus** | Mã hoá `full_name` · dead-man's switch cron backup · `AuditAction` cho xoay khoá · sửa câu chữ DoD Sprint 8 · dọn 3 CSDL thử còn lại | Đều có khuôn mẫu sẵn trong repo |
+| **CHẶN NGOÀI — không phải việc code** | Bảng gắn người `docs/17` §3 · RPO backup · chu kỳ xoay khoá · A-05 (Pháp Lý) | Chờ Chain / Pháp Lý |
+
+### D. 🔴 Ba khe hở THIẾT KẾ ↔ API — phát hiện trước khi viết code
+
+`docs/19` được Chain duyệt 7/7 và tự khai *"mọi endpoint đã xác nhận tồn tại trên staging"*.
+Đúng ở mức **endpoint**, nhưng chưa đối chiếu ở mức **trường dữ liệu**. Ba chỗ thiết kế hứa
+thứ API không trả:
+
+| # | Khe hở | Bằng chứng | Hệ quả nếu bỏ qua |
+|---|---|---|---|
+| **G-1** | **Không có tên thuốc / tên nhà cung cấp** | `TopDrugResponse` = `drug_id · quantity_sold · revenue`; `SuggestionResponse` = `drug_id · supplier_id …` — toàn UUID. Catalog **không có tra cứu theo lô id**, chỉ `GET /drugs?limit≤200&offset` | Màn hiện UUID thay vì *"Paracetamol 500mg"*, hoặc N+1 request |
+| **G-2** | **Không có mã PO người đọc được** | `PurchaseOrderResponse` = `id(UUID) · supplier_id · status · items · created_at · ordered_at`. Không trường mã | `docs/19` §5 hứa *"Đã tạo đơn mua nháp **#PO-0412**"* — **con số đó hiện không tồn tại** |
+| **G-3** | **"Hoàn tác 10 giây" vượt quyền** | Hoàn tác = `POST /purchase-orders/{id}/cancel` ⇒ đòi `procurement.po.write`; tên NCC đòi `procurement.supplier.read`. Vai chỉ có `analytics.*` không có hai quyền này | Người dùng **tạo được PO nhưng không hoàn tác được** — trạng thái tệ hơn cả không cho tạo |
+
+⇒ **G-1/G-2/G-3 chờ Chain quyết** (kỷ luật #3: đổi trường API và đổi phạm vi quyền là quyết
+định nghiệp vụ, không tự quyết). Chặn **bước ⑥ và ⑦**, **không** chặn bước ①–⑤.
+
+### E. KẾ HOẠCH S9-FE — 8 bước, tổng số đã chốt
+
+Kỷ luật #12 cấm mẫu số mở. **Tổng = 8**, chốt trước khi bắt đầu; đổi tổng phải ghi lý do.
+
+| Bước | Nội dung | Chặn bởi |
+|---|---|---|
+| ① | `frontend/src/styles/tokens.css` → bảng chốt §3.1 + font Be Vietnam Pro/IBM Plex Mono. **Chỉ đổi giá trị biến** | — (Chain đã duyệt) |
+| ② | `shared/api/types.ts` thêm type analytics + `features/analytics/` hook react-query | ① |
+| ③ | Khung điều hướng + gating menu theo `analytics.read` (`session.permissions` đã có sẵn trong store) | ② |
+| ④ | Màn **Bảng điều hành** — 4 ô + top thuốc + xuất CSV + 6 trạng thái §4 | ③ |
+| ⑤ | Màn **Đề xuất đặt hàng** — bảng + chip + 6 trạng thái §5 | ③ |
+| ⑥ | 3 hành động: Tính lại · Tạo đơn nháp + hoàn tác 10 s · Bỏ qua (một lần xác nhận) | **G-2, G-3** |
+| ⑦ | Giải tên thuốc / nhà cung cấp | **G-1** |
+| ⑧ | Kiểm tay trên staging thật + cập nhật `ROADMAP.md`/PROJECT_STATE | ①–⑦ |
+
+### F. 🔴 Cổng chất lượng cho FE — KHÔNG phải 4 cổng backend
+
+`frontend/package.json` có **đúng một script kiểm**: `eslint`. **Không vitest, không playwright,
+không một file test nào.** Cổng thật của mọi bước FE:
+
+`npm run lint` · `npx tsc --noEmit` · `npm run build` · **kiểm tay trên staging**
+
+Ghi rõ ở đây để phiên sau không đọc *"cổng xanh"* thành *"có test phủ"* — đó đúng là hình dạng
+chung của 16 sự cố **niềm tin giả** trong kiểm toán 26/07. Mỗi bước vẫn **1 commit riêng**, mã
+thoát ghi tường minh (kỷ luật #8, cấm suy ra kết quả từ lệnh có pipe).
+
+### G. Điểm dừng
+
+Chờ Chain quyết: (1) hạn mức 90% dùng cho **S9-FE** hay **Phiên C**; (2) hướng xử lý **G-1/G-2/G-3**.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
