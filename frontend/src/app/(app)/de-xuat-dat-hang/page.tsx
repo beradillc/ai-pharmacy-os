@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { ConfirmDialog } from "@/components/overlay/ConfirmDialog";
 import {
   useDismiss,
   useMaterialize,
@@ -49,6 +50,8 @@ export default function ReorderPage() {
 
   const [toast, setToast] = useState<Toast | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  /** Đề xuất đang chờ xác nhận bỏ qua. */
+  const [dismissAsk, setDismissAsk] = useState<ReorderSuggestion | null>(null);
 
   function report(err: unknown, fallback: string) {
     setActionError(err instanceof ApiError ? err.problem.detail : fallback);
@@ -82,8 +85,17 @@ export default function ReorderPage() {
 
   async function handleDismiss(s: ReorderSuggestion) {
     // Bỏ qua là che một cảnh báo tồn kho, không phải đóng một thông báo ⇒ hỏi
-    // một lần (docs/19 §5).
-    if (!window.confirm(`Bỏ qua đề xuất "${drugLabel(s)}"?`)) return;
+    // một lần (docs/19 §5). Hỏi bằng hộp thoại của ứng dụng thay cho
+    // `window.confirm`: cùng lý do với màn Bán hàng — một số webview nuốt lời
+    // gọi đó, và ở đây "nuốt" nghĩa là **im lặng không bỏ qua**, người dùng bấm
+    // mãi không thấy gì.
+    setDismissAsk(s);
+  }
+
+  async function confirmDismiss() {
+    const s = dismissAsk;
+    setDismissAsk(null);
+    if (!s) return;
     setActionError(null);
     try {
       await dismiss.mutateAsync(s.id);
@@ -246,6 +258,16 @@ export default function ReorderPage() {
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={dismissAsk !== null}
+        title={`Bỏ qua đề xuất "${dismissAsk ? drugLabel(dismissAsk) : ""}"?`}
+        description="Đề xuất chuyển sang tab 'Đã bỏ qua'. Cảnh báo tồn kho của mặt hàng này sẽ không hiện ở đây nữa cho tới lần tính lại sau."
+        confirmLabel="Bỏ qua"
+        tone="danger"
+        onConfirm={confirmDismiss}
+        onCancel={() => setDismissAsk(null)}
+      />
     </div>
   );
 }

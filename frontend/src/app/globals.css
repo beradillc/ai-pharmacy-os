@@ -84,3 +84,39 @@ img,
 svg {
   max-width: 100%;
 }
+
+/*
+ * ─── In ấn (2026-07-29, đợt W1) ─────────────────────────────────────────────
+ * Nút "In" ở màn Hoá đơn gọi `window.print()` từ Sprint 10 nhưng chưa từng có
+ * kiểu in nào, nên tờ giấy ra kèm cả thanh điều hướng, sidebar và các nút bấm.
+ * Đây là khối duy nhất cần ở cấp toàn cục — phần trong từng màn nằm ở
+ * `screen.module.css`.
+ */
+@media print {
+  /* Bỏ chrome ứng dụng: header dính, sidebar, thanh dưới, ngăn kéo. */
+  header,
+  nav,
+  dialog {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  /* Nền kem tiết kiệm mực mà không đọc được khi in đen trắng. */
+  main {
+    padding: 0 !important;
+  }
+
+  /* Không cắt một hàng bảng làm đôi giữa hai trang giấy. */
+  tr,
+  article {
+    break-inside: avoid;
+  }
+
+  a[href]::after {
+    content: "";
+  }
+}

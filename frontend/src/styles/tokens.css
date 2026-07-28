@@ -65,6 +65,10 @@
      đọc nhầm thành "lỗi" hay "đã xong". */
   --beras-focus: #0f6e9c;
   --beras-overlay: rgb(35 41 32 / 45%);
+  /* Chữ/biểu tượng đặt trên nền đậm (nút chính, thanh nav, chip cảnh báo). Có
+     token riêng để 4 chỗ đang viết `#fff` thẳng không còn lý do tồn tại — và để
+     nếu sau này nền đậm đổi tông thì chỉ sửa một dòng. */
+  --beras-on-accent: #ffffff;
 
   /* --- khoảng cách, thang 4px --- */
   --space-1: 4px;

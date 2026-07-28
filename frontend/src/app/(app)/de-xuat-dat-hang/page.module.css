@@ -33,7 +33,7 @@
 .primarySmall {
   font: inherit;
   background: var(--beras-leaf);
-  color: #fff;
+  color: var(--beras-on-accent);
   border: none;
   border-radius: 8px;
   cursor: pointer;

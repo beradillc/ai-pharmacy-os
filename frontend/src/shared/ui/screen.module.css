@@ -1,89 +1,113 @@
 /*
- * Khuôn chung cho các màn danh sách Sprint 10 (Tồn kho · Hoá đơn · Khách hàng ·
- * Đơn mua hàng).
+ * Khuôn chung cho các màn danh sách (Tồn kho · Hoá đơn · Khách hàng · Đơn mua
+ * hàng · Đề xuất đặt hàng).
  *
- * Vì sao một tệp dùng chung thay vì bốn tệp gần giống nhau: bốn màn này là CÙNG
- * một loại màn — tiêu đề, vài bộ lọc, một bảng, phân trang. Bốn bản sao CSS sẽ
- * trôi khỏi nhau đúng ở những chi tiết người dùng nhận ra ngay (chiều cao dòng,
- * khoảng đệm), và đó là cách một sản phẩm trông "chắp vá" mà không ai chỉ được
- * ra chỗ nào sai.
+ * ─── Viết lại 2026-07-29 (đợt W1) ────────────────────────────────────────────
+ * Bốn màn này là CÙNG một loại màn: tiêu đề → bộ lọc → bảng → phân trang. Sửa ở
+ * đây là sửa cả bốn **mà không đụng một dòng `.tsx` nào** — đúng tinh thần
+ * "refactor tăng dần, không rewrite".
  *
- * Mọi màu đi qua biến của `tokens.css`. Không hex thẳng ở đây.
+ * Ba thứ bản cũ thiếu, và đều là thứ người dùng nhận ra ngay:
+ *   ① 41 giá trị px viết thẳng ⇒ nay đi qua token, cùng nhịp với màn Tổng quan
+ *     và Báo cáo (trước đó hai nhóm màn lệch nhau vài px ở mọi khoảng đệm — thứ
+ *     làm một sản phẩm trông chắp vá mà không ai chỉ được chỗ nào sai).
+ *   ② vùng chạm 30–32px ⇒ nay ≥ `--touch-min` (44px).
+ *   ③ media query `width <=` (desktop-first vá xuống) ⇒ nay `width >=`.
+ *
+ * Không hex thẳng. Không px thẳng trừ khi là hằng số hình học thật (chiều cao
+ * hàng bảng, bề rộng tối thiểu ô lọc).
  */
 
 .page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-4);
 }
 
+/* --- đầu trang --- */
 .head {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   flex-wrap: wrap;
 }
 
 .title {
-  font-size: 22px;
-  font-weight: 600;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: 1.25;
 }
 
 .subtitle {
-  font-size: 14px;
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
   color: var(--beras-text-muted);
 }
 
 .controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
+/* --- ô nhập / chọn --- */
 .input,
 .select {
   font: inherit;
-  padding: 7px 11px;
-  border-radius: 8px;
+  font-size: var(--text-base);
+  /* 44px là SÀN cho mọi thứ bấm/chạm được, kể cả ô nhập — ngón tay không nhắm
+     được vào một ô cao 30px, và ô ngày trên iOS còn khó hơn. */
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--beras-border);
   background: var(--beras-surface);
   color: var(--beras-text);
+  transition: border-color var(--motion-fast) var(--ease-out);
+}
+
+.input:hover,
+.select:hover {
+  border-color: var(--beras-text-muted);
 }
 
 .input {
-  min-width: 220px;
+  /* Mobile-first: mặc định co theo hàng; từ 600px mới cần bề rộng tối thiểu để
+     ô tìm kiếm không hẹp đến mức không đọc được thứ mình vừa gõ. */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: var(--beras-radius);
-  background: var(--beras-danger-bg);
-  color: var(--beras-danger);
-  border: 1px solid var(--beras-danger);
-}
-
+/* --- nút --- */
 .button,
 .ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   font: inherit;
-  font-size: 14px;
-  padding: 7px 13px;
-  border-radius: 8px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--beras-border);
   background: var(--beras-surface);
   color: var(--beras-accent);
   cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
 }
 
 .button {
   background: var(--beras-leaf);
   border-color: var(--beras-leaf);
-  color: #fff;
+  color: var(--beras-on-accent);
 }
 
 .button:hover:not(:disabled) {
@@ -93,6 +117,13 @@
 
 .ghost:hover:not(:disabled) {
   background: var(--beras-bg-alt);
+  border-color: var(--beras-text-muted);
+}
+
+/* Phản hồi khi chạm — chỉ `transform`, không ép tính lại bố cục. */
+.button:active:not(:disabled),
+.ghost:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .button:disabled,
@@ -101,45 +132,87 @@
   cursor: not-allowed;
 }
 
-/* --- bảng --- */
+/* --- khối lỗi --- */
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--beras-danger-bg);
+  color: var(--beras-danger);
+  border: 1px solid var(--beras-danger);
+  font-size: var(--text-sm);
+}
+
+.retry {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 1px solid currentcolor;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+/* --- khung bảng --- */
 .panel {
   background: var(--beras-surface);
   border: 1px solid var(--beras-border);
-  border-radius: var(--beras-radius);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
   overflow: hidden;
 }
 
-/* Bảng rộng cuộn TRONG khung của nó, không đẩy cả trang trượt ngang. */
+/* Bảng rộng cuộn TRONG khung của nó, không đẩy cả trang trượt ngang.
+   `overscroll-behavior-x: contain` chặn cử chỉ vuốt ngang trên bảng bị trình
+   duyệt di động hiểu thành "quay lại trang trước" — lỗi khó chịu và khó đoán. */
 .tableWrap {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 15px;
+  font-size: var(--text-base);
 }
 
 .table th {
   text-align: left;
-  font-size: 12px;
+  font-size: var(--text-xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--beras-text-muted);
-  font-weight: 600;
-  padding: 12px 14px;
+  font-weight: var(--weight-semibold);
+  padding: var(--space-3) var(--space-4);
+  background: var(--beras-surface);
   border-bottom: 1px solid var(--beras-border);
   white-space: nowrap;
+  /* Tiêu đề cột dính khi cuộn dọc — bảng 50 dòng mà mất tiêu đề thì cột số nào
+     ra số nào là phải đoán. Chuẩn của mọi bảng dữ liệu doanh nghiệp. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .table td {
-  padding: 11px 14px;
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--beras-bg-alt);
   vertical-align: middle;
 }
 
 .table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.table tbody tr {
+  transition: background-color var(--motion-fast) var(--ease-out);
 }
 
 .table tbody tr:hover {
@@ -150,11 +223,13 @@
   font-family: var(--beras-font-mono);
   text-align: right;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .mono {
   font-family: var(--beras-font-mono);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .muted {
@@ -162,24 +237,28 @@
 }
 
 .empty {
-  padding: 28px 16px;
+  padding: var(--space-8) var(--space-4);
   text-align: center;
   color: var(--beras-text-muted);
+  font-size: var(--text-sm);
 }
 
 .skeleton {
   height: 44px;
-  margin: 10px 14px;
-  border-radius: 6px;
+  margin: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
   background: var(--beras-bg-alt);
 }
 
-/* --- chip trạng thái --- */
+/* --- chip trạng thái ---
+   Luôn kèm CHỮ, không bao giờ chỉ màu (yêu cầu a11y: trạng thái không được mã
+   hoá riêng bằng màu). */
 .chip {
   display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 13px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   border: 1px solid var(--beras-border);
   white-space: nowrap;
 }
@@ -187,11 +266,13 @@
 .chipOk {
   border-color: var(--beras-success);
   color: var(--beras-success);
+  background: var(--beras-success-bg);
 }
 
 .chipWarn {
   border-color: var(--beras-warning);
   color: var(--beras-warning);
+  background: var(--beras-warning-bg);
 }
 
 .chipDanger {
@@ -209,39 +290,73 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--beras-border);
-  font-size: 14px;
+  font-size: var(--text-sm);
   color: var(--beras-text-muted);
+}
+
+.pager > span {
+  margin-right: auto;
 }
 
 /* --- ngăn kéo chi tiết --- */
 .drawer {
   background: var(--beras-surface);
   border: 1px solid var(--beras-border);
-  border-radius: var(--beras-radius);
-  padding: 16px 18px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .drawerHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .drawerTitle {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
 }
 
-@media (width <= 720px) {
+/* --- mobile-first: nới ra khi có chỗ --- */
+@media (width >= 600px) {
   .input {
-    min-width: 0;
-    flex: 1;
+    flex: 0 1 260px;
+    min-width: 200px;
+  }
+}
+
+/* --- in ấn: chi tiết hoá đơn phải in ra được ra giấy tử tế ---
+   Trước đây nút "In" gọi `window.print()` mà không có kiểu in nào, nên tờ giấy
+   ra kèm cả thanh điều hướng và các nút bấm. */
+@media print {
+  .head,
+  .controls,
+  .pager,
+  .error {
+    display: none !important;
+  }
+
+  .panel,
+  .drawer {
+    border: none;
+    box-shadow: none;
+  }
+
+  .table tbody tr:hover {
+    background: none;
+  }
+
+  .table th {
+    position: static;
   }
 }

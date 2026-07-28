@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { ConfirmDialog } from "@/components/overlay/ConfirmDialog";
+
 import { cartTotal, useCartStore } from "@/features/sales/cart-store";
 import { useCheckout } from "@/features/sales/use-checkout";
 import { useDrugs } from "@/features/sales/use-drugs";
@@ -24,25 +26,31 @@ export default function PosPage() {
   const checkout = useCheckout();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<{ id: string; queued: boolean } | null>(null);
+  /** Thuốc chưa có giá, đang chờ thu ngân nhập đơn giá. */
+  const [priceAsk, setPriceAsk] = useState<Drug | null>(null);
   const { refreshCount } = useOfflineSync();
 
   const total = cartTotal(lines);
 
   function handleAdd(drug: Drug) {
-    // Giá lấy từ `drug.sale_price` (cột catalog, Sprint 10 D10). Chỉ hỏi tay khi
-    // mặt hàng CHƯA được định giá — trước đây hỏi tay MỌI dòng, kể cả hộp
-    // Paracetamol bán mười lần một ngày, vì backend không có chỗ nào giữ giá bán.
-    // Thu ngân vẫn sửa được giá từng dòng trong giỏ sau khi thêm.
+    // Giá lấy từ `drug.sale_price` (cột catalog, Sprint 10 D10). Chỉ hỏi khi mặt
+    // hàng CHƯA được định giá — trước đây hỏi MỌI dòng, kể cả hộp Paracetamol
+    // bán mười lần một ngày, vì backend không có chỗ nào giữ giá bán. Thu ngân
+    // vẫn sửa được giá từng dòng trong giỏ sau khi thêm.
     if (drug.sale_price !== null) {
       addLine(drug, "1", drug.sale_price);
       return;
     }
-    const priceStr = window.prompt(
-      `"${drug.name}" chưa có giá bán. Nhập đơn giá (VND/${drug.base_unit}):`,
-      "0",
-    );
-    if (priceStr === null) return;
-    addLine(drug, "1", priceStr || "0");
+    // Hỏi bằng hộp thoại của ứng dụng, KHÔNG `window.prompt`: một số webview
+    // nuốt lời gọi đó và trả `null` lặng lẽ ⇒ thu ngân bấm "Thêm" mà không có gì
+    // xảy ra, cũng không có thông báo lỗi nào. Trên máy tính bảng đặt ở quầy đó
+    // là lỗi vừa khó chịu vừa khó chẩn đoán.
+    setPriceAsk(drug);
+  }
+
+  function confirmPrice(value: string) {
+    if (priceAsk) addLine(priceAsk, "1", value.trim() || "0");
+    setPriceAsk(null);
   }
 
   async function handleCheckout() {
@@ -156,6 +164,21 @@ export default function PosPage() {
           </button>
         </section>
       </div>
+
+      <ConfirmDialog
+        open={priceAsk !== null}
+        title={`"${priceAsk?.name ?? ""}" chưa có giá bán`}
+        description="Nhập đơn giá cho lần bán này. Muốn khỏi hỏi lại, đặt giá bán cho mặt hàng trong danh mục thuốc."
+        confirmLabel="Thêm vào giỏ"
+        input={{
+          label: `Đơn giá (VND/${priceAsk?.base_unit ?? ""})`,
+          defaultValue: "0",
+          type: "number",
+          suffix: "₫",
+        }}
+        onConfirm={confirmPrice}
+        onCancel={() => setPriceAsk(null)}
+      />
     </div>
   );
 }

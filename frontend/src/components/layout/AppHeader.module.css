@@ -37,7 +37,7 @@
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--beras-warning);
-  color: #fff;
+  color: var(--beras-on-accent);
   white-space: nowrap;
 }
 

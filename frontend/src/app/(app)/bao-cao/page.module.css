@@ -123,7 +123,7 @@
   border: 1px solid var(--beras-leaf);
   border-radius: var(--radius-sm);
   background: var(--beras-leaf);
-  color: #fff;
+  color: var(--beras-on-accent);
   font-size: var(--text-base);
   align-self: flex-start;
   transition: background-color var(--motion-fast) var(--ease-out);
