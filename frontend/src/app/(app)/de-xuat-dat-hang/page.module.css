@@ -1,0 +1,227 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.meta,
+.summary {
+  font-size: 14px;
+  color: var(--beras-text-muted);
+}
+
+.primary,
+.primarySmall {
+  font: inherit;
+  background: var(--beras-leaf);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.primary {
+  padding: 8px 16px;
+}
+
+.primarySmall {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.primary:disabled,
+.primarySmall:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ghost {
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--beras-border);
+  background: transparent;
+  color: var(--beras-accent);
+  cursor: pointer;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.tab,
+.tabActive {
+  font: inherit;
+  font-size: 14px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--beras-border);
+  cursor: pointer;
+}
+
+.tab {
+  background: transparent;
+  color: var(--beras-text-muted);
+}
+
+.tabActive {
+  background: var(--beras-accent);
+  border-color: var(--beras-accent);
+  color: var(--beras-accent-contrast);
+  font-weight: 600;
+}
+
+.error,
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--beras-radius);
+  border: 1px solid;
+}
+
+.error {
+  background: var(--beras-danger-bg);
+  color: var(--beras-danger);
+  border-color: var(--beras-danger);
+}
+
+.toast {
+  background: var(--beras-surface);
+  color: var(--beras-success);
+  border-color: var(--beras-success);
+}
+
+.code {
+  font-family: var(--beras-font-mono);
+}
+
+.skeleton {
+  height: 120px;
+  border-radius: var(--beras-radius);
+  background: var(--beras-bg-alt);
+}
+
+.empty {
+  color: var(--beras-text-muted);
+  padding: 12px 0;
+}
+
+.table {
+  background: var(--beras-surface);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--beras-radius);
+  overflow: hidden;
+}
+
+.headRow,
+.dataRow {
+  display: grid;
+  grid-template-columns: minmax(150px, 2fr) 80px 90px 90px 90px minmax(120px, 1.2fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+}
+
+.headRow {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--beras-text-muted);
+  background: var(--beras-bg-alt);
+}
+
+.item {
+  border-top: 1px solid var(--beras-border);
+}
+
+.item:first-child {
+  border-top: none;
+}
+
+.name {
+  font-weight: 500;
+}
+
+.num {
+  font-family: var(--beras-font-mono);
+  text-align: right;
+}
+
+.supplier {
+  color: var(--beras-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px 12px;
+  flex-wrap: wrap;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.chipNeutral,
+.chipUrgent {
+  font-size: 13px;
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+/* Thuốc mới nhập chưa có lịch sử bán là chuyện bình thường, không phải sự cố
+   ⇒ chip TRUNG TÍNH, không phải cảnh báo (docs/19 §5). */
+.chipNeutral {
+  background: var(--beras-bg-alt);
+  color: var(--beras-text-muted);
+}
+
+.chipUrgent {
+  background: color-mix(in srgb, var(--beras-warning) 18%, transparent);
+  color: var(--beras-brown);
+}
+
+@media (width <= 820px) {
+  .headRow {
+    display: none;
+  }
+
+  .dataRow {
+    grid-template-columns: 1fr 80px;
+    row-gap: 2px;
+  }
+
+  .supplier {
+    grid-column: 1 / -1;
+  }
+}

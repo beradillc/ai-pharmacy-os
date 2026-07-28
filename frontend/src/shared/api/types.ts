@@ -112,3 +112,61 @@ export interface ProblemDetail {
   instance: string;
   [extra: string]: unknown;
 }
+
+// --- analytics (Sprint 9) ----------------------------------------------------
+// Khớp `modules/analytics/interface/schemas.py`. Số tiền/số lượng giữ nguyên
+// dạng `string`: backend trả `Decimal`, và ép sang `number` ở đây là tự chuốc
+// lấy sai số dấu phẩy động trên đúng những con số người ta đối chiếu với sổ.
+
+export type SuggestionStatus = "PENDING" | "INSUFFICIENT_DATA" | "MATERIALIZED" | "DISMISSED";
+
+export interface TopDrug {
+  drug_id: string;
+  quantity_sold: string;
+  revenue: string;
+  /** `null` = không tra được tên (thuốc đã xoá), KHÔNG phải "chưa tra". */
+  drug_name: string | null;
+}
+
+export interface Dashboard {
+  branch_id: string;
+  date_from: string;
+  date_to: string;
+  revenue_total: string;
+  top_drugs: TopDrug[];
+  near_expiry_count: number;
+  low_stock_count: number;
+  draft_po_count: number;
+}
+
+export interface ReorderSuggestion {
+  id: string;
+  drug_id: string;
+  drug_name: string | null;
+  avg_daily_velocity: string;
+  reorder_point: string;
+  on_hand_at_calc: string;
+  suggested_qty: string;
+  status: SuggestionStatus;
+  supplier_id: string | null;
+  /** `null` cùng lúc với `supplier_id = null` nghĩa là "chưa có NCC"; `null`
+   * khi `supplier_id` có giá trị nghĩa là tên không tra được. */
+  supplier_name: string | null;
+  po_id: string | null;
+  can_materialize: boolean;
+  calculated_at: string;
+}
+
+export interface ReorderRun {
+  branch_id: string;
+  drugs_evaluated: number;
+  suggested: number;
+  insufficient_data: number;
+}
+
+export interface Materialize {
+  suggestion_id: string;
+  po_id: string;
+  /** Mã người đọc được ("PO-0001"). Cấm tự chế từ `po_id` — docs/19 §10.1. */
+  po_code: string;
+}

@@ -1,0 +1,211 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.select {
+  font: inherit;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--beras-border);
+  background: var(--beras-surface);
+  color: var(--beras-text);
+}
+
+.window {
+  font-size: 14px;
+  color: var(--beras-text-muted);
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--beras-radius);
+  background: var(--beras-danger-bg);
+  color: var(--beras-danger);
+  border: 1px solid var(--beras-danger);
+}
+
+.retry,
+.ghost {
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid currentcolor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ghost {
+  border-color: var(--beras-border);
+  color: var(--beras-accent);
+}
+
+.ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --- bốn ô: vạch màu bên trái mã hoá mức độ, đọc lướt bắt được trước chữ --- */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  background: var(--beras-surface);
+  border: 1px solid var(--beras-border);
+  border-left-width: 5px;
+  border-radius: var(--beras-radius);
+}
+
+.toneAccent {
+  border-left-color: var(--beras-leaf);
+}
+
+.toneDanger {
+  border-left-color: var(--beras-danger);
+}
+
+.toneWarning {
+  border-left-color: var(--beras-warning);
+}
+
+.tonePlain {
+  border-left-color: var(--beras-border);
+}
+
+.tileLabel {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--beras-text-muted);
+}
+
+.tileValue {
+  font-family: var(--beras-font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.tileHint {
+  font-size: 13px;
+  color: var(--beras-text-muted);
+}
+
+.skeleton {
+  height: 31px;
+  border-radius: 6px;
+  background: var(--beras-bg-alt);
+}
+
+.skeletonRows {
+  height: 96px;
+  border-radius: 6px;
+  background: var(--beras-bg-alt);
+}
+
+/* --- thuốc bán chạy --- */
+.panel {
+  background: var(--beras-surface);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--beras-radius);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panelTitle {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.empty {
+  color: var(--beras-text-muted);
+  padding: 8px 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.4fr) minmax(80px, 2fr) 90px 130px;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+}
+
+.rowName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barWrap {
+  height: 12px;
+  background: var(--beras-bg-alt);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar {
+  display: block;
+  height: 100%;
+  background: var(--beras-leaf);
+}
+
+.rowQty,
+.rowMoney {
+  font-family: var(--beras-font-mono);
+  text-align: right;
+}
+
+.rowMoney {
+  color: var(--beras-text-muted);
+}
+
+@media (width <= 720px) {
+  .row {
+    grid-template-columns: 1fr 80px 110px;
+  }
+
+  .barWrap {
+    display: none;
+  }
+}
