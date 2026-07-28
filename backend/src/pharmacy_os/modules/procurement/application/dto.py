@@ -100,6 +100,50 @@ class PurchaseOrderOutput:
 
 
 @dataclass(slots=True)
+class PurchaseOrderListItemOutput:
+    """One row of the purchase-order list (Sprint 10, D2).
+
+    Carries the **supplier name** and a **total**, which :class:`PurchaseOrderOutput`
+    does not: a list is read to decide which order to open, and "NCC Dược Hậu Giang
+    — 4 mặt hàng — 3.240.000 ₫" answers that where a supplier UUID and a raw item
+    array do not. It drops ``items`` for the same reason ``SaleListItemResponse``
+    drops ``lines``.
+
+    ``total_amount`` is ordered quantity × unit price, i.e. what the order commits
+    to — not what has been received. A draft PO created by the analytics reorder
+    flow carries ``unit_price = 0`` until a human fills in the quote, so its total
+    is legitimately ``0``; that is the draft saying "price not agreed yet", not a
+    bug in this sum.
+    """
+
+    id: UUID
+    code: str
+    supplier_id: UUID
+    supplier_name: str | None
+    status: str
+    item_count: int
+    total_amount: Decimal
+    created_at: datetime
+    ordered_at: datetime | None
+
+    @classmethod
+    def of(cls, po: PurchaseOrder, supplier_name: str | None) -> PurchaseOrderListItemOutput:
+        return cls(
+            id=po.id,
+            code=po.code,
+            supplier_id=po.supplier_id,
+            supplier_name=supplier_name,
+            status=po.status.value,
+            item_count=len(po.items),
+            total_amount=sum(
+                (it.quantity_ordered * it.unit_price for it in po.items), Decimal("0")
+            ),
+            created_at=po.created_at,
+            ordered_at=po.ordered_at,
+        )
+
+
+@dataclass(slots=True)
 class GoodsReceiptItemInput:
     po_item_id: UUID
     drug_id: UUID

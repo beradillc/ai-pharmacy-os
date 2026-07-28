@@ -182,6 +182,29 @@ class SqlAlchemyPurchaseOrderRepository:
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return purchase_order_to_domain(row) if row is not None else None
 
+    async def list(
+        self,
+        *,
+        status: PurchaseOrderStatus | None,
+        branch_id: UUID | None,
+        limit: int,
+        offset: int,
+    ) -> list[PurchaseOrder]:
+        stmt = select(PurchaseOrderORM).where(
+            PurchaseOrderORM.tenant_id == self._ctx.tenant_id,
+        )
+        if status is not None:
+            stmt = stmt.where(PurchaseOrderORM.status == status.value)
+        if branch_id is not None:
+            stmt = stmt.where(PurchaseOrderORM.branch_id == branch_id)
+        stmt = (
+            stmt.order_by(PurchaseOrderORM.created_at.desc(), PurchaseOrderORM.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [purchase_order_to_domain(row) for row in rows]
+
     async def count_by_status(self, status: PurchaseOrderStatus, branch_id: UUID) -> int:
         stmt = select(func.count(PurchaseOrderORM.id)).where(
             PurchaseOrderORM.tenant_id == self._ctx.tenant_id,

@@ -9,6 +9,7 @@ from pharmacy_os.modules.procurement.application.dto import (
     GoodsReceiptOutput,
     PurchaseOrderItemInput,
     PurchaseOrderItemOutput,
+    PurchaseOrderListItemOutput,
     PurchaseOrderOutput,
     SupplierOutput,
 )
@@ -23,6 +24,7 @@ __all__ = [
     "GoodsReceiptOutput",
     "PurchaseOrderItemInput",
     "PurchaseOrderItemOutput",
+    "PurchaseOrderListItemOutput",
     "PurchaseOrderOutput",
     "SupplierOutput",
     "ProcurementService",

@@ -46,6 +46,24 @@ class PurchaseOrderRepository(Protocol):
 
     async def get(self, po_id: UUID) -> PurchaseOrder | None: ...
 
+    async def list(
+        self,
+        *,
+        status: PurchaseOrderStatus | None,
+        branch_id: UUID | None,
+        limit: int,
+        offset: int,
+    ) -> list[PurchaseOrder]:
+        """Page of purchase orders, **newest first**, optionally one status only.
+
+        ``branch_id=None`` spans every branch in the tenant — the same chain-level
+        default ``GET /sales`` uses, and for the same reason: the grant that reads
+        one order already reads across branches, so narrowing here would only hide
+        rows from someone entitled to them. Items come along (the ORM relationship
+        is ``selectin``), so the caller can total an order without a second read.
+        """
+        ...
+
     async def count_by_status(self, status: PurchaseOrderStatus, branch_id: UUID) -> int:
         """How many POs are in *status* at *branch_id* — the analytics dashboard
         counts ``DRAFT`` to show "PO nháp chờ duyệt" (PROJECT_STATE §7am)."""

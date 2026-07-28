@@ -20,6 +20,7 @@ from pharmacy_os.modules.procurement.application.dto import (
     CreateSupplierInput,
     GoodsReceiptOutput,
     PurchaseOrderItemInput,
+    PurchaseOrderListItemOutput,
     PurchaseOrderOutput,
     SupplierOutput,
 )
@@ -231,6 +232,35 @@ class ProcurementService:
         require_permission(ctx, "procurement.po.read")
         po = await self._get_po_or_404(po_id, ctx)
         return PurchaseOrderOutput.of(po)
+
+    async def list_purchase_orders(
+        self,
+        ctx: RequestContext,
+        *,
+        status: PurchaseOrderStatus | None = None,
+        branch_id: UUID | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[PurchaseOrderListItemOutput]:
+        """Purchase orders, newest first, with supplier names resolved (Sprint 10, D2).
+
+        Needs ``procurement.po.read`` only. Supplier names are looked up **inside**
+        this call rather than by requiring the caller to also hold
+        ``procurement.supplier.read``: the names returned are exactly the suppliers
+        of the orders the caller may already read, so the wider grant would buy the
+        reader nothing but the ability to enumerate the whole supplier book.
+
+        One extra query for every name on the page (``names_by_ids``), not one per
+        row — the same bulk shape the reorder screen uses.
+        """
+        require_permission(ctx, "procurement.po.read")
+        async with self._uow_factory() as uow:
+            repo = self._po_repo_factory(uow, ctx)
+            orders = await repo.list(status=status, branch_id=branch_id, limit=limit, offset=offset)
+            names = await self._supplier_repo_factory(uow, ctx).names_by_ids(
+                [po.supplier_id for po in orders]
+            )
+        return [PurchaseOrderListItemOutput.of(po, names.get(po.supplier_id)) for po in orders]
 
     async def count_draft_purchase_orders(
         self, ctx: RequestContext, *, branch_id: UUID | None = None
