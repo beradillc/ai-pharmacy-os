@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -10,7 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.sales.domain import SalesOrder, SaleStatus
-from pharmacy_os.modules.sales.domain.ports import DrugSalesAggRow, OrderRevenueRow
+from pharmacy_os.modules.sales.domain.ports import (
+    DrugSalesAggRow,
+    OrderRevenueRow,
+    SalesOrderListRow,
+)
 from pharmacy_os.modules.sales.infrastructure.mappers import to_domain, to_orm
 from pharmacy_os.modules.sales.infrastructure.models import (
     PaymentORM,
@@ -135,6 +140,87 @@ class SqlAlchemySalesRepository:
                 currency=r.currency,
                 created_at=r.created_at,
                 subtotal=r.subtotal,
+                sold_by_user_id=r.sold_by_user_id,
+            )
+            for r in rows
+        ]
+
+    async def list_orders(
+        self,
+        tenant_id: UUID,
+        *,
+        branch_id: UUID | None,
+        created_from: datetime,
+        created_to: datetime,
+        limit: int,
+        offset: int,
+    ) -> list[SalesOrderListRow]:
+        """Till list of orders, newest first — drafts included (see the port docstring).
+
+        Lines and payments are aggregated in **separate subqueries** rather than two
+        joins off the order: joining both at once multiplies rows (lines × payments),
+        which would silently inflate both ``subtotal`` and ``paid_total`` on any order
+        settled with more than one tender. ``COALESCE`` covers the two legitimate
+        empty sides — a draft with no payment yet, and (defensively) an order with no
+        lines.
+        """
+        lines = (
+            select(
+                SaleLineORM.order_id.label("order_id"),
+                func.sum(SaleLineORM.quantity * SaleLineORM.unit_price).label("subtotal"),
+                func.count(SaleLineORM.id).label("line_count"),
+            )
+            .group_by(SaleLineORM.order_id)
+            .subquery()
+        )
+        payments = (
+            select(
+                PaymentORM.order_id.label("order_id"),
+                func.sum(PaymentORM.amount).label("paid_total"),
+            )
+            .group_by(PaymentORM.order_id)
+            .subquery()
+        )
+        stmt = (
+            select(
+                SalesOrderORM.id,
+                SalesOrderORM.branch_id,
+                SalesOrderORM.created_at,
+                SalesOrderORM.status,
+                SalesOrderORM.currency,
+                SalesOrderORM.customer_id,
+                SalesOrderORM.sold_by_user_id,
+                func.coalesce(lines.c.subtotal, 0).label("subtotal"),
+                func.coalesce(lines.c.line_count, 0).label("line_count"),
+                func.coalesce(payments.c.paid_total, 0).label("paid_total"),
+            )
+            .outerjoin(lines, lines.c.order_id == SalesOrderORM.id)
+            .outerjoin(payments, payments.c.order_id == SalesOrderORM.id)
+            .where(
+                SalesOrderORM.tenant_id == tenant_id,
+                SalesOrderORM.created_at >= created_from,
+                SalesOrderORM.created_at < created_to,
+            )
+        )
+        if branch_id is not None:
+            stmt = stmt.where(SalesOrderORM.branch_id == branch_id)
+        stmt = (
+            stmt.order_by(SalesOrderORM.created_at.desc(), SalesOrderORM.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return [
+            SalesOrderListRow(
+                order_id=r.id,
+                branch_id=r.branch_id,
+                created_at=r.created_at,
+                status=r.status,
+                currency=r.currency,
+                subtotal=Decimal(r.subtotal),
+                paid_total=Decimal(r.paid_total),
+                line_count=r.line_count,
+                customer_id=r.customer_id,
                 sold_by_user_id=r.sold_by_user_id,
             )
             for r in rows

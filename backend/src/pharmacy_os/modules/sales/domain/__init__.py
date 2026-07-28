@@ -24,6 +24,7 @@ from pharmacy_os.modules.sales.domain.ports import (
     OrderRevenueRow,
     PrescriptionInfo,
     PrescriptionInfoProvider,
+    SalesOrderListRow,
     SalesRepository,
 )
 from pharmacy_os.modules.sales.domain.rules import (
@@ -49,6 +50,7 @@ __all__ = [
     "UnderpaidError",
     "SalesRepository",
     "OrderRevenueRow",
+    "SalesOrderListRow",
     "DrugSalesAggRow",
     "DrugInfo",
     "DrugInfoProvider",

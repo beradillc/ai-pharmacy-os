@@ -56,6 +56,33 @@ class DrugSalesAggRow:
     revenue: Decimal
 
 
+@dataclass(frozen=True, slots=True)
+class SalesOrderListRow:
+    """One order as a till list shows it — the "hoá đơn hôm nay" read (Sprint 10, D1).
+
+    Deliberately **not** :class:`OrderRevenueRow` reused: that row exists to be folded
+    into revenue buckets, so it carries no ``status`` and no ``paid_total``, and it is
+    ordered oldest-first because a report reads forwards. A till list needs exactly the
+    two fields it lacks (an order can be ``RETURNED``/``PARTIALLY_RETURNED``, and the
+    cashier looks for what was actually tendered) and reads backwards from now. Bending
+    the report row into a UI row would have made both worse.
+
+    ``subtotal`` is gross at sale time (same convention as the revenue report — see
+    :class:`OrderRevenueRow`); ``line_count`` is the number of lines, not units.
+    """
+
+    order_id: UUID
+    branch_id: UUID
+    created_at: datetime
+    status: str
+    currency: str
+    subtotal: Decimal
+    paid_total: Decimal
+    line_count: int
+    customer_id: UUID | None
+    sold_by_user_id: UUID | None
+
+
 class SalesRepository(Protocol):
     async def add(self, order: SalesOrder) -> None: ...
 
@@ -108,6 +135,26 @@ class SalesRepository(Protocol):
         means "every salesperson", **not** "orders with no salesperson" — the
         unattributed pre-column orders stay in the unfiltered total and cannot be
         isolated on their own."""
+        ...
+
+    async def list_orders(
+        self,
+        tenant_id: UUID,
+        *,
+        branch_id: UUID | None,
+        created_from: datetime,
+        created_to: datetime,
+        limit: int,
+        offset: int,
+    ) -> list[SalesOrderListRow]:
+        """Page of orders in ``[created_from, created_to)``, **newest first**.
+
+        Unlike :meth:`completed_in_range`, drafts are **included**: a draft on the till
+        list is a sale someone started and abandoned, which is precisely what a shift
+        handover wants to see. Callers that mean "revenue" must keep using
+        ``completed_in_range`` — the two differ on purpose, and the difference is
+        visible in the row's ``status``.
+        """
         ...
 
     async def aggregate_sold_by_drug(
