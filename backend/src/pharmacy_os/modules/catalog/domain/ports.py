@@ -16,7 +16,26 @@ class DrugRepository(Protocol):
 
     async def by_barcode(self, barcode: str) -> Drug | None: ...
 
-    async def list(self, *, limit: int = 50, offset: int = 0) -> list[Drug]: ...
+    async def list(
+        self,
+        *,
+        search: str | None = None,
+        ids: Sequence[UUID] | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Drug]:
+        """Drugs of the tenant, by name.
+
+        ``search`` matches a **substring of the name, case-insensitively**, or an
+        **exact barcode** — the two ways a person at a counter identifies a box:
+        they type part of what is printed on it, or they scan it.
+
+        ``ids`` restricts to a known set. That is what lets a screen holding a page
+        of stock/sale rows label them with one request instead of one per row; an
+        empty sequence means "no ids asked for" and yields no rows, which is
+        different from ``None`` ("no id filter").
+        """
+        ...
 
     async def names_by_ids(self, drug_ids: Sequence[UUID]) -> dict[UUID, str]:
         """Name-only projection for many ids in one query. Ids the tenant can't see are

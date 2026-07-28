@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
@@ -42,14 +42,29 @@ class SqlAlchemyDrugRepository:
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return to_domain(row) if row is not None else None
 
-    async def list(self, *, limit: int = 50, offset: int = 0) -> list[Drug]:
-        stmt = (
-            select(DrugORM)
-            .where(DrugORM.tenant_id == self._ctx.tenant_id)
-            .order_by(DrugORM.name)
-            .limit(limit)
-            .offset(offset)
-        )
+    async def list(
+        self,
+        *,
+        search: str | None = None,
+        ids: Sequence[UUID] | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Drug]:
+        stmt = select(DrugORM).where(DrugORM.tenant_id == self._ctx.tenant_id)
+        if search:
+            # ``ilike`` chứ không ``like``: SQLAlchemy phát ``lower() LIKE lower()``
+            # trên SQLite và ILIKE trên Postgres, nên tìm "para" ra "Paracetamol"
+            # trên cả hai nền — chênh lệch dialect đúng là chỗ đã cho lọt ít nhất
+            # 3 lỗi thật (kỷ luật #7, bổ sung 2026-07-26).
+            pattern = f"%{search}%"
+            stmt = stmt.where(or_(DrugORM.name.ilike(pattern), DrugORM.barcode == search))
+        if ids is not None:
+            # Danh sách rỗng ⇒ không hỏi CSDL: ``IN ()`` là lỗi cú pháp ở nền này và
+            # quét toàn bảng ở nền kia (cùng lý do với ``names_by_ids``).
+            if not ids:
+                return []
+            stmt = stmt.where(DrugORM.id.in_(ids))
+        stmt = stmt.order_by(DrugORM.name).limit(limit).offset(offset)
         rows = (await self._session.execute(stmt)).scalars().all()
         return [to_domain(r) for r in rows]
 

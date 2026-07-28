@@ -350,3 +350,63 @@ async def test_drug_names_requires_catalog_read(
     )
     with pytest.raises(PermissionDeniedError):
         await catalog_service.drug_names([uuid4()], unprivileged)
+
+
+async def _drug(
+    service: CatalogService, ctx: RequestContext, name: str, barcode: str | None = None
+):
+    return await service.create_drug(
+        CreateDrugInput(name=name, rx_class=RxClass.OTC, base_unit="viên", barcode=barcode),
+        ctx,
+    )
+
+
+async def test_search_matches_name_case_insensitively(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    """Gõ "para" phải ra "Paracetamol" — chữ hoa/thường không được cản (Sprint 10, D3).
+
+    Khẳng định này là lý do dùng ``ilike`` chứ không ``like``: trên SQLite ``like``
+    vô tình không phân biệt hoa thường với ASCII, nên một test chỉ gõ đúng hoa
+    thường sẽ xanh trên cả bản cài đặt sai. Test này gõ CHỮ THƯỜNG cho một tên
+    VIẾT HOA đầu, đúng chỗ hai bản khác nhau trên Postgres.
+    """
+    await _drug(catalog_service, ctx, "Paracetamol 500mg")
+    await _drug(catalog_service, ctx, "Amoxicillin 500mg")
+
+    found = await catalog_service.list_drugs(ctx, search="para")
+
+    assert [d.name for d in found] == ["Paracetamol 500mg"]
+
+
+async def test_search_matches_exact_barcode(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    await _drug(catalog_service, ctx, "Vitamin C 500mg", barcode="8935001234567")
+    await _drug(catalog_service, ctx, "Vitamin B1", barcode="8935009999999")
+
+    found = await catalog_service.list_drugs(ctx, search="8935001234567")
+
+    assert [d.name for d in found] == ["Vitamin C 500mg"]
+
+
+async def test_ids_filter_labels_a_page_in_one_call(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    a = await _drug(catalog_service, ctx, "Aspirin 81mg")
+    b = await _drug(catalog_service, ctx, "Berberin")
+    await _drug(catalog_service, ctx, "Cetirizin 10mg")
+
+    found = await catalog_service.list_drugs(ctx, ids=[a.id, b.id])
+
+    assert {d.id for d in found} == {a.id, b.id}
+
+
+async def test_empty_ids_is_not_the_same_as_no_filter(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    """``ids=[]`` = "không hỏi id nào" ⇒ rỗng; ``ids=None`` = "không lọc" ⇒ đủ."""
+    await _drug(catalog_service, ctx, "Domperidon 10mg")
+
+    assert await catalog_service.list_drugs(ctx, ids=[]) == []
+    assert len(await catalog_service.list_drugs(ctx, ids=None)) == 1

@@ -42,10 +42,15 @@ def _build_drugs_router(get_context: ContextDep) -> APIRouter:
     async def list_drugs(
         service: CatalogService = Depends(_service),
         ctx: RequestContext = Depends(get_context),
+        search: str | None = Query(default=None, max_length=255),
+        ids: list[UUID] | None = Query(default=None),
         limit: int = Query(50, ge=1, le=200),
         offset: int = Query(0, ge=0),
     ) -> list[DrugResponse]:
-        items = await service.list_drugs(ctx, limit=limit, offset=offset)
+        """Danh mục thuốc. ``search`` = một phần tên hoặc đúng mã vạch;
+        ``ids`` = lặp lại tham số (``?ids=…&ids=…``) để gắn tên cho một trang dữ
+        liệu chỉ có id — một lượt gọi, không phải một lượt mỗi dòng."""
+        items = await service.list_drugs(ctx, search=search, ids=ids, limit=limit, offset=offset)
         return [DrugResponse.of(o) for o in items]
 
     @router.get("/{drug_id}", response_model=DrugResponse)

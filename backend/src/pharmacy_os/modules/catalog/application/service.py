@@ -175,13 +175,25 @@ class CatalogService:
         return [ActiveIngredientOutput.of(i) for i in ingredients]
 
     async def list_drugs(
-        self, ctx: RequestContext, *, limit: int = 50, offset: int = 0
+        self,
+        ctx: RequestContext,
+        *,
+        search: str | None = None,
+        ids: Sequence[UUID] | None = None,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[DrugOutput]:
-        """List the tenant's drugs (name-ordered), paginated by limit/offset."""
+        """List the tenant's drugs (name-ordered), paginated by limit/offset.
+
+        ``search`` = substring of the name (case-insensitive) or an exact barcode;
+        ``ids`` = a known set, which is how a screen labels a page of rows holding
+        drug ids with one request rather than one per row (Sprint 10, D3). Both are
+        filters on the same read — no new permission, ``catalog.read`` throughout.
+        """
         require_permission(ctx, "catalog.read")
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)
-            drugs = await repo.list(limit=limit, offset=offset)
+            drugs = await repo.list(search=search, ids=ids, limit=limit, offset=offset)
         return [DrugOutput.of(d) for d in drugs]
 
     async def _record(self, ctx: RequestContext, action: AuditAction, drug_id: UUID) -> None:
