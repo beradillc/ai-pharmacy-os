@@ -118,7 +118,7 @@ Ba quyết định, và §1–§7 ở trên **bị sửa theo** chúng:
 
 | # | Quyết định | Vì sao |
 |---|---|---|
-| **Q1** | **KHÔNG gộp POS vào shell chung. KHÔNG đổi tên một route nào.** `/` vẫn là màn bán hàng, dashboard vẫn ở `/bang-dieu-hanh`, kho vẫn ở `/ton-kho` | POS toàn màn hình đang chạy tốt và là lựa chọn có lý do. Đổi trang chủ là đổi thói quen người đứng quầy — chi phí thật, lợi ích thẩm mỹ. Cái yêu cầu thực sự cần là **một mô hình điều hướng**, và điều đó đạt được bằng một hằng số `NAV` dùng chung, không cần đổi URL |
+| **Q1** ⚠️ *đã sửa một nửa — xem §9* | **KHÔNG gộp POS vào shell chung. KHÔNG đổi tên một route nào.** `/` vẫn là màn bán hàng, dashboard vẫn ở `/bang-dieu-hanh`, kho vẫn ở `/ton-kho` | POS toàn màn hình đang chạy tốt và là lựa chọn có lý do. Đổi trang chủ là đổi thói quen người đứng quầy — chi phí thật, lợi ích thẩm mỹ. Cái yêu cầu thực sự cần là **một mô hình điều hướng**, và điều đó đạt được bằng một hằng số `NAV` dùng chung, không cần đổi URL |
 | **Q2** | **KHÔNG thêm `GET /reports/revenue`.** Biểu đồ doanh thu dựng từ `GET /sales` đã có, gộp theo ngày ở FE | Chain nói rõ không đụng backend. `GET /sales` (Sprint 10 D1) trả `created_at` + `subtotal` từng đơn ⇒ đủ dựng đường 28 ngày. **Giới hạn đã biết:** ~280 đơn/28 ngày cần 2 lượt gọi (`limit` tối đa 200). Nhà thuốc lớn hơn sẽ tốn nhiều lượt ⇒ **Nâng cấp sau** |
 | **Q3** | Làm **U1 → U2 → U3**, dừng cho Chain xem, rồi mới quyết tiếp | U1–U3 không đụng backend một dòng nào |
 
@@ -143,3 +143,32 @@ Ba quyết định, và §1–§7 ở trên **bị sửa theo** chúng:
 | `/tuan-thu` (12 endpoint) · `/ai` (5) · `/nhap-hang` (3) · `/don-thuoc` (5) | Mỗi màn là một tính năng mới, không phải "đổi giao diện dựa trên cái đã có" |
 | KPI `comparison`/`trend` | Cần gọi hai kỳ; làm được nhưng **U2 sẽ để dành**: dashboard chưa có gì mà đã hai lượt gọi là tự chuốc chậm. Component `KpiCard` **có sẵn prop**, chỉ chưa truyền |
 | Dark mode | Yêu cầu không đòi |
+
+
+---
+
+## 9. 🔴 Q1 BỊ SỬA MỘT NỬA (2026-07-29, sau khi Chain dùng thật)
+
+Chain: *"Mục Bán hàng thiếu danh mục bên trái, mỗi lần về phải bấm vào Quản lý
+thấy bất tiện."*
+
+**Phần sai của Q1:** giữ POS ngoài shell, với lập luận *"thu ngân cần tối đa diện
+tích"*. Đó là **giả định của tôi**, không phải quan sát. Người dùng thật đã trả
+lời: mất điều hướng khó chịu hơn mất 232px sidebar. Một lập luận nghe hợp lý mà
+trái với dữ liệu thì phải bỏ, không phải bảo vệ.
+
+**Phần đúng của Q1, vẫn giữ:** không đổi URL nào. `/` vẫn là màn bán hàng.
+
+| | Trước | Sau |
+|---|---|---|
+| Khung màn Bán hàng | layout riêng, header tự vẽ | **`AppShell` dùng chung** |
+| Điều hướng ở màn Bán hàng | chỉ một nút "Quản lý" | sidebar (≥900px) · thanh dưới (<900px) |
+| Số bản header trong mã | 2 | **1** |
+| Chiều rộng nội dung | toàn màn | `wide` — không bó 1120px như các màn khác |
+
+**Bài học ghi lại, vì nó lặp lần thứ hai trong một ngày:** cả lỗi này lẫn lỗi
+`viewport` sáng nay đều là *tôi suy luận thay vì đo*. Lỗi viewport là suy từ
+`grep` rỗng; lỗi này là suy từ "thu ngân chắc cần diện tích". Cả hai đều nghe rất
+hợp lý, và cả hai đều sai. Với giao diện, thứ duy nhất kết luận được là **người
+dùng thật bấm thử** — và đó là lý do vòng "tôi làm → Chain bấm → tôi sửa" đang
+chạy đúng, không phải một phiền toái cần rút ngắn.

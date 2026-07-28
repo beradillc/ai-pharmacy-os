@@ -1,9 +1,9 @@
 /*
- * Khung chung cho các màn quản lý.
+ * Khung chung cho MỌI màn sau đăng nhập (kể cả Bán hàng, từ 2026-07-29).
  *
- * Mobile: một cột, bottom nav cố định đáy ⇒ nội dung phải chừa đệm đáy, nếu không
- * dòng cuối của bảng nằm dưới thanh nav và không ai bấm được.
- * Desktop (≥900px): sidebar cạnh trái, không còn bottom nav ⇒ bỏ đệm đáy.
+ * Mobile: một cột, thanh dưới cố định ⇒ nội dung phải chừa đệm đáy, nếu không
+ * dòng cuối nằm dưới thanh và không ai bấm được.
+ * Desktop (≥900px): sidebar cạnh trái, thanh dưới tự ẩn ⇒ bỏ đệm đáy.
  */
 .shell {
   min-height: 100vh;
@@ -16,27 +16,34 @@
   flex: 1;
   display: flex;
   width: 100%;
+  min-height: 0;
 }
 
-.main {
+.main,
+.mainWide {
   flex: 1;
-  min-width: 0; /* cho phép bảng bên trong tự cuộn thay vì đẩy trang trượt ngang */
-  padding: var(--space-5) var(--space-4);
+  min-width: 0; /* cho bảng bên trong tự cuộn thay vì đẩy cả trang trượt ngang */
+  padding: var(--space-4);
   padding-bottom: calc(72px + env(safe-area-inset-bottom, 0));
+  width: 100%;
+}
+
+.inner {
   max-width: 1120px;
   margin: 0 auto;
   width: 100%;
 }
 
-@media (width >= 900px) {
-  .main {
-    padding: var(--space-6) var(--space-6) var(--space-8);
-    margin: 0;
-  }
+/* Màn bán hàng: không giới hạn 1120px — lưới danh mục + giỏ hàng dùng hết chiều
+   rộng còn lại, đây là chỗ diện tích thật sự đổi ra tốc độ thao tác. */
+.innerWide {
+  width: 100%;
+}
 
-  .inner {
-    max-width: 1120px;
-    margin: 0 auto;
-    width: 100%;
+@media (width >= 900px) {
+  .main,
+  .mainWide {
+    padding: var(--space-6);
+    padding-bottom: var(--space-8);
   }
 }

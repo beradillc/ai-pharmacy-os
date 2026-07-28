@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
-import { useAuthStore } from "@/features/auth/auth-store";
 import { cartTotal, useCartStore } from "@/features/sales/cart-store";
 import { useCheckout } from "@/features/sales/use-checkout";
 import { useDrugs } from "@/features/sales/use-drugs";
@@ -14,8 +12,6 @@ import { useOfflineSync } from "@/shared/offline/use-offline-sync";
 import styles from "./page.module.css";
 
 export default function PosPage() {
-  const session = useAuthStore((s) => s.session);
-  const logout = useAuthStore((s) => s.logout);
   const [search, setSearch] = useState("");
   const { drugs, isLoading } = useDrugs(search);
 
@@ -28,7 +24,7 @@ export default function PosPage() {
   const checkout = useCheckout();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<{ id: string; queued: boolean } | null>(null);
-  const { pendingCount, refreshCount } = useOfflineSync();
+  const { refreshCount } = useOfflineSync();
 
   const total = cartTotal(lines);
 
@@ -63,27 +59,10 @@ export default function PosPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <span className={styles.brand}>BERAS</span>
-        <span className={styles.branchTag}>
-          {session?.accessible_branches.find((b) => b.id === session.branch_id)?.name ??
-            `Chi nhánh ${session?.branch_id.slice(0, 8) ?? ""}`}
-        </span>
-        {/* Lối quay lại khu quản lý. Không có nó thì màn bán hàng là ngõ cụt:
-            người dùng vào bán rồi phải đăng xuất mới xem được báo cáo. */}
-        {session?.permissions.includes("analytics.read") && (
-          <Link href="/bang-dieu-hanh" className={styles.manageLink}>
-            Quản lý
-          </Link>
-        )}
-        {pendingCount > 0 && (
-          <span className={styles.pendingTag}>{pendingCount} đơn chờ đồng bộ</span>
-        )}
-        <button className={styles.logout} onClick={logout}>
-          Đăng xuất
-        </button>
-      </header>
-
+      {/* Không còn header riêng ở đây. Thương hiệu, chi nhánh, số đơn chờ đồng bộ
+          và nút Đăng xuất nay do `AppShell` lo — dùng chung với mọi màn khác, nên
+          chúng chỉ tồn tại một bản. Lối quay lại khu quản lý cũng không cần nút
+          "Quản lý" nữa: sidebar (desktop) và thanh dưới (mobile) luôn có mặt. */}
       <div className={styles.body}>
         <section className={styles.catalog}>
           <input

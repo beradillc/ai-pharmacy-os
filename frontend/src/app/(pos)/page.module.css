@@ -1,53 +1,16 @@
+/* Màn này nay nằm TRONG AppShell (2026-07-29): shell lo nền, header, đệm đáy
+   cho thanh dưới. Ở đây chỉ còn lưới hai cột của chính màn bán hàng. */
 .page {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 24px;
-  background: var(--beras-accent);
-  color: var(--beras-accent-contrast);
-}
-
-.brand {
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  font-size: 18px;
-}
-
-.branchTag {
-  font-size: 13px;
-  opacity: 0.85;
-  flex: 1;
-}
-
-.pendingTag {
-  font-size: 12px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-  padding: 4px 10px;
-}
-
-.logout {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  color: inherit;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 13px;
+  height: 100%;
 }
 
 .body {
   flex: 1;
   display: grid;
   grid-template-columns: 1fr 360px;
-  gap: 20px;
-  padding: 20px 24px;
+  gap: var(--space-4);
 }
 
 .catalog,
@@ -190,22 +153,6 @@
   margin-bottom: 8px;
 }
 
-/* Lối sang khu quản lý từ màn bán hàng (Sprint 10, D9). Cùng ngôn ngữ với nút
-   Đăng xuất ngay cạnh nó — một liên kết trông khác hẳn mọi thứ trên thanh này
-   đọc như quảng cáo chứ không như điều hướng. */
-.manageLink {
-  font-size: 14px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid rgb(255 255 255 / 35%);
-  color: var(--beras-accent-contrast);
-  text-decoration: none;
-}
-
-.manageLink:hover {
-  background: rgb(255 255 255 / 12%);
-}
-
 /*
  * ─── Sửa 2026-07-29 (Chain báo: màn Bán hàng không có thanh dưới) ────────────
  *
@@ -219,35 +166,16 @@
  *    trượt ngang. Nó không lộ ra suốt Sprint 4→10 vì chưa ai mở POS trên điện
  *    thoại thật. Đây là màn dùng nhiều nhất của cả hệ thống.
  */
-.page {
-  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0));
-}
-
-@media (width >= 900px) {
-  /* Từ 900px thanh dưới tự ẩn (xem BottomNavigation.module.css) ⇒ trả lại đáy. */
-  .page {
-    padding-bottom: 0;
-  }
-}
-
 @media (width <= 899px) {
   /* Một cột: danh mục thuốc trước, giỏ hàng dưới — đúng thứ tự thao tác. */
   .body {
     grid-template-columns: 1fr;
     gap: var(--space-3);
-    padding: var(--space-3);
-  }
-
-  .header {
-    padding: var(--space-3);
-    gap: var(--space-2);
   }
 
   /* Nút bấm trên màn cảm ứng: 44px là sàn, không phải mục tiêu. */
   .addButton,
-  .removeButton,
-  .logout,
-  .manageLink {
+  .removeButton {
     min-height: var(--touch-min);
     display: inline-flex;
     align-items: center;
