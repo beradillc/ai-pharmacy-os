@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from datetime import date
 from uuid import UUID
 
@@ -33,7 +33,9 @@ from pharmacy_os.modules.compliance.interface.schemas import (
     TenantComplianceConfigResponse,
 )
 
-ContextDep = Callable[..., RequestContext]
+ContextDep = Callable[..., Awaitable[RequestContext]]
+"""``get_context`` là **async** kể từ audit B-07: nó phải tra CSDL để xác nhận cặp
+``(tenant, chi nhánh)`` là có thật. FastAPI tự await, nên route không phải đổi gì."""
 
 
 def _compliance_service(request: Request) -> ComplianceService:

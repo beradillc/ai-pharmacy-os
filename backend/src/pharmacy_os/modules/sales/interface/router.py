@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
@@ -21,7 +21,9 @@ from pharmacy_os.modules.sales.interface.schemas import (
     VnpayInitiateResponse,
 )
 
-ContextDep = Callable[..., RequestContext]
+ContextDep = Callable[..., Awaitable[RequestContext]]
+"""``get_context`` là **async** kể từ audit B-07: nó phải tra CSDL để xác nhận cặp
+``(tenant, chi nhánh)`` là có thật. FastAPI tự await, nên route không phải đổi gì."""
 
 #: VNPAY's own response-code vocabulary (not an HTTP status — VNPAY always expects
 #: 200 OK with this body, and reads ``RspCode`` itself to decide whether to retry

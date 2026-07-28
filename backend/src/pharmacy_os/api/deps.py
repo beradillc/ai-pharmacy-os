@@ -27,6 +27,7 @@ from pharmacy_os.core.di import Container
 from pharmacy_os.core.errors import UnauthenticatedError
 from pharmacy_os.core.http import client_ip_of
 from pharmacy_os.core.security import JwtService
+from pharmacy_os.core.security.branch_scope import BranchScopeGuard
 from pharmacy_os.modules.iam.domain import ALL_PERMISSIONS
 
 _log = structlog.get_logger("api.auth")
@@ -47,7 +48,7 @@ def get_container(request: Request) -> Container:
     return container
 
 
-def get_context(request: Request) -> RequestContext:
+async def get_context(request: Request) -> RequestContext:
     container = get_container(request)
     settings = container.resolve(Settings)
 
@@ -58,6 +59,20 @@ def get_context(request: Request) -> RequestContext:
             # Only tokens minted before the iam module lack the claim; they cannot be
             # scoped to a branch, so they are no longer usable.
             raise UnauthenticatedError("Token thiếu thông tin chi nhánh, vui lòng đăng nhập lại")
+        # Audit B-07: hai claim đều đã ký, nhưng chưa ai kiểm chúng có ĐI VỚI NHAU
+        # không. Đường cấp token hôm nay không thể sinh ra cặp lệch — nhưng đó là tính
+        # chất của một đường mã nguồn, không phải một ràng buộc. Kiểm ở đây biến nó
+        # thành ràng buộc cho mọi đường vào, kể cả đường chưa được viết.
+        guard = container.resolve(BranchScopeGuard)
+        if not await guard.is_valid(payload.tenant_id, payload.branch_id):
+            _log.warning(
+                "branch_tenant_mismatch",
+                tenant_id=str(payload.tenant_id),
+                branch_id=str(payload.branch_id),
+                user_id=str(payload.user_id),
+                detail="token mang cặp tenant/chi nhánh không tồn tại — từ chối",
+            )
+            raise UnauthenticatedError("Token không hợp lệ, vui lòng đăng nhập lại")
         return RequestContext(
             tenant_id=payload.tenant_id,
             branch_id=payload.branch_id,

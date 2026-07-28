@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -19,7 +19,9 @@ from pharmacy_os.modules.inventory.interface.schemas import (
     ReconciliationResponse,
 )
 
-ContextDep = Callable[..., RequestContext]
+ContextDep = Callable[..., Awaitable[RequestContext]]
+"""``get_context`` là **async** kể từ audit B-07: nó phải tra CSDL để xác nhận cặp
+``(tenant, chi nhánh)`` là có thật. FastAPI tự await, nên route không phải đổi gì."""
 
 
 def _service(request: Request) -> InventoryService:

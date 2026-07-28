@@ -7,7 +7,7 @@ and take it explicitly.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -41,7 +41,9 @@ from pharmacy_os.modules.iam.interface.schemas import (
     UserResponse,
 )
 
-ContextDep = Callable[..., RequestContext]
+ContextDep = Callable[..., Awaitable[RequestContext]]
+"""``get_context`` là **async** kể từ audit B-07: nó phải tra CSDL để xác nhận cặp
+``(tenant, chi nhánh)`` là có thật. FastAPI tự await, nên route không phải đổi gì."""
 
 
 def _auth(request: Request) -> AuthService:

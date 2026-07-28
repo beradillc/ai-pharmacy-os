@@ -11,7 +11,7 @@ import asyncio
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -431,3 +431,56 @@ def test_a_throttled_ip_does_not_lock_everyone_else_out(client: TestClient) -> N
 
     r = client.post("/api/v1/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD})
     assert r.status_code != 429, "hết cửa sổ rồi mà vẫn chặn — hình phạt không có điểm kết thúc"
+
+
+# --- B-07: token mang cặp tenant/chi nhánh lệch nhau -------------------------
+
+
+def _forge(client: TestClient, *, tenant_id: str, branch_id: str, user_id: str) -> str:
+    """Ký một token hợp lệ về CHỮ KÝ nhưng mang cặp tenant/chi nhánh không đi với nhau.
+
+    Đúng cách kiểm toán B-07 dựng ra lỗ hổng. Cần secret ký, nên đây không phải kịch
+    bản kẻ ngoài khai thác được — giá trị của test là chặn **một đường cấp token sai
+    trong tương lai**, thứ không cần secret nào cả.
+    """
+    from pharmacy_os.core.security import JwtService
+    from pharmacy_os.core.security.jwt import TokenPayload
+
+    jwt_service: JwtService = client.app.state.container.resolve(JwtService)  # type: ignore[attr-defined]
+    return jwt_service.issue(
+        TokenPayload(
+            user_id=UUID(user_id),
+            tenant_id=UUID(tenant_id),
+            branch_id=UUID(branch_id),
+            permissions=frozenset({"catalog.read"}),
+        )
+    )
+
+
+def test_token_with_branch_from_another_tenant_is_refused(client: TestClient) -> None:
+    """Kiểm toán ghi được hàng tồn kho vào chi nhánh của tenant KHÁC và nhận 201.
+
+    Điều làm nó nguy hiểm không phải khả năng khai thác (phải có secret ký) mà là hậu
+    quả **không đảo ngược bằng git revert**: dòng dữ liệu lai tenant nằm im trong CSDL,
+    không báo cáo nào hiển thị vì mọi báo cáo đều lọc theo chi nhánh người xem.
+    """
+    admin = _login(client)
+    forged = _forge(
+        client,
+        tenant_id=admin["tenant_id"],
+        branch_id=str(uuid4()),  # chi nhánh không thuộc tenant này (không tồn tại)
+        user_id=admin["user_id"],
+    )
+
+    r = client.get("/api/v1/drugs", headers={"Authorization": f"Bearer {forged}"})
+
+    assert r.status_code == 401, r.text
+
+
+def test_a_genuine_token_still_works_after_the_guard(client: TestClient) -> None:
+    """Mặt ngược lại — cổng phải MỞ ĐƯỢC. Một cổng chỉ biết từ chối thì không phải cổng."""
+    admin = _login(client)
+
+    r = client.get("/api/v1/drugs", headers=_auth(admin))
+
+    assert r.status_code == 200, r.text

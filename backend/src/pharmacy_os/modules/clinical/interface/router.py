@@ -7,7 +7,7 @@ The response always carries the reference ``source`` per finding and the model's
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, status
@@ -22,7 +22,9 @@ from pharmacy_os.modules.clinical.interface.schemas import (
     TenantAiSettingsResponse,
 )
 
-ContextDep = Callable[..., RequestContext]
+ContextDep = Callable[..., Awaitable[RequestContext]]
+"""``get_context`` là **async** kể từ audit B-07: nó phải tra CSDL để xác nhận cặp
+``(tenant, chi nhánh)`` là có thật. FastAPI tự await, nên route không phải đổi gì."""
 
 
 def _service(request: Request) -> ClinicalService:
