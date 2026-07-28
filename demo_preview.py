@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
-"""demo_preview.py — Xem trước sản phẩm AI Pharmacy OS (Sprint 3).
+"""demo_preview.py — Xem trước Catalog + Inventory của AI Pharmacy OS.
 
 Chạy kiểm thử trực quan CÁC CHỨC NĂNG ĐÃ HIỆN THỰC THẬT:
   • Catalog — tạo Drug (OTC & ETC), quy đổi đơn vị, phân loại kê đơn.
   • Inventory — nhập lô (ProductBatch), tồn kho event-sourced, xuất kho FEFO.
   • Edge cases — xuất quá tồn, nhập số lượng 0, danh sách lô rỗng.
 
-TRUNG THỰC: phần "Clinical Safety" (đơn thuốc, kiểm tra dị ứng, tương tác
-thuốc) CHƯA được hiện thực — thuộc Sprint 5 theo ROADMAP. Demo này KHÔNG bịa
-kết quả cho phần đó; nó chỉ nêu rõ trạng thái và điểm tích hợp trong tương lai.
+🔴 **PHẠM VI, đọc trước khi tin những gì tệp này nói** (sửa 2026-07-28, audit A-08).
+Tệp này chỉ chạy **Catalog + Inventory**. Nó **không** chứng minh gì về các module
+khác — và trước hôm nay nó còn nói sai về chúng: bản cũ tuyên bố Sales/POS và
+Clinical/Prescription *"CHƯA hiện thực"* trong khi cả hai **đã chạy thật** từ Sprint
+4–5, có e2e phủ. Một tệp demo nói sai về hệ thống là cùng loại lỗi với A-06 và B-06:
+văn bản phát ra một khẳng định mà mã nguồn không còn đúng.
+
+Tệp này **crash ngay dòng nối dây đầu tiên từ 2026-07-23 tới 2026-07-28** vì hai
+service mọc thêm tham số bắt buộc và không cổng nào phủ nó (audit A-08). Nay `ruff`/
+`mypy` chạy từ gốc repo nên nó nằm trong cổng — nhưng cổng tĩnh không chứng minh được
+*chạy được*, nên nếu sửa tệp này thì **hãy chạy nó**.
 
 Cách chạy (từ thư mục gốc repo, đã kích hoạt venv của backend)::
 
@@ -33,6 +41,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend", "src"))
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from pharmacy_os.core.audit import AuditLogger
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.errors import ConflictError, ValidationError
@@ -44,7 +53,10 @@ from pharmacy_os.modules.catalog.application import (
     DrugUnitInput,
 )
 from pharmacy_os.modules.catalog.domain import RxClass
-from pharmacy_os.modules.catalog.infrastructure import SqlAlchemyDrugRepository
+from pharmacy_os.modules.catalog.infrastructure import (
+    SqlAlchemyActiveIngredientRepository,
+    SqlAlchemyDrugRepository,
+)
 from pharmacy_os.modules.inventory.application import (
     DispenseInput,
     InventoryService,
@@ -55,6 +67,7 @@ from pharmacy_os.modules.inventory.infrastructure import (
     SqlAlchemyBalanceRepository,
     SqlAlchemyBatchRepository,
     SqlAlchemyMovementRepository,
+    SqlAlchemyStockReconciliationRepository,
 )
 
 # --------------------------------------------------------------------------- #
@@ -130,12 +143,25 @@ async def _build_services() -> tuple[CatalogService, InventoryService]:
     def uow() -> UnitOfWork:
         return SqlAlchemyUnitOfWork(session_factory, bus)
 
-    catalog = CatalogService(uow, lambda u, c: SqlAlchemyDrugRepository(u.session, c))
+    # Nối dây phải khớp CHỮ KÝ HIỆN TẠI của service, không phải chữ ký hồi Sprint 3.
+    # Đây chính là chỗ A-08: hai service mọc thêm tham số bắt buộc
+    # (ingredient_repo_factory/audit, reconciliation/audit) và tệp này crash ngay dòng
+    # đầu suốt từ 2026-07-23 mà không cổng nào phủ. Nay `make check` chạy ruff/mypy từ
+    # gốc repo nên tệp này ở trong cổng — nhưng *chạy được* thì vẫn phải có người chạy.
+    audit = AuditLogger(session_factory)
+    catalog = CatalogService(
+        uow,
+        lambda u, c: SqlAlchemyDrugRepository(u.session, c),
+        lambda u: SqlAlchemyActiveIngredientRepository(u.session),
+        audit,
+    )
     inventory = InventoryService(
         uow,
         lambda u, c: SqlAlchemyBatchRepository(u.session, c),
         lambda u, c: SqlAlchemyMovementRepository(u.session, c),
         lambda u, c: SqlAlchemyBalanceRepository(u.session, c),
+        lambda u, c: SqlAlchemyStockReconciliationRepository(u.session, c),
+        audit,
     )
     return catalog, inventory
 
@@ -178,7 +204,7 @@ async def demo_catalog(catalog: CatalogService, ctx: RequestContext) -> str:
     ok(f"Đã tạo — id={str(amox.id)[:8]}…  bắt buộc kê đơn: {amox.prescription_required}")
     warn(
         "Amoxicillin là ETC → phải có đơn thuốc hợp lệ mới được bán "
-        "(rule ensure_rx_for_etc sẽ dùng cờ này ở Sprint 4)."
+        "(rule ensure_rx_for_etc dùng cờ này ở module sales)."
     )
 
     step("Edge case — tạo trùng barcode")
@@ -304,7 +330,7 @@ async def demo_inventory(
 
 def demo_clinical_pending() -> None:
     h1("4 · CLINICAL SAFETY — TRẠNG THÁI: CHƯA HIỆN THỰC")
-    blocked("Module `prescription` và `clinical` CHƯA được xây (kế hoạch Sprint 5).")
+    blocked("Demo này KHÔNG chạy `prescription`/`clinical` — chúng ĐÃ có, xem tests/integration.")
     print()
     print("    Những chức năng sau THUỘC ROADMAP nhưng CHƯA có trong mã nguồn,")
     print("    nên demo này KHÔNG chạy và KHÔNG bịa kết quả cho chúng:")
@@ -316,7 +342,7 @@ def demo_clinical_pending() -> None:
     ):
         print(_c("90", f"      ⏳ {item}"))
     print()
-    ok("Điểm tích hợp ĐÃ SẴN SÀNG cho Sprint 5:")
+    ok("Điểm tích hợp giữa Catalog/Inventory và phần lâm sàng:")
     info("Cờ kê đơn", "Drug.is_prescription_required() (đã có, đã test)")
     info("Cổng AI", "core.ai.LLMProvider port (đã có, chưa nối Claude)")
     info("Bảng tri thức", "drug_interactions / drug_knowledge_chunks (đã thiết kế ở ERD)")
@@ -324,7 +350,7 @@ def demo_clinical_pending() -> None:
 
 async def main() -> None:
     print(_c("96;1", "\n╔══════════════════════════════════════════════════════════════╗"))
-    print(_c("96;1", "║   AI PHARMACY OS · DEMO PREVIEW · phạm vi Sprint 3 (thật)     ║"))
+    print(_c("96;1", "║   AI PHARMACY OS · DEMO · phạm vi: Catalog + Inventory        ║"))
     print(_c("96;1", "╚══════════════════════════════════════════════════════════════╝"))
 
     ctx = _dev_ctx()
@@ -337,7 +363,7 @@ async def main() -> None:
 
     h1("KẾT LUẬN")
     ok("Catalog + Inventory (FEFO, event-sourced) chạy end-to-end trên DB thật (SQLite).")
-    warn("Sales/POS (Sprint 4) và Clinical/Prescription (Sprint 5) CHƯA hiện thực.")
+    warn("Demo này chỉ phủ Catalog + Inventory — KHÔNG kết luận gì về module khác.")
     print()
 
 
