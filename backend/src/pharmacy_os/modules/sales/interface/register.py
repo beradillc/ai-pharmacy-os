@@ -9,6 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from pharmacy_os.core.audit import AuditLogger
+from pharmacy_os.core.config import Settings
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork, UnitOfWorkFactory
 from pharmacy_os.core.di import Container
@@ -37,6 +38,7 @@ def register(
         prescription_info,
         container.resolve(AuditLogger),
         container.resolve(HookRegistry),
+        container.resolve(Settings).plugins.call_timeout_seconds,
     )
     container.register_instance(SalesService, service)
     return build_router(get_context)

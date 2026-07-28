@@ -75,9 +75,16 @@ class PaymentGateway(Plugin, Protocol):
     the whole plugin surface. They talk to a payment provider over the network; a
     blocking call here would stall the whole event loop — every other counter in the
     pharmacy freezes while one terminal waits on a slow gateway. Being ``async`` also
-    makes them the only shape ``asyncio.wait_for`` can actually time out, which is
-    what turns docs/09 mục 6 ("timeout") from an aspiration into something
-    enforceable.
+    makes them the only shape ``asyncio.wait_for`` can actually time out.
+
+    🔴 **Đọc kỹ chỗ này — bản trước của docstring nói quá (audit A-06).** Nó viết rằng
+    `async` *"biến timeout từ nguyện vọng thành thứ cưỡng chế được"*, đúng về kỹ thuật
+    nhưng khiến người đọc tin rằng **đã có** một timeout — trong khi không nơi nào gọi
+    ``asyncio.wait_for``. `async` làm timeout **khả thi**; nó không tạo ra timeout nào.
+
+    Trần thời gian thật nay nằm ở **người gọi**, không ở đây:
+    ``SalesService._with_gateway_timeout`` + ``PLUGINS__CALL_TIMEOUT_SECONDS``. Đặt ở
+    người gọi là đúng chỗ — plugin không được tự quyết mình được phép treo bao lâu.
     """
 
     async def create_charge(self, order_id: str, amount: int, method: str) -> dict[str, Any]: ...

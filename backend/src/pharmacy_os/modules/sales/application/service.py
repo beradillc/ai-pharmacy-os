@@ -11,9 +11,11 @@ result **without** re-processing — so no duplicate order and no duplicate
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
+import asyncio
+from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
+from typing import TypeVar
 from uuid import UUID, uuid4
 
 from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
@@ -76,6 +78,8 @@ _SYSTEM_ACTOR = UUID(int=0)
 #: memory regardless of how many orders match the date range.
 _REVENUE_REPORT_BATCH = 500
 
+_T = TypeVar("_T")
+
 UowFactory = Callable[[], UnitOfWork]
 RepoFactory = Callable[[UnitOfWork, RequestContext], SalesRepository]
 
@@ -89,6 +93,7 @@ class SalesService:
         prescription_info: PrescriptionInfoProvider | None = None,
         audit: AuditLogger | None = None,
         hook_registry: HookRegistry | None = None,
+        gateway_timeout_seconds: float = 10.0,
     ) -> None:
         self._uow_factory = uow_factory
         self._repo_factory = repo_factory
@@ -96,6 +101,7 @@ class SalesService:
         self._prescription_info = prescription_info
         self._audit = audit
         self._hook_registry = hook_registry
+        self._gateway_timeout = gateway_timeout_seconds
 
     async def complete_sale(self, data: CreateSaleInput, ctx: RequestContext) -> SaleOutput:
         """Record and finalise a sale for the caller's tenant/branch.
@@ -190,6 +196,18 @@ class SalesService:
             return None
         return self._hook_registry.resolve(PaymentGateway)  # type: ignore[type-abstract]
 
+    async def _with_gateway_timeout(self, awaitable: Awaitable[_T]) -> _T:
+        """Chặn trần thời gian cho một lượt gọi ra cổng thanh toán (audit A-06).
+
+        `async` làm cho timeout **khả thi**; nó không tạo ra timeout nào. Docstring của
+        ``PaymentGateway`` từng nói đúng điều thứ nhất theo cách khiến người đọc tin
+        điều thứ hai — trong khi **không nơi nào gọi ``asyncio.wait_for``**.
+
+        Không có trần này, một cổng treo sẽ giữ nguyên một request cho tới khi hạ tầng
+        ở đâu đó cắt nó — và thu ngân đứng nhìn màn hình bất động mà không biết vì sao.
+        """
+        return await asyncio.wait_for(awaitable, timeout=self._gateway_timeout)
+
     async def initiate_vnpay_payment(
         self, data: CreateSaleInput, ctx: RequestContext
     ) -> VnpayInitiateOutput:
@@ -267,8 +285,10 @@ class SalesService:
                         raise ConflictError("Không thể khởi tạo đơn") from exc
                     order = replay
 
-        charge = await gateway.create_charge(
-            order_id=str(order.id), amount=int(order.subtotal.amount * 100), method="vnpay"
+        charge = await self._with_gateway_timeout(
+            gateway.create_charge(
+                order_id=str(order.id), amount=int(order.subtotal.amount * 100), method="vnpay"
+            )
         )
         await self._record_vnpay_initiated(ctx, order.id)
         return VnpayInitiateOutput(order_id=order.id, payment_url=str(charge["payment_url"]))
@@ -290,10 +310,17 @@ class SalesService:
         if gateway is None:
             return VnpayConfirmOutcome.GATEWAY_NOT_CONFIGURED
         try:
-            order_id_str = await gateway.verify_callback(dict(raw_payload))
+            order_id_str = await self._with_gateway_timeout(
+                gateway.verify_callback(dict(raw_payload))
+            )
             order_id = UUID(order_id_str)
         except (PaymentCallbackError, ValueError):
             return VnpayConfirmOutcome.INVALID_SIGNATURE
+        except TimeoutError:
+            # VNPAY thử lại IPN cho tới khi nhận được xác nhận, nên hết giờ ở đây là
+            # hoãn chứ không mất: lượt sau sẽ xử lý. Trả về "chưa cấu hình" thì sai —
+            # cổng có đó, chỉ là không kịp trả lời.
+            return VnpayConfirmOutcome.GATEWAY_TIMEOUT
 
         response_code = raw_payload.get("vnp_ResponseCode")
         gateway_txn_no = raw_payload.get("vnp_TransactionNo") or order_id_str

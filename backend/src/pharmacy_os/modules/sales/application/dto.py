@@ -35,6 +35,10 @@ class VnpayConfirmOutcome(StrEnum):
     the order is left untouched (``DRAFT``) for investigation, not auto-cancelled."""
     INVALID_SIGNATURE = "INVALID_SIGNATURE"
     GATEWAY_NOT_CONFIGURED = "GATEWAY_NOT_CONFIGURED"
+    GATEWAY_TIMEOUT = "GATEWAY_TIMEOUT"
+    """Cổng không trả lời trong hạn (audit A-06). Khác hẳn ``GATEWAY_NOT_CONFIGURED``:
+    cổng CÓ đó, chỉ là không kịp trả lời. Không mất giao dịch — VNPAY thử lại IPN cho
+    tới khi nhận được xác nhận, nên đây là hoãn chứ không phải bỏ."""
 
 
 class RevenueGranularity(StrEnum):

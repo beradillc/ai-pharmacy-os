@@ -7,6 +7,7 @@ plugins must never silently contest one port.
 
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import Any
 
 import pytest
@@ -183,3 +184,60 @@ async def test_bad_callback_raises_the_shared_gateway_agnostic_error() -> None:
     active — it cannot import anything plugin-specific (mục 4/4 `payment_vnpay`)."""
     with pytest.raises(PaymentCallbackError):
         await _FakeGateway().verify_callback({"bad_signature": True})
+
+
+# --- A-06: trần thời gian gọi plugin là THẬT, không chỉ là docstring ----------
+
+
+async def test_gateway_call_that_hangs_is_cut_off_by_the_timeout() -> None:
+    """Kiểm toán A-06: docstring hứa timeout, repo không có ``asyncio.wait_for`` nào.
+
+    🔴 **Đo THỜI GIAN TRÔI, không chỉ bắt ``TimeoutError``.** Bản đầu của test này chỉ
+    ``pytest.raises(TimeoutError)`` — và khi tôi cố ý gỡ trần thời gian ra để kiểm
+    (kỷ luật #14), nó **treo vô hạn** thay vì đỏ. Một test treo còn tệ hơn test đỏ: nó
+    làm nghẽn cả bộ test mà không nói vì sao.
+
+    Thêm một guard riêng của test ở 2 giây thì lại sinh vấn đề khác — ``TimeoutError``
+    của guard đó cũng lọt qua ``pytest.raises``, tức test sẽ **xanh vì lý do sai**. Nên
+    thứ được khẳng định ở đây là **thời gian trôi**: nếu trần của sản phẩm cắt thì lời
+    gọi kết thúc trong mili giây; nếu chính guard của test cắt thì nó mất 2 giây, và
+    khẳng định dưới đây đỏ.
+    """
+    import asyncio
+    import time
+
+    from pharmacy_os.modules.sales.application.service import SalesService
+
+    never = asyncio.Event()
+
+    async def hangs() -> str:
+        await never.wait()
+        return "không bao giờ tới đây"
+
+    service = SalesService.__new__(SalesService)  # không cần CSDL cho phép thử này
+    service._gateway_timeout = 0.05  # type: ignore[attr-defined]
+
+    started = time.monotonic()
+    with suppress(TimeoutError):
+        await asyncio.wait_for(
+            service._with_gateway_timeout(hangs()),  # type: ignore[attr-defined]
+            timeout=2.0,  # guard của TEST, không phải của sản phẩm
+        )
+    elapsed = time.monotonic() - started
+
+    assert elapsed < 1.0, (
+        f"lời gọi mất {elapsed:.2f}s — trần của SẢN PHẨM không cắt, chính guard của test cắt"
+    )
+
+
+async def test_gateway_call_within_the_budget_passes_through_untouched() -> None:
+    """Mặt ngược lại: cổng phải MỞ được. Một trần chỉ biết cắt thì không phải trần."""
+    from pharmacy_os.modules.sales.application.service import SalesService
+
+    async def quick() -> str:
+        return "xong"
+
+    service = SalesService.__new__(SalesService)
+    service._gateway_timeout = 5.0  # type: ignore[attr-defined]
+
+    assert await service._with_gateway_timeout(quick()) == "xong"  # type: ignore[attr-defined]

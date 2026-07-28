@@ -176,6 +176,18 @@ class PluginsSettings(BaseSettings):
     loads, with an empty config. Secrets belong here rather than hard-coded in the
     plugin (docs/09 mục 6)."""
 
+    call_timeout_seconds: float = Field(default=10.0, gt=0)
+    """Trần thời gian cho MỘT lượt gọi ra plugin thanh toán (docs/09 mục 6, audit A-06).
+
+    Vì sao cần con số này chứ không chỉ cần ``async``: `async` làm cho một timeout
+    **khả thi**, nó không tạo ra timeout nào. Trước bản vá, docstring của
+    ``PaymentGateway`` nói `async` *"biến timeout từ nguyện vọng thành thứ cưỡng chế
+    được"* — đúng về kỹ thuật, nhưng **không ai gọi ``asyncio.wait_for``** ở đâu cả.
+
+    10 giây: đủ dài cho một cổng thanh toán chậm trong giờ cao điểm, đủ ngắn để thu
+    ngân không đứng nhìn màn hình treo mà không biết chuyện gì. Cấu hình được, vì con
+    số đúng phụ thuộc vào cổng thật chứ không phải vào mã nguồn."""
+
 
 class EncryptionSettings(BaseSettings):
     """Keys for at-rest field encryption (Sprint 8, ``core.security.crypto``).
