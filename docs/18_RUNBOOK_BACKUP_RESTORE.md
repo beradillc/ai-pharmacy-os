@@ -217,8 +217,8 @@ trước:  Nguyen Van PII 8 | 0900000001
 sau:    Nguyen Van PII 8 | v1:gvbR1XOuHxOmMySgy…
 ```
 
-🔴 **Quan sát cần Chain/kiến trúc xác nhận, KHÔNG tự kết luận:** `phone` đã thành
-ciphertext mang thẻ `v1:`, nhưng **`full_name` vẫn nguyên văn**. Có thể là chủ đích (tên
+✅ **Đã giải quyết 2026-07-28 — xem §B.6.** Lúc diễn tập, `phone` đã thành ciphertext mang thẻ
+`v1:` còn **`full_name` vẫn nguyên văn**. Có thể là chủ đích (tên
 cần cho hiển thị/tra cứu) — nhưng tên người **là dữ liệu cá nhân** theo Luật BVDLCN
 91/2025. Cần một câu trả lời rõ: cột nào bắt buộc mã hoá, cột nào cố ý không, và vì sao.
 **Chưa có tài liệu nào trong repo nói ra lựa chọn đó.**
@@ -228,7 +228,7 @@ cần cho hiển thị/tra cứu) — nhưng tên người **là dữ liệu cá
 | Nợ | Trạng thái |
 |---|---|
 | Xoay khoá B.4 | **Chưa diễn tập.** Quy tắc đã rõ, thao tác thật thì chưa |
-| Phạm vi cột được mã hoá | 🔴 **Chưa có tài liệu.** `phone` mã hoá, `full_name` không — cần xác nhận đây là lựa chọn hay lỗ hổng |
+| Phạm vi cột được mã hoá | ✅ **ĐÃ QUYẾT (2026-07-28).** Đúng là **lựa chọn có lý do**, không phải lỗ hổng: `list()` sắp theo `full_name`, ciphertext sắp ngẫu nhiên, blind index giữ *đẳng thức* chứ không giữ *thứ tự*. Chain được đưa 3 phương án và **chọn mã hoá, bỏ sắp xếp theo bảng chữ cái** — migration `0035`, `list()` nay sắp theo `created_at DESC, id`. Lý do chấp nhận: tra khách bằng **SĐT** không mất gì (`phone_fingerprint` vẫn chạy), còn tên bệnh nhân dạng rõ thì **đi theo mọi bản dump ra ngoài cơ sở** |
 | Chu kỳ xoay khoá | 🔒 **Đã khoá: 90 ngày** (D-SEC-01) |
 | ✅ **Vết kiểm toán cho thao tác xoay khoá** | **ĐÃ CÓ (2026-07-28).** `AuditAction.ENCRYPTION_KEY_ROTATED` + lệnh `python -m seeds.record_key_rotation --from-version N --to-version M --operator-email … --reason …`. Lệnh **đọc cấu hình đang chạy** và **từ chối ghi** nếu: `current_version` chưa trỏ sang phiên bản mới (ghi trước việc chưa làm) · thiếu khoá cũ hoặc mới trong keyring · hai phiên bản trùng nhau · người thực hiện không có trong CSDL. Ghi kèm `keys_in_ring` — con số trả lời được câu *"còn bao nhiêu phiên bản đang chồng lấn"* mà D-SEC-01 giới hạn 7 ngày. 4 test canh, đã kiểm chứng có răng theo kỷ luật #14 (gỡ hết kiểm chứng ⇒ 3/4 đỏ) |
 | 🔴 **Cưỡng chế chồng lấn ≤ 7 ngày** | **Chưa có.** Kiến trúc cho nhiều khoá sống song song **vô thời hạn**; giới hạn 7 ngày hiện là **kỷ luật của người vận hành**, không phải thứ hệ thống ép |
