@@ -5038,6 +5038,77 @@ Còn **hai việc không phải code**:
 
 ---
 
+## 7bu. ⏸️ ĐÓNG PHIÊN 2026-07-28 (phiên 2 trong ngày) — GĐ cân đối, Chain duyệt đóng
+
+Chain: *"Còn 25 % hạn mức, cho chạy tiếp hoặc đóng phiên đúng quy trình. GĐ cân đối giúp."*
+
+**[GĐ] Chọn đóng.** B-08 chuyển kiểm quyền từ tầng service lên tầng route ⇒ chạm **mọi endpoint**;
+hết hạn mức giữa chừng một thay đổi cắt ngang để lại repo nửa vời. Phiên này lại có **trạng thái
+thật chưa ghi**, trong đó một cái nguy hiểm (khoá mã hoá trên máy dev). Giá trị của 25 % còn lại nằm
+ở ghi chép, không ở thêm một mục Medium.
+
+### Phiên này làm gì — 33 commit
+
+| Nhóm | Kết quả |
+|---|---|
+| **Rà soát + kiểm kê** | Đính chính **2 dòng sổ điều phối sai sự thật** (R-8) |
+| **3 khe hở thiết kế↔API** | G-1 tên thuốc/NCC · G-2 mã PO thật · G-3 hoàn tác — Chain quyết 4/4, đóng cả ba |
+| **Sprint 9** | **13/13 bước**: B1–B5 backend + F1–F8 frontend |
+| **Demo** | Nhà thuốc demo chạy thật, phát sinh **`PO-0006`** |
+| **Kỷ luật #14** | Ban hành — *cổng mới chỉ tính là có răng sau khi đã thấy nó đỏ vì lý do đúng* |
+| **Nợ Sprint 9** | Đóng 5/7 (DoD mức tải · vết xoay khoá · dead-man's switch · `full_name` · phạm vi cột) |
+| **Kiểm toán** | Đóng **6 phát hiện**: B-05 · B-06 · B-07 · A-06 · B-13 · A-08 |
+
+pytest **1051 → 1099 passed** (+48) · `MAKE_CHECK_EXIT=0` sau mỗi mục · alembic `0036`.
+
+### 🔴 TRẠNG THÁI PHẢI ĐỌC TRƯỚC KHI LÀM GÌ TIẾP
+
+**Máy dev nay ĐÃ BẬT mã hoá at-rest.** `backend/.env` chứa `ENCRYPTION__ENABLED=true` + khoá v1 +
+`BLIND_INDEX_KEY`. Tệp **không vào git**. **Mất nó = mất vĩnh viễn dữ liệu khách trên máy này** —
+không phải sự cố `git revert` cứu được. Các cột nay là ciphertext: `customers.full_name`,
+`phone`, `gender`, `national_id`.
+
+**Dịch vụ đang chạy, CỐ Ý để nguyên cho Chain bấm thử:**
+
+| Dịch vụ | Trạng thái | Tắt bằng |
+|---|---|---|
+| Postgres (docker) | Up 4 giờ, healthy | `docker compose down` |
+| Backend `uvicorn` `:8000` | `API=200` | kill tiến trình |
+| Frontend `next dev` `:3000` | `FE=200` | kill tiến trình |
+
+Đăng nhập demo: **`demo@bera.vn` / `NhaThuocDemo2026`** → `http://localhost:3000/login`
+
+### Ba việc chờ Chain — không việc nào là code
+
+1. **Bấm thử 2 màn Sprint 9.** Máy đã chạy đúng lệnh mà mọi nút gọi và đọc lại từ CSDL, nhưng
+   **chưa ai bấm chuột thật**. Bố cục, tương phản dưới đèn huỳnh quang, trạng thái rỗng/đang tải,
+   hộp xác nhận, thông báo `#PO-0006` — chỉ mắt người trả lời được.
+2. **Bảng gắn người `docs/17` §3** — tên + **số điện thoại gọi được** cho R1–R5. Chặn **pilot chạy
+   thật**, không chặn code. Đây là thứ duy nhất còn giữa hệ thống này và một nhà thuốc thật.
+3. **Dọn 4 CSDL thử** (`DROP DATABASE` trong `deny`, đúng thiết kế) — lệnh ở mục Q.
+
+### Việc tiếp theo GĐ đề nghị, xếp theo thứ tự
+
+| Ưu tiên | Việc | Vì sao |
+|---|---|---|
+| 1 | **B-08** (422 chạy trước 403, lộ schema) | Mục Medium cuối còn tự làm được; cần **cả phiên** vì chạm mọi endpoint |
+| 2 | **Kiểm toán Phiên C** | 4/6 phát hiện hôm nay là **văn bản nói sai về mã** — loại lỗi **không cổng nào bắt được**, chỉ kiểm toán bắt được. Hợp phiên Sonnet |
+| 3 | Bỏ CCCD khỏi `GET /customers` | Sinh từ B-06; đổi hình dạng API nên chờ Chain |
+| — | `jti` · A-05 · A-04 | Đều cần Chain hoặc Pháp Lý |
+
+### Bài học phương pháp của phiên — đã vào `CLAUDE.md`, không chỉ ở đây
+
+**Kỷ luật #14** ban hành và trả đủ vốn trong ngày: bắt **2 lỗi trong chính test của Trợ lý Code**
+(test A-06 **treo vô hạn** thay vì đỏ · test `full_name` khẳng định thứ tự cứng trong khi `created_at`
+bằng nhau). Cả hai sẽ xanh chín trên mười lần chạy.
+
+🔴 **Nhưng #14 KHÔNG bắt được 4/6 phát hiện quan trọng nhất** — vì chúng không phải lỗi *chạy*:
+docstring nói quá (A-06) · tên cột hứa sai (B-06) · lập luận đúng chỗ này dán sang chỗ khác (B-05) ·
+demo tuyên bố sai về module khác (A-08). Không mutant nào làm chúng đỏ, vì **mã vẫn chạy đúng như
+mã**. Đó là ranh giới của mọi cổng tự động, và là lý do Phiên C đáng chạy.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
