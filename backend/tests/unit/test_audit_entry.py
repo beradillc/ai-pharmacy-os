@@ -109,6 +109,7 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "ANALYTICS_SUGGESTION_MATERIALIZED",
         "ANALYTICS_SUGGESTION_DISMISSED",
         "ANALYTICS_SUGGESTION_UNDONE",
+        "ENCRYPTION_KEY_ROTATED",
         "TWO_FACTOR_ENROLLED",
         "TWO_FACTOR_ACTIVATED",
         "TWO_FACTOR_DISABLED",

@@ -230,7 +230,7 @@ cần cho hiển thị/tra cứu) — nhưng tên người **là dữ liệu cá
 | Xoay khoá B.4 | **Chưa diễn tập.** Quy tắc đã rõ, thao tác thật thì chưa |
 | Phạm vi cột được mã hoá | 🔴 **Chưa có tài liệu.** `phone` mã hoá, `full_name` không — cần xác nhận đây là lựa chọn hay lỗ hổng |
 | Chu kỳ xoay khoá | 🔒 **Đã khoá: 90 ngày** (D-SEC-01) |
-| 🔴 **Vết kiểm toán cho thao tác xoay khoá** | **Chưa có.** D-SEC-01 đòi *"rotation phải có audit trail"* — hiện `AuditAction` **không có** hành động nào cho việc này. Cần bổ sung trước lần xoay đầu tiên |
+| ✅ **Vết kiểm toán cho thao tác xoay khoá** | **ĐÃ CÓ (2026-07-28).** `AuditAction.ENCRYPTION_KEY_ROTATED` + lệnh `python -m seeds.record_key_rotation --from-version N --to-version M --operator-email … --reason …`. Lệnh **đọc cấu hình đang chạy** và **từ chối ghi** nếu: `current_version` chưa trỏ sang phiên bản mới (ghi trước việc chưa làm) · thiếu khoá cũ hoặc mới trong keyring · hai phiên bản trùng nhau · người thực hiện không có trong CSDL. Ghi kèm `keys_in_ring` — con số trả lời được câu *"còn bao nhiêu phiên bản đang chồng lấn"* mà D-SEC-01 giới hạn 7 ngày. 4 test canh, đã kiểm chứng có răng theo kỷ luật #14 (gỡ hết kiểm chứng ⇒ 3/4 đỏ) |
 | 🔴 **Cưỡng chế chồng lấn ≤ 7 ngày** | **Chưa có.** Kiến trúc cho nhiều khoá sống song song **vô thời hạn**; giới hạn 7 ngày hiện là **kỷ luật của người vận hành**, không phải thứ hệ thống ép |
 
 **Điều kiện đóng F-8 hoàn toàn:** chạy hết B.3 trên **staging có dữ liệu**, rồi diễn tập

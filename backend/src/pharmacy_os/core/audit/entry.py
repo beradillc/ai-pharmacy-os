@@ -233,6 +233,20 @@ class AuditAction(StrEnum):
     ANALYTICS_SUGGESTION_DISMISSED = "ANALYTICS_SUGGESTION_DISMISSED"
     """A human decided not to act on a suggestion."""
 
+    # --- vận hành mã hoá at-rest (D-SEC-01 đòi rotation phải có vết) ---
+    ENCRYPTION_KEY_ROTATED = "ENCRYPTION_KEY_ROTATED"
+    """Khoá mã hoá at-rest đã xoay sang phiên bản mới.
+
+    D-SEC-01 khoá chu kỳ **90 ngày** và đòi thao tác xoay phải có audit trail. Xoay khoá
+    là thao tác **vận hành** (đặt khoá mới vào cấu hình rồi trỏ ``current_version``), nên
+    không có request HTTP nào để móc vào — dòng này do
+    ``seeds.record_key_rotation`` ghi, và lệnh đó **đọc cấu hình đang chạy để xác nhận
+    việc xoay có thật** trước khi ghi.
+
+    Vì sao cần: sau lần xoay thứ hai, câu hỏi *"dòng mang thẻ v1 này còn khoá không, và
+    ai bỏ nó lại đằng sau"* không trả lời được từ dữ liệu — thẻ phiên bản nằm trên
+    ciphertext, còn lý do và thời điểm thì không nằm ở đâu cả."""
+
     ANALYTICS_SUGGESTION_UNDONE = "ANALYTICS_SUGGESTION_UNDONE"
     """A human undid a materialisation: the draft PO was cancelled and the suggestion
     went back to PENDING. Audited separately from the cancel that procurement records,
