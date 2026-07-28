@@ -4678,10 +4678,70 @@ vẫn rỗng, và migration chạy qua nhánh backfill **không có dòng nào**
 đã báo cáo "đã kiểm trên dữ liệu sẵn" trong khi chưa kiểm. Cùng họ với kỷ luật #8: **mã thoát 0 của
 lệnh bọc ngoài không chứng minh việc bên trong đã chạy**.
 
-### K. Điểm dừng
+### K. ✅ B4 + B5 XONG — backend đóng đủ G-1/G-2/G-3 (28/07, uỷ quyền GĐ chỉ đạo)
 
-**Xong 3/13** (B1 · B2 · B3). Kế tiếp: **B4** (`po_code` ra `MaterializeResponse`) → **B5** (hoàn
-tác trong phạm vi analytics) → **F1–F8**.
+Chain 28/07: *"Uỷ quyền giám đốc chỉ đạo code, test đúng quy trình."*
+
+| Commit | Bước | Nội dung |
+|---|---|---|
+| `8cb6bfe` | **B4** | `DraftPoSink` trả `DraftPoCreated(po_id, code)` ⇒ `MaterializeResponse.po_code` |
+| `39ce115` | **B5** | `POST /reorder/suggestions/{id}/undo` — hoàn tác trong phạm vi `analytics.*` |
+| `c3148bc` | — | `docs/19` §10: phụ lục ba khe hở + **hành vi thật khác bản vẽ** |
+
+`MAKE_CHECK_EXIT=0` cả hai · pytest **1074 → 1083 passed** + 16 passed.
+
+#### B5 — ba thứ giữ cửa hoàn tác không thành cửa sau
+
+Chain chọn gói quyền huỷ vào `analytics.reorder` thay vì mở `procurement.po.write`. Đúng, vì cho
+người ta **tạo được cam kết mà không rút lại được** còn tệ hơn không cho tạo. Nhưng bản vá đó phải
+không mở cửa sau — ba chốt, **cả ba đều chịu lực**:
+
+1. `po_id` đọc từ **bản ghi đề xuất** đã tenant-scope, **không** nhận từ request;
+2. procurement từ chối huỷ mọi đơn **quá `DRAFT`** — đơn đã gửi NCC không rút được;
+3. đề xuất phải còn `MATERIALIZED` ⇒ một đơn nháp hoàn tác được **đúng một lần**.
+
+🔴 **Không đặt cửa sổ 10 giây phía máy chủ**, dù `docs/19` §5 vẽ nút hoàn tác 10 giây. Đồng hồ phía
+máy chủ làm thao tác **hợp lệ** trượt vì lý do người dùng không thấy (mạng chậm), mà vẫn không chặn
+được ai quyết tâm. Giới hạn thật là **trạng thái**, không phải thời gian. Đã ghi vào `docs/19` §10.1
+để người dựng FE đọc đúng hợp đồng: FE vẫn vẽ nút 10 giây, nhưng **phải xử `422`**.
+
+`AuditAction` riêng cho hoàn tác — việc huỷ chạy dưới **danh tính hệ thống**, thiếu dòng này thì vết
+kiểm toán cho thấy *một đơn mua bị huỷ bởi không ai cả*.
+
+#### 🔴 Áp dụng nguyên tắc "cổng phải thấy đỏ một lần vì lý do đúng"
+
+Test quan trọng nhất của B5 — *đơn đã gửi NCC không hoàn tác được* — **đã kiểm chứng có răng**: tạm
+nới `PurchaseOrder.cancel` cho phép huỷ `ORDERED` ⇒ test đỏ đúng chỗ (`assert 200 == 422`), khôi
+phục ⇒ xanh. Không có bước này thì câu *"đơn đã gửi NCC không huỷ được"* chỉ là một dòng docstring.
+
+Hai test canh `AuditAction` bắt được enum mới và bắt **đúng** — đã **đăng ký vào cả hai danh mục**,
+không nới test cho qua.
+
+### L. ✅ F1 XONG — `tokens.css` bảng chốt + font (28/07, `ce0ba31`)
+
+| Việc | Kết quả |
+|---|---|
+| Màu | nền `#EDEFE7` · nhấn `#1F3D2B` · nâu `#6B4A32` · đỏ `#A8452F`; **thêm** `--beras-warning` `#B98A2D`, `--beras-success` `#2F7A6B`, `--beras-leaf` `#5B8C51` |
+| Font | **Be Vietnam Pro** + **IBM Plex Mono** qua `next/font/google`, `subsets` có **`vietnamese`** |
+| Cấu trúc | **không đụng** — chỉ đổi giá trị biến |
+
+**Đọc `node_modules/next/dist/docs` trước khi viết**, theo `frontend/AGENTS.md`: Next 16 khác bản
+trong trí nhớ. Mẫu `variable:` + `className` đã xác nhận trong tài liệu của chính bản này.
+
+🔴 **Đính chính một kết luận cũ ghi thẳng trong `tokens.css`:** lý do từ chối `next/font` ở bản trước
+— *"tải font đòi mạng, ngược tinh thần offline"* — **sai về sự kiện**, không phải một đánh đổi:
+`next/font` **tự host lúc build**, runtime không gọi mạng.
+
+**Cổng FE (không phải 4 cổng backend):** `ESLINT_EXIT=0` · `TSC_EXIT=0` · `NEXT_BUILD_EXIT=0`.
+Không dừng ở đó — **kiểm bằng chính sản phẩm build**: **22** file `.woff2` tự host, **24**
+`@font-face`, dải Unicode tiếng Việt **`U+1EA0-1EF9` có mặt**, `--font-beras-sans/mono` nối đúng vào
+`--beras-font-sans`. *Build xanh mà font rơi về fallback thì cũng xanh.*
+
+### M. Điểm dừng
+
+**Xong 6/13** — toàn bộ backend (B1–B5) + F1. Kế tiếp: **F2** (type + hook react-query) → **F3**
+(khung điều hướng + gating `analytics.read`) → **F4/F5** (hai màn) → **F6** (3 hành động) → **F7**
+(đã xong ở backend, FE chỉ hiển thị) → **F8** (kiểm staging + tài liệu).
 
 ---
 
