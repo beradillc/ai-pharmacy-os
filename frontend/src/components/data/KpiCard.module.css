@@ -1,0 +1,83 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--beras-surface);
+  border: 1px solid var(--beras-border);
+  border-left-width: 5px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  min-width: 0;
+}
+
+/* Vạch màu bên trái mã hoá mức độ — đọc lướt bắt được trước cả chữ. Giữ nguyên ý
+   tưởng của bản Sprint 9 vì nó đã chứng minh dùng được. */
+.neutral {
+  border-left-color: var(--beras-border);
+}
+
+.good {
+  border-left-color: var(--beras-leaf);
+}
+
+.warning {
+  border-left-color: var(--beras-warning);
+}
+
+.danger {
+  border-left-color: var(--beras-danger);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.title {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--beras-text-muted);
+}
+
+.icon {
+  color: var(--beras-text-muted);
+  display: inline-flex;
+}
+
+.value {
+  font-family: var(--beras-font-mono);
+  font-size: var(--text-kpi);
+  font-weight: var(--weight-medium);
+  line-height: 1.2;
+  /* Số dài (18.640.000 ₫) không được đẩy thẻ rộng ra ngoài lưới. */
+  overflow-wrap: anywhere;
+}
+
+.comparison,
+.hint {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}
+
+/* Xu hướng: ký hiệu + màu. Ký hiệu là phần bắt buộc — màu chỉ là phần thêm. */
+.trend-up {
+  color: var(--beras-success);
+}
+
+.trend-down {
+  color: var(--beras-danger);
+}
+
+.trend-flat {
+  color: var(--beras-text-muted);
+}
+
+.skeleton {
+  height: 31px;
+  border-radius: var(--radius-sm);
+  background: var(--beras-bg-alt);
+}

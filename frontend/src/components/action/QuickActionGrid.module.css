@@ -1,0 +1,68 @@
+.grid {
+  display: grid;
+  /* 4 cột trên điện thoại — 8 ô thành hai hàng gọn, ngón cái với tới cả hai. */
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 76px; /* > --touch-min, vì ô có hai dòng nội dung */
+  padding: var(--space-3) var(--space-1);
+  background: var(--beras-surface);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--radius-lg);
+  color: var(--beras-text);
+  text-decoration: none;
+  text-align: center;
+  transition:
+    transform var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out);
+}
+
+.item:hover {
+  box-shadow: var(--shadow-2);
+}
+
+/* Phản hồi khi chạm: lún nhẹ. Chỉ transform — không ép tính lại bố cục. */
+.item:active {
+  transform: scale(0.97);
+}
+
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  background: var(--beras-leaf-soft);
+  color: var(--beras-accent);
+}
+
+.label {
+  font-size: var(--text-xs);
+  line-height: 1.25;
+  color: var(--beras-text);
+}
+
+@media (width >= 600px) {
+  .grid {
+    gap: var(--space-3);
+  }
+}
+
+@media (width >= 900px) {
+  /* Desktop: một hàng tám ô — dashboard đủ rộng, và một hàng đọc nhanh hơn hai. */
+  .grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+
+  .label {
+    font-size: var(--text-sm);
+  }
+}

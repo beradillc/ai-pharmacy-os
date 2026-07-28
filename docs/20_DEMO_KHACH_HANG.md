@@ -13,6 +13,11 @@ cd frontend && npm run dev                  # cửa sổ thứ hai
 
 Mở `http://localhost:3000/login` · đăng nhập **demo@bera.vn** / **NhaThuocDemo2026**
 
+🔴 **Chạy `make demo` ĐÚNG NGÀY demo, không phải hôm trước.** Dữ liệu mẫu trải 28
+ngày tính tới *ngày seed*; seed hôm qua thì hôm nay ô "Doanh thu hôm nay" hiện
+**0 ₫** và mục "Giao dịch gần đây" trống — đúng về mặt kỹ thuật, nhưng là mười
+giây mở màn tệ nhất có thể. (Đã gặp thật 29/07.)
+
 **Kiểm 30 giây trước khi ngồi xuống với khách** — mở đúng 3 màn: Bảng điều hành
 (có số, không phải 0), Tồn kho (có chip cam/đỏ), Hoá đơn (có đơn hôm nay). Một
 buổi demo hỏng vì backend chưa chạy là buổi demo hỏng vô lý nhất.

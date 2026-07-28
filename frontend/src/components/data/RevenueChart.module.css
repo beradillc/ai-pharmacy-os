@@ -1,0 +1,60 @@
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.svg {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.grid {
+  stroke: var(--chart-grid);
+  stroke-width: 0.3;
+  opacity: 0.7;
+}
+
+.line {
+  fill: none;
+  stroke: var(--chart-1);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.crosshair {
+  stroke: var(--beras-text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  opacity: 0.6;
+}
+
+.dot {
+  fill: var(--chart-1);
+  transition: r var(--motion-fast) var(--ease-out);
+}
+
+.caption {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  font-size: var(--text-sm);
+  color: var(--beras-text);
+}
+
+.muted {
+  color: var(--beras-text-muted);
+}
+
+.tooltip {
+  font-family: var(--beras-font-mono);
+}
+
+.thin {
+  padding: var(--space-6) 0;
+  text-align: center;
+  color: var(--beras-text-muted);
+  font-size: var(--text-sm);
+}

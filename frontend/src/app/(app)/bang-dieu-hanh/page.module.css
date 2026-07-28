@@ -209,3 +209,85 @@
     display: none;
   }
 }
+
+/* ─── Đợt U2 (2026-07-29): khối mới của màn Tổng quan ───────────────────────── */
+
+.subtitle {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}
+
+.page {
+  gap: var(--space-4);
+}
+
+.warn {
+  font-size: var(--text-sm);
+  color: var(--beras-warning);
+}
+
+.rows,
+.txnList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.txn {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--beras-bg-alt);
+  font-size: var(--text-base);
+}
+
+.txnList > .txn:last-child {
+  border-bottom: none;
+}
+
+.txnTime {
+  font-family: var(--beras-font-mono);
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+  white-space: nowrap;
+}
+
+.txnMeta {
+  color: var(--beras-text-muted);
+  font-size: var(--text-sm);
+}
+
+.txnMoney {
+  font-family: var(--beras-font-mono);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Nút/liên kết trong tiêu đề khối: đủ 44px để bấm bằng ngón tay. */
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+}
+
+/* Bốn ô KPI: 1 cột ở điện thoại nhỏ → 2 → 4. Bản cũ dùng auto-fit 200px, ở 360px
+   thì ô bị bóp còn ~160px và số tiền dài xuống dòng giữa chữ số. */
+.tiles {
+  grid-template-columns: 1fr;
+}
+
+@media (width >= 480px) {
+  .tiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (width >= 900px) {
+  .tiles {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
