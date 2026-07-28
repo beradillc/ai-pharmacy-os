@@ -1,39 +1,51 @@
 /*
- * BERAS Eco-Tech theme tokens — docs/16_BRAND_UI_GUIDE.md §2.
+ * BERAS Eco-Tech theme tokens — bảng CHỐT, docs/19_S9_UI_DESIGN.md §3.1.
  *
- * Giá trị hex dưới đây là TẠM (chưa chốt thiết kế chính thức — xem docs/16 §6
- * "việc còn treo"). Chọn trong đúng 4 họ màu đã duyệt (kem/xanh lá nhạt nền,
- * xanh lá đậm điểm nhấn, nâu ấm mascot, viền nâu/vàng đồng cho icon) và đã tự
- * kiểm tra tỉ lệ tương phản văn bản-nền đạt tối thiểu WCAG AA (4.5:1) — vì
- * màn hình POS thường bị nhìn dưới đèn huỳnh quang, màn rẻ, nhìn lướt (đã ghi
- * cảnh báo này trong chính docs/16 §2). Thay bằng bảng màu chính thức khi có,
- * không cần sửa nơi khác vì mọi UI chỉ tham chiếu qua các biến này.
+ * Giá trị ở đây không còn là tạm. Nguồn là gói bàn giao thiết kế
+ * `00-Bookmark/design_handoff_beras/` (high-fidelity, Chain chốt 2026-07-28 —
+ * lấy MÀU/CHỮ, không lấy cấu trúc). Đổi giá trị ở đây là đủ: mọi UI chỉ tham
+ * chiếu qua biến, không nơi nào ghi hex thẳng.
+ *
+ * Cảnh báo tương phản của docs/16 §2 vẫn hiệu lực — màn POS rẻ, đèn huỳnh
+ * quang, người dùng đứng nhìn lướt. Đừng thêm màu chữ nhạt trên nền kem mà
+ * chưa đo tỉ số.
  */
 
 :root {
-  --beras-bg: #f5f2e8; /* kem */
+  --beras-bg: #edefe7; /* Giấy Tái Sinh — KHÔNG phải kem */
   --beras-bg-alt: #e9f0e3; /* xanh lá nhạt */
   --beras-surface: #ffffff;
 
-  --beras-accent: #2f5233; /* xanh lá đậm (rừng) */
-  --beras-accent-hover: #23401f;
-  --beras-accent-contrast: #ffffff; /* chữ trên nền --beras-accent, ~8.9:1 */
+  --beras-accent: #1f3d2b; /* Lá Rừng Đậm — nav, chrome tối */
+  --beras-accent-hover: #162c1f;
+  --beras-accent-contrast: #ffffff; /* chữ trên nền --beras-accent */
+  --beras-leaf: #5b8c51; /* Lá Non — nút chính, canopy online */
 
-  --beras-brown: #7a4a2b; /* nâu ấm (mascot) */
+  --beras-brown: #6b4a32; /* Nâu Đất Sổ — border, icon, canopy offline */
   --beras-icon-border: #b08d57; /* viền nâu/vàng đồng cho icon line-art */
 
-  --beras-text: #24291f; /* ~13.8:1 trên --beras-bg */
+  --beras-text: #232920; /* Mực Sổ */
   --beras-text-muted: #5b6152;
 
-  --beras-danger: #a3312a;
+  --beras-warning: #b98a2d; /* Vàng Nghệ — Rx, cận date */
+  --beras-success: #2f7a6b; /* Xanh Bạc Hà Trầm */
+  --beras-danger: #a8452f; /* Đỏ Trầm */
   --beras-danger-bg: #fbe9e7;
 
   --beras-border: #d8d0bd;
   --beras-radius: 10px;
 
+  /*
+   * `--font-beras-*` do next/font đặt ra ở app/layout.tsx. next/font TỰ HOST
+   * lúc build — runtime không gọi mạng, nên lý do từ chối ở bản trước ("tải
+   * font đòi mạng, ngược tinh thần offline") là sai về sự kiện, không phải
+   * một đánh đổi. Vẫn giữ chuỗi dự phòng hệ thống: nếu biến chưa có (bản
+   * build cũ, hoặc font lỗi) thì chữ vẫn đọc được, không rơi về serif.
+   */
   --beras-font-sans:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  /* Không dùng next/font/google (Geist mặc định): brand Eco-Tech chưa chọn
-     font riêng, và tải font từ Google lúc build/dev đòi mạng — ngược tinh
-     thần "vận hành liên tục cả khi mất kết nối" của chính câu định vị BERAS. */
+    var(--font-beras-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --beras-font-mono:
+    var(--font-beras-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
 }
