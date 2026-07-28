@@ -29,6 +29,7 @@ from pharmacy_os.modules.analytics.application.dto import (
 from pharmacy_os.modules.analytics.domain import (
     DraftPoCountSource,
     DraftPoSink,
+    DrugNameSource,
     ReorderOutcome,
     ReorderPolicy,
     ReorderSuggestion,
@@ -57,6 +58,7 @@ class AnalyticsService:
         supplier_source: SupplierSource,
         draft_po_count_source: DraftPoCountSource,
         draft_po_sink: DraftPoSink,
+        drug_name_source: DrugNameSource,
         audit: AuditLogger,
         *,
         window_days: int = 90,
@@ -71,6 +73,7 @@ class AnalyticsService:
         self._supplier = supplier_source
         self._draft_po_count = draft_po_count_source
         self._draft_po_sink = draft_po_sink
+        self._drug_names = drug_name_source
         self._audit = audit
         self._policy = ReorderPolicy(
             window_days=window_days,
@@ -153,13 +156,17 @@ class AnalyticsService:
         status: SuggestionStatus | None = None,
     ) -> list[SuggestionOutput]:
         """List a branch's reorder suggestions, optionally by status. Requires
-        ``analytics.read``."""
+        ``analytics.read``.
+
+        Drug names are resolved in **one** extra lookup for the whole page, not one per
+        row (docs/19 khe hở G-1)."""
         require_permission(ctx, "analytics.read")
         target = branch_id if branch_id is not None else ctx.branch_id
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)
             items = await repo.list_by_branch(ctx.tenant_id, target, status=status)
-        return [SuggestionOutput.of(s) for s in items]
+        names = await self._drug_names.names_for(ctx.tenant_id, [s.drug_id for s in items])
+        return [SuggestionOutput.of(s, drug_name=names.get(s.drug_id)) for s in items]
 
     async def materialize(self, suggestion_id: UUID, ctx: RequestContext) -> MaterializeOutput:
         """Turn a PENDING suggestion into a DRAFT purchase order via procurement
@@ -240,8 +247,15 @@ class AnalyticsService:
         )
         revenue_total = sum((d.revenue for d in sold), Decimal("0"))
         top = sorted(sold, key=lambda d: d.quantity_sold, reverse=True)[:_TOP_DRUGS]
+        # Names for the ten shown rows only — never for every drug sold in the period.
+        names = await self._drug_names.names_for(ctx.tenant_id, [d.drug_id for d in top])
         top_drugs = [
-            TopDrug(drug_id=d.drug_id, quantity_sold=d.quantity_sold, revenue=d.revenue)
+            TopDrug(
+                drug_id=d.drug_id,
+                quantity_sold=d.quantity_sold,
+                revenue=d.revenue,
+                drug_name=names.get(d.drug_id),
+            )
             for d in top
         ]
         near_expiry = await self._stock.count_near_expiry(

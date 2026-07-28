@@ -23,9 +23,12 @@ class SuggestionOutput:
     po_id: UUID | None
     can_materialize: bool
     calculated_at: datetime
+    #: Display label resolved from catalog. ``None`` means "not resolvable" (drug gone),
+    #: never "not looked up" — the service always attempts the lookup.
+    drug_name: str | None = None
 
     @classmethod
-    def of(cls, s: ReorderSuggestion) -> SuggestionOutput:
+    def of(cls, s: ReorderSuggestion, *, drug_name: str | None = None) -> SuggestionOutput:
         return cls(
             id=s.id,
             drug_id=s.drug_id,
@@ -38,6 +41,7 @@ class SuggestionOutput:
             po_id=s.po_id,
             can_materialize=s.can_materialize,
             calculated_at=s.calculated_at,
+            drug_name=drug_name,
         )
 
 
@@ -56,6 +60,8 @@ class TopDrug:
     drug_id: UUID
     quantity_sold: Decimal
     revenue: Decimal
+    #: See :attr:`SuggestionOutput.drug_name`.
+    drug_name: str | None = None
 
 
 @dataclass(slots=True)

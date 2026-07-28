@@ -13,6 +13,7 @@ the human who pressed the button, with their own grants — see its docstring.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import Decimal
 from uuid import UUID
 
@@ -23,6 +24,7 @@ from pharmacy_os.core.di import Container
 from pharmacy_os.modules.analytics.application import AnalyticsService
 from pharmacy_os.modules.analytics.domain import DrugSoldQty
 from pharmacy_os.modules.analytics.infrastructure import SqlAlchemyReorderSuggestionRepository
+from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.inventory.application import InventoryService
 from pharmacy_os.modules.procurement.application import (
     CreatePurchaseOrderInput,
@@ -78,6 +80,25 @@ class StockLevelAdapter:
         ctx = _ctx(tenant_id, branch_id, frozenset({"inventory.read"}))
         items = await self._inventory.list_near_expiry(ctx, within_days=within_days)
         return len(items)
+
+
+class DrugNameAdapter:
+    """``DrugNameSource`` over ``CatalogService`` (reads ``catalog.read``).
+
+    Catalog is tenant-wide, so branch is the same placeholder ``SupplierAdapter`` uses.
+
+    Running under the **system** identity is the point, not an implementation detail:
+    it is what lets a pharmacist holding only ``analytics.read`` see *"Amoxicillin
+    500mg"* without also being granted ``catalog.read`` over the whole drug master.
+    The names leaked this way are exactly the ones already implied by the numbers on
+    the same screen."""
+
+    def __init__(self, catalog: CatalogService) -> None:
+        self._catalog = catalog
+
+    async def names_for(self, tenant_id: UUID, drug_ids: Sequence[UUID]) -> dict[UUID, str]:
+        ctx = _ctx(tenant_id, tenant_id, frozenset({"catalog.read"}))
+        return await self._catalog.drug_names(drug_ids, ctx)
 
 
 class SupplierAdapter:
@@ -160,6 +181,7 @@ def wire_analytics(container: Container) -> None:
     sales = container.resolve(SalesService)
     inventory = container.resolve(InventoryService)
     procurement = container.resolve(ProcurementService)
+    catalog = container.resolve(CatalogService)
 
     def repo_factory(uow: UnitOfWork, ctx: RequestContext) -> SqlAlchemyReorderSuggestionRepository:
         return SqlAlchemyReorderSuggestionRepository(uow.session, ctx)
@@ -172,6 +194,7 @@ def wire_analytics(container: Container) -> None:
         SupplierAdapter(procurement),
         DraftPoCountAdapter(procurement),
         DraftPoSinkAdapter(procurement),
+        DrugNameAdapter(catalog),
         container.resolve(AuditLogger),
     )
     container.register_instance(AnalyticsService, service)

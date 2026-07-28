@@ -8,6 +8,7 @@ end to end.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -96,6 +97,18 @@ class _FakeDraftPoSink:
         return po_id
 
 
+class _FakeDrugNames:
+    """Records the ids asked for, so a test can prove the lookup is bulk, not per row."""
+
+    def __init__(self, names: dict[UUID, str] | None = None) -> None:
+        self.names = names or {}
+        self.calls: list[list[UUID]] = []
+
+    async def names_for(self, tenant_id: UUID, drug_ids: Sequence[UUID]) -> dict[UUID, str]:
+        self.calls.append(list(drug_ids))
+        return {i: self.names[i] for i in drug_ids if i in self.names}
+
+
 def _service(
     session_factory: async_sessionmaker[AsyncSession],
     event_bus: InMemoryEventBus,
@@ -105,6 +118,7 @@ def _service(
     supplier: _FakeSupplier | None = None,
     draft_count: _FakeDraftPoCount | None = None,
     sink: _FakeDraftPoSink | None = None,
+    drug_names: _FakeDrugNames | None = None,
 ) -> AnalyticsService:
     def uow_factory() -> UnitOfWork:
         return SqlAlchemyUnitOfWork(session_factory, event_bus)
@@ -117,6 +131,7 @@ def _service(
         supplier or _FakeSupplier({}),
         draft_count or _FakeDraftPoCount(),
         sink or _FakeDraftPoSink(),
+        drug_names or _FakeDrugNames(),
         AuditLogger(session_factory),
     )
 
@@ -364,3 +379,82 @@ async def test_all_analytics_actions_reach_audit_table(
         "ANALYTICS_SUGGESTION_MATERIALIZED",
         "ANALYTICS_SUGGESTION_DISMISSED",
     } <= actions
+
+
+# --- G-1: màn hình phải in tên, không in UUID (docs/19 §4-§5) -----------------
+
+
+async def test_dashboard_and_list_carry_drug_names(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    low = uuid4()
+    names = _FakeDrugNames({low: "Amoxicillin 500mg"})
+    svc = _service(
+        session_factory,
+        event_bus,
+        sales=_FakeSales([DrugSoldQty(low, Decimal("90"), Decimal("900000"))]),
+        stock=_FakeStock({low: Decimal("5")}),
+        supplier=_FakeSupplier({low: uuid4()}),
+        drug_names=names,
+    )
+
+    await svc.run_reorder(_ctx("analytics.reorder.run"))
+    listed = await svc.list_suggestions(_ctx("analytics.read"))
+    board = await svc.dashboard(
+        _ctx("analytics.read"), date_from=date.today() - timedelta(days=27), date_to=date.today()
+    )
+
+    assert [s.drug_name for s in listed] == ["Amoxicillin 500mg"]
+    assert [t.drug_name for t in board.top_drugs] == ["Amoxicillin 500mg"]
+
+
+async def test_name_lookup_is_one_bulk_call_per_screen_not_one_per_row(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    """The whole point of G-1: 3 rows must not cost 3 lookups."""
+    a, b, c = uuid4(), uuid4(), uuid4()
+    names = _FakeDrugNames({a: "A", b: "B", c: "C"})
+    svc = _service(
+        session_factory,
+        event_bus,
+        sales=_FakeSales(
+            [
+                DrugSoldQty(a, Decimal("90"), Decimal("900000")),
+                DrugSoldQty(b, Decimal("90"), Decimal("900000")),
+                DrugSoldQty(c, Decimal("90"), Decimal("900000")),
+            ]
+        ),
+        stock=_FakeStock({a: Decimal("1"), b: Decimal("1"), c: Decimal("1")}),
+        supplier=_FakeSupplier({a: uuid4(), b: uuid4(), c: uuid4()}),
+        drug_names=names,
+    )
+
+    await svc.run_reorder(_ctx("analytics.reorder.run"))
+    names.calls.clear()
+    listed = await svc.list_suggestions(_ctx("analytics.read"))
+
+    assert len(listed) == 3
+    assert len(names.calls) == 1
+    assert sorted(names.calls[0], key=str) == sorted([a, b, c], key=str)
+
+
+async def test_unresolvable_drug_name_is_none_not_an_error(
+    session_factory: async_sessionmaker[AsyncSession], event_bus: InMemoryEventBus
+) -> None:
+    """A drug deleted after the numbers were computed must not blank the screen."""
+    gone = uuid4()
+    svc = _service(
+        session_factory,
+        event_bus,
+        sales=_FakeSales([DrugSoldQty(gone, Decimal("90"), Decimal("900000"))]),
+        stock=_FakeStock({gone: Decimal("1")}),
+        supplier=_FakeSupplier({gone: uuid4()}),
+        drug_names=_FakeDrugNames({}),  # knows nothing
+    )
+
+    await svc.run_reorder(_ctx("analytics.reorder.run"))
+    listed = await svc.list_suggestions(_ctx("analytics.read"))
+
+    assert len(listed) == 1
+    assert listed[0].drug_name is None
+    assert listed[0].drug_id == gone
