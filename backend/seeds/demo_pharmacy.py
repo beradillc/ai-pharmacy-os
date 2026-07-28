@@ -17,7 +17,7 @@ Chạy lại với cùng ``--admin-email`` sẽ **dừng có báo lỗi**, khôn
 lệnh seed âm thầm sửa dữ liệu đang có là đúng loại rủi ro mà kỷ luật #7 nói tới.
 Muốn dựng lại thì đổi email/tenant, hoặc xoá tenant cũ bằng tay.
 
-🔴 **BA CHỖ DỮ LIỆU DEMO KHÔNG PHẢN ÁNH ĐÚNG ĐỜI THẬT — đọc trước khi tin màn
+🔴 **BỐN CHỖ DỮ LIỆU DEMO KHÔNG PHẢN ÁNH ĐÚNG ĐỜI THẬT — đọc trước khi tin màn
 hình, và đừng dùng CSDL này để đo hiệu năng hay đối chiếu nghiệp vụ:**
 
 1. **Đơn bán được lùi ngày bằng một câu UPDATE thẳng vào cột ``created_at``.**
@@ -28,7 +28,11 @@ hình, và đừng dùng CSDL này để đo hiệu năng hay đối chiếu ngh
    ``dispense_stock``, FEFO thật, tồn cuối là tồn thật), nhưng *thời điểm* trừ
    thì không lùi theo đơn. Nghĩa là: tồn kho hiện tại đúng, lịch sử di chuyển kho
    thì không.
-3. **Chỉ bán thuốc OTC.** Không có đơn thuốc nào được tạo, nên bán ETC ở đây sẽ
+3. **Năm mặt hàng bán chạy bị hạ tồn bằng một lệnh xuất kho đánh dấu
+   ``demo_setup``** (không gắn hoá đơn nào) để chúng nằm dưới điểm đặt lại. Không
+   có bước này thì màn Đề xuất đặt hàng bấm "Tính lại" ra danh sách rỗng — xem
+   :func:`_drain_fast_movers`.
+4. **Chỉ bán thuốc OTC.** Không có đơn thuốc nào được tạo, nên bán ETC ở đây sẽ
    là một demo dạy sai luật. Thuốc ETC vẫn nằm trong danh mục và trong kho để
    màn Tồn kho có đủ hình dạng.
 
@@ -339,8 +343,19 @@ async def _seed_customers(svc: _Services, ctx: RequestContext) -> list[UUID]:
 
 
 async def _seed_suppliers_and_orders(
-    svc: _Services, ctx: RequestContext, drugs: dict[str, tuple[UUID, int, int]]
+    svc: _Services,
+    ctx: RequestContext,
+    drugs: dict[str, tuple[UUID, int, int]],
+    priority_drug_ids: list[UUID],
 ) -> tuple[int, int]:
+    """Tạo NCC và 3 đơn mua.
+
+    ``priority_drug_ids`` (các mặt hàng cố ý để tồn thấp) phải nằm trong các đơn
+    **ĐÃ GỬI**: ``last_supplier_for_drug`` chỉ nhìn đơn đã qua trạng thái DRAFT,
+    nên không có bước này thì đề xuất đặt hàng sinh ra được nhưng **không tạo được
+    đơn nháp** ("chưa có NCC") — đúng cái đã xảy ra lần chạy thử đầu tiên, và nó
+    rơi vào đúng phút 8 của kịch bản demo.
+    """
     supplier_ids: list[UUID] = []
     for name, phone, email in _SUPPLIERS:
         out = await svc.procurement.create_supplier(
@@ -348,10 +363,21 @@ async def _seed_suppliers_and_orders(
         )
         supplier_ids.append(out.id)
 
+    by_id = {value[0]: name for name, value in drugs.items()}
+    priority_names = [by_id[d] for d in priority_drug_ids if d in by_id]
     names = list(drugs)
     orders = 0
     for index, supplier_id in enumerate(supplier_ids[:3]):
-        picked = _RNG.sample(names, 4)
+        # Đơn 1 giữ NHÁP (để màn "đơn mua nháp chờ duyệt" có việc). Hai đơn ĐÃ GỬI
+        # chia nhau TOÀN BỘ mặt hàng ưu tiên — chia chứ không lặp, để mỗi thuốc có
+        # một NCC gần nhất khác nhau và màn Đề xuất không hiện độc một cái tên.
+        if index == 1 and priority_names:
+            picked = priority_names[: len(priority_names) // 2 + 1]
+        elif index == 2 and priority_names:
+            rest = priority_names[len(priority_names) // 2 + 1 :] or priority_names[:2]
+            picked = rest + _RNG.sample([n for n in names if n not in rest], 2)
+        else:
+            picked = _RNG.sample(names, 4)
         po = await svc.procurement.create_purchase_order(
             CreatePurchaseOrderInput(
                 supplier_id=supplier_id,
@@ -379,7 +405,7 @@ async def _seed_sales(
     drugs: dict[str, tuple[UUID, int, int]],
     customers: list[UUID],
     days: int,
-) -> list[tuple[UUID, datetime]]:
+) -> tuple[list[tuple[UUID, datetime]], dict[UUID, Decimal]]:
     """Sinh lịch sử bán. Trả về ``(order_id, thời điểm muốn lùi về)``.
 
     Cuối tuần đông hơn ngày thường (hệ số 1,35) và mỗi ngày dao động ±25 %: một
@@ -387,6 +413,7 @@ async def _seed_sales(
     """
     sellable = [(name, *value) for name, value in drugs.items() if value[2] > 0]
     backdate: list[tuple[UUID, datetime]] = []
+    sold_by_drug: dict[UUID, Decimal] = {}
     today = date.today()
 
     for day_offset in range(days - 1, -1, -1):
@@ -408,6 +435,7 @@ async def _seed_sales(
                     )
                 )
                 total += qty * Decimal(price)
+                sold_by_drug[drug_id] = sold_by_drug.get(drug_id, Decimal("0")) + qty
 
             # Khoảng 1/3 đơn gắn với khách quen — số còn lại là khách vãng lai,
             # đúng như một nhà thuốc thật, và cũng là thứ làm màn Khách hàng có
@@ -450,7 +478,52 @@ async def _seed_sales(
             hour = _RNG.randint(7, 20)
             minute = _RNG.randint(0, 59)
             backdate.append((out.id, datetime.combine(day, time(hour, minute), tzinfo=UTC)))
-    return backdate
+    return backdate, sold_by_drug
+
+
+#: Số mặt hàng cố ý để tồn thấp — xem :func:`_drain_fast_movers`.
+_LOW_STOCK_COUNT = 5
+
+#: Điểm đặt lại = velocity × (lead 7 + safety 3), velocity = lượng bán / cửa sổ 90
+#: ngày (analytics/domain/rules.py). Nên điểm đặt ≈ lượng đã bán / 9. Hạ tồn xuống
+#: 60 % mức đó là đủ dưới ngưỡng mà không phải số 0 trông như lỗi dữ liệu.
+_LOW_STOCK_RATIO = Decimal("0.6")
+
+
+async def _drain_fast_movers(
+    svc: _Services, ctx: RequestContext, sold_by_drug: dict[UUID, Decimal]
+) -> list[UUID]:
+    """Hạ tồn 5 mặt hàng bán chạy nhất xuống DƯỚI điểm đặt lại.
+
+    🔴 Đây là chỗ thứ TƯ dữ liệu demo không đúng đời thật (ba chỗ kia ở docstring
+    module): lệnh xuất kho này mang ``ref_type="demo_setup"``, không gắn với hoá
+    đơn nào — nó không phải một lần bán.
+
+    Vì sao vẫn làm: nếu mọi mặt hàng đều đầy kho thì màn **Đề xuất đặt hàng** bấm
+    "Tính lại" ra danh sách rỗng, và tính năng đáng tiền nhất của sản phẩm trở
+    thành một màn hình trắng đúng vào phút thứ 8 của buổi demo. Một nhà thuốc thật
+    LUÔN có vài mặt hàng dưới ngưỡng — đó mới là hình dạng bình thường; kho đầy
+    đều tăm tắp mới là thứ không có thật.
+
+    Trả về id các thuốc đã hạ, để đơn mua ĐÃ GỬI dựng theo đúng chúng — có vậy
+    ``last_supplier_for_drug`` mới trả về NCC và nút "Tạo đơn nháp" mới bấm được.
+    """
+    ranked = sorted(sold_by_drug.items(), key=lambda kv: kv[1], reverse=True)
+    drained: list[UUID] = []
+    for drug_id, sold in ranked[:_LOW_STOCK_COUNT]:
+        on_hand = await svc.inventory.on_hand(drug_id, ctx)
+        target = (sold / Decimal("9") * _LOW_STOCK_RATIO).quantize(Decimal("1"))
+        surplus = on_hand - target
+        if surplus <= 0:
+            continue
+        try:
+            await svc.inventory.dispense_stock(
+                DispenseInput(drug_id=drug_id, quantity=surplus, ref_type="demo_setup"), ctx
+            )
+            drained.append(drug_id)
+        except AppError as exc:
+            _log.warning("demo_drain_skipped", reason=exc.detail)
+    return drained
 
 
 async def _backdate_orders(session_factory: object, rows: list[tuple[UUID, datetime]]) -> None:
@@ -510,8 +583,9 @@ async def _run(args: argparse.Namespace, password: str) -> None:
         drugs = await _seed_catalog(svc, ctx)
         lots = await _seed_stock(svc, ctx, drugs, args.days)
         customers = await _seed_customers(svc, ctx)
-        suppliers, orders = await _seed_suppliers_and_orders(svc, ctx, drugs)
-        sales = await _seed_sales(svc, ctx, drugs, customers, args.days)
+        sales, sold_by_drug = await _seed_sales(svc, ctx, drugs, customers, args.days)
+        drained = await _drain_fast_movers(svc, ctx, sold_by_drug)
+        suppliers, orders = await _seed_suppliers_and_orders(svc, ctx, drugs, drained)
         await _backdate_orders(session_factory, sales)
         await _clear_must_change_password(session_factory, args.admin_email)
     finally:

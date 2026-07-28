@@ -272,6 +272,28 @@ qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API**)**
 
 ---
 
+## Sprint 10 — Bản demo cho khách hàng *(2026-07-28)*
+
+Chain: *"code tiếp, đúng quy trình, ủy quyền quyết liên tục cho đến có sản phẩm demo
+gửi khách hàng."* Tổng **12 bước**, chốt trước khi bắt đầu (kỷ luật #12).
+
+- [x] **D1–D3** ba cổng đọc còn thiếu: `GET /sales`, `GET /purchase-orders`,
+      `GET /inventory/stock` (+ lọc `search`/`ids` cho `GET /drugs`).
+- [x] **D4** `seeds.demo_pharmacy` — 36 thuốc, 72 lô, 279 hoá đơn / 28 ngày.
+- [x] **D5–D9** bốn màn quản lý (Tồn kho · Hoá đơn · Khách hàng · Đơn mua hàng)
+      + khung điều hướng 7 mục gating theo quyền, tên chi nhánh thật.
+- [x] **D10** cột `drugs.sale_price` (migration 0037) — màn bán hàng hết hỏi giá
+      từng dòng bằng `window.prompt`.
+- [x] **D11** `make demo` — một lệnh, CSDL riêng.
+- [x] **D12** `docs/20_DEMO_KHACH_HANG.md` — kịch bản 10 phút, đã chạy thật hết
+      đường: đăng nhập → bán → hoá đơn → tồn kho → bảng điều hành → đề xuất →
+      **PO-0004**.
+
+**Còn nợ:** chưa có mắt người nào nhìn bốn màn mới (công cụ trình duyệt không có
+trong phiên) · frontend vẫn **không có một test nào**.
+
+---
+
 ## Backlog (sau v1)
 
 - Ứng dụng bệnh nhân, sàn B2C.

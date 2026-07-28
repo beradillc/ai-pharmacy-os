@@ -5109,6 +5109,106 @@ mã**. Đó là ranh giới của mọi cổng tự động, và là lý do Phi�
 
 ---
 
+## 7bv. ✅ SPRINT 10 — BẢN DEMO GỬI KHÁCH HÀNG, 12/12 BƯỚC (2026-07-28, phiên 3, Opus)
+
+Chain: *"GĐ bắt đầu code tiếp, đúng quy trình. Ủy quyền quyết liên tục cho đến có sản phẩm demo
+gửi khách hàng."* Tổng **12 bước chốt trước khi bắt đầu** (kỷ luật #12), không đổi giữa chừng.
+
+### A. Nền — xác nhận bằng lệnh thật (kỷ luật #5)
+
+| Kiểm | Kết quả |
+|---|---|
+| `docker compose ps` | **rỗng** lúc mở phiên ⇒ đã `up -d` lại |
+| `git log -1` | `b63245b` — đóng phiên 28/07 phiên 2 |
+| `make check` nền | `MAKE_CHECK_EXIT=0` · 1099 + 16 passed |
+| `backend/.env` | còn nguyên, 4 dòng khoá mã hoá ⇒ dữ liệu khách trên máy này còn đọc được |
+
+### B. Khoảng trống thật giữa "chạy được" và "đưa khách xem được"
+
+Backend có 11 module; frontend có **2 màn**. Ba cổng đọc mà mọi màn danh sách đều cần thì
+**không tồn tại**: không có `GET /sales`, không có `GET /purchase-orders`, `GET /inventory/on-hand`
+chỉ trả **một** thuốc mỗi lượt. Đây không phải việc giao diện — đây là API chưa có.
+
+### C. 12 bước, kết quả
+
+| Bước | Nội dung | Commit |
+|---|---|---|
+| D1 | `GET /sales` — hoá đơn theo ngày, mới nhất trước | `7a210e2` `6c84550` `744ecd7` |
+| D2 | `GET /purchase-orders` — kèm tên NCC + tổng đặt | `6269f6b` `7fe6dda` |
+| D3 | `GET /inventory/stock` + lọc `search`/`ids` cho `GET /drugs` | `41f3221` `ff33c66` |
+| D4 | `seeds.demo_pharmacy` — nhà thuốc demo có dữ liệu thật | `b0d6f47` |
+| D5–D11 | 4 màn quản lý · khung điều hướng · `sale_price` · `make demo` | `cb86fa3` |
+| D12 | `docs/20_DEMO_KHACH_HANG.md` + kiểm hết đường | phiên này |
+
+pytest **1099 → 1135 passed** (+36) · alembic `0036` → **`0037`** · FE **2 → 8 route**.
+
+### D. 🔴 Ba lỗi bắt được bằng LỆNH THẬT, không bằng mắt đọc code
+
+1. **`sale_price` vắng mặt trong API dù cột đã có.** uvicorn còn chạy bản cũ. Nếu chỉ đọc code
+   thì mọi thứ đúng — đây đúng là hình dạng "xanh vì lý do sai" của kiểm toán 26/07.
+2. **Tiền 5 chữ số thập phân** (`19400.00000`) ở danh sách hoá đơn, tổng đơn mua, VÀ doanh thu
+   bảng điều hành — lượng `Numeric(18,3)` × giá `Numeric(18,2)`. Đã quy về 2 chữ số ở cả ba.
+   Con số doanh thu là số **to nhất** trên bảng điều hành.
+3. **Bước 8 của kịch bản demo KHÔNG chạy được** ở bản đầu: `POST /analytics/reorder/run` ra
+   **1** đề xuất và `can_materialize: false` (không thuốc nào có lịch sử NCC). Nếu viết tài liệu
+   xong rồi mới demo trước mặt khách thì hỏng đúng phút thứ 8. Đã sửa **dữ liệu seed**, không
+   sửa câu chữ tài liệu: hạ tồn 5 mặt hàng bán chạy + cho chúng vào các đơn mua ĐÃ GỬI.
+   Đo lại: `suggested=5 · tạo đơn được 5/5 · MATERIALIZE=200 → "PO-0004"`.
+
+### E. Kỷ luật #14 — 9 mutant, 9 lần đỏ đúng lý do
+
+| Mutant | Kết quả |
+|---|---|
+| Hai join thay hai subquery (thổi phồng đơn nhiều lần trả tiền) | `240000 != 120000` |
+| `ORDER BY` xuôi thay vì ngược | test thứ tự đỏ |
+| Endpoint bỏ qua cửa sổ ngày | test cửa sổ đỏ |
+| Bỏ giải tên NCC · tổng theo `quantity_received` | 2 test + 1 test đỏ |
+| Bỏ lọc `ids` · bỏ lọc `search` | 1 + 2 test đỏ |
+| Bỏ phân trang tồn kho | test phân trang đỏ |
+| Quên map `sale_price` khi ĐỌC | test đi trọn vòng đỏ |
+
+Và **một lỗi trong chính test của tôi**, cùng họ §7bu: bản đầu khẳng định *"đơn thứ hai phải
+đứng trước đơn thứ nhất"*. `created_at` là `server_default now()`, trên SQLite `now()` phân giải
+**1 giây** ⇒ ba đơn liền nhau cùng một mốc ⇒ thứ tự do id quyết ⇒ **tung đồng xu**. Đã đổi sang
+khẳng định bất biến *"chuỗi không tăng theo `(created_at, order_id)`"*, vẫn có răng (mutant
+chứng minh) nhưng không còn phụ thuộc may rủi.
+
+### F. Quyết định tự chốt trong phiên (full-auto #3)
+
+| Quyết định | Lý do |
+|---|---|
+| **Thêm cột `drugs.sale_price`** (đổi lược đồ, không nằm trong 12 bước gốc) | Màn bán hàng hỏi giá bằng `window.prompt` cho TỪNG dòng. Không phải chi tiết giao diện — là khoảng trống dữ liệu nằm giữa luồng dùng nhiều nhất. Gộp vào D10 thay vì đẻ bước mới; pg_dump trước migration theo full-auto #6 |
+| **Inventory KHÔNG được biết tên thuốc** — màn hình tự gắn bằng `GET /drugs?ids=` | Giữ contract `import-linter`. Một lượt gọi cho cả trang, không phải N |
+| **`branch_id=None` = toàn tenant** ở cả `GET /sales` và `GET /purchase-orders` | Một quy ước, không phải hai. `sales.read` vốn đã đọc xuyên chi nhánh |
+| **Demo dùng CSDL RIÊNG** (`pharmacy_os_demo`) | CSDL dev lẫn rác quá trình làm việc; demo cần dữ liệu ổn định |
+| **`make demo` KHÔNG tự xoá CSDL** | Xoá dữ liệu là quyết định của người; script in lệnh DROP ra cho Chain chạy |
+| **Gộp app+interface vào 1 commit ở D3** | Hàm đọc thuần, không schema/migration. Ghi rõ trong commit thay vì khai "mỗi bước một commit" |
+
+### G. 🔴 Còn nợ — nói thẳng, không giấu trong tài liệu
+
+1. **Chưa có mắt người nào nhìn 4 màn mới.** Công cụ trình duyệt không có trong phiên này.
+   Cái đã chứng minh: **dữ liệu** từng màn sẽ hiển thị là đúng (gọi đúng chuỗi API mỗi màn gọi,
+   token thật, CSDL demo thật, kể cả vòng gắn tên `?ids=` — 0 thuốc không tra được tên).
+   Cái **chưa** chứng minh: bố cục, tương phản dưới đèn huỳnh quang, trạng thái rỗng/đang tải.
+2. **Frontend vẫn KHÔNG có một test nào.** Cổng FE là `lint` + `tsc` + `build`, không phải
+   "có test phủ" (§7bt.F). Bốn màn mới không đổi điều đó.
+3. **Bốn CSDL thử đã tạo trong phiên** — `s10_probe`, `demo_v2`, `demo_v3`, `demo_v4` — cộng
+   `pharmacy_os_demo` (bản dùng thật). Xoá bằng tay, `DROP DATABASE` nằm trong `deny`.
+4. **Tenant dở dang trong `pharmacy_os`**: lần seed đầu đổ giữa chừng (lỗi đơn vị "hộp") để lại
+   một tenant với 22 thuốc, email `demo-s10@bera.vn`. Lần sau chạy được: `demo.s10@bera.vn`.
+5. Kiểm toán Phiên C · B-08 · A-04 · A-05 · `jti` · bỏ CCCD khỏi `GET /customers` — **không
+   đụng tới trong phiên này**, vẫn mở nguyên như §7bu để lại.
+
+### H. Điểm dừng
+
+Đang chạy: Postgres · uvicorn `:8000` trỏ **`demo_v4`** · next dev `:3000`.
+Đăng nhập demo: **`demo@bera.vn` / `NhaThuocDemo2026`** → `http://localhost:3000/login`
+
+Việc của Chain, theo thứ tự: **① bấm thử 4 màn mới** (thứ duy nhất chưa ai làm) → ② đọc
+`docs/20_DEMO_KHACH_HANG.md` mục 3 trước khi demo cho khách thật → ③ dọn 4 CSDL thử.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
