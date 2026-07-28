@@ -509,3 +509,52 @@ async def test_mark_ordered_and_confirm_receipt_each_leave_an_audit_row(
         grn_entries = await repo.list(ctx.tenant_id, action=AuditAction.PROCUREMENT_GRN_CONFIRMED)
         matching = [e for e in grn_entries if e.target_id == str(confirmed.id)]
         assert len(matching) == 1
+
+
+# --- tra tên NCC hàng loạt: nền cho khe hở G-1 (docs/19 §5) --------------------
+
+
+async def test_supplier_names_resolves_many_and_omits_unknown(
+    procurement_service: ProcurementService, ctx: RequestContext
+) -> None:
+    a = await procurement_service.create_supplier(CreateSupplierInput(name="Dược Hậu Giang"), ctx)
+    b = await procurement_service.create_supplier(CreateSupplierInput(name="Traphaco"), ctx)
+    ghost = uuid4()
+
+    names = await procurement_service.supplier_names([a.id, b.id, ghost], ctx)
+
+    assert names == {a.id: "Dược Hậu Giang", b.id: "Traphaco"}
+    assert ghost not in names
+
+
+async def test_supplier_names_empty_input_does_not_hit_the_database(
+    procurement_service: ProcurementService, ctx: RequestContext
+) -> None:
+    assert await procurement_service.supplier_names([], ctx) == {}
+
+
+async def test_supplier_names_is_tenant_scoped(
+    procurement_service: ProcurementService, ctx: RequestContext
+) -> None:
+    mine = await procurement_service.create_supplier(CreateSupplierInput(name="NCC Của Tôi"), ctx)
+    other = RequestContext(
+        tenant_id=uuid4(),
+        branch_id=ctx.branch_id,
+        user_id=ctx.user_id,
+        permissions=ctx.permissions,
+    )
+
+    assert await procurement_service.supplier_names([mine.id], other) == {}
+
+
+async def test_supplier_names_requires_supplier_read(
+    procurement_service: ProcurementService, ctx: RequestContext
+) -> None:
+    unprivileged = RequestContext(
+        tenant_id=ctx.tenant_id,
+        branch_id=ctx.branch_id,
+        user_id=ctx.user_id,
+        permissions=frozenset(),
+    )
+    with pytest.raises(PermissionDeniedError):
+        await procurement_service.supplier_names([uuid4()], unprivileged)

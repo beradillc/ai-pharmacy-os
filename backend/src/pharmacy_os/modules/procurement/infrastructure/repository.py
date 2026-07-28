@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -71,6 +72,15 @@ class SqlAlchemySupplierRepository:
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [supplier_to_domain(r) for r in rows]
+
+    async def names_by_ids(self, supplier_ids: Sequence[UUID]) -> dict[UUID, str]:
+        if not supplier_ids:
+            return {}
+        stmt = select(SupplierORM.id, SupplierORM.name).where(
+            SupplierORM.id.in_(supplier_ids), SupplierORM.tenant_id == self._ctx.tenant_id
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return {row.id: row.name for row in rows}
 
 
 class SqlAlchemyPurchaseOrderRepository:

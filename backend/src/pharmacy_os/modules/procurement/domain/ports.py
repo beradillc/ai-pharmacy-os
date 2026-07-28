@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Protocol
 from uuid import UUID
 
@@ -21,6 +22,12 @@ class SupplierRepository(Protocol):
     async def get(self, supplier_id: UUID) -> Supplier | None: ...
 
     async def list(self, *, limit: int = 50, offset: int = 0) -> list[Supplier]: ...
+
+    async def names_by_ids(self, supplier_ids: Sequence[UUID]) -> dict[UUID, str]:
+        """Name-only projection for many ids in one query. Mirrors
+        ``DrugRepository.names_by_ids``: ids the tenant can't see are absent rather than
+        an error, because a screen that lists ids must not die on one stale row."""
+        ...
 
 
 class PurchaseOrderRepository(Protocol):

@@ -6,7 +6,7 @@ injected as factories at composition time (see the module ``register``).
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from uuid import UUID
 
 from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
@@ -101,6 +101,20 @@ class ProcurementService:
             repo = self._supplier_repo_factory(uow, ctx)
             suppliers = await repo.list(limit=limit, offset=offset)
         return [SupplierOutput.of(s) for s in suppliers]
+
+    async def supplier_names(
+        self, supplier_ids: Sequence[UUID], ctx: RequestContext
+    ) -> dict[UUID, str]:
+        """Resolve many supplier ids to display names in one query.
+
+        For read models holding ids that need labels — the reorder screen (docs/19 §5).
+        Unknown ids are absent from the result rather than an error, for the same reason
+        as ``CatalogService.drug_names``.
+        """
+        require_permission(ctx, "procurement.supplier.read")
+        async with self._uow_factory() as uow:
+            repo = self._supplier_repo_factory(uow, ctx)
+            return await repo.names_by_ids(supplier_ids)
 
     # --- PurchaseOrder ---
 
