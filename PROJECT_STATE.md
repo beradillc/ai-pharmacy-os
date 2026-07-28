@@ -4620,10 +4620,68 @@ passed** + 16 passed (`payment_vnpay`) · mypy 260 file · 18 contract.
 kế "fail chứ không skip" của F-4. Đã bật Postgres, cổng xanh trở lại. Ghi lại vì §7bs khai staging
 "đang chạy" nhưng thực tế **không container nào sống**.
 
-### I. Điểm dừng
+### I. ✅ B2 XONG — G-1 đóng trọn vẹn (28/07)
 
-**Còn 12/13 bước.** Kế tiếp: **B2** (tên nhà cung cấp) → **B3** (mã PO tuần tự + test đồng thời) →
-**B4** → **B5** → **F1–F8**.
+`ec5ad21` (procurement `names_by_ids` + `supplier_names`) → `ea5ec71` (port `SupplierSource.names_for`
++ adapter + `supplier_name` ra HTTP). `MAKE_CHECK_EXIT=0` cả 2 lần · **1062 → 1066 → 1069 passed**.
+
+Adapter cấp quyền **riêng cho từng lệnh** (`procurement.po.read` để chọn NCC,
+`procurement.supplier.read` để đặt tên), không gộp thành hợp của cả hai — thói quen nhỏ nhưng đúng
+hướng đặc quyền tối thiểu.
+
+🔴 **`dismiss` cũng enrich, dù UI xoá dòng ngay sau đó.** Nếu không, `drug_name = None` mang nghĩa
+*"không tra được"* ở endpoint `list` và *"chưa tra"* ở `dismiss`. **Một trường hai nghĩa** là cách
+một UI in "—" cho thuốc có tên đàng hoàng.
+
+### J. ✅ B3 XONG — mã PO tuần tự, đóng G-2 (28/07, `2aec8dd`)
+
+| Thành phần | Quyết định |
+|---|---|
+| Bộ đếm | **Bảng theo tenant**, không phải `SEQUENCE` — sequence là toàn CSDL, số này phải theo từng nhà thuốc; hai khách hàng đều bắt đầu ở **PO-0001** |
+| Cấp phát | Phép cộng **bên trong** `UPDATE … RETURNING` ⇒ khoá hàng do chính câu lệnh giữ (kỹ thuật F-5 đã vá B-01) |
+| Lần đầu của tenant | Chưa có hàng để khoá ⇒ đua ở nhánh INSERT; bên thua bắt `IntegrityError`, rollback **đúng savepoint đó** rồi quay lại nhánh UPDATE |
+| Lưới đỡ | Unique `(tenant_id, code)` — bảo vệ cả những đường ghi chưa tồn tại |
+| Định dạng | `PO-0001`; qua 9999 thì **nới rộng** (`PO-10000`), không quay vòng — không bao giờ tái sử dụng số |
+
+#### 🔴 Bài học phương pháp — test đua bản đầu của tôi VÔ GIÁ TRỊ
+
+Bản đầu chỉ `asyncio.gather` hai lượt cấp phát rồi khẳng định hai mã khác nhau. Tôi **cố ý thay
+`next_code` bằng bản sai** (`SELECT` rồi `UPDATE` — đúng hình dạng B-01) để kiểm chứng, và test
+**vẫn xanh**: đo thật `MUTANT_PYTEST_EXIT=0`, `4 passed`. Lý do: `gather` **không ép xen kẽ** — quầy
+A chạy trọn rồi B mới đọc, nên B đọc đúng giá trị A vừa ghi. Một test đua không ép được xen kẽ chỉ
+đang khẳng định *"chạy tuần tự thì ra đúng"*.
+
+Sau khi chuyển sang `StatementGate` chặn **câu lệnh đầu tiên** của mỗi quầy (tiền tố rỗng ⇒ khớp mọi
+câu, nên cổng bắt **bản sai** chứ không bắt **cách viết**), bản sai đỏ đúng chỗ:
+*"hai quầy nhận cùng một mã đơn mua: PO-0002"*. Bản đúng: `14 passed`.
+
+⚠️ **Ghi rõ giới hạn:** test "lần cấp đầu tiên" **không** phân biệt được bản đúng với bản sai (cả
+hai đều đi qua nhánh INSERT rồi thử lại). Nó canh nhánh thử-lại, không canh khoá hàng.
+
+#### Kiểm trên CSDL CÓ DỮ LIỆU SẴN (kỷ luật #7)
+
+`pg_dump` trước migration: `~/backup_pre_migration_20260728_1126.sql`.
+
+| Kiểm | Kết quả |
+|---|---|
+| downgrade → nạp **4 PO của 2 tenant** lệch ngày → upgrade | `ALEMBIC_EXIT=0` |
+| Backfill | tenant A: `PO-0001..0003` **đúng thứ tự `created_at`** · tenant B: `PO-0001` |
+| Bộ đếm sau backfill | `3` và `1` — khớp max |
+| `code IS NULL` | **0 dòng** |
+| `next_code` sau đó | `PO-0004` / `PO-0002` — **nối tiếp**, không nhảy về đầu |
+| Chèn trùng `(tenant, code)` | Postgres từ chối: `duplicate key … uq_po_tenant_code` |
+| Dọn dữ liệu thử | `po_left=0`, `counters_left=0` |
+
+🔴 **Một lần suýt tự lừa mình, ghi lại:** lần chạy migration đầu tiên tôi tưởng đã nạp dữ liệu sẵn,
+nhưng `docker exec` thiếu cờ `-i` nên heredoc **không vào được `psql`** — lệnh trả `EXIT=0`, bảng
+vẫn rỗng, và migration chạy qua nhánh backfill **không có dòng nào**. Nếu không mở bảng ra xem thì
+đã báo cáo "đã kiểm trên dữ liệu sẵn" trong khi chưa kiểm. Cùng họ với kỷ luật #8: **mã thoát 0 của
+lệnh bọc ngoài không chứng minh việc bên trong đã chạy**.
+
+### K. Điểm dừng
+
+**Xong 3/13** (B1 · B2 · B3). Kế tiếp: **B4** (`po_code` ra `MaterializeResponse`) → **B5** (hoàn
+tác trong phạm vi analytics) → **F1–F8**.
 
 ---
 
