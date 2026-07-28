@@ -4737,11 +4737,79 @@ Không dừng ở đó — **kiểm bằng chính sản phẩm build**: **22** f
 `@font-face`, dải Unicode tiếng Việt **`U+1EA0-1EF9` có mặt**, `--font-beras-sans/mono` nối đúng vào
 `--beras-font-sans`. *Build xanh mà font rơi về fallback thì cũng xanh.*
 
-### M. Điểm dừng
+### M. ✅ F2–F6 XONG — hai màn Sprint 9 dựng xong (28/07, `33080a5`)
 
-**Xong 6/13** — toàn bộ backend (B1–B5) + F1. Kế tiếp: **F2** (type + hook react-query) → **F3**
-(khung điều hướng + gating `analytics.read`) → **F4/F5** (hai màn) → **F6** (3 hành động) → **F7**
-(đã xong ở backend, FE chỉ hiển thị) → **F8** (kiểm staging + tài liệu).
+Cổng FE: `ESLINT_EXIT=0` · `TSC_EXIT=0` · `NEXT_BUILD_EXIT=0` (7 route).
+
+| Quyết định | Vì sao |
+|---|---|
+| Tiền/số lượng giữ **`string`** suốt đường, chỉ đổi `number` ở ranh giới hiển thị | Ép sớm là chuốc sai số dấu phẩy động lên chính những con số mang đi đối chiếu sổ |
+| Gating theo **quyền**, không theo tên vai | Thiếu `analytics.read` ⇒ **không hiện mục menu**, không hiện rồi báo lỗi khi bấm |
+| Nút hoàn tác 10 giây **thuần thị giác** | Máy chủ không đếm giờ; hết 10 giây chỉ là thông báo tự ẩn. `422` (đơn đã gửi NCC) **hiện ra**, không nuốt |
+| `can_materialize=false` ⇒ nút **mờ kèm lý do**, không ẩn | Ẩn nút làm người dùng tưởng chức năng không tồn tại |
+| *"Hết trong ~N ngày"* tính ở FE từ tồn ÷ tốc độ bán | Dẫn xuất, không phải trường API — và là thứ dược sĩ thực sự nghĩ |
+| Không có nút *"Tạo tất cả"* | Đặt hàng là cam kết tiền; mỗi dòng một quyết định |
+| Ô rỗng-tốt (0) **bỏ vạch màu** | Tô đỏ số 0 là báo động giả |
+| Xuất CSV dựng từ dữ liệu **đã tải**, kèm BOM | Không hứa một endpoint xuất khẩu chưa có |
+
+### N. ✅ F8 — DEMO CHẠY THẬT, ĐƠN HÀNG THẬT ĐÃ PHÁT SINH (28/07)
+
+Chain: *"làm đúng quy trình đến khi chạy được demo giao diện, phát sinh đơn hàng thật cho nhà
+thuốc demo."*
+
+**Nhà thuốc demo** dựng qua `seeds.bootstrap_tenant` (đường thật, không chèn SQL):
+
+| Mục | Giá trị |
+|---|---|
+| Tenant | `Nhà thuốc Bera Demo` · `099df83b-6023-48fb-a4a4-f3bc3fcd5554` |
+| Chi nhánh | `HQ` · `afcce786-08eb-4cd9-963f-fd2112e18e39` |
+| Đăng nhập | `demo@bera.vn` / `NhaThuocDemo2026` (đã đổi mật khẩu lần đầu, `CHANGE_PW_HTTP=204`) |
+| Backend | `uvicorn` cổng **8000** · Frontend `next dev` cổng **3000** (`FE_HTTP=200`) |
+
+**Dữ liệu nạp toàn bộ qua HTTP thật:** 1 NCC · 4 thuốc · 4 PO đã đặt (`PO-0001`…`PO-0004`) ·
+nhập kho · bán ra.
+
+🔴 **Hai lượt bán trả `422` — và đó là hệ thống ĐÚNG, không phải lỗi.** `Amoxicillin`/`Omeprazole`
+là **ETC**: *"Thuốc kê đơn (ETC/kiểm soát) cần đơn thuốc hợp lệ mới được bán"*. Đã đi đúng đường
+đơn thuốc (tạo khách → tạo đơn → `validate` → bán kèm `prescription_ref`), **không** hạ `rx_class`
+xuống OTC cho dữ liệu chạy được. Sửa dữ liệu cho khớp luật, không sửa luật cho khớp dữ liệu.
+
+#### Chuỗi thao tác của hai màn — chạy thật, kết quả thật
+
+| Bước UI | Lệnh | Kết quả |
+|---|---|---|
+| **[Tính lại]** | `POST /analytics/reorder/run` | xét **4**, đề xuất **2**, thiếu dữ liệu 0 |
+| Bảng đề xuất | `GET …/suggestions?status=PENDING` | `Amoxicillin 500mg` tồn 10, điểm đặt 15,56, bán/ngày 1,5556, **đề xuất 22**, NCC **Dược Hậu Giang** |
+| **[Tạo đơn nháp]** | `POST …/materialize` | **`po_code: "PO-0005"`** |
+| Đọc lại đơn | `GET /purchase-orders/{id}` | `PO-0005` · `DRAFT` · 1 dòng, SL đặt **22** |
+| **[Hoàn tác]** | `POST …/undo` | đề xuất về `PENDING`, `po_id=None`, bấm lại được; đơn `PO-0005` → **`CANCELLED`** |
+| Tạo lại | `POST …/materialize` | **`PO-0006`** — đơn nhà thuốc demo đang giữ |
+| **Bảng điều hành** | `GET /analytics/dashboard` | doanh thu **2.375.000 đ** · sắp hết **1** · cận date **0** · đơn nháp **1** · 4 thuốc bán chạy **có tên** |
+
+✅ **G-1 sống thật**: cả `drug_name` lẫn `supplier_name` hiện tên người đọc được, không UUID.
+✅ **G-2 sống thật**: `PO-0005`/`PO-0006` là mã thật trong CSDL, không phải chuỗi bịa từ UUID.
+✅ **G-3 sống thật**: hoàn tác chạy được bằng đúng quyền `analytics.*`, và huỷ **đúng** đơn đã ghi.
+
+#### Giao diện — kiểm được gì, KHÔNG kiểm được gì
+
+| Đã kiểm bằng lệnh thật | Kết quả |
+|---|---|
+| 3 route trả `200` | `/login` · `/bang-dieu-hanh` · `/de-xuat-dat-hang` |
+| Token màu **phục vụ tới trình duyệt** | `--beras-bg: #edefe7` · `--beras-accent: #1f3d2b` · `--beras-leaf` · `--beras-warning` · `--beras-success` |
+| Font gắn vào `<html>` | `class="be_vietnam_pro_… ibm_plex_mono_…"`, `--beras-font-sans` nối đúng |
+
+🔴 **KHÔNG kiểm được, ghi rõ thay vì làm tròn lên:** phiên này **không có tự động hoá trình duyệt**
+(extension Claude-in-Chrome chưa nối). Tôi đã chạy **đúng các lệnh mà từng nút gọi** và đọc lại kết
+quả từ CSDL — nhưng **chưa ai bấm chuột thật** lên hai màn này. Chưa kiểm bằng mắt: bố cục thật,
+tương phản dưới đèn huỳnh quang, trạng thái rỗng/đang tải, hộp xác nhận *"Bỏ qua"*, và thông báo
+`#PO-0006` hiện ra trông thế nào. **Đó là việc còn lại của F8**, để Chain bấm.
+
+### O. Điểm dừng
+
+**Xong 13/13 bước code.** Còn **một việc không phải code**: Chain mở `http://localhost:3000/login`,
+đăng nhập `demo@bera.vn` / `NhaThuocDemo2026`, bấm qua hai màn và nói chỗ nào nhìn sai.
+
+Đang chạy: Postgres (docker) · uvicorn `:8000` · next dev `:3000`.
 
 ---
 
