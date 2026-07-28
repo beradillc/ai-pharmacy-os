@@ -302,3 +302,45 @@ không phải việc giao diện, nên không chặn demo:
 | `docs/16_BRAND_UI_GUIDE.md` | Nguyên tắc UI, bảng "được phép nói gì" (§5–§6 của tài liệu này) |
 | `frontend/src/styles/tokens.css` | Token **đang chạy trong repo** — còn là giá trị tạm, xem M-2 |
 | OpenAPI staging `localhost:8001` | Xác nhận từng endpoint và từng trường schema |
+
+---
+
+## 10. PHỤ LỤC — ba khe hở phát hiện khi triển khai, và cách đã đóng (2026-07-28)
+
+Bản thiết kế trên được Chain duyệt 7/7 và tự khai *"mọi endpoint đã xác nhận tồn tại trên
+staging"*. Điều đó **đúng ở mức endpoint** nhưng chưa đối chiếu ở mức **trường dữ liệu**. Khi
+GĐ rà soát trước lúc viết code, ba chỗ thiết kế hứa thứ API không trả:
+
+| # | Khe hở | Chain quyết | Đã làm |
+|---|---|---|---|
+| **G-1** | `TopDrugResponse`/`SuggestionResponse` chỉ trả UUID; §4–§5 in *"Amoxicillin 500mg"*, *"Dược Hậu Giang"* | Thêm trường name vào API | `drug_name` + `supplier_name`, tra **theo lô**, **1 lượt/trang** mỗi loại |
+| **G-2** | `PurchaseOrderResponse` không có mã; §5 in *"#PO-0412"* — **chuỗi đó không tồn tại** | Thêm mã PO thật | `PO-0001` tuần tự **theo tenant**, migration `0034` |
+| **G-3** | *"Hoàn tác 10 giây"* cần `procurement.po.write`; vai `analytics.*` **tạo được nhưng không rút lại được** | Gói quyền huỷ vào `analytics.reorder` | `POST /reorder/suggestions/{id}/undo` |
+
+### 10.1 🔴 Hai điểm §5 phải đọc lại — hành vi thật khác bản vẽ
+
+**Nút hoàn tác KHÔNG có cửa sổ 10 giây ở phía máy chủ.** Bản vẽ ghi *"Hoàn tác trong 10 giây"*.
+Máy chủ **không** đếm giờ, và đó là quyết định có chủ đích: đồng hồ phía máy chủ làm một thao tác
+hợp lệ trượt vì lý do người dùng không nhìn thấy (mạng chậm), mà vẫn không chặn được ai quyết
+tâm. Giới hạn thật là **trạng thái**, không phải thời gian — đơn phải còn là **nháp**.
+
+⇒ **Giao diện được tự do** hiện nút hoàn tác 10 giây như bản vẽ (đó là lựa chọn thị giác hợp lý),
+nhưng phải xử đúng hai kết quả: đơn còn nháp ⇒ `200`; đơn **đã gửi NCC** ⇒ `422` kèm thông báo
+*"Đơn đã gửi nhà cung cấp, không hoàn tác được"* — **không** ẩn lỗi này đi.
+
+**Mã PO hiện ra là mã thật.** `POST …/materialize` nay trả `po_code`. Thông báo in đúng chuỗi
+đó, **cấm** tự chế từ UUID.
+
+### 10.2 Trường mới giao diện được dùng
+
+| Endpoint | Trường thêm |
+|---|---|
+| `GET /analytics/reorder/suggestions` | `drug_name` · `supplier_name` (cả hai nullable) |
+| `GET /analytics/dashboard` → `top_drugs[]` | `drug_name` (nullable) |
+| `POST …/materialize` | `po_code` |
+| `POST …/{id}/undo` 🆕 | trả về chính `SuggestionResponse` đã về `PENDING` |
+| `GET /purchase-orders/{id}` | `code` |
+
+`null` ở `drug_name`/`supplier_name` nghĩa là **không tra được** (thuốc đã xoá), không phải "chưa
+tra" — giao diện hiện mã rút gọn thay vì để trống, và **không** đánh sập cả bảng vì một dòng.
+Riêng `supplier_name = null` **kèm** `supplier_id = null` mới là *"chưa có NCC"*.
