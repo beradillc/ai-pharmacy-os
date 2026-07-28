@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from pharmacy_os.modules.procurement.domain import GoodsReceiptNote, PurchaseOrder, Supplier
@@ -135,9 +135,14 @@ class PurchaseOrderListItemOutput:
             supplier_name=supplier_name,
             status=po.status.value,
             item_count=len(po.items),
+            # Lượng là Numeric(18,3), giá là Numeric(18,2) ⇒ tích ra 5 chữ số thập
+            # phân ("220000.00000"). Quy về 2 chữ số — đúng độ rộng mọi cột tiền
+            # trong hệ thống — để API không phát ra một con số tiền có hình dạng
+            # không tồn tại ở đâu khác. Làm tròn nửa lên, quyết định tại đây chứ
+            # không để mỗi client tự làm tròn một kiểu.
             total_amount=sum(
                 (it.quantity_ordered * it.unit_price for it in po.items), Decimal("0")
-            ),
+            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
             created_at=po.created_at,
             ordered_at=po.ordered_at,
         )

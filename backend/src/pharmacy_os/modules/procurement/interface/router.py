@@ -18,12 +18,14 @@ from fastapi import APIRouter, Depends, Query, Request, status
 
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.procurement.application import ProcurementService
+from pharmacy_os.modules.procurement.domain import PurchaseOrderStatus
 from pharmacy_os.modules.procurement.interface.schemas import (
     CreateGoodsReceiptRequest,
     CreatePurchaseOrderRequest,
     CreateSupplierRequest,
     GoodsReceiptResponse,
     PurchaseOrderItemRequest,
+    PurchaseOrderListItemResponse,
     PurchaseOrderResponse,
     SupplierResponse,
 )
@@ -80,6 +82,25 @@ def _build_purchase_order_router(get_context: ContextDep) -> APIRouter:
         ctx: RequestContext = Depends(get_context),
     ) -> PurchaseOrderResponse:
         return PurchaseOrderResponse.of(await service.create_purchase_order(body.to_input(), ctx))
+
+    @router.get("", response_model=list[PurchaseOrderListItemResponse])
+    async def list_purchase_orders(
+        service: ProcurementService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+        po_status: PurchaseOrderStatus | None = Query(default=None, alias="status"),
+        branch_id: UUID | None = Query(default=None),
+        limit: int = Query(50, ge=1, le=200),
+        offset: int = Query(0, ge=0),
+    ) -> list[PurchaseOrderListItemResponse]:
+        """Danh sách đơn mua, mới nhất trước, kèm tên NCC và tổng tiền đặt.
+
+        Tham số lọc tên là ``status`` cho người dùng API, nhưng biến Python là
+        ``po_status``: đặt tên tham số là ``status`` sẽ che module ``status`` của
+        FastAPI đang được dùng ngay trong tệp này (``status.HTTP_201_CREATED``)."""
+        rows = await service.list_purchase_orders(
+            ctx, status=po_status, branch_id=branch_id, limit=limit, offset=offset
+        )
+        return [PurchaseOrderListItemResponse.of(r) for r in rows]
 
     @router.get("/{po_id}", response_model=PurchaseOrderResponse)
     async def get_purchase_order(

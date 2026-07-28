@@ -17,6 +17,7 @@ from pharmacy_os.modules.procurement.application.dto import (
     GoodsReceiptOutput,
     PurchaseOrderItemInput,
     PurchaseOrderItemOutput,
+    PurchaseOrderListItemOutput,
     PurchaseOrderOutput,
     SupplierOutput,
 )
@@ -132,6 +133,37 @@ class PurchaseOrderResponse(BaseModel):
             supplier_id=out.supplier_id,
             status=out.status,
             items=[PurchaseOrderItemResponse.of(it) for it in out.items],
+            created_at=out.created_at,
+            ordered_at=out.ordered_at,
+        )
+
+
+class PurchaseOrderListItemResponse(BaseModel):
+    """Một dòng của màn Đơn mua hàng (Sprint 10, D2) — không mang ``items``.
+
+    Có tên NCC và tổng tiền, là hai thứ ``PurchaseOrderResponse`` không có mà một
+    danh sách cần để người ta chọn được đơn nào đáng mở."""
+
+    id: UUID
+    code: str
+    supplier_id: UUID
+    supplier_name: str | None
+    status: str
+    item_count: int
+    total_amount: Decimal
+    created_at: datetime
+    ordered_at: datetime | None
+
+    @classmethod
+    def of(cls, out: PurchaseOrderListItemOutput) -> PurchaseOrderListItemResponse:
+        return cls(
+            id=out.id,
+            code=out.code,
+            supplier_id=out.supplier_id,
+            supplier_name=out.supplier_name,
+            status=out.status,
+            item_count=out.item_count,
+            total_amount=out.total_amount,
             created_at=out.created_at,
             ordered_at=out.ordered_at,
         )

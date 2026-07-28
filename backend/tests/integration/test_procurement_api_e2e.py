@@ -278,3 +278,44 @@ def test_create_goods_receipt_unknown_po_404(client: TestClient) -> None:
 def test_get_unknown_goods_receipt_404(client: TestClient) -> None:
     resp = client.get(f"/api/v1/goods-receipts/{uuid4()}")
     assert resp.status_code == 404
+
+
+def test_list_purchase_orders_with_supplier_name(client: TestClient) -> None:
+    """`GET /purchase-orders` — mã đơn, tên NCC, tổng tiền (Sprint 10, D2)."""
+    supplier = _create_supplier(client, "Dược Hậu Giang")
+    created = client.post(
+        "/api/v1/purchase-orders",
+        json={
+            "supplier_id": supplier["id"],
+            "items": [
+                {"drug_id": str(uuid4()), "quantity_ordered": "10", "unit_price": "12000"},
+                {"drug_id": str(uuid4()), "quantity_ordered": "2", "unit_price": "50000"},
+            ],
+        },
+    ).json()
+
+    resp = client.get("/api/v1/purchase-orders")
+    assert resp.status_code == 200, resp.text
+    row = next(r for r in resp.json() if r["id"] == created["id"])
+
+    assert row["code"] == created["code"]
+    assert row["supplier_name"] == "Dược Hậu Giang"
+    assert row["item_count"] == 2
+    assert row["total_amount"] == "220000.00"
+    assert "items" not in row
+
+
+def test_list_purchase_orders_status_filter(client: TestClient) -> None:
+    placed = _create_ordered_po(client)
+
+    ordered = client.get("/api/v1/purchase-orders", params={"status": "ORDERED"})
+    drafts = client.get("/api/v1/purchase-orders", params={"status": "DRAFT"})
+
+    assert ordered.status_code == 200, ordered.text
+    assert [r["id"] for r in ordered.json()] == [placed["id"]]
+    assert drafts.json() == []
+
+
+def test_list_purchase_orders_rejects_unknown_status(client: TestClient) -> None:
+    resp = client.get("/api/v1/purchase-orders", params={"status": "KHONG_CO_THAT"})
+    assert resp.status_code == 422, resp.text
