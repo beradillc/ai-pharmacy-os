@@ -4884,6 +4884,64 @@ gọi ra cùng thứ tự, ba trang không lặp không sót.
 khoá v1 + `BLIND_INDEX_KEY`. Mất tệp đó là **mất luôn dữ liệu khách trên máy này** — không phải sự
 cố khôi phục được bằng `git revert`.
 
+### R. ✅ ĐÓNG 2 PHÁT HIỆN KIỂM TOÁN — B-05 · B-06 (28/07, Chain "GĐ điều hành, chạy code")
+
+| # | Nội dung | Commit |
+|---|---|---|
+| **B-05** | Step-up cho 2 endpoint hạ phòng thủ người khác | `775acef` |
+| **B-06** | Mã hoá + đổi tên `national_id` | `0797db9` |
+
+`MAKE_CHECK_EXIT=0` cả hai · pytest **1087 → 1090 → 1092 passed** + 16 passed.
+
+#### B-05 — chuỗi tấn công chỉ cần một phiên bỏ quên
+
+`POST /users/{id}/2fa/reset` gỡ được yếu tố thứ hai của người khác **mà không đòi yếu tố thứ hai nào
+của chính mình** — yếu hơn hẳn thứ nó đang bảo vệ. Chuỗi: chiếm phiên đang mở của tài khoản có
+`iam.user.write` (máy quầy bỏ trống) → gỡ 2FA dược sĩ → đặt lại mật khẩu họ → đăng nhập như họ, không
+còn 2FA → **ký sổ kiểm soát đặc biệt**. Bảo đảm TT18 Điều 15.1.d rút xuống thành *"tin phiên đăng
+nhập của admin"*.
+
+Nay cả hai endpoint đòi step-up của **người gọi**. CLI break-glass vẫn không cần — **và đó không phải
+mâu thuẫn**: ai chạy được nó đã có credential CSDL. §7bb dùng đúng lập luận ấy nhưng **áp nhầm** cho
+một endpoint chỉ cần access token.
+
+Chi tiết đáng giữ: thông điệp 403 **không nói** trượt vì mật khẩu hay vì mã (có test canh) · step-up
+nằm trong **thân** yêu cầu chứ không phải header, vì header hay bị ghi nguyên văn ở proxy/log — đúng
+lý do `APP__DEBUG` vừa bị siết (B-03).
+
+🔴 Test canh `test_request_schema_lengths` **bắt được schema mới thiếu giới hạn độ dài và bắt đúng**.
+Đã dùng lại ràng buộc có sẵn của `SignLedgerBookRequest.totp_code` thay vì tự đặt số mới.
+
+#### B-06 — cái tên là một nửa của lỗi
+
+`national_id_hash` **chưa từng băm gì**. Ai đọc lược đồ, viết DPIA, hay trả lời thanh tra *"CCCD lưu
+thế nào"* đều sẽ trả lời **"đã băm"** — một bảo đảm sai phát ra từ chính tên cột.
+
+**Mã hoá chứ không thật sự băm**, vì số định danh phải **đọc lại được**: nó đi vào biên bản nhận lại
+thuốc và các biểu mẫu có giá trị pháp lý. Hướng đi do **tiền lệ nội bộ** quyết — `compliance` đã mã
+hoá `returner_id_number` từ trước; cùng loại dữ liệu, hai module không được đối xử khác nhau.
+
+Kiểm trên CSDL có dữ liệu sẵn: nạp `079200001234` dạng rõ → migration `0036` → backfill *"quét 3
+dòng, ghi lại 7 giá trị"* → `--verify` **0 lỗi** → đọc thẳng đĩa `v1:5ugVAf4P/0An3a6HFdf4rb0eVFm` →
+ứng dụng đọc lại đúng `'079200001234'` → xoá dòng thử.
+
+🔴 **Không tự làm, ghi thành việc riêng:** kiểm toán còn **khuyến nghị** bỏ trường này khỏi phản hồi
+`GET /customers` (*"không màn hình nào cần CCCD khi liệt kê khách"*). Đó là đổi **hình dạng API**,
+ngoài phạm vi phát hiện B-06.
+
+#### Phát hiện kiểm toán còn mở
+
+| Còn mở | Ghi chú |
+|---|---|
+| **B-07** `branch_id ∈ tenant` không ràng buộc ở tầng nào | Cách ly tenant — nên làm tiếp |
+| **B-08** kiểm quyền ở service ⇒ 422 chạy trước 403, lộ schema | |
+| **B-13** token không ràng `sub↔tenant↔branch`, không `jti` | |
+| **A-04** repository `iam` không tenant-scope theo cấu trúc | |
+| **A-06** docstring hứa timeout plugin, không có `asyncio.wait_for` | Sửa docstring hoặc làm thật |
+| **A-08** `demo_preview.py` crash | F-21 |
+| **A-05** VNPAY dùng chung credential | ⏸️ chờ Pháp Lý |
+| Bỏ CCCD khỏi `GET /customers` | Sinh từ B-06 hôm nay |
+
 ### Q. Điểm dừng
 
 Còn **hai việc không phải code**:
