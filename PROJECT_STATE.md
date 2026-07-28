@@ -4961,14 +4961,61 @@ sinh vấn đề khác: `TimeoutError` của guard **cũng lọt qua** `pytest.r
 Bản cuối khẳng định **thời gian trôi**: sản phẩm cắt thì xong trong mili giây; guard của test cắt
 thì mất 2 giây và đỏ kèm đúng thông điệp đó. Đo thật: mutant đỏ sau 2,66 s.
 
+#### ✅ B-13 · A-08 cũng đã đóng (28/07, `ed7ac45` · `b1cb494`)
+
+**B-13 — `sub ∈ tenant`.** Cùng một lỗ như B-07, nhìn từ phía `sub`. Kiểm toán ký token có `sub` =
+admin tenant A nhưng `tenant`/`branch` của tenant V ⇒ `/auth/me` trả **200**, rồi **đọc được người
+dùng của tenant nạn nhân**. `BranchScopeGuard` → **`TokenScopeGuard`**, hai cache riêng vì hỏi hai
+bảng khác nhau.
+
+Giá trị bản vá **không** ở việc chặn kẻ tấn công (vẫn cần secret ký) mà ở chỗ **định lượng lại bán
+kính của A-02**: trước đây lộ khoá ký = **toàn quyền trên mọi tenant ngay lập tức** vì phía sau
+không còn lớp kiểm nào. Nay lộ khoá vẫn mất tất cả **nhưng để lại dấu vết** — `token_scope_mismatch`.
+
+🔴 **Ghi rõ điều guard này KHÔNG làm:** nó không trả lời *"người này còn hoạt động không"*. Quyền nằm
+sẵn trong token nên vô hiệu hoá tài khoản chỉ có hiệu lực khi token hết hạn (60 phút) — đánh đổi đã
+ghi ở `docs/15` D2, **không** phải thứ guard vừa làm tệ đi. `jti`/thu hồi trước hạn **cố ý không
+làm**: đó là đổi thiết kế phiên, thuộc quyết định của Chain.
+
+**A-08 — `demo_preview.py`.** Crash ngay dòng nối dây **đầu tiên suốt 5 ngày** (23/07 → 28/07): hai
+service mọc thêm tham số bắt buộc.
+
+🔴 **F-1 đã đưa tệp này vào `ruff`/`mypy`, và điều đó đúng nhưng KHÔNG ĐỦ.** Cả hai cổng **đọc** mã
+nguồn; không cổng nào **gọi** hàm. Một tệp import sạch, gõ kiểu sạch, và nổ ở dòng đầu tiên là hoàn
+toàn nhất quán với nhau. Nay có test chạy nó trong tiến trình con và đòi mã thoát 0.
+
+Sửa thêm **một lời nói sai**, không chỉ sửa crash: bản cũ tuyên bố Sales/POS và Clinical *"CHƯA hiện
+thực"* trong khi cả hai đã chạy thật từ Sprint 4–5. **Cùng loại lỗi với A-06 và B-06** — văn bản
+phát ra một khẳng định mà mã nguồn không còn đúng.
+
+#### Tổng kết đợt: 6 phát hiện kiểm toán đóng trong một phiên
+
+| # | Nội dung | pytest sau |
+|---|---|---|
+| **B-05** | Step-up cho 2 endpoint hạ phòng thủ người khác | 1090 |
+| **B-06** | Mã hoá + đổi tên `national_id` | 1092 |
+| **B-07** | `branch_id ∈ tenant` | 1094 |
+| **A-06** | Trần thời gian thật khi gọi cổng thanh toán | 1096 |
+| **B-13** | `sub ∈ tenant` | 1097 |
+| **A-08** | `demo_preview.py` chạy lại + nói đúng phạm vi | **1099** |
+
+`MAKE_CHECK_EXIT=0` sau **mỗi** mục. Kỷ luật #14 áp cho **cả sáu**, và bắt được **hai lỗi trong
+chính test của tôi** (test A-06 treo vô hạn thay vì đỏ · test `full_name` khẳng định thứ tự cứng
+trong khi `created_at` bằng nhau).
+
+🔴 **Bốn trong sáu phát hiện có chung một hình dạng, và nó không phải "bug":** B-05 (lập luận đúng
+cho CLI bị mang sang che cho endpoint HTTP) · B-06 (tên cột phát ra bảo đảm code không thực hiện) ·
+A-06 (docstring nói về *khả năng*, người đọc hiểu thành *sự thật*) · A-08 (demo tuyên bố sai về
+module khác). Cả bốn là **văn bản nói sai về mã**, không phải mã chạy sai — **không cổng tự động nào
+bắt được**, chỉ có người đọc lại *lý do* thay vì đọc *code*.
+
 #### Phát hiện kiểm toán còn mở
 
 | Còn mở | Ghi chú |
 |---|---|
 | **B-08** kiểm quyền ở service ⇒ 422 chạy trước 403, lộ schema | |
-| **B-13** token không ràng `sub↔tenant↔branch`, không `jti` | |
+| **B-13 phần `jti`** | Thu hồi access token trước hạn — **đổi thiết kế phiên, chờ Chain** |
 | **A-04** repository `iam` không tenant-scope theo cấu trúc | |
-| **A-08** `demo_preview.py` crash | F-21 |
 | **A-05** VNPAY dùng chung credential | ⏸️ chờ Pháp Lý |
 | Bỏ CCCD khỏi `GET /customers` | Sinh từ B-06 hôm nay |
 
