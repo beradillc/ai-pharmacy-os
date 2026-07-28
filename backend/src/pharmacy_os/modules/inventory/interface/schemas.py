@@ -15,6 +15,7 @@ from pharmacy_os.modules.inventory.application.dto import (
     ReceiptOutput,
     ReceiveStockInput,
     ReconciliationOutput,
+    StockReportItem,
 )
 
 
@@ -114,6 +115,32 @@ class NearExpiryResponse(BaseModel):
             lot_no=item.lot_no,
             expiry_date=item.expiry_date,
             quantity_received=item.quantity_received,
+        )
+
+
+class StockRowResponse(BaseModel):
+    """Một lô đang còn hàng — dòng của màn Tồn kho (Sprint 10, D3).
+
+    Chỉ có ``drug_id``, không có tên thuốc: inventory không được import catalog
+    (contract ``import-linter``). Màn hình gắn tên bằng ``GET /drugs?ids=…`` —
+    một lượt gọi cho cả trang, không phải một lượt mỗi dòng."""
+
+    batch_id: UUID
+    drug_id: UUID
+    branch_id: UUID
+    lot_no: str
+    expiry_date: date
+    quantity: Decimal
+
+    @classmethod
+    def of(cls, item: StockReportItem) -> StockRowResponse:
+        return cls(
+            batch_id=item.batch_id,
+            drug_id=item.drug_id,
+            branch_id=item.branch_id,
+            lot_no=item.lot_no,
+            expiry_date=item.expiry_date,
+            quantity=item.quantity,
         )
 
 

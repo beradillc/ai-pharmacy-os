@@ -7,7 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pharmacy_os.core.audit import AuditAction, SqlAlchemyAuditLogRepository
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.core.errors import ConflictError, NotFoundError, ValidationError
+from pharmacy_os.core.errors import (
+    ConflictError,
+    NotFoundError,
+    PermissionDeniedError,
+    ValidationError,
+)
 from pharmacy_os.core.events import DomainEvent, InMemoryEventBus
 from pharmacy_os.modules.inventory.application import (
     DispenseInput,
@@ -285,3 +290,70 @@ async def test_receive_same_lot_different_expiry_rejected(
         )
     # Rejected before any write: on-hand untouched.
     assert await inventory_service.on_hand(drug_id, ctx) == Decimal("10")
+
+
+async def test_list_stock_pages_soonest_expiring_first(
+    inventory_service: InventoryService, ctx: RequestContext
+) -> None:
+    """Tồn theo lô, cận hạn lên trước, phân trang (Sprint 10, D3).
+
+    Ba lô cố ý NHẬP theo thứ tự ngược với hạn dùng: nếu bản cài đặt trả theo thứ
+    tự nhập (hoặc theo id) thì test đỏ. Đây là điểm phân biệt duy nhất giữa "có
+    sắp xếp" và "tình cờ đúng thứ tự".
+    """
+    drug_id = uuid4()
+    for lot, days in (("XA-XA", 300), ("GIUA", 120), ("GAN-NHAT", 20)):
+        await inventory_service.receive_stock(
+            ReceiveStockInput(
+                drug_id=drug_id,
+                lot_no=lot,
+                expiry_date=date.today() + timedelta(days=days),
+                quantity=Decimal("10"),
+                cost_price=Decimal("1000"),
+            ),
+            ctx,
+        )
+
+    rows = await inventory_service.list_stock(ctx)
+    page = await inventory_service.list_stock(ctx, limit=2)
+    rest = await inventory_service.list_stock(ctx, limit=2, offset=2)
+
+    assert [r.lot_no for r in rows] == ["GAN-NHAT", "GIUA", "XA-XA"]
+    assert [r.lot_no for r in page] == ["GAN-NHAT", "GIUA"]
+    assert [r.lot_no for r in rest] == ["XA-XA"]
+    assert all(r.quantity == Decimal("10") for r in rows)
+
+
+async def test_list_stock_hides_emptied_lots(
+    inventory_service: InventoryService, ctx: RequestContext
+) -> None:
+    """Lô đã xuất hết KHÔNG còn nằm trong danh sách tồn."""
+    drug_id = uuid4()
+    await inventory_service.receive_stock(
+        ReceiveStockInput(
+            drug_id=drug_id,
+            lot_no="HET-SACH",
+            expiry_date=date.today() + timedelta(days=90),
+            quantity=Decimal("5"),
+            cost_price=Decimal("1000"),
+        ),
+        ctx,
+    )
+    await inventory_service.dispense_stock(
+        DispenseInput(drug_id=drug_id, quantity=Decimal("5")), ctx
+    )
+
+    assert await inventory_service.list_stock(ctx) == []
+
+
+async def test_list_stock_requires_inventory_read(
+    inventory_service: InventoryService, ctx: RequestContext
+) -> None:
+    blind = RequestContext(
+        tenant_id=ctx.tenant_id,
+        branch_id=ctx.branch_id,
+        user_id=ctx.user_id,
+        permissions=frozenset({"inventory.receive"}),
+    )
+    with pytest.raises(PermissionDeniedError):
+        await inventory_service.list_stock(blind)

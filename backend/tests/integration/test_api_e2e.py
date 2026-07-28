@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -111,3 +112,65 @@ def test_active_ingredients_crud(client: TestClient) -> None:
     )
     assert drug.status_code == 201, drug.text
     assert drug.json()["ingredients"][0]["ingredient_id"] == ingredient["id"]
+
+
+def test_stock_screen_reads_lots_then_labels_them_in_one_call(client: TestClient) -> None:
+    """Đúng hai lượt gọi mà màn Tồn kho thực hiện (Sprint 10, D3).
+
+    ① `GET /inventory/stock` — các lô còn hàng, cận hạn trước, chỉ có drug_id.
+    ② `GET /drugs?ids=…` — gắn tên cho đúng các id của trang đó, MỘT lượt.
+
+    Test này là chỗ duy nhất chứng minh hai đầu khớp nhau: nếu inventory đổi tên
+    trường hoặc catalog bỏ lọc ids thì màn hình hiện UUID, và chỉ có bài kiểm
+    này nói ra trước khi khách hàng nhìn thấy.
+    """
+    drug = client.post(
+        "/api/v1/drugs",
+        json={"name": "Cefixim 200mg", "rx_class": "ETC", "base_unit": "viên"},
+    ).json()
+    other = client.post(
+        "/api/v1/drugs",
+        json={"name": "Loratadin 10mg", "rx_class": "OTC", "base_unit": "viên"},
+    ).json()
+
+    for lot, days, qty in (("LO-XA", 400, "30"), ("LO-GAN", 30, "12")):
+        r = client.post(
+            "/api/v1/inventory/receive",
+            json={
+                "drug_id": drug["id"],
+                "lot_no": lot,
+                "expiry_date": (date.today() + timedelta(days=days)).isoformat(),
+                "quantity": qty,
+                "cost_price": "1000",
+            },
+        )
+        assert r.status_code == 201, r.text
+
+    stock = client.get("/api/v1/inventory/stock")
+    assert stock.status_code == 200, stock.text
+    rows = stock.json()
+
+    assert [r["lot_no"] for r in rows] == ["LO-GAN", "LO-XA"]  # cận hạn lên trước
+    assert rows[0]["quantity"] == "12.000"
+
+    ids = sorted({r["drug_id"] for r in rows})
+    labelled = client.get("/api/v1/drugs", params={"ids": ids})
+    assert labelled.status_code == 200, labelled.text
+    names = {d["id"]: d["name"] for d in labelled.json()}
+
+    assert names == {drug["id"]: "Cefixim 200mg"}
+    assert other["id"] not in names  # chỉ hỏi id của trang, không kéo cả danh mục
+
+
+def test_stock_search_by_partial_name(client: TestClient) -> None:
+    client.post(
+        "/api/v1/drugs", json={"name": "Paracetamol 500mg", "rx_class": "OTC", "base_unit": "viên"}
+    )
+    client.post(
+        "/api/v1/drugs", json={"name": "Ibuprofen 400mg", "rx_class": "OTC", "base_unit": "viên"}
+    )
+
+    found = client.get("/api/v1/drugs", params={"search": "para"})
+
+    assert found.status_code == 200, found.text
+    assert [d["name"] for d in found.json()] == ["Paracetamol 500mg"]

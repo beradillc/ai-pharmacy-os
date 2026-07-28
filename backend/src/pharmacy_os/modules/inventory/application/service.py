@@ -516,6 +516,48 @@ class InventoryService:
             balances = self._balances(uow, ctx)
             return await balances.on_hand_by_drug(target)
 
+    async def list_stock(
+        self,
+        ctx: RequestContext,
+        *,
+        branch_id: UUID | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[StockReportItem]:
+        """Một trang tồn kho theo lô, **cận hạn lên trước** (Sprint 10, D3).
+
+        Cùng nguồn dữ liệu với :meth:`stock_report_rows` nhưng **không** stream:
+        báo cáo xuất khẩu đọc hết mọi lô nên phải chảy theo dòng, còn màn hình đọc
+        50 dòng một lần và cần biết mình đang ở trang nào. Trộn hai nhu cầu vào một
+        hàm sẽ bắt màn hình phải tiêu hoá một AsyncIterator để lấy đúng một trang.
+
+        Thứ tự cận-hạn-trước là quyết định nghiệp vụ chứ không phải mặc định kỹ
+        thuật: lô sắp hết hạn là lô phải bán hoặc trả trước, nên nó thuộc về đầu
+        danh sách kể cả khi người dùng chưa lọc gì.
+
+        Đòi ``inventory.read`` — không thêm quyền mới. Trả về **id thuốc**, không
+        kèm tên: inventory không được import catalog (contract import-linter), và
+        màn hình đã cần ``GET /drugs`` cho ô tìm kiếm của nó nên gắn tên ở phía
+        client bằng ``?ids=`` là một lượt gọi, không phải N.
+        """
+        require_permission(ctx, "inventory.read")
+        async with self._uow_factory() as uow:
+            batches = self._batches(uow, ctx)
+            page = await batches.stock_report(
+                ctx.tenant_id, branch_id=branch_id, limit=limit, offset=offset
+            )
+        return [
+            StockReportItem(
+                batch_id=row.batch_id,
+                drug_id=row.drug_id,
+                branch_id=row.branch_id,
+                lot_no=row.lot_no,
+                expiry_date=row.expiry_date,
+                quantity=row.quantity,
+            )
+            for row in page
+        ]
+
     async def list_near_expiry(
         self, ctx: RequestContext, *, within_days: int = 90
     ) -> list[NearExpiryItem]:

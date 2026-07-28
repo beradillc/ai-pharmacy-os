@@ -17,6 +17,7 @@ from pharmacy_os.modules.inventory.interface.schemas import (
     ReceiptResponse,
     ReceiveStockRequest,
     ReconciliationResponse,
+    StockRowResponse,
 )
 
 ContextDep = Callable[..., Awaitable[RequestContext]]
@@ -56,6 +57,19 @@ def build_router(get_context: ContextDep) -> APIRouter:
     ) -> OnHandResponse:
         qty = await service.on_hand(drug_id, ctx)
         return OnHandResponse(drug_id=drug_id, on_hand=qty)
+
+    @router.get("/stock", response_model=list[StockRowResponse])
+    async def list_stock(
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+        branch_id: UUID | None = Query(default=None),
+        limit: int = Query(50, ge=1, le=200),
+        offset: int = Query(0, ge=0),
+    ) -> list[StockRowResponse]:
+        """Tồn kho theo lô, **cận hạn lên trước**. Bỏ trống ``branch_id`` = toàn
+        tenant (xem ``InventoryService.list_stock``)."""
+        items = await service.list_stock(ctx, branch_id=branch_id, limit=limit, offset=offset)
+        return [StockRowResponse.of(i) for i in items]
 
     @router.get("/alerts/near-expiry", response_model=list[NearExpiryResponse])
     async def near_expiry(
