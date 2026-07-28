@@ -22,7 +22,7 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.db import UnitOfWork, UnitOfWorkFactory
 from pharmacy_os.core.di import Container
 from pharmacy_os.modules.analytics.application import AnalyticsService
-from pharmacy_os.modules.analytics.domain import DrugSoldQty
+from pharmacy_os.modules.analytics.domain import DraftPoCreated, DrugSoldQty
 from pharmacy_os.modules.analytics.infrastructure import SqlAlchemyReorderSuggestionRepository
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.inventory.application import InventoryService
@@ -156,7 +156,7 @@ class DraftPoSinkAdapter:
         supplier_id: UUID,
         drug_id: UUID,
         quantity: Decimal,
-    ) -> UUID:
+    ) -> DraftPoCreated:
         ctx = RequestContext(
             tenant_id=tenant_id,
             branch_id=branch_id,
@@ -174,7 +174,7 @@ class DraftPoSinkAdapter:
             ),
             ctx,
         )
-        return out.id
+        return DraftPoCreated(po_id=out.id, code=out.code)
 
 
 def wire_analytics(container: Container) -> None:

@@ -6,6 +6,7 @@ from pharmacy_os.modules.analytics.domain.entities import (
 )
 from pharmacy_os.modules.analytics.domain.ports import (
     DraftPoCountSource,
+    DraftPoCreated,
     DraftPoSink,
     DrugNameSource,
     DrugSoldQty,
@@ -32,6 +33,7 @@ __all__ = [
     "StockLevelSource",
     "SupplierSource",
     "DraftPoCountSource",
+    "DraftPoCreated",
     "DraftPoSink",
     "ReorderSuggestionRepository",
     "MIN_SALES_FOR_FORECAST",

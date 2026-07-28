@@ -74,10 +74,12 @@ class SuggestionResponse(BaseModel):
 class MaterializeResponse(BaseModel):
     suggestion_id: UUID
     po_id: UUID
+    #: Human-readable order number for the toast: "Đã tạo đơn mua nháp #PO-0412".
+    po_code: str
 
     @classmethod
     def of(cls, s: MaterializeOutput) -> MaterializeResponse:
-        return cls(suggestion_id=s.suggestion_id, po_id=s.po_id)
+        return cls(suggestion_id=s.suggestion_id, po_id=s.po_id, po_code=s.po_code)
 
 
 class TopDrugResponse(BaseModel):

@@ -200,7 +200,7 @@ class AnalyticsService:
                     "Không thể tạo PO nháp: đề xuất không ở trạng thái chờ hoặc chưa có NCC"
                 )
             assert suggestion.supplier_id is not None  # guaranteed by can_materialize
-            po_id = await self._draft_po_sink.create_draft_po(
+            created = await self._draft_po_sink.create_draft_po(
                 ctx.tenant_id,
                 suggestion.branch_id,
                 actor_user_id=ctx.user_id,
@@ -209,14 +209,16 @@ class AnalyticsService:
                 drug_id=suggestion.drug_id,
                 quantity=suggestion.suggested_qty,
             )
-            suggestion.mark_materialized(po_id)
+            suggestion.mark_materialized(created.po_id)
             await repo.update(suggestion)
             await uow.commit()
 
         await self._record(
             ctx, AuditAction.ANALYTICS_SUGGESTION_MATERIALIZED, "reorder_suggestion", suggestion_id
         )
-        return MaterializeOutput(suggestion_id=suggestion_id, po_id=po_id)
+        return MaterializeOutput(
+            suggestion_id=suggestion_id, po_id=created.po_id, po_code=created.code
+        )
 
     async def dismiss(self, suggestion_id: UUID, ctx: RequestContext) -> SuggestionOutput:
         """Dismiss a non-terminal suggestion. Requires ``analytics.reorder.run``.

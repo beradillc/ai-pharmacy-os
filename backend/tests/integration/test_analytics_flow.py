@@ -23,7 +23,12 @@ from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork
 from pharmacy_os.core.errors import ConflictError, NotFoundError, PermissionDeniedError
 from pharmacy_os.core.events import InMemoryEventBus
 from pharmacy_os.modules.analytics.application import AnalyticsService
-from pharmacy_os.modules.analytics.domain import DrugNameSource, DrugSoldQty, SuggestionStatus
+from pharmacy_os.modules.analytics.domain import (
+    DraftPoCreated,
+    DrugNameSource,
+    DrugSoldQty,
+    SuggestionStatus,
+)
 from pharmacy_os.modules.analytics.infrastructure.repository import (
     SqlAlchemyReorderSuggestionRepository,
 )
@@ -88,6 +93,7 @@ class _FakeDraftPoSink:
     def __init__(self) -> None:
         self.created: list[tuple[UUID, UUID, Decimal]] = []
         self.actors: list[tuple[UUID, frozenset[str]]] = []
+        self.codes: list[str] = []
 
     async def create_draft_po(
         self,
@@ -99,11 +105,12 @@ class _FakeDraftPoSink:
         supplier_id: UUID,
         drug_id: UUID,
         quantity: Decimal,
-    ) -> UUID:
+    ) -> DraftPoCreated:
         po_id = uuid4()
         self.created.append((supplier_id, drug_id, quantity))
         self.actors.append((actor_user_id, actor_permissions))
-        return po_id
+        self.codes.append(f"PO-{len(self.created):04d}")
+        return DraftPoCreated(po_id=po_id, code=self.codes[-1])
 
 
 class _FakeDrugNames:

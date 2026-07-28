@@ -286,3 +286,23 @@ def test_drug_with_no_catalog_row_returns_null_name_not_an_error(client: TestCli
     suggestions = client.get(_SUGGESTIONS, headers=_auth(admin), params={"status": "PENDING"})
     assert suggestions.status_code == 200, suggestions.text
     assert suggestions.json()[0]["drug_name"] is None
+
+
+def test_materialize_returns_a_readable_po_code_not_just_a_uuid(client: TestClient) -> None:
+    """G-2: docs/19 §5 in ra "#PO-0412". Trước B3/B4 chuỗi đó không tồn tại ở đâu cả."""
+    admin = _login(client)
+    drug = _create_drug(client, admin, "Cetirizine 10mg")
+    _supplier_for_drug(client, admin, drug)
+    _receive(client, admin, drug, qty=100)
+    _sell(client, admin, drug, qty=90, price=1000)
+    client.post(_RUN, headers=_auth(admin))
+    sug = client.get(_SUGGESTIONS, headers=_auth(admin), params={"status": "PENDING"}).json()[0]
+
+    mat = client.post(f"{_SUGGESTIONS}/{sug['id']}/materialize", headers=_auth(admin))
+    assert mat.status_code == 200, mat.text
+    body = mat.json()
+
+    assert body["po_code"].startswith("PO-")
+    # The code belongs to the PO that was really created, not a string invented here.
+    po = client.get(f"/api/v1/purchase-orders/{body['po_id']}", headers=_auth(admin)).json()
+    assert po["code"] == body["po_code"]

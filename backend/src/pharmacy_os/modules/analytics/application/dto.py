@@ -93,3 +93,5 @@ class DashboardOutput:
 class MaterializeOutput:
     suggestion_id: UUID
     po_id: UUID
+    #: The order number to print — "PO-0412", not the UUID (docs/19 khe hở G-2).
+    po_code: str

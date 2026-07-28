@@ -91,6 +91,19 @@ class DraftPoCountSource(Protocol):
     async def count_draft_pos(self, tenant_id: UUID, branch_id: UUID) -> int: ...
 
 
+@dataclass(frozen=True, slots=True)
+class DraftPoCreated:
+    """A newly created draft PO: its id, and the number a human reads out loud.
+
+    Both, not just the id — the id addresses the order in the system, the code is what
+    the toast prints and what a pharmacist tells the supplier on the phone
+    (docs/19 khe hở G-2).
+    """
+
+    po_id: UUID
+    code: str
+
+
 class DraftPoSink(Protocol):
     """Create a single-line DRAFT purchase order from a suggestion (adapter over
     procurement). Returns the new PO's id. Price is left to the human to fill in on
@@ -113,7 +126,7 @@ class DraftPoSink(Protocol):
         supplier_id: UUID,
         drug_id: UUID,
         quantity: Decimal,
-    ) -> UUID: ...
+    ) -> DraftPoCreated: ...
 
 
 class ReorderSuggestionRepository(Protocol):
