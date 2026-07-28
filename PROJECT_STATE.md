@@ -4545,9 +4545,53 @@ Ghi rõ ở đây để phiên sau không đọc *"cổng xanh"* thành *"có te
 chung của 16 sự cố **niềm tin giả** trong kiểm toán 26/07. Mỗi bước vẫn **1 commit riêng**, mã
 thoát ghi tường minh (kỷ luật #8, cấm suy ra kết quả từ lệnh có pipe).
 
-### G. Điểm dừng
+### G. ✅ CHAIN QUYẾT 4/4 (28/07) — và hệ quả làm ĐỔI TỔNG SỐ BƯỚC
 
-Chờ Chain quyết: (1) hạn mức 90% dùng cho **S9-FE** hay **Phiên C**; (2) hướng xử lý **G-1/G-2/G-3**.
+| Câu hỏi | Chain chọn |
+|---|---|
+| Hạn mức 90% | **S9-FE 2 màn** — Phiên C để phiên Sonnet sau |
+| G-1 tên thuốc/NCC | **Thêm trường name vào API** (không N+1) |
+| G-2 mã PO | **Thêm mã PO thật** — sinh tuần tự theo tenant |
+| G-3 hoàn tác | **Gói quyền huỷ vào phạm vi analytics** — không mở `procurement.po.write` |
+
+#### 🔴 Ràng buộc kiến trúc phát hiện sau khi Chain quyết
+
+`.importlinter` có contract **`analytics-does-not-import-business`**: analytics **cấm** import
+catalog/procurement/sales/inventory — *"reads via ports only"*. ⇒ Cả ba quyết định trên đều là
+**cross-module thật**, không phải sửa schema tại chỗ. Khuôn mẫu đã có sẵn và đã được Chain duyệt
+25/07 (thiết kế analytics §6): analytics khai **Protocol port**, composition root
+`api/v1/analytics_wiring.py` dựng **adapter** chạy dưới **danh tính hệ thống** với đúng quyền cần
+— nên người dùng chỉ cần `analytics.*`, **không** phải cấp thêm `catalog.read` hay
+`procurement.supplier.read`. Ba việc mới bám đúng khuôn mẫu đó, **không đẻ contract mới**.
+
+#### Tổng số bước ĐỔI: 8 → **13**. Lý do ghi theo kỷ luật #12
+
+Tổng cũ (8) chốt khi còn tưởng G-1/G-2/G-3 là việc giao diện. Sau khi Chain chọn hướng
+"sửa API cho đúng" thay vì "FE chắp vá", phần backend thành việc thật ⇒ **5 bước backend + 8 bước
+FE = 13**. Đây là **đổi phạm vi có lý do**, không phải mẫu số trôi.
+
+| Bước | Nội dung | Loại |
+|---|---|---|
+| **B1** | Port + adapter **tên thuốc** (over catalog) → `top_drugs` có `drug_name` | cross-module |
+| **B2** | Port + adapter **tên NCC** (over procurement) → suggestion có `drug_name` + `supplier_name` | cross-module |
+| **B3** | **Mã PO tuần tự theo tenant** trong procurement + migration + **bộ đếm chống đua** | domain + migration |
+| **B4** | Đưa `po_code` ra `MaterializeResponse` (đổi chữ ký `DraftPoSink`) | cross-module |
+| **B5** | **Hoàn tác đơn nháp** trong phạm vi analytics — chỉ huỷ **đúng `po_id` ghi trên suggestion** | cross-module |
+| **F1–F8** | 8 bước FE như bảng §E | frontend |
+
+🔴 **Điểm an toàn của B3:** sinh mã tuần tự là đúng hình dạng lỗi mà **F-5 vừa vá** — hai PO tạo
+đồng thời phải không được cùng mã. Dùng lại đúng kỹ thuật đã kiểm chứng ở F-5: số học **nằm trong
+câu `UPDATE … RETURNING`** trên hàng bộ đếm, cộng unique `(tenant_id, code)` làm lưới đỡ. **Phải
+có test đồng thời trong `tests/concurrency/`** (nền đã có từ F-4) — không kiểm bằng SQLite.
+
+🔴 **Điểm an toàn của B5:** cửa hoàn tác **không được** thành cửa sau huỷ PO bất kỳ. Adapter chỉ
+nhận `po_id` **đọc từ chính bản ghi suggestion**, không nhận `po_id` từ request; suggestion phải
+đang `MATERIALIZED`. Người có `analytics.reorder.run` vì thế huỷ được **đúng đơn mình vừa tạo**,
+không huỷ được gì khác.
+
+### H. Điểm dừng
+
+Bắt đầu **B1**.
 
 ---
 
