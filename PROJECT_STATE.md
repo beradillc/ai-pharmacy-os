@@ -4804,12 +4804,73 @@ quả từ CSDL — nhưng **chưa ai bấm chuột thật** lên hai màn này.
 tương phản dưới đèn huỳnh quang, trạng thái rỗng/đang tải, hộp xác nhận *"Bỏ qua"*, và thông báo
 `#PO-0006` hiện ra trông thế nào. **Đó là việc còn lại của F8**, để Chain bấm.
 
-### O. Điểm dừng
+### O. ✅ KỶ LUẬT #14 BAN HÀNH + 4 NỢ ĐÓNG (28/07, Chain duyệt "làm tiếp")
 
-**Xong 13/13 bước code.** Còn **một việc không phải code**: Chain mở `http://localhost:3000/login`,
-đăng nhập `demo@bera.vn` / `NhaThuocDemo2026`, bấm qua hai màn và nói chỗ nào nhìn sai.
+| Nợ (§7bs) | Trạng thái | Commit |
+|---|---|---|
+| 3. Sửa câu chữ DoD Sprint 8 kèm mức tải | ✅ Đóng | `c33fb6d` |
+| 6. Vết kiểm toán cho thao tác xoay khoá | ✅ Đóng | `84ff48d` |
+| 5. Dead-man's switch cho cron backup | ✅ Đóng | `c8dcd94` |
+| — ROADMAP: FE analytics + DoD load test | ✅ Đánh dấu xong | `c33fb6d` |
+| 2. Mã hoá `full_name` | 🔴 **CHỜ CHAIN QUYẾT — xem mục P** | — |
+| 4. Bảng gắn người `docs/17` §3 | 🔴 Chờ Chain cung cấp | — |
+| 7. Dọn 3 CSDL thử | 🟡 `DROP DATABASE` nằm trong `deny` — Chain chạy tay | — |
 
-Đang chạy: Postgres (docker) · uvicorn `:8000` · next dev `:3000`.
+**Kỷ luật #14 vào `CLAUDE.md`** (`c33fb6d`): *một cổng mới chỉ được tính là **có răng** sau khi đã
+thấy nó **đỏ** ít nhất một lần vì lý do đúng.* Bổ sung cho #8: #8 nói *mã thoát phải của chính lệnh
+đó*; #14 nói *mã thoát đó phải biết đổi màu*.
+
+#### 🔴 #14 bắt được bug thật ngay trong ngày ban hành
+
+`scripts/backup_deadman.sh`: `local msg="…$msg"` **tự tham chiếu** — dưới `set -u`, vế phải đọc
+`msg` khi nó vừa thành local và còn rỗng ⇒ script chết với *"unbound variable"* và **cảnh báo mất
+sạch nội dung**, trong khi **mã thoát vẫn đúng bằng 1**. Nhìn từ ngoài trông y như đang hoạt động.
+Đọc lại code không bắt được; chạy thử từng ca hỏng thì bắt ngay. Sau khi vá: **5/5 ca đúng**.
+
+Cùng cách đó, lệnh ghi vết xoay khoá cũng đã kiểm chứng: gỡ **toàn bộ** phần kiểm chứng ⇒ **3/4
+test đỏ** (test còn lại là ca hợp lệ nên đúng ra phải xanh).
+
+4 cổng xanh sau mỗi mục: `MAKE_CHECK_EXIT=0` · **1083 → 1087 passed** + 16 passed.
+
+### P. 🔴 QUYẾT ĐỊNH CHỜ CHAIN — mã hoá `full_name` có một cái giá chưa ai nói ra
+
+Chain chốt 28/07 (`docs/19` §7.5) theo **hướng fail-safe**: *"coi như phải mã hoá… nếu sau này xác
+nhận được là cố ý để trần thì nới ra, không làm ngược lại"*.
+
+**Nay xác nhận được: đó là cố ý.** Lý do nằm sẵn trong docstring của `CustomerORM.full_name` —
+`CustomerRepository.list()` **sắp xếp theo chính cột này** (`order_by(CustomerORM.full_name)` kèm
+`limit/offset`). Ciphertext sắp xếp ngẫu nhiên, và **không blind index nào cứu được**: dấu vân tay
+giữ được quan hệ **bằng nhau**, không bao giờ giữ được **thứ tự**.
+
+⇒ Mã hoá `full_name` **làm hỏng danh sách khách hàng theo bảng chữ cái**, phân trang thành vô
+nghĩa. Đây không phải chi phí kỹ thuật — nó là chức năng người dùng mất đi.
+
+| Phương án | Được | Mất |
+|---|---|---|
+| **(a) Mã hoá, bỏ sắp xếp theo tên** — sắp theo `created_at` | Tuân thủ Luật BVDLCN 91/2025 hết mức | Dược sĩ không tra khách theo bảng chữ cái được nữa |
+| **(b) Giữ nguyên văn, ghi thành quyết định có lý do** | Không mất chức năng | Tên người là dữ liệu cá nhân nằm **bản rõ** trong CSDL và mọi bản backup |
+| **(c) Mã hoá + thêm cột dẫn xuất để sắp** (VD chữ cái đầu đã chuẩn hoá) | Giữ được sắp xếp thô | **Rò rỉ một phần** — cột dẫn xuất chính là thứ mã hoá định giấu |
+
+[Trợ lý Code] Không tự quyết được: đây là đánh đổi **tuân thủ pháp lý ↔ chức năng nghiệp vụ**, đúng
+phạm vi kỷ luật #3.
+
+### Q. Điểm dừng
+
+Còn **ba việc không phải code**:
+
+1. **Chain bấm thử 2 màn** — `http://localhost:3000/login` · `demo@bera.vn` / `NhaThuocDemo2026`.
+   Đang chạy: Postgres (docker) · uvicorn `:8000` · next dev `:3000`.
+2. **Chain quyết `full_name`** (mục P).
+3. **Chain dọn 3 CSDL thử** (`DROP DATABASE` nằm trong `deny`, đúng thiết kế):
+   ```
+   docker exec -e PGPASSWORD=pharma ai_pharmacy_os-postgres-1 \
+     psql -U pharma -d postgres -v ON_ERROR_STOP=1 \
+     -c 'DROP DATABASE IF EXISTS f4_probe' \
+     -c 'DROP DATABASE IF EXISTS audit_empty_a' \
+     -c 'DROP DATABASE IF EXISTS f5_fresh_test' \
+     -c 'DROP DATABASE IF EXISTS pharmacy_os_restore_drill'
+   ```
+   Giữ lại `pharmacy_os` (dev) và `pharmacy_os_test` (nền test đồng thời F-4).
 
 ---
 
