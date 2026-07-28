@@ -410,3 +410,38 @@ async def test_empty_ids_is_not_the_same_as_no_filter(
 
     assert await catalog_service.list_drugs(ctx, ids=[]) == []
     assert len(await catalog_service.list_drugs(ctx, ids=None)) == 1
+
+
+async def test_sale_price_round_trips(catalog_service: CatalogService, ctx: RequestContext) -> None:
+    """Giá bán lẻ đi trọn vòng tạo → đọc lại (Sprint 10, D10).
+
+    Trường này là thứ thay thế cửa sổ `window.prompt` hỏi giá từng dòng ở màn
+    bán hàng, nên "lưu được" chưa đủ — phải **đọc lại đúng con số**, kể cả sau
+    khi qua Numeric(18,2).
+    """
+    created = await catalog_service.create_drug(
+        CreateDrugInput(
+            name="Paracetamol 500mg có giá",
+            rx_class=RxClass.OTC,
+            base_unit="viên",
+            sale_price=Decimal("1200"),
+        ),
+        ctx,
+    )
+    fetched = await catalog_service.get_drug(created.id, ctx)
+    listed = await catalog_service.list_drugs(ctx, ids=[created.id])
+
+    assert created.sale_price == Decimal("1200")
+    assert fetched.sale_price == Decimal("1200")
+    assert listed[0].sale_price == Decimal("1200")
+
+
+async def test_drug_without_price_is_allowed(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    """Chưa chốt giá vẫn nhập được — nhà thuốc nhập danh mục trước, định giá sau."""
+    created = await catalog_service.create_drug(
+        CreateDrugInput(name="Thuốc chưa định giá", rx_class=RxClass.OTC, base_unit="viên"),
+        ctx,
+    )
+    assert created.sale_price is None

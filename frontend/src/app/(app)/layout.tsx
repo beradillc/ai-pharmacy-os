@@ -8,9 +8,18 @@ import { useAuthStore } from "@/features/auth/auth-store";
 
 import styles from "./layout.module.css";
 
-/** Mục menu chỉ hiện khi phiên có ĐỦ quyền của nó. */
+/** Mục menu chỉ hiện khi phiên có ĐỦ quyền của nó.
+ *
+ * Thứ tự theo nhịp một ngày làm việc, không theo module: mở máy xem số (bảng
+ * điều hành) → bán → tra hàng → xem hoá đơn ca → khách quen → đặt hàng. Sắp theo
+ * module là sắp theo cách LẬP TRÌNH VIÊN nhìn hệ thống. */
 const NAV = [
   { href: "/bang-dieu-hanh", label: "Bảng điều hành", permission: "analytics.read" },
+  { href: "/", label: "Bán hàng", permission: "sales.create" },
+  { href: "/ton-kho", label: "Tồn kho", permission: "inventory.read" },
+  { href: "/hoa-don", label: "Hoá đơn", permission: "sales.read" },
+  { href: "/khach-hang", label: "Khách hàng", permission: "crm.read" },
+  { href: "/don-mua-hang", label: "Đơn mua hàng", permission: "procurement.po.read" },
   { href: "/de-xuat-dat-hang", label: "Đề xuất đặt hàng", permission: "analytics.read" },
 ] as const;
 
@@ -43,6 +52,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const permissions = new Set(session.permissions);
   const visible = NAV.filter((item) => permissions.has(item.permission));
+  const branchName =
+    session.accessible_branches.find((b) => b.id === session.branch_id)?.name ??
+    `CN ${session.branch_id.slice(0, 8)}`;
 
   return (
     <div className={styles.shell}>
@@ -62,7 +74,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className={styles.right}>
-          <span className={styles.branch}>CN {session.branch_id.slice(0, 8)}</span>
+          {/* Tên chi nhánh THẬT, không phải 8 ký tự đầu của UUID. Tên đã nằm sẵn
+              trong `accessible_branches` của phiên đăng nhập từ Sprint 9 — bản
+              trước hiện UUID không phải vì thiếu dữ liệu mà vì không ai tra. */}
+          <span className={styles.branch}>{branchName}</span>
           <button type="button" className={styles.logout} onClick={logout}>
             Đăng xuất
           </button>

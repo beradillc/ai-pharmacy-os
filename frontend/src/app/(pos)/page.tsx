@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { useAuthStore } from "@/features/auth/auth-store";
@@ -32,10 +33,18 @@ export default function PosPage() {
   const total = cartTotal(lines);
 
   function handleAdd(drug: Drug) {
-    // Giá bán chưa có nguồn dữ liệu nào trong backend (catalog/inventory chỉ
-    // có cost_price — giá vốn), nên thu ngân nhập tay từng dòng. Ghi nhận là
-    // khoảng trống sản phẩm thật, không phải chỗ thiếu code.
-    const priceStr = window.prompt(`Đơn giá bán "${drug.name}" (VND/${drug.base_unit}):`, "0");
+    // Giá lấy từ `drug.sale_price` (cột catalog, Sprint 10 D10). Chỉ hỏi tay khi
+    // mặt hàng CHƯA được định giá — trước đây hỏi tay MỌI dòng, kể cả hộp
+    // Paracetamol bán mười lần một ngày, vì backend không có chỗ nào giữ giá bán.
+    // Thu ngân vẫn sửa được giá từng dòng trong giỏ sau khi thêm.
+    if (drug.sale_price !== null) {
+      addLine(drug, "1", drug.sale_price);
+      return;
+    }
+    const priceStr = window.prompt(
+      `"${drug.name}" chưa có giá bán. Nhập đơn giá (VND/${drug.base_unit}):`,
+      "0",
+    );
     if (priceStr === null) return;
     addLine(drug, "1", priceStr || "0");
   }
@@ -56,7 +65,17 @@ export default function PosPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <span className={styles.brand}>BERAS</span>
-        <span className={styles.branchTag}>Chi nhánh: {session?.branch_id.slice(0, 8)}</span>
+        <span className={styles.branchTag}>
+          {session?.accessible_branches.find((b) => b.id === session.branch_id)?.name ??
+            `Chi nhánh ${session?.branch_id.slice(0, 8) ?? ""}`}
+        </span>
+        {/* Lối quay lại khu quản lý. Không có nó thì màn bán hàng là ngõ cụt:
+            người dùng vào bán rồi phải đăng xuất mới xem được báo cáo. */}
+        {session?.permissions.includes("analytics.read") && (
+          <Link href="/bang-dieu-hanh" className={styles.manageLink}>
+            Quản lý
+          </Link>
+        )}
         {pendingCount > 0 && (
           <span className={styles.pendingTag}>{pendingCount} đơn chờ đồng bộ</span>
         )}

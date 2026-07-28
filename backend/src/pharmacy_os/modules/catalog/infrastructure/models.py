@@ -36,6 +36,8 @@ class DrugORM(PkUuidMixin, TimestampMixin, Base):
     form: Mapped[str | None] = mapped_column(String(64))
     strength: Mapped[str | None] = mapped_column(String(64))
     barcode: Mapped[str | None] = mapped_column(String(64), index=True)
+    #: Giá bán lẻ trên một đơn vị lẻ. Numeric(18,2) — cùng độ rộng mọi cột tiền khác.
+    sale_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
 
     units: Mapped[list[DrugUnitORM]] = relationship(
         back_populates="drug",

@@ -1,0 +1,247 @@
+/*
+ * Khuôn chung cho các màn danh sách Sprint 10 (Tồn kho · Hoá đơn · Khách hàng ·
+ * Đơn mua hàng).
+ *
+ * Vì sao một tệp dùng chung thay vì bốn tệp gần giống nhau: bốn màn này là CÙNG
+ * một loại màn — tiêu đề, vài bộ lọc, một bảng, phân trang. Bốn bản sao CSS sẽ
+ * trôi khỏi nhau đúng ở những chi tiết người dùng nhận ra ngay (chiều cao dòng,
+ * khoảng đệm), và đó là cách một sản phẩm trông "chắp vá" mà không ai chỉ được
+ * ra chỗ nào sai.
+ *
+ * Mọi màu đi qua biến của `tokens.css`. Không hex thẳng ở đây.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--beras-text-muted);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.input,
+.select {
+  font: inherit;
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--beras-border);
+  background: var(--beras-surface);
+  color: var(--beras-text);
+}
+
+.input {
+  min-width: 220px;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--beras-radius);
+  background: var(--beras-danger-bg);
+  color: var(--beras-danger);
+  border: 1px solid var(--beras-danger);
+}
+
+.button,
+.ghost {
+  font: inherit;
+  font-size: 14px;
+  padding: 7px 13px;
+  border-radius: 8px;
+  border: 1px solid var(--beras-border);
+  background: var(--beras-surface);
+  color: var(--beras-accent);
+  cursor: pointer;
+}
+
+.button {
+  background: var(--beras-leaf);
+  border-color: var(--beras-leaf);
+  color: #fff;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--beras-accent);
+  border-color: var(--beras-accent);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--beras-bg-alt);
+}
+
+.button:disabled,
+.ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --- bảng --- */
+.panel {
+  background: var(--beras-surface);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--beras-radius);
+  overflow: hidden;
+}
+
+/* Bảng rộng cuộn TRONG khung của nó, không đẩy cả trang trượt ngang. */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.table th {
+  text-align: left;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--beras-text-muted);
+  font-weight: 600;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--beras-border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--beras-bg-alt);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: var(--beras-bg-alt);
+}
+
+.num {
+  font-family: var(--beras-font-mono);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: var(--beras-font-mono);
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--beras-text-muted);
+}
+
+.empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--beras-text-muted);
+}
+
+.skeleton {
+  height: 44px;
+  margin: 10px 14px;
+  border-radius: 6px;
+  background: var(--beras-bg-alt);
+}
+
+/* --- chip trạng thái --- */
+.chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  border: 1px solid var(--beras-border);
+  white-space: nowrap;
+}
+
+.chipOk {
+  border-color: var(--beras-success);
+  color: var(--beras-success);
+}
+
+.chipWarn {
+  border-color: var(--beras-warning);
+  color: var(--beras-warning);
+}
+
+.chipDanger {
+  border-color: var(--beras-danger);
+  color: var(--beras-danger);
+  background: var(--beras-danger-bg);
+}
+
+.chipMuted {
+  color: var(--beras-text-muted);
+}
+
+/* --- phân trang --- */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--beras-border);
+  font-size: 14px;
+  color: var(--beras-text-muted);
+}
+
+/* --- ngăn kéo chi tiết --- */
+.drawer {
+  background: var(--beras-surface);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--beras-radius);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.drawerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.drawerTitle {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+@media (width <= 720px) {
+  .input {
+    min-width: 0;
+    flex: 1;
+  }
+}

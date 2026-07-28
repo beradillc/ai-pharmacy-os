@@ -9,7 +9,7 @@
 # (`make up`). tests/concurrency/ FAIL chứ không SKIP khi thiếu Postgres — skip lặng
 # rồi báo xanh đúng là bệnh "niềm tin giả" mà đợt kiểm toán đang sửa. Đây là cái giá
 # đã biết của lựa chọn đó, không phải lỗi. Chi tiết: backend/tests/concurrency/README.md
-.PHONY: help install lint typecheck contracts test test-concurrency check hooks up down migrate seed serve
+.PHONY: help install lint typecheck contracts test test-concurrency check hooks up down migrate seed serve demo
 
 help:
 	@echo "install    - install backend with dev extras into current venv"
@@ -23,6 +23,7 @@ help:
 	@echo "up/down    - start/stop postgres+redis (docker compose)"
 	@echo "migrate    - alembic upgrade head"
 	@echo "serve      - run FastAPI dev server"
+	@echo "demo       - dựng bản demo cho khách (CSDL riêng + dữ liệu nhà thuốc thật)"
 
 install:
 	cd backend && pip install -e ".[dev]"
@@ -71,3 +72,9 @@ seed:
 
 serve:
 	cd backend && uvicorn pharmacy_os.main:app --reload
+
+# Dựng bản demo đưa khách xem: CSDL RIÊNG (pharmacy_os_demo), migrate, seed tham
+# chiếu, rồi seed một nhà thuốc có 36 thuốc / 28 ngày lịch sử bán. Không đụng CSDL
+# phát triển, và KHÔNG tự xoá gì — xem đầu scripts/demo.sh.
+demo:
+	./scripts/demo.sh

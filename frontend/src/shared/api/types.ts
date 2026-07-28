@@ -31,6 +31,8 @@ export interface Drug {
   form: string | null;
   strength: string | null;
   barcode: string | null;
+  /** Giá bán lẻ một đơn vị lẻ, `null` = chưa định giá (màn bán hàng sẽ hỏi tay). */
+  sale_price: string | null;
   prescription_required: boolean;
   units: DrugUnit[];
 }
@@ -169,4 +171,60 @@ export interface Materialize {
   po_id: string;
   /** Mã người đọc được ("PO-0001"). Cấm tự chế từ `po_id` — docs/19 §10.1. */
   po_code: string;
+}
+
+// --- Sprint 10: bốn màn quản lý ------------------------------------------
+// Khớp `sales/interface/schemas.py:SaleListItemResponse`,
+// `inventory/...:StockRowResponse`, `procurement/...:PurchaseOrderListItemResponse`,
+// `crm/...:CustomerResponse`. Tiền/lượng vẫn là `string` — cùng lý do như trên.
+
+/** Một dòng của màn Hoá đơn. KHÔNG có `lines`: danh sách không kéo theo từng
+ * dòng hàng của từng đơn (backend cố ý bỏ). Muốn chi tiết thì gọi
+ * `GET /sales/{id}`. */
+export interface SaleListItem {
+  id: string;
+  branch_id: string;
+  created_at: string;
+  status: string;
+  currency: string;
+  subtotal: string;
+  paid_total: string;
+  line_count: number;
+  customer_id: string | null;
+  sold_by_user_id: string | null;
+}
+
+/** Một lô còn hàng. Chỉ có `drug_id` — inventory không được import catalog, nên
+ * tên thuốc do màn hình gắn bằng `GET /drugs?ids=…`. */
+export interface StockRow {
+  batch_id: string;
+  drug_id: string;
+  branch_id: string;
+  lot_no: string;
+  expiry_date: string;
+  quantity: string;
+}
+
+export interface PurchaseOrderListItem {
+  id: string;
+  /** Mã người đọc được ("PO-0001") — thứ dược sĩ đọc cho NCC qua điện thoại. */
+  code: string;
+  supplier_id: string;
+  supplier_name: string | null;
+  status: string;
+  item_count: number;
+  total_amount: string;
+  created_at: string;
+  ordered_at: string | null;
+}
+
+export interface Customer {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  dob: string | null;
+  gender: string | null;
+  national_id: string | null;
+  anonymised_at: string | null;
+  health_data_allowed: boolean;
 }

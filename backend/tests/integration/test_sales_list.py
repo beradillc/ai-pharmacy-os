@@ -63,6 +63,8 @@ async def test_multi_tender_order_is_not_inflated(
     assert row.subtotal == Decimal("120000")  # 2×30000 + 1×60000, KHÔNG phải 240000
     assert row.paid_total == Decimal("120000")  # 50000 + 70000, KHÔNG phải 240000
     assert row.line_count == 2
+    # Hình dạng tiền: 2 chữ số thập phân, không phải 5 (lượng 3dp × giá 2dp).
+    assert str(row.subtotal) == "120000.00"
 
 
 async def test_newest_first(sales_service: SalesService, ctx: RequestContext) -> None:

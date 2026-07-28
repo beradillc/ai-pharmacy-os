@@ -95,6 +95,17 @@ class Drug:
     form: str | None = None
     strength: str | None = None
     barcode: str | None = None
+    sale_price: Decimal | None = None
+    """Giá bán lẻ trên MỘT đơn vị lẻ (``base_unit``), hoặc ``None`` khi chưa đặt.
+
+    Nullable và sẽ mãi nullable: một nhà thuốc nhập danh mục từ nhà phân phối
+    trước, chốt giá sau, và một thuốc chưa có giá phải nhập được chứ không bị
+    chặn ở cửa. Nơi bán hàng đọc trường này để **điền sẵn**, không phải để khoá
+    — thu ngân vẫn sửa được từng dòng (khuyến mãi, giá lẻ theo khách).
+
+    Không phải giá vốn: giá vốn nằm ở từng lô (``product_batches.cost_price``)
+    vì mỗi lần nhập một giá; giá bán là thuộc tính của mặt hàng.
+    """
     id: UUID = field(default_factory=uuid4)
     units: list[DrugUnit] = field(default_factory=list)
     ingredients: list[DrugIngredient] = field(default_factory=list)

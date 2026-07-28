@@ -30,6 +30,7 @@ def to_domain(row: DrugORM) -> Drug:
         form=row.form,
         strength=row.strength,
         barcode=row.barcode,
+        sale_price=row.sale_price,
     )
     drug.units = [
         DrugUnit(id=u.id, unit_name=u.unit_name, factor=u.factor, is_sellable=u.is_sellable)
@@ -54,6 +55,7 @@ def to_orm(drug: Drug, tenant_id: UUID) -> DrugORM:
         form=drug.form,
         strength=drug.strength,
         barcode=drug.barcode,
+        sale_price=drug.sale_price,
         units=[
             DrugUnitORM(
                 id=u.id,

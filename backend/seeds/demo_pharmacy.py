@@ -280,6 +280,7 @@ async def _seed_catalog(svc: _Services, ctx: RequestContext) -> dict[str, tuple[
                 strength=strength,
                 # Mã vạch giả nhưng đúng hình dạng EAN-13 tiền tố Việt Nam (893).
                 barcode=f"893{5000000000 + index:010d}",
+                sale_price=Decimal(price),
                 units=_pack_units(unit),
             ),
             ctx,

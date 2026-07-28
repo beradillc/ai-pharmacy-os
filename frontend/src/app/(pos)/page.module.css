@@ -189,3 +189,19 @@
   font-size: 13px;
   margin-bottom: 8px;
 }
+
+/* Lối sang khu quản lý từ màn bán hàng (Sprint 10, D9). Cùng ngôn ngữ với nút
+   Đăng xuất ngay cạnh nó — một liên kết trông khác hẳn mọi thứ trên thanh này
+   đọc như quảng cáo chứ không như điều hướng. */
+.manageLink {
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgb(255 255 255 / 35%);
+  color: var(--beras-accent-contrast);
+  text-decoration: none;
+}
+
+.manageLink:hover {
+  background: rgb(255 255 255 / 12%);
+}

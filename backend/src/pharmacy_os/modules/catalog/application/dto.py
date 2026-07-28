@@ -50,6 +50,7 @@ class CreateDrugInput:
     form: str | None = None
     strength: str | None = None
     barcode: str | None = None
+    sale_price: Decimal | None = None
     units: list[DrugUnitInput] = field(default_factory=list)
     ingredients: list[DrugIngredientInput] = field(default_factory=list)
 
@@ -92,6 +93,8 @@ class DrugOutput:
     form: str | None
     strength: str | None
     barcode: str | None
+    #: Giá bán lẻ một đơn vị lẻ, hoặc ``None`` khi chưa đặt giá — xem ``Drug.sale_price``.
+    sale_price: Decimal | None
     prescription_required: bool
     units: list[DrugUnitOutput]
     ingredients: list[DrugIngredientOutput]
@@ -108,6 +111,7 @@ class DrugOutput:
             form=drug.form,
             strength=drug.strength,
             barcode=drug.barcode,
+            sale_price=drug.sale_price,
             prescription_required=drug.is_prescription_required(),
             units=[
                 DrugUnitOutput(unit_name=u.unit_name, factor=u.factor, is_sellable=u.is_sellable)

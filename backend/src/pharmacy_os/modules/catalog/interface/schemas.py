@@ -59,6 +59,9 @@ class CreateDrugRequest(BaseModel):
     form: str | None = Field(default=None, max_length=64)
     strength: str | None = Field(default=None, max_length=64)
     barcode: str | None = Field(default=None, max_length=64)
+    #: Giá bán lẻ một đơn vị lẻ. ``ge=0`` chứ không ``gt=0``: hàng khuyến mãi giá 0
+    #: là chuyện có thật, còn giá âm thì không.
+    sale_price: Decimal | None = Field(default=None, ge=0)
     units: list[DrugUnitSchema] = Field(default_factory=list)
     ingredients: list[DrugIngredientSchema] = Field(default_factory=list)
 
@@ -72,6 +75,7 @@ class CreateDrugRequest(BaseModel):
             form=self.form,
             strength=self.strength,
             barcode=self.barcode,
+            sale_price=self.sale_price,
             units=[
                 DrugUnitInput(unit_name=u.unit_name, factor=u.factor, is_sellable=u.is_sellable)
                 for u in self.units
@@ -105,6 +109,7 @@ class DrugResponse(BaseModel):
     form: str | None
     strength: str | None
     barcode: str | None
+    sale_price: Decimal | None
     prescription_required: bool
     units: list[DrugUnitResponse]
     ingredients: list[DrugIngredientResponse]
@@ -121,6 +126,7 @@ class DrugResponse(BaseModel):
             form=out.form,
             strength=out.strength,
             barcode=out.barcode,
+            sale_price=out.sale_price,
             prescription_required=out.prescription_required,
             units=[
                 DrugUnitResponse(unit_name=u.unit_name, factor=u.factor, is_sellable=u.is_sellable)

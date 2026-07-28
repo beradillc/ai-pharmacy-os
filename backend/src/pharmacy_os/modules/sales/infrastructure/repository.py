@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -22,6 +22,9 @@ from pharmacy_os.modules.sales.infrastructure.models import (
     SaleLineORM,
     SalesOrderORM,
 )
+
+#: Độ rộng mọi cột tiền trong hệ thống. Đặt tên để hai chỗ dùng không trôi khỏi nhau.
+_MONEY = Decimal("0.01")
 
 
 class SqlAlchemySalesRepository:
@@ -217,8 +220,11 @@ class SqlAlchemySalesRepository:
                 created_at=r.created_at,
                 status=r.status,
                 currency=r.currency,
-                subtotal=Decimal(r.subtotal),
-                paid_total=Decimal(r.paid_total),
+                # Lượng Numeric(18,3) × giá Numeric(18,2) ⇒ 5 chữ số thập phân
+                # ("19400.00000"), một hình dạng tiền không có ở cột nào khác. Quy
+                # về 2 chữ số ngay tại đây, cùng quy ước với PurchaseOrderListItem.
+                subtotal=Decimal(r.subtotal).quantize(_MONEY, rounding=ROUND_HALF_UP),
+                paid_total=Decimal(r.paid_total).quantize(_MONEY, rounding=ROUND_HALF_UP),
                 line_count=r.line_count,
                 customer_id=r.customer_id,
                 sold_by_user_id=r.sold_by_user_id,

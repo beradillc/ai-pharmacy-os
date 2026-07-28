@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
@@ -301,7 +301,13 @@ class AnalyticsService:
         sold = await self._sales.sold_quantity_by_drug(
             ctx.tenant_id, target, date_from=date_from, date_to=date_to
         )
-        revenue_total = sum((d.revenue for d in sold), Decimal("0"))
+        # Quy về 2 chữ số thập phân — cùng lý do và cùng quy ước với
+        # SalesOrderListRow.subtotal: tổng của lượng(3dp)×giá(2dp) ra 5dp, một
+        # hình dạng tiền không tồn tại ở cột nào. Đây là CON SỐ TO NHẤT trên bảng
+        # điều hành, nên nó càng không nên là con số có hình dạng lạ.
+        revenue_total = sum((d.revenue for d in sold), Decimal("0")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
         top = sorted(sold, key=lambda d: d.quantity_sold, reverse=True)[:_TOP_DRUGS]
         # Names for the ten shown rows only — never for every drug sold in the period.
         names = await self._drug_names.names_for(ctx.tenant_id, [d.drug_id for d in top])

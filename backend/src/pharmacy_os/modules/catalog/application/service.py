@@ -68,6 +68,7 @@ class CatalogService:
             form=data.form,
             strength=data.strength,
             barcode=data.barcode,
+            sale_price=data.sale_price,
         )
         try:
             for u in data.units:
