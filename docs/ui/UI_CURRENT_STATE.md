@@ -87,22 +87,48 @@ màu hiện tại **tốt hơn mức trung bình** — chỉ 2 lỗi trên 3.831
 | 7 | Transitions | ❌ **0 lần** xuất hiện `transition`/`animation` trong toàn bộ CSS |
 | 8 | Design system | ⚠️ Có token màu, thiếu 5/6 nhóm token (xem §4) |
 | 9 | Components | ❌ 0/17 component yêu cầu tồn tại |
-| 10 | Responsive | 🔴 **Không khai báo `viewport`** ở đâu cả (xem §6). Chỉ **3 media query**, đều dạng `width <=` — tức desktop-first vá xuống, ngược hướng yêu cầu |
+| 10 | Responsive | ⚠️ Không khai báo `viewport` (Next tự phát bản mặc định — **xem đính chính §6.1**, kết luận đầu của tôi sai). Chỉ **3 media query**, đều dạng `width <=` — desktop-first vá xuống, ngược hướng yêu cầu |
 | 11 | Accessibility | ⚠️ Có `aria-label` ở input lọc, `role="alert"` ở khối lỗi, `aria-pressed` ở nút bật/tắt. **Không** có focus state tự đặt, **không** có `prefers-reduced-motion`, trạng thái chip hiện **chỉ bằng màu + chữ** (chữ có → không vi phạm "chỉ dùng màu") |
 | 12 | Performance | ⚠️ Có skeleton ở 6 màn; react-query có `staleTime`. Chưa có lazy-load (chưa có chart để lazy) |
 | 13 | Security | ✅ **Đã đúng** — UI chỉ ẩn/hiện menu theo `session.permissions`; mọi endpoint đều kiểm quyền ở service. Không có đường nào UI tự quyết quyền |
 
-## 6. 🔴 Ba phát hiện nghiêm trọng
+## 6. Ba phát hiện — và một trong ba đã bị chính tôi bác bỏ
 
-### 6.1 Không khai báo `viewport` — mobile-first hiện đang KHÔNG chạy
+### 6.1 ~~Không khai báo `viewport` — mobile-first hiện đang KHÔNG chạy~~ → **ĐÍNH CHÍNH**
 
-`grep -rn "viewport" src/` ra **rỗng**. Next 16 không tự chèn thẻ này; thiếu nó,
-trình duyệt di động dựng trang ở viewport ảo ~980px rồi thu nhỏ. Nghĩa là mọi
-media query `width <= 720px` **chưa từng kích hoạt trên điện thoại thật**.
+> 🔴 **Kết luận ban đầu của tôi ở mục này SAI. Đính chính 2026-07-29, cùng ngày.**
 
-Hệ quả với phần đã làm: các màn Sprint 10 chưa bao giờ được nhìn ở 390px đúng
-nghĩa. Đây là lỗi một dòng, nhưng nó làm **mọi kết luận "đã responsive" trước đây
-đều không có căn cứ** — cùng họ "xanh vì lý do sai" của kiểm toán 26/07.
+**Bản đầu viết:** *"Next 16 không tự chèn thẻ viewport ⇒ mọi media query
+`width <= 720px` chưa từng kích hoạt trên điện thoại thật ⇒ mọi kết luận 'đã
+responsive' trước hôm nay đều không có căn cứ."*
+
+**Đo lại bằng cách gỡ khai báo rồi build thật** (kỷ luật #14 — bắt buộc thấy đỏ vì
+đúng lý do trước khi tin một cổng mới):
+
+```
+# gỡ export const viewport → npm run build → đọc .next/server/app/login.html
+<meta name="viewport" content="width=device-width, initial-scale=1"/>   ← VẪN CÓ
+```
+
+**Next 16 CÓ phát thẻ viewport mặc định.** Mobile chưa bao giờ hỏng, media query
+vẫn kích hoạt bình thường trên điện thoại thật.
+
+**Khác biệt thật mà khai báo mới tạo ra** (đo bằng cách so hai bản build):
+
+| | Không khai báo | Có khai báo |
+|---|---|---|
+| `viewport` | `width=device-width, initial-scale=1` | `…, viewport-fit=cover` |
+| `theme-color` | không có | `#1f3d2b` |
+
+Tức là nó thêm **hỗ trợ vùng an toàn iPhone** (`env(safe-area-inset-*)` chỉ khác 0
+khi có `viewport-fit=cover` — cần cho bottom nav) và **màu thanh trạng thái
+Android**. Hai thứ có ích, nhưng là *cải thiện*, không phải *vá lỗi*.
+
+**Vì sao chép nguyên lỗi này lại đây thay vì lặng lẽ xoá:** tôi đã báo cáo với
+Chain rằng mọi kết luận responsive trước đây đều vô căn cứ. Câu đó sai, và nó là
+loại sai làm người đọc đánh giá lại chất lượng của cả một sprint. Đúng họ lỗi mà
+kiểm toán 26/07 gọi tên — **văn bản nói sai về mã** — chỉ khác là lần này nó nằm
+trong chính báo cáo kiểm toán.
 
 ### 6.2 Vùng chạm nhỏ hơn 44px ở gần như mọi nút
 

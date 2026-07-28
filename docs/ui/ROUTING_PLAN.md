@@ -105,3 +105,41 @@ Giữ nguyên cách đang chạy (`hydrate()` sau mount rồi mới quyết đ�
 
 U1–U3 **không đụng backend một dòng nào**. U4 chỉ thêm một endpoint đọc dùng lại hàm
 đã có test. U5 trở đi chưa lên lịch — chờ Chain chốt sau khi thấy U1–U3.
+
+---
+
+## 8. 🔴 QUYẾT ĐỊNH GĐ (2026-07-29) — Chain uỷ quyền, nguyên tắc "không đụng cái đang chạy tốt"
+
+Chain: *"Uỷ quyền GĐ quyết định, theo quan điểm không đụng tới backend đã xây tốt,
+đổi giao diện dựa trên cái đã có, chạy tốt. Các mục chưa có đưa vào mục Nâng cấp
+sau này, hoặc làm ngay nếu không tốn thời gian sửa chữa lớn."*
+
+Ba quyết định, và §1–§7 ở trên **bị sửa theo** chúng:
+
+| # | Quyết định | Vì sao |
+|---|---|---|
+| **Q1** | **KHÔNG gộp POS vào shell chung. KHÔNG đổi tên một route nào.** `/` vẫn là màn bán hàng, dashboard vẫn ở `/bang-dieu-hanh`, kho vẫn ở `/ton-kho` | POS toàn màn hình đang chạy tốt và là lựa chọn có lý do. Đổi trang chủ là đổi thói quen người đứng quầy — chi phí thật, lợi ích thẩm mỹ. Cái yêu cầu thực sự cần là **một mô hình điều hướng**, và điều đó đạt được bằng một hằng số `NAV` dùng chung, không cần đổi URL |
+| **Q2** | **KHÔNG thêm `GET /reports/revenue`.** Biểu đồ doanh thu dựng từ `GET /sales` đã có, gộp theo ngày ở FE | Chain nói rõ không đụng backend. `GET /sales` (Sprint 10 D1) trả `created_at` + `subtotal` từng đơn ⇒ đủ dựng đường 28 ngày. **Giới hạn đã biết:** ~280 đơn/28 ngày cần 2 lượt gọi (`limit` tối đa 200). Nhà thuốc lớn hơn sẽ tốn nhiều lượt ⇒ **Nâng cấp sau** |
+| **Q3** | Làm **U1 → U2 → U3**, dừng cho Chain xem, rồi mới quyết tiếp | U1–U3 không đụng backend một dòng nào |
+
+### Bảng route SỬA LẠI theo Q1 — giữ nguyên mọi URL đang có
+
+| Route | Màn | Bottom nav | Đổi gì |
+|---|---|---|---|
+| `/` | Bán hàng (POS) | ② Bán hàng | **không đổi URL**, chỉ thay vỏ trình bày |
+| `/bang-dieu-hanh` | Tổng quan | ① Tổng quan | dựng lại nội dung **tại chỗ** theo IA mới |
+| `/ton-kho` | Kho | ③ Kho | không đổi |
+| `/hoa-don` · `/khach-hang` · `/don-mua-hang` · `/de-xuat-dat-hang` | | trong "Thêm" | không đổi |
+| `/them` | Mục lục | ⑤ Thêm | **mới** — bottom sheet trên mobile |
+| ④ Báo cáo | | | **Nâng cấp sau** (U3) |
+
+### Chuyển vào "NÂNG CẤP SAU" — có lý do, không phải bỏ quên
+
+| Mục | Vì sao hoãn |
+|---|---|
+| Đổi tên route (`/ban-hang`, `/kho`) | Q1 — lợi ích không bù được chi phí đổi thói quen |
+| `GET /reports/revenue` (JSON) | Q2 — chỉ cần khi số đơn/tháng vượt vài trăm |
+| `/nhan-vien` (21 endpoint IAM) | Màn mới hoàn toàn, chặn pilot thật nhưng **không** chặn demo |
+| `/tuan-thu` (12 endpoint) · `/ai` (5) · `/nhap-hang` (3) · `/don-thuoc` (5) | Mỗi màn là một tính năng mới, không phải "đổi giao diện dựa trên cái đã có" |
+| KPI `comparison`/`trend` | Cần gọi hai kỳ; làm được nhưng **U2 sẽ để dành**: dashboard chưa có gì mà đã hai lượt gọi là tự chuốc chậm. Component `KpiCard` **có sẵn prop**, chỉ chưa truyền |
+| Dark mode | Yêu cầu không đòi |

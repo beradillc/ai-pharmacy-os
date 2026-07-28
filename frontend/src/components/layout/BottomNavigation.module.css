@@ -1,0 +1,83 @@
+/*
+ * Thanh dưới, chỉ tồn tại dưới 900px. Ẩn bằng media query chứ không bằng JS —
+ * đo bề rộng bằng JS thì lượt render máy chủ luôn đoán sai và người dùng thấy
+ * thanh nhấp nháy một nhịp.
+ */
+.bar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  background: var(--beras-surface);
+  border-top: 1px solid var(--beras-border);
+  box-shadow: var(--shadow-3);
+  /* Chừa chỗ cho thanh gạt iPhone. Cần `viewportFit: "cover"` ở root layout,
+     đã thêm cùng đợt này — thiếu nó thì env() luôn trả 0. */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.item,
+.itemActive {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  /* Vùng chạm: 44px là SÀN, không phải mục tiêu (token --touch-min). */
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-1) var(--space-3);
+  background: none;
+  border: none;
+  text-decoration: none;
+  color: var(--beras-text-muted);
+  transition:
+    color var(--motion-fast) var(--ease-out),
+    background-color var(--motion-fast) var(--ease-out);
+}
+
+.itemActive {
+  color: var(--beras-accent);
+  font-weight: var(--weight-semibold);
+}
+
+/*
+ * Mục đang chọn khác biệt bằng BA thứ cùng lúc: màu + độ đậm + icon đặc (prop
+ * `filled`). Yêu cầu mục 11 cấm dùng riêng màu — và người mù màu vẫn phải biết
+ * mình đang ở đâu.
+ */
+.itemActive::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 28px;
+  height: 3px;
+  border-radius: 0 0 var(--radius-pill) var(--radius-pill);
+  background: var(--beras-leaf);
+}
+
+.item {
+  position: relative;
+}
+
+.itemActive {
+  position: relative;
+}
+
+.item:active {
+  background: var(--beras-bg-alt);
+}
+
+.label {
+  font-size: var(--text-xs);
+  line-height: 1.2;
+  text-align: center;
+}
+
+@media (width >= 900px) {
+  .bar {
+    display: none;
+  }
+}

@@ -43,3 +43,44 @@ select {
   font: inherit;
   color: inherit;
 }
+
+/*
+ * ─── Bổ sung 2026-07-29 (UI PHASE 3, đợt U1) ────────────────────────────────
+ */
+
+/*
+ * Vòng focus bàn phím. Trước đây dự án không tự đặt cái nào ⇒ phụ thuộc mặc định
+ * của trình duyệt, vốn gần như vô hình trên nền kem #edefe7.
+ *
+ * `:focus-visible` chứ không `:focus`: người bấm chuột không phải nhìn vòng xanh
+ * mỗi lần bấm nút, người dùng bàn phím thì luôn thấy.
+ */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--beras-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/*
+ * Tôn trọng người đã tắt hiệu ứng ở cấp hệ điều hành.
+ *
+ * Dùng 1ms chứ không 0s: `transitionend`/`animationend` VẪN bắn, nên mã nào chờ
+ * sự kiện đó không bị treo. Đặt 0s thì một số trình duyệt không bắn sự kiện, và
+ * lỗi đó chỉ lộ ra ở đúng nhóm người dùng ít được kiểm thử nhất.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Ảnh/biểu đồ không bao giờ đẩy trang trượt ngang. */
+img,
+svg {
+  max-width: 100%;
+}

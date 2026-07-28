@@ -49,3 +49,87 @@
     var(--font-beras-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
 }
+
+/*
+ * ─── Bổ sung 2026-07-29 (UI PHASE 3, đợt U1) ────────────────────────────────
+ * KHÔNG đổi một giá trị màu nào ở trên — bảng Eco-Tech do Chain chốt 28/07 giữ
+ * nguyên. Phần dưới chỉ THÊM những thang mà hệ thống đang thiếu (đo ở
+ * docs/ui/UI_CURRENT_STATE.md §4: thiếu 5/6 nhóm token).
+ */
+:root {
+  /* --- màu bổ sung --- */
+  --beras-leaf-soft: #e6efe3;
+  --beras-warning-bg: #fbf3e0;
+  --beras-success-bg: #e4f0ed;
+  /* Viền focus bàn phím: CỐ Ý khác mọi màu trạng thái, để vòng focus không bị
+     đọc nhầm thành "lỗi" hay "đã xong". */
+  --beras-focus: #0f6e9c;
+  --beras-overlay: rgb(35 41 32 / 45%);
+
+  /* --- khoảng cách, thang 4px --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* --- bo góc --- */
+  --radius-sm: 8px;
+  --radius-md: 10px; /* = --beras-radius, giữ song song để không phải sửa mã cũ */
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* --- đổ bóng --- */
+  --shadow-1: 0 1px 2px rgb(35 41 32 / 6%);
+  --shadow-2: 0 4px 12px rgb(35 41 32 / 10%);
+  --shadow-3: 0 -4px 20px rgb(35 41 32 / 14%);
+
+  /* --- vùng chạm ---
+     Là TOKEN chứ không phải quy ước ghi trong tài liệu, vì quy ước ghi trong tài
+     liệu chính là thứ đã trôi mất ở hơn 10 chỗ (UI_GAP_REPORT G-05). */
+  --touch-min: 44px;
+
+  /* --- chữ --- */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-kpi: 26px;
+  --text-hero: 32px;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- chuyển động --- */
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-slow: 300ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /*
+   * --- màu chuỗi dữ liệu (biểu đồ) ---
+   * KHÔNG dùng lại màu nhận diện: đã CHẠY trình kiểm bảng màu trên 5 màu Eco-Tech
+   * và nó FAIL 3/6 phép kiểm (2 màu dưới sàn chroma đọc ra xám; nâu↔đỏ trầm ΔE 3,9
+   * với người mù màu protan; lá↔bạc hà ΔE 8,7 ngay cả mắt thường).
+   *
+   * Bảng dưới PASS 6/6, giữ nguyên màu lá ở slot 1 để biểu đồ vẫn "thuộc về" thương
+   * hiệu. Gán theo THỨ TỰ CỐ ĐỊNH, không xoay vòng; chuỗi thứ 6 trở đi phải gộp
+   * "Khác" hoặc tách biểu đồ nhỏ, không sinh màu mới.
+   *
+   * Ràng buộc bắt buộc: tách tritan của cặp xấu nhất là 7,7 (dải sàn 6–8) ⇒ chỉ
+   * hợp lệ khi CÓ mã hoá phụ — luôn có chú giải, ≤4 chuỗi thì thêm nhãn trực tiếp.
+   */
+  --chart-1: #5b8c51;
+  --chart-2: #0f6e9c;
+  --chart-3: #b98a2d;
+  --chart-4: #a8452f;
+  --chart-5: #6a5aa8;
+  --chart-grid: #d8d0bd;
+  --chart-area: rgb(91 140 81 / 14%);
+}

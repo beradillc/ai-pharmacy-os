@@ -1,0 +1,42 @@
+/*
+ * Khung chung cho các màn quản lý.
+ *
+ * Mobile: một cột, bottom nav cố định đáy ⇒ nội dung phải chừa đệm đáy, nếu không
+ * dòng cuối của bảng nằm dưới thanh nav và không ai bấm được.
+ * Desktop (≥900px): sidebar cạnh trái, không còn bottom nav ⇒ bỏ đệm đáy.
+ */
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--beras-bg);
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  width: 100%;
+}
+
+.main {
+  flex: 1;
+  min-width: 0; /* cho phép bảng bên trong tự cuộn thay vì đẩy trang trượt ngang */
+  padding: var(--space-5) var(--space-4);
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0));
+  max-width: 1120px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+@media (width >= 900px) {
+  .main {
+    padding: var(--space-6) var(--space-6) var(--space-8);
+    margin: 0;
+  }
+
+  .inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    width: 100%;
+  }
+}

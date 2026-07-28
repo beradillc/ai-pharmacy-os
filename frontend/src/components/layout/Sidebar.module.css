@@ -1,0 +1,63 @@
+/* Chỉ tồn tại từ 900px. Dưới ngưỡng đó, BottomNavigation lo việc này. */
+.sidebar {
+  display: none;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.groupLabel {
+  padding: 0 var(--space-3);
+  margin-bottom: var(--space-1);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--beras-text-muted);
+}
+
+.link,
+.linkActive {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  text-decoration: none;
+  color: var(--beras-text);
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+
+.link:hover {
+  background: var(--beras-bg-alt);
+}
+
+/* Mục đang chọn: nền + màu + đậm + icon đặc — bốn tín hiệu, không riêng màu. */
+.linkActive {
+  background: var(--beras-leaf-soft);
+  color: var(--beras-accent);
+  font-weight: var(--weight-semibold);
+}
+
+@media (width >= 900px) {
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    width: 232px;
+    flex: 0 0 232px;
+    padding: var(--space-5) var(--space-3);
+    border-right: 1px solid var(--beras-border);
+    background: var(--beras-surface);
+    /* Tự cuộn khi menu dài hơn màn hình, không kéo cả trang cuộn theo. */
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    max-height: 100vh;
+    overflow-y: auto;
+  }
+}

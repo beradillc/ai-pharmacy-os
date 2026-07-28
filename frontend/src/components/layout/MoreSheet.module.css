@@ -1,0 +1,97 @@
+/* Bottom sheet: dính đáy, trượt lên. Dùng <dialog> nên cần ghi đè margin mặc định. */
+.sheet {
+  margin: auto auto 0;
+  padding: 0;
+  width: 100%;
+  max-width: 640px;
+  border: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--beras-surface);
+  color: var(--beras-text);
+  box-shadow: var(--shadow-3);
+}
+
+.sheet::backdrop {
+  background: var(--beras-overlay);
+}
+
+.sheet[open] {
+  animation: slide-up var(--motion-slow) var(--ease-out);
+}
+
+.sheet[open]::backdrop {
+  animation: fade-in var(--motion-fast) var(--ease-out);
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-6);
+  padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0));
+}
+
+/* Vạch kéo — tín hiệu quen thuộc rằng tấm này kéo xuống được. */
+.grabber {
+  width: 36px;
+  height: 4px;
+  margin: 0 auto var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--beras-border);
+}
+
+.title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--beras-text);
+  text-decoration: none;
+  font-size: var(--text-base);
+}
+
+.item:hover,
+.item:active {
+  background: var(--beras-bg-alt);
+}
+
+.empty {
+  color: var(--beras-text-muted);
+  font-size: var(--text-sm);
+}
+
+.close {
+  min-height: var(--touch-min);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--radius-sm);
+  background: var(--beras-surface);
+  color: var(--beras-accent);
+  font-size: var(--text-base);
+}

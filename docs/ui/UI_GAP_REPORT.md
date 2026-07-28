@@ -7,7 +7,7 @@
 
 | # | Khoảng cách | Mức | Chi phí | Ghi chú |
 |---|---|---|---|---|
-| **G-01** | **Không khai báo `viewport`** | 🔴 CHẶN | 0,1 | Một dòng `export const viewport` ở root layout. Thiếu nó thì mọi việc mobile-first phía sau đều vô nghĩa |
+| **G-01** | Không khai báo `viewport` | 🟡 VỪA *(hạ từ CHẶN)* | 0,1 | **Đã đo lại:** Next 16 tự phát `width=device-width, initial-scale=1`, nên mobile KHÔNG hỏng — xem đính chính `UI_CURRENT_STATE.md` §6.1. Khai báo tường minh chỉ thêm `viewport-fit=cover` (cần cho bottom nav trên iPhone) + `theme-color` |
 | **G-02** | Hai hệ điều hướng rời nhau (`(pos)` vs `(app)`) | 🔴 CHẶN | 2 | Yêu cầu mục 6 cấm thẳng. Phải gộp về một shell trước khi thêm bottom nav |
 | **G-03** | Không có tầng component | 🔴 CHẶN | 3 | 17 component yêu cầu, 0 tồn tại. Mọi mục khác đều phụ thuộc mục này |
 | **G-04** | Thiếu 5/6 nhóm token (spacing, radius-scale, shadow, typography, motion) | 🟠 CAO | 1 | Có màu rồi; phần còn lại là viết ra thang, không phải phát minh |
@@ -50,16 +50,16 @@ không phải nghiệp vụ mới.
 | Mục 12 — skeleton loading | ✅ 6/8 màn đã có |
 | Mục 12 — không tải toàn bộ data khi mở | ✅ Mỗi hook một endpoint, có `staleTime`, phân trang 50 dòng |
 | Mục 11 — không chỉ dùng màu để biểu thị trạng thái | ✅ Chip luôn có chữ kèm màu |
-| Mục 10 — không tràn ngang | ⚠️ `body { overflow-x: hidden }` + bảng cuộn trong khung. **Nhưng chưa kiểm được ở 390px vì G-01** |
+| Mục 10 — không tràn ngang | ⚠️ `body { overflow-x: hidden }` + bảng cuộn trong khung. Chưa ai nhìn ở 390px thật — nhưng KHÔNG phải vì G-01 (xem đính chính) |
 
 ## Thứ tự làm đề nghị
 
 ```
-G-01 (viewport)  →  G-04 (token)  →  G-03 (component nền: Button/Card/DataTable/States)
+G-04 (token)  →  G-01 (viewport, đi kèm)  →  G-03 (component nền: Button/Card/DataTable/States)
    →  G-02 (gộp shell + Sidebar/BottomNav)  →  G-06 (quick actions)  →  G-07+B-01 (KPI)
    →  G-12 (recent transactions)  →  G-08+B-03 (compliance card)  →  B-02 + G-09 (chart)
    →  G-10 (transition)  →  G-11 (AI assist)  →  G-05/G-13 (chạm + a11y quét lại)
 ```
 
-Lý do thứ tự: G-01 rẻ nhất mà mở khoá mọi phép đo sau đó; G-04→G-03 là nền của tất
-cả; chart để sau vì nó là mục duy nhất cần backend.
+Lý do thứ tự: G-04→G-03 là nền của tất cả; G-01 đi kèm vì nó rẻ và cần cho vùng an
+toàn iPhone của bottom nav; chart để sau vì nó là mục duy nhất chạm tới backend.

@@ -1,0 +1,10 @@
+.page {
+  animation: page-in var(--motion-base) var(--ease-out);
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
