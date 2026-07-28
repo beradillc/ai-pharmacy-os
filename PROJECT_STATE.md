@@ -5209,6 +5209,119 @@ Việc của Chain, theo thứ tự: **① bấm thử 4 màn mới** (thứ duy
 
 ---
 
+## 7bw. ⏸️ ĐÓNG PHIÊN 2026-07-29 — Sprint 10 + đợt UI U1–U3, 17 commit
+
+Chain: *"Đóng phiên đúng quy trình."*
+
+### A. Phiên này làm gì — 17 commit, hai mạch
+
+| Mạch | Kết quả |
+|---|---|
+| **Sprint 10 — bản demo gửi khách** | **12/12 bước.** 3 cổng đọc còn thiếu · seed nhà thuốc demo · 4 màn quản lý · cột `sale_price` + mig `0037` · `make demo` · kịch bản demo 10 phút |
+| **UI/UX dashboard** | PHASE 1+2 = **6 tài liệu** `docs/ui/` · PHASE 3 đợt **U1–U3** = nền điều hướng dùng chung, dashboard IA mới, màn Báo cáo |
+| **Cổng docs/14** | Bước 0-3 **sổ quỹ** viết xong và **GĐ đã duyệt** (dưới uỷ quyền Chain) |
+
+pytest **1099 → 1135** · alembic `0036` → **`0037`** · frontend **8 → 9 route**, **2 → 21 tệp** trong
+`components/`+`shared/nav.ts`. Toàn bộ 6 commit của đợt UI: **`git diff -- backend/` rỗng**.
+
+### B. 🔴 BA LỖI CÙNG MỘT NGUYÊN NHÂN — ghi lại vì nó là MỘT MẪU, không phải ba sự cố rời
+
+| # | Tôi kết luận | Sự thật | Bắt được nhờ |
+|---|---|---|---|
+| 1 | *"Thiếu `viewport` ⇒ mọi kết luận responsive trước đây vô căn cứ"* | Next 16 **tự phát** thẻ mặc định. Mobile chưa bao giờ hỏng | Gỡ khai báo ra rồi **build lại và đọc HTML tĩnh** (kỷ luật #14) |
+| 2 | *"Thu ngân cần tối đa diện tích ⇒ POS không cần sidebar"* (quyết định Q1) | Chain dùng thật: *"mỗi lần về phải bấm Quản lý thấy bất tiện"* | **Người dùng bấm thử** |
+| 3 | Màn Báo cáo gửi `granularity=DAY` | Enum backend là **chữ thường** ⇒ **422** | **`curl` một lần** |
+
+Cả ba đều **nghe rất hợp lý**. Lỗi 1 tệ nhất vì nó nằm trong chính **báo cáo kiểm toán** và đã kịp
+làm Chain đánh giá sai chất lượng Sprint 10 trong đúng một lượt trao đổi — đúng họ *"văn bản nói sai
+về mã"* mà kiểm toán 26/07 đặt tên.
+
+**Bài học phương pháp:** một phát hiện dạng *"thiếu X"* phải được kiểm bằng cách **gỡ X ra rồi đo**,
+y như kiểm một cổng mới. Grep thấy rỗng **không phải** bằng chứng. → chưa nâng lên `CLAUDE.md` vì
+kỷ luật #14 đã bao được (nó nói *mã thoát phải biết đổi màu*); nếu tái phát lần nữa thì phải thành
+kỷ luật riêng.
+
+### B-bis. 🔴 CỔNG ĐÓNG PHIÊN ĐỎ — và nó bắt được lỗi thứ TƯ, lỗi thật nhất trong ngày
+
+`make check` lúc đóng phiên: **`MAKE_CHECK_EXIT=2` · 1 failed, 1134 passed**.
+
+Test đỏ: `test_list_sales_no_params_returns_todays_orders` — tạo 3 đơn rồi gọi `GET /sales` không
+tham số, nhận về **rỗng**.
+
+**Nguyên nhân:** `GET /sales` mặc định lấy `date.today()` (**giờ địa phương**) rồi tầng service đóng
+dấu ngày đó thành **nửa đêm UTC**. Việt Nam là UTC+7, nên:
+
+```
+đồng hồ máy lúc chạy cổng:  Wed Jul 29 04:46 +07     ⇒ date.today() = 29/07
+                            Tue Jul 28 21:46 UTC     ⇒ created_at của đơn = 28/07
+cửa sổ truy vấn:            29/07 00:00Z → 30/07 00:00Z   ⇒ đơn nằm NGOÀI
+```
+
+**Hệ quả ngoài đời:** từ **00:00 đến 07:00 sáng**, màn Hoá đơn và KPI "Doanh thu hôm nay" **rỗng
+sạch** — đúng khung giờ nhiều nhà thuốc mở cửa. Không phải test dở; **test đúng, mã sai**.
+
+**Đã sửa:** dựng cửa sổ theo giờ địa phương rồi mới đổi sang UTC
+(`datetime.combine(...).astimezone(UTC)`). Kỷ luật #14: khôi phục cách cũ ⇒ `MUTANT_PYTEST_EXIT=1`
+đỏ đúng test đó; khôi phục bản đúng ⇒ `RESTORED_PYTEST_EXIT=0`.
+
+Ghi rõ giới hạn còn lại: **múi giờ theo tenant chưa có**. Với triển khai một múi giờ (pilot) thì cách
+này đúng; một chuỗi nhà thuốc trải nhiều múi giờ sẽ phải sửa **đúng chỗ này**.
+
+**Vì sao đáng chép lại:** nếu đóng phiên mà không chạy cổng, lỗi này ra thẳng buổi demo — và nó chỉ
+lộ ra trong **7 giờ mỗi ngày**, tức là chín trên mười lần bấm thử sẽ không thấy gì. Đây là lỗi thứ
+**tư** trong ngày cùng một họ với ba lỗi ở mục B: thứ tôi *tin* khác thứ máy *làm*.
+
+`make check` chạy lại sau khi vá: **`MAKE_CHECK_EXIT=0` · 1135 passed + 16 passed**.
+
+### C. Quyết định tự chốt trong phiên (full-auto #3)
+
+| Quyết định | Lý do |
+|---|---|
+| **Thêm cột `drugs.sale_price`** (đổi lược đồ, ngoài 12 bước gốc) | Màn bán hàng hỏi giá bằng `window.prompt` TỪNG dòng — khoảng trống dữ liệu ngay giữa luồng dùng nhiều nhất. pg_dump trước migration theo full-auto #6 |
+| **Q1: không đổi tên route nào** | Đổi trang chủ là đổi thói quen người đứng quầy để lấy lợi thẩm mỹ |
+| **Q1 (nửa sau) bị ĐẢO ngày hôm đó** | POS nay dùng chung `AppShell`. Lập luận cũ là giả định, dữ liệu người dùng nói ngược lại |
+| **Q2: không thêm endpoint doanh thu JSON** | Gộp theo ngày ở FE từ `GET /sales`. Giới hạn (400 đơn) hiện thành **cảnh báo trên màn**, không giấu |
+| **Không kéo thư viện chart/UI/icon** | 1 biểu đồ, 17 component, 8 icon — thư viện nặng hơn toàn bộ `src/` và kéo theo hệ token thứ hai |
+| **Bảng màu biểu đồ TÁCH khỏi màu nhận diện** | Đã **chạy trình kiểm**: 5 màu Eco-Tech **FAIL 3/6** (2 màu dưới sàn chroma; nâu↔đỏ ΔE 3,9 protan; lá↔bạc hà ΔE 8,7 **mắt thường**). Bảng thay thế PASS 6/6, giữ màu lá ở slot 1 |
+| **GĐ duyệt sổ quỹ theo PHẠM VI** | Được xây công cụ vận hành; **khoá** mẫu biểu kế toán + **cấm chữ "Sổ quỹ"** trong giao diện tới khi Kế toán trả lời 3 câu |
+
+### D. Trạng thái thật khi đóng phiên
+
+| Thứ | Trạng thái | Ghi chú |
+|---|---|---|
+| Postgres + Redis | Up, healthy | |
+| uvicorn `:8000` | `API=200` | 🔴 đang trỏ CSDL **`demo_v4`**, KHÔNG phải `pharmacy_os` |
+| next dev `:3000` | `FE=200` | |
+| `backend/.env` | còn nguyên, 4 dòng khoá mã hoá | **mất tệp = mất vĩnh viễn dữ liệu khách trên máy này** |
+| CSDL thử chưa xoá | `s10_probe` · `demo_v2` · `demo_v3` · `demo_v4` | `DROP` nằm trong `deny`, Chain chạy |
+
+Đăng nhập demo: **`demo@bera.vn` / `NhaThuocDemo2026`**
+
+### E. 🔴 Còn nợ — nói thẳng
+
+1. **Chưa ai nhìn giao diện mới ở 390px.** Không có công cụ trình duyệt trong phiên. Cái đã chứng
+   minh là **dữ liệu** mỗi màn đúng (gọi đúng chuỗi API bằng token thật trên CSDL demo). Bố cục thì
+   chưa — và Chain đã bắt được **2 lỗi thật** bằng đúng cách này.
+2. **Frontend vẫn 0 test.** Cổng FE là `lint` + `tsc` + `build`, **không phải** "có test phủ"
+   (§7bt.F). 21 tệp mới không đổi điều đó — ngược lại, nó làm khoảng mù rộng ra.
+3. **Sổ quỹ đã duyệt nhưng chưa code một dòng** (D3: làm sau đợt UI — đợt UI nay đã đóng).
+4. **Màn Nhân viên**: 21 endpoint IAM, 0 màn ⇒ **không tạo được nhân viên trên giao diện**. Chặn
+   pilot thật, không chặn demo.
+5. Kiểm toán **Phiên C** · **B-08** · A-04 · A-05 · `jti` · bỏ CCCD khỏi `GET /customers` — **không
+   đụng tới** trong phiên này, mở nguyên như §7bu để lại.
+6. `docs/ui/` PHASE 4–8 (test · responsive · a11y · performance · báo cáo cuối) **chưa chạy** — chờ
+   Chain xem U1–U3 trước.
+
+### F. Việc của Chain, theo thứ tự
+
+① **Bấm thử giao diện mới** trên điện thoại *và* máy tính — ba chỗ: màn Bán hàng (sidebar mới, khổ
+hẹp chưa ai nhìn) · Tổng quan (IA mới + biểu đồ) · Báo cáo (hoàn toàn mới).
+② **Xoá 4 CSDL thử** (tắt uvicorn trước — nó đang giữ `demo_v4`).
+③ Chuyển **3 câu hỏi sổ quỹ** cho Trợ lý Kế toán.
+④ Quyết việc tiếp: **sprint Sổ quỹ** hay **màn Nhân viên** trước.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |

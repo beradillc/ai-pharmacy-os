@@ -639,8 +639,22 @@ class SalesService:
         require_permission(ctx, "sales.read")
         if date_from > date_to:
             raise ValidationError("Khoảng thời gian không hợp lệ: 'từ' sau 'đến'")
-        created_from = datetime.combine(date_from, time.min, tzinfo=UTC)
-        created_to = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=UTC)
+        # 🔴 Cửa sổ tính theo GIỜ ĐỊA PHƯƠNG rồi mới đổi sang UTC — KHÔNG đóng dấu
+        # ngày địa phương thành nửa đêm UTC.
+        #
+        # Bản đầu làm cách sau và đã sai thật: `created_at` lưu theo UTC, còn "hôm
+        # nay" mà người bán hiểu là hôm nay theo đồng hồ treo tường. Việt Nam UTC+7,
+        # nên từ 00:00 tới 07:00 sáng, ngày địa phương đã sang hôm sau mà UTC thì
+        # chưa ⇒ danh sách hoá đơn **rỗng suốt buổi sáng sớm**, đúng khung giờ nhiều
+        # nhà thuốc mở cửa. Bắt được lúc chạy cổng lúc 04:46 sáng, không phải bằng
+        # đọc lại mã.
+        #
+        # `datetime.combine(...)` không kèm tzinfo ⇒ giờ địa phương của máy chủ;
+        # `.astimezone(UTC)` đổi đúng mốc đó sang UTC. Với triển khai một múi giờ
+        # (pilot) thì đây là câu trả lời đúng. Múi giờ theo tenant là việc khác,
+        # chưa có — và khi làm thì chỗ này là nơi phải sửa.
+        created_from = datetime.combine(date_from, time.min).astimezone(UTC)
+        created_to = datetime.combine(date_to + timedelta(days=1), time.min).astimezone(UTC)
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)
             return await repo.list_orders(
