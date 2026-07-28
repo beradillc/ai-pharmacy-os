@@ -6,7 +6,7 @@ are injected as factories at composition time (see the module ``register``).
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from uuid import UUID
 
 from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
@@ -107,6 +107,20 @@ class CatalogService:
         if drug is None:
             raise NotFoundError(f"Không tìm thấy thuốc {drug_id}")
         return DrugOutput.of(drug)
+
+    async def drug_names(self, drug_ids: Sequence[UUID], ctx: RequestContext) -> dict[UUID, str]:
+        """Resolve many drug ids to display names in one query.
+
+        Exists for read models that hold ids and need labels — the analytics dashboard
+        and reorder screen (docs/19 §4–§5). Deliberately **not** ``NotFoundError`` on an
+        unknown id: those screens summarise a period that may pre-date a drug's removal,
+        and one stale id must not fail the whole response. Missing ids are absent from
+        the returned mapping.
+        """
+        require_permission(ctx, "catalog.read")
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            return await repo.names_by_ids(drug_ids)
 
     async def get_drug_ingredients(
         self, drug_id: UUID, ctx: RequestContext

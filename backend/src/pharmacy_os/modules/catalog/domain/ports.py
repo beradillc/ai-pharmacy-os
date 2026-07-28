@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Protocol
 from uuid import UUID
 
@@ -16,6 +17,12 @@ class DrugRepository(Protocol):
     async def by_barcode(self, barcode: str) -> Drug | None: ...
 
     async def list(self, *, limit: int = 50, offset: int = 0) -> list[Drug]: ...
+
+    async def names_by_ids(self, drug_ids: Sequence[UUID]) -> dict[UUID, str]:
+        """Name-only projection for many ids in one query. Ids the tenant can't see are
+        simply absent from the result — callers decide what to show for a missing name,
+        because a drug deleted after a report was computed is not an error."""
+        ...
 
 
 class ActiveIngredientRepository(Protocol):

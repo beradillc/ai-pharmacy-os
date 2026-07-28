@@ -18,6 +18,7 @@ exception in substance (it forwards the caller's identity/grants, see
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -52,6 +53,21 @@ class StockLevelSource(Protocol):
     async def count_near_expiry(
         self, tenant_id: UUID, branch_id: UUID, *, within_days: int
     ) -> int: ...
+
+
+class DrugNameSource(Protocol):
+    """Drug id → display name, for screens humans read (adapter over catalog).
+
+    Analytics computes on ``drug_id`` and never needs a name to decide anything — this
+    exists purely so the dashboard and the reorder screen can print *"Paracetamol
+    500mg"* instead of a UUID. Bulk by design: resolving names one row at a time turns
+    a 7-row reorder screen into 8 round-trips (docs/19 khe hở **G-1**).
+
+    Ids with no name are **omitted**, not raised: a drug removed after the numbers were
+    computed must not blank out a whole dashboard.
+    """
+
+    async def names_for(self, tenant_id: UUID, drug_ids: Sequence[UUID]) -> dict[UUID, str]: ...
 
 
 class SupplierSource(Protocol):

@@ -281,3 +281,72 @@ async def test_create_drug_leaves_an_audit_row(
         matching = [e for e in entries if e.target_id == str(created.id)]
         assert len(matching) == 1
         assert matching[0].actor_user_id == ctx.user_id
+
+
+# --- tra tên hàng loạt: nền cho khe hở G-1 (docs/19) --------------------------
+
+
+async def test_drug_names_resolves_many_in_one_call(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    a = await catalog_service.create_drug(
+        CreateDrugInput(name="Amoxicillin 500mg", rx_class=RxClass.ETC, base_unit="viên"), ctx
+    )
+    b = await catalog_service.create_drug(
+        CreateDrugInput(name="Omeprazole 20mg", rx_class=RxClass.ETC, base_unit="viên"), ctx
+    )
+
+    names = await catalog_service.drug_names([a.id, b.id], ctx)
+
+    assert names == {a.id: "Amoxicillin 500mg", b.id: "Omeprazole 20mg"}
+
+
+async def test_drug_names_omits_unknown_id_instead_of_raising(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    """A drug removed after a report was computed must not fail the whole screen."""
+    known = await catalog_service.create_drug(
+        CreateDrugInput(name="Vitamin C 1000mg", rx_class=RxClass.OTC, base_unit="viên"), ctx
+    )
+    ghost = uuid4()
+
+    names = await catalog_service.drug_names([known.id, ghost], ctx)
+
+    assert names == {known.id: "Vitamin C 1000mg"}
+    assert ghost not in names
+
+
+async def test_drug_names_empty_input_does_not_hit_the_database(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    assert await catalog_service.drug_names([], ctx) == {}
+
+
+async def test_drug_names_is_tenant_scoped(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    """Another tenant's id resolves to nothing — not to that tenant's drug name."""
+    mine = await catalog_service.create_drug(
+        CreateDrugInput(name="Cetirizine 10mg", rx_class=RxClass.OTC, base_unit="viên"), ctx
+    )
+    other = RequestContext(
+        tenant_id=uuid4(),
+        branch_id=ctx.branch_id,
+        user_id=ctx.user_id,
+        permissions=ctx.permissions,
+    )
+
+    assert await catalog_service.drug_names([mine.id], other) == {}
+
+
+async def test_drug_names_requires_catalog_read(
+    catalog_service: CatalogService, ctx: RequestContext
+) -> None:
+    unprivileged = RequestContext(
+        tenant_id=ctx.tenant_id,
+        branch_id=ctx.branch_id,
+        user_id=ctx.user_id,
+        permissions=frozenset(),
+    )
+    with pytest.raises(PermissionDeniedError):
+        await catalog_service.drug_names([uuid4()], unprivileged)

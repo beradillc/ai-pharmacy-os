@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy import select
@@ -51,6 +52,17 @@ class SqlAlchemyDrugRepository:
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [to_domain(r) for r in rows]
+
+    async def names_by_ids(self, drug_ids: Sequence[UUID]) -> dict[UUID, str]:
+        if not drug_ids:
+            # `IN ()` is a syntax error on some backends and a full scan on others;
+            # an empty ask has an empty answer without asking the database.
+            return {}
+        stmt = select(DrugORM.id, DrugORM.name).where(
+            DrugORM.id.in_(drug_ids), DrugORM.tenant_id == self._ctx.tenant_id
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return {row.id: row.name for row in rows}
 
 
 class SqlAlchemyActiveIngredientRepository:
