@@ -27,7 +27,7 @@ from pharmacy_os.core.di import Container
 from pharmacy_os.core.errors import UnauthenticatedError
 from pharmacy_os.core.http import client_ip_of
 from pharmacy_os.core.security import JwtService
-from pharmacy_os.core.security.branch_scope import BranchScopeGuard
+from pharmacy_os.core.security.branch_scope import TokenScopeGuard
 from pharmacy_os.modules.iam.domain import ALL_PERMISSIONS
 
 _log = structlog.get_logger("api.auth")
@@ -63,14 +63,21 @@ async def get_context(request: Request) -> RequestContext:
         # không. Đường cấp token hôm nay không thể sinh ra cặp lệch — nhưng đó là tính
         # chất của một đường mã nguồn, không phải một ràng buộc. Kiểm ở đây biến nó
         # thành ràng buộc cho mọi đường vào, kể cả đường chưa được viết.
-        guard = container.resolve(BranchScopeGuard)
-        if not await guard.is_valid(payload.tenant_id, payload.branch_id):
+        guard = container.resolve(TokenScopeGuard)
+        branch_ok = await guard.branch_belongs_to_tenant(payload.tenant_id, payload.branch_id)
+        user_ok = await guard.user_belongs_to_tenant(payload.tenant_id, payload.user_id)
+        if not (branch_ok and user_ok):
+            # Một dòng log, không phải hai: người vận hành cần biết "token này có claim
+            # không đi với nhau", còn claim nào lệch là chi tiết để điều tra, không phải
+            # hai sự kiện khác nhau.
             _log.warning(
-                "branch_tenant_mismatch",
+                "token_scope_mismatch",
                 tenant_id=str(payload.tenant_id),
                 branch_id=str(payload.branch_id),
                 user_id=str(payload.user_id),
-                detail="token mang cặp tenant/chi nhánh không tồn tại — từ chối",
+                branch_ok=branch_ok,
+                user_ok=user_ok,
+                detail="claim trong token không đi được với nhau — từ chối (audit B-07/B-13)",
             )
             raise UnauthenticatedError("Token không hợp lệ, vui lòng đăng nhập lại")
         return RequestContext(

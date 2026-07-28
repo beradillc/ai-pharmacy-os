@@ -484,3 +484,27 @@ def test_a_genuine_token_still_works_after_the_guard(client: TestClient) -> None
     r = client.get("/api/v1/drugs", headers=_auth(admin))
 
     assert r.status_code == 200, r.text
+
+
+def test_token_whose_sub_belongs_to_another_tenant_is_refused(client: TestClient) -> None:
+    """Kịch bản B-13: ``sub`` = người của tenant A, ``tenant``/``branch`` của tenant V.
+
+    Kiểm toán gọi ``/auth/me`` bằng token đó và nhận **200**, rồi **đọc được người dùng
+    của tenant nạn nhân**. Máy chủ chưa bao giờ kiểm lại rằng ``sub`` thuộc ``tenant``.
+
+    Giá trị của bản vá không nằm ở việc chặn một kẻ tấn công — vẫn phải có secret ký.
+    Nó nằm ở chỗ **định lượng lại bán kính của A-02**: trước đây lộ khoá ký = toàn quyền
+    trên mọi tenant ngay lập tức, vì phía sau không còn lớp kiểm nào. Nay lộ khoá vẫn
+    mất tất cả, **nhưng để lại dấu vết** — dòng log ``token_scope_mismatch``.
+    """
+    admin = _login(client)
+    forged = _forge(
+        client,
+        tenant_id=admin["tenant_id"],
+        branch_id=admin["branch_id"],
+        user_id=str(uuid4()),  # người dùng không thuộc tenant này (không tồn tại)
+    )
+
+    r = client.get("/api/v1/drugs", headers={"Authorization": f"Bearer {forged}"})
+
+    assert r.status_code == 401, r.text

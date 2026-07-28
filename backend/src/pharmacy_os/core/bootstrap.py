@@ -27,7 +27,7 @@ from pharmacy_os.core.di import Container
 from pharmacy_os.core.events import EventBus, InMemoryEventBus
 from pharmacy_os.core.outbox import OutboxEventSink
 from pharmacy_os.core.plugins import HookRegistry, PluginLoader
-from pharmacy_os.core.security.branch_scope import BranchScopeGuard
+from pharmacy_os.core.security.branch_scope import TokenScopeGuard
 from pharmacy_os.core.security.crypto import BlindIndex, FieldCipher, KeyRing, decode_key
 from pharmacy_os.core.security.jwt import JwtService
 
@@ -124,10 +124,10 @@ def build_container(settings: Settings) -> Container:
     session_factory = build_sessionmaker(engine)
     container.register_instance(async_sessionmaker[AsyncSession], session_factory)
 
-    # Audit B-07: mọi request có token đều đi qua guard này để xác nhận cặp
-    # (tenant, chi nhánh) là có thật. Singleton vì nó giữ cache các cặp đã xác nhận —
-    # một instance mới mỗi request thì cache vô nghĩa.
-    container.register_instance(BranchScopeGuard, BranchScopeGuard(session_factory))
+    # Audit B-07 + B-13: mọi request có token đều đi qua guard này để xác nhận
+    # (tenant, chi nhánh) VÀ (tenant, người dùng) là có thật. Singleton vì nó giữ
+    # cache các cặp đã xác nhận — instance mới mỗi request thì cache vô nghĩa.
+    container.register_instance(TokenScopeGuard, TokenScopeGuard(session_factory))
 
     # EventBus is a Protocol used as a service key; concrete impl is InMemoryEventBus.
     container.register_singleton(EventBus, lambda _c: InMemoryEventBus())  # type: ignore[type-abstract]
