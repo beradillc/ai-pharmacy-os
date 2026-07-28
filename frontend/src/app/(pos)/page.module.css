@@ -205,3 +205,63 @@
 .manageLink:hover {
   background: rgb(255 255 255 / 12%);
 }
+
+/*
+ * ─── Sửa 2026-07-29 (Chain báo: màn Bán hàng không có thanh dưới) ────────────
+ *
+ * Hai việc, và việc thứ hai nghiêm trọng hơn việc được báo:
+ *
+ * ① Chừa chỗ cho thanh điều hướng dưới, nếu không nút "Thanh toán" — nút quan
+ *    trọng nhất của cả sản phẩm — nằm ngay dưới thanh và không ai bấm được.
+ *
+ * ② Màn này TRƯỚC NAY KHÔNG CÓ MỘT MEDIA QUERY NÀO. `.body` là lưới
+ *    `1fr 360px` cố định, nên trên điện thoại 390px cột giỏ hàng 360px ép trang
+ *    trượt ngang. Nó không lộ ra suốt Sprint 4→10 vì chưa ai mở POS trên điện
+ *    thoại thật. Đây là màn dùng nhiều nhất của cả hệ thống.
+ */
+.page {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0));
+}
+
+@media (width >= 900px) {
+  /* Từ 900px thanh dưới tự ẩn (xem BottomNavigation.module.css) ⇒ trả lại đáy. */
+  .page {
+    padding-bottom: 0;
+  }
+}
+
+@media (width <= 899px) {
+  /* Một cột: danh mục thuốc trước, giỏ hàng dưới — đúng thứ tự thao tác. */
+  .body {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .header {
+    padding: var(--space-3);
+    gap: var(--space-2);
+  }
+
+  /* Nút bấm trên màn cảm ứng: 44px là sàn, không phải mục tiêu. */
+  .addButton,
+  .removeButton,
+  .logout,
+  .manageLink {
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .qtyInput {
+    min-height: var(--touch-min);
+  }
+
+  /* Giỏ hàng dính đáy khi cuộn danh mục dài: tổng tiền và nút thanh toán luôn
+     trong tầm ngón cái, không phải cuộn xuống cuối mới thấy. */
+  .cart {
+    position: sticky;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0));
+  }
+}
