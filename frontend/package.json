@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:browsers": "node scripts/check-browsers.mjs",
-    "check:receive": "node scripts/check-receive-flow.mjs"
+    "check:receive": "node scripts/check-receive-flow.mjs",
+    "check:sale": "node scripts/check-sale-appears.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",

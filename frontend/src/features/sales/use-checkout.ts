@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/shared/api/client";
 import { ApiError } from "@/shared/api/errors";
@@ -37,6 +37,8 @@ export interface CheckoutResult {
  * treated as offline and queued instead of failing the sale outright.
  */
 export function useCheckout() {
+  const qc = useQueryClient();
+
   return useMutation({
     mutationFn: async ({
       lines,
@@ -63,6 +65,25 @@ export function useCheckout() {
         await enqueueSale(body);
         return { queued: true, clientUuid: body.client_uuid };
       }
+    },
+    /**
+     * 🔴 Bán xong phải LÀM MỚI mọi màn đọc lại số liệu vừa đổi.
+     *
+     * Trước bản vá, mutation này không đụng gì tới cache. Bán một đơn rồi mở
+     * màn Hoá đơn trong vòng 15 giây (`staleTime` của `useSalesList`) thì React
+     * Query trả về **danh sách cũ, không có đơn vừa bán** — không gọi mạng, nên
+     * cũng không có gì để nghi. Đúng khoảng thời gian người bán thật sự mở màn
+     * đó ra: ngay sau khi bán, để đối chiếu.
+     *
+     * Đơn xếp hàng chờ đồng bộ (`queued`) thì KHÔNG làm mới: chưa có gì trên
+     * máy chủ để đọc, gọi lại chỉ tổ nhận về đúng danh sách cũ rồi ghi đè bản
+     * cache vừa hết hạn — tức là kéo dài thêm sự nhầm lẫn.
+     */
+    onSuccess: (result) => {
+      if (result.queued) return;
+      void qc.invalidateQueries({ queryKey: ["sales"] });
+      void qc.invalidateQueries({ queryKey: ["inventory"] });
+      void qc.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 }

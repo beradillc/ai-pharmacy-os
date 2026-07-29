@@ -475,10 +475,38 @@ async def _seed_sales(
                 except AppError as exc:
                     _log.warning("demo_dispense_skipped", reason=exc.detail)
 
-            hour = _RNG.randint(7, 20)
-            minute = _RNG.randint(0, 59)
-            backdate.append((out.id, datetime.combine(day, time(hour, minute), tzinfo=UTC)))
+            backdate.append((out.id, _sale_moment(day)))
     return backdate, sold_by_drug
+
+
+def _sale_moment(day: date) -> datetime:
+    """Chọn một thời điểm trong ngày cho một hoá đơn demo.
+
+    🔴 Với NGÀY HÔM NAY, không được sinh giờ **trong tương lai**. Bản trước lấy
+    thẳng ``randint(7, 20)`` cho mọi ngày, nên lúc 15h vẫn đẻ ra hoá đơn ghi
+    20h — và danh sách hoá đơn sắp mới-nhất-trước.
+
+    Hậu quả ngoài đời (Gấu Bông báo 29/07): bán một đơn thật lúc 15h10, **doanh
+    thu tăng đúng**, nhưng nhìn đầu màn Hoá đơn thì thấy y nguyên ⇒ tưởng phần
+    mềm không cập nhật. Đo ra: đơn thật nằm ở **vị trí 7/14**, bị **6 hoá đơn
+    giả có giờ trong tương lai** đè lên trên.
+
+    Không phải lỗi phần mềm — nhưng dữ liệu demo làm phần mềm **trông như hỏng**
+    trước mặt người dùng thì tệ ngang một lỗi thật, và khó chẩn đoán hơn nhiều.
+
+    Ngày trong quá khứ vẫn rải đều 7h–20h như cũ. Ngày hôm nay thì trần là giờ
+    hiện tại; nếu bây giờ còn sớm hơn 7h thì lùi hẳn về đầu ngày.
+    """
+    now = datetime.now(UTC)
+    if day != now.date():
+        return datetime.combine(day, time(_RNG.randint(7, 20), _RNG.randint(0, 59)), tzinfo=UTC)
+
+    latest = now - timedelta(minutes=1)  # chừa một phút, đừng đặt đúng "bây giờ"
+    earliest = datetime.combine(day, time(7, 0), tzinfo=UTC)
+    if latest <= earliest:
+        earliest = datetime.combine(day, time(0, 0), tzinfo=UTC)
+    span = int((latest - earliest).total_seconds())
+    return earliest + timedelta(seconds=_RNG.randint(0, max(span, 0)))
 
 
 #: Số mặt hàng cố ý để tồn thấp — xem :func:`_drain_fast_movers`.
