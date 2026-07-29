@@ -1,0 +1,92 @@
+.hint {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--beras-text-muted);
+}
+
+.tag {
+  margin-left: var(--space-2);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.label {
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--beras-text-muted);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+/* Danh sách mục đích đồng ý. Mỗi mục là MỘT khối riêng có đường viền — ba mục
+   đích là ba quyết định độc lập, và bố cục phải nói lên điều đó thay vì trông
+   như ba dòng của cùng một danh sách kiểm. */
+.consentList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.consentItem {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--radius-md);
+  background: var(--beras-surface);
+}
+
+.consentText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 260px;
+}
+
+.consentLabel {
+  font-weight: var(--weight-semibold);
+}
+
+/* Hai nút cùng hàng, cùng cỡ: rút lại phải dễ ngang lúc đồng ý (quyết định ④). */
+.consentActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.consentActions > button {
+  min-height: var(--touch-min);
+}
+
+@media (max-width: 640px) {
+  .consentItem {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .consentActions > button {
+    flex: 1 1 0;
+  }
+}

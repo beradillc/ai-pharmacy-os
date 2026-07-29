@@ -56,9 +56,16 @@ import structlog
 from sqlalchemy import text
 
 from pharmacy_os.core.audit import AuditLogger
+from pharmacy_os.core.bootstrap import build_blind_index, build_field_cipher
 from pharmacy_os.core.config import get_settings
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.core.db import SqlAlchemyUnitOfWork, UnitOfWork, build_engine, build_sessionmaker
+from pharmacy_os.core.db import (
+    SqlAlchemyUnitOfWork,
+    UnitOfWork,
+    build_engine,
+    build_sessionmaker,
+    configure_field_encryption,
+)
 from pharmacy_os.core.errors import AppError
 from pharmacy_os.core.events import InMemoryEventBus
 from pharmacy_os.modules.catalog.application import (
@@ -586,6 +593,26 @@ async def _clear_must_change_password(session_factory: object, email: str) -> No
 
 async def _run(args: argparse.Namespace, password: str) -> None:
     settings = get_settings()
+
+    # 🔴 Cài mã hoá at-rest TRƯỚC khi chạm CSDL — y như composition root
+    # (`build_container`) làm cho ứng dụng thật.
+    #
+    # Bỏ chỗ này là dựng ra một nhà thuốc demo mà **chính ứng dụng không tra
+    # cứu được**: repo ghi `phone_fingerprint` từ dấu vân tay đang cài, không
+    # cài thì cột đó rỗng; rồi API bật khoá lên và tra theo dấu vân tay ⇒
+    # **0 kết quả cho một số điện thoại có thật trong bảng**.
+    #
+    # Đo thật 29/07 trên `nt650v2`: màn Khách hàng hiện đủ 10 người, gõ đúng số
+    # của một người trong đó thì báo "không có khách nào mang số này". Bộ test
+    # không thấy vì test luôn dựng CSDL từ số không **trong cùng một tiến trình
+    # đã cài mã hoá** — đúng điểm mù kỷ luật #7 nói tới, chỉ khác là lần này
+    # chênh lệch nằm ở *seeder* chứ không ở *dữ liệu cũ*.
+    configure_field_encryption(
+        build_field_cipher(settings),
+        write_enabled=settings.encryption.enabled,
+        blind_index=build_blind_index(settings),
+    )
+
     engine = build_engine(settings.db.url, pool_size=settings.db.pool_size)
     session_factory = build_sessionmaker(engine)
     svc = _Services(session_factory, InMemoryEventBus())
