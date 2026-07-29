@@ -5322,6 +5322,82 @@ hẹp chưa ai nhìn) · Tổng quan (IA mới + biểu đồ) · Báo cáo (ho�
 
 ---
 
+## 7bx. ✅ LAN DEV + TỐI ƯU GIAO DIỆN (2026-07-29, phiên 2 — Chain đi vắng, GĐ chạy liên tục)
+
+Chain: *"GĐ tiếp tục điều hành, chọn việc không vướng hỏi ý kiến Chain, làm workflow
+liên tục. Hôm nay tao đi vắng. Ưu tiên tối ưu giao diện như các phần mềm tập đoàn lớn
+trên thế giới và sửa lỗi."*
+
+### A. Chế độ LAN development — điện thoại cùng Wi-Fi test được
+
+`make lan` · `scripts/lan-dev.sh` · 7 phép tự kiểm · **backend 0 dòng**.
+FE **http://192.168.1.10:3000** · API `:8000/api/v1` · CSDL **không** ra LAN.
+
+🔴 **Ba rủi ro bảo mật phát hiện khi audit, cái đầu đủ để KHÔNG mở LAN nếu bỏ qua:**
+
+| | Rủi ro | Xử lý |
+|---|---|---|
+| R-1 | `ALLOW_DEV_AUTH=true` + bind `0.0.0.0` ⇒ **mọi điện thoại trong nhà có TOÀN QUYỀN trên MỌI tenant, không mật khẩu** (`_DEV_PERMISSIONS = ALL_PERMISSIONS`) | script tắt cờ, tự kiểm bằng lời gọi không token phải nhận 401 |
+| R-2 | PG/Redis nghe `0.0.0.0`, mật khẩu `pharma/pharma`, Redis không mật khẩu — an toàn hiện tại chỉ dựa vào UFW, **một lớp ngoài dự án** | bind `127.0.0.1`; script dừng nếu `ss` còn thấy `0.0.0.0` |
+| R-3 | FE mặc định gọi `localhost` ⇒ điện thoại gọi về **chính nó** | truyền LAN IP; script **đọc thẳng mã JS đang phục vụ** để xác nhận, không tin thứ tự ưu tiên biến môi trường |
+
+⚠️ **NEEDS REVIEW:** UFW `DEFAULT_INPUT_POLICY=DROP` ⇒ điện thoại chưa vào được tới khi
+Chain chạy 2 lệnh `ufw allow from 192.168.1.0/24 to any port {3000,8000}`. Script **cố ý
+không tự chạy** — cần sudo, và sửa tường lửa là việc công cụ tự động không nên làm thay
+người, kể cả với uỷ quyền cao nhất.
+
+### B. 🔴 Ba lỗi tương phản WCAG — ĐO ĐƯỢC, không phải cảm nhận
+
+Chạy công thức WCAG trên đúng cặp màu sản phẩm đang dùng:
+
+| Cặp | Trước | Sau |
+|---|---|---|
+| chữ trắng / **nút chính** | **3,95** 🔴 | 4,55 |
+| chip **"cận hạn dùng"** | **2,82** 🔴 | 4,55 |
+| chip trạng thái tốt | **4,37** 🔴 | 4,60 |
+
+Nút chính là nút bấm nhiều nhất cả sản phẩm. Chip "cận hạn" là **cảnh báo an toàn
+thuốc**, đọc dưới đèn huỳnh quang ở quầy (đúng cảnh báo `docs/16` §2).
+
+**Không đổi màu nhận diện** — bảng Eco-Tech Chain chốt 28/07 giữ nguyên từng giá trị.
+Thêm ba bậc *"mực"* cùng tông cho vai trò **chữ**; màu gốc vẫn dùng cho viền/vạch/nét
+biểu đồ, nơi ngưỡng là 3:1 và nó đạt 3,95. Đo lại: **7/7 cặp PASS**.
+
+### C. Giao diện — bốn đợt, backend 0 dòng
+
+| Đợt | Nội dung |
+|---|---|
+| U1 | `shared/nav.ts` (MỘT mô hình điều hướng) · `AppShell` dùng chung mọi màn · Sidebar/BottomNav/MoreSheet/PageTransition/NavIcon · 6 nhóm token · focus-visible · reduced-motion |
+| U2 | Tổng quan dựng lại theo IA mới · KpiCard · QuickActionGrid · RevenueChart (SVG tự vẽ) · ComplianceCard · Loading/Empty/ErrorState |
+| U3 | Màn Báo cáo — 3 endpoint CSV có từ Sprint 7 mà **chưa từng có cửa bấm** |
+| W1–W3 | 4 màn danh sách theo hệ token (sửa cả bốn **không đụng `.tsx`**) · ConfirmDialog thay `window.prompt`/`confirm` · kiểu in · 3 lỗi tương phản · xoá 87 dòng CSS chết |
+
+Kỷ luật đo được: **0** hex cứng ngoài `tokens.css` (trước 4) · **0** khai báo
+`min-height` dưới 44px ở phần tử bấm được · **0** `window.prompt/confirm` trong mã chạy
+· số bản header **2 → 1** · **0** thư viện UI/chart/icon.
+
+### D. Vì sao `ConfirmDialog` không phải chuyện thẩm mỹ
+
+**Một số webview nuốt `window.prompt` và trả `null` lặng lẽ** ⇒ thu ngân bấm "Thêm" mà
+không có gì xảy ra, cũng không thông báo lỗi nào. Trên máy tính bảng đặt ở quầy đó là
+lỗi vừa khó chịu vừa khó chẩn đoán. Ở màn Đề xuất, "nuốt" nghĩa là **im lặng không bỏ
+qua** — người dùng bấm mãi không thấy gì.
+
+### E. Còn nợ
+
+`docs/ui/REMAINING_UI_ISSUES.md` — 13 mục, xếp theo mức. Hai mục 🔴:
+**① chưa mắt người nào nhìn ở 390px** · **② UFW chưa mở cổng**.
+
+### F. Điểm dừng
+
+Đang chạy: `make lan` — Postgres/Redis loopback · uvicorn `0.0.0.0:8000` (CSDL
+`pharmacy_os`) · next dev `0.0.0.0:3000`. 7/7 phép kiểm xanh.
+
+Chain về: mở **http://192.168.1.10:3000** trên điện thoại (sau 2 lệnh `ufw`), theo bảng
+kiểm `docs/dev/LAN_MOBILE_TEST.md`.
+
+---
+
 ## 8. Nhật ký thay đổi (Changelog)
 
 | Ngày | Thay đổi |
