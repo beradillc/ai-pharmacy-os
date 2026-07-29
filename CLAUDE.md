@@ -20,6 +20,7 @@
 | Xác thực khi chạy thử cục bộ | **2026-07-23** (cùng module `iam`) |
 | Kỷ luật bắt buộc **8–13** + bổ sung kỷ luật **7** (nền test Postgres) | **2026-07-26** — sinh từ kiểm toán độc lập 3 phiên (`docs/audit/2026-07-26_BAO_CAO_KIEM_TOAN.md`, quy tắc R-1→R-7). Chain duyệt cùng ngày, xếp ngay sau F-1 vì *"rẻ, đòn bẩy cao nhất trong cả lộ trình"* |
 | Kỷ luật bắt buộc **14** (cổng phải thấy đỏ một lần vì lý do đúng) | **2026-07-28** — GĐ đề nghị sau khi cơ chế này bắt được 2 ca thật trong 2 phiên (test e2e xanh vì lý do sai · test đua xanh với bản cài đặt sai). Chain duyệt cùng ngày |
+| Kỷ luật bắt buộc **15** (cổng chạy trình duyệt thật, qua đúng địa chỉ thật) | **2026-07-29** — GĐ đề nghị sau khi app trắng trên iPhone trong lúc 3 lớp phòng thủ cùng xanh. **CHƯA được Chain duyệt** — ghi trước theo kỷ luật #13 |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -167,6 +168,41 @@ multi-tenant).
       chứng minh một mệnh đề **khác** với mệnh đề người đọc tưởng nó chứng minh. Kiểm
       toán 26/07 đếm được 16 ca cùng họ. Bổ sung cho #8: #8 nói *mã thoát phải của
       chính lệnh đó*; #14 nói *mã thoát đó phải biết đổi màu*.
+
+15. **Không cổng nào của dự án này chạy JavaScript trong một trình duyệt thật, qua đúng
+    địa chỉ người dùng gõ.** (2026-07-29, GĐ đề nghị — **CHỜ CHAIN DUYỆT**, ghi ở đây
+    ngay vì kỷ luật #13 đòi bài học phương pháp vào FILE NÀY chứ không vào nhật ký)
+    Mọi khẳng định về **giao diện** — "màn X chạy", "responsive", "bấm được" — chỉ có
+    căn cứ khi đã mở một trình duyệt thật, qua **đúng URL người dùng dùng**, và **đo**
+    thứ mình khẳng định.
+    - *Vì sao gắt đến vậy:* ngày 29/07 app **TRẮNG TINH trên iPhone của Chain** trong
+      khi **ba lớp phòng thủ cùng xanh**:
+
+      | Lớp | Kết quả | Vì sao mù |
+      |---|---|---|
+      | `lint` · `tsc` · `test` · `build` | xanh hết | không lớp nào mở trình duyệt |
+      | 22 ảnh chụp màn hình | đẹp hết | bộ chụp chạy qua **`localhost`**, điện thoại đi **LAN IP** |
+      | `lan-dev.sh` 7 phép kiểm | xanh hết | kiểm bằng `curl` — mà **`curl` không chạy JavaScript** |
+
+      Ba lớp, ba lý do khác nhau, **cùng một điểm mù**: không lớp nào chạy đúng thứ
+      người dùng chạy. Nguyên nhân thật là Next chặn nguồn chéo ⇒ React **không bao
+      giờ hydrate** ⇒ màn server-render ra `null` rồi đứng im. Không một lỗi JS nào.
+    - **Ảnh chụp là cổng, không phải trang trí.** Cùng ngày, ảnh chụp bắt được lỗi cột
+      định danh trượt khỏi màn hình ở **5/5 bảng** — không cổng tự động nào thấy được.
+      Sau khi nhìn ảnh, **vẫn phải đo**: `scrollLeft`, `boundingBox().x`, `innerText`.
+    - **Và phải đo cả chính phép đo.** Ba lần trong một phiên, cái đỏ là *phép đo*
+      chứ không phải sản phẩm: `mypy` chạy sai thư mục nên mất file cấu hình; script
+      đếm dòng trước khi dòng kịp hiện (`dòng=0` mà `có-tên=4/0` — **tự mâu thuẫn**);
+      WebKit báo request bị huỷ bằng thông điệp *"due to access control checks"* đọc
+      **y hệt lỗi CORS** (đóng dấu thời gian mới lộ ra). Một kết quả tự mâu thuẫn
+      **luôn** là lỗi phép đo — dừng lại đọc kỹ, đừng vá sản phẩm.
+    - **Hai lần suýt sửa thứ không hỏng** vì tin mắt nhìn ảnh **thu nhỏ**: `mm/dd/y`
+      (thật ra là locale của trình duyệt headless, `html lang="vi"` vốn đã đúng) và
+      "Con 48 ngay" (thật ra `innerText` = `"Còn 48 ngày"`, cắt ảnh phóng 4× thì dấu
+      hiện rõ). Cùng họ với ca `viewport` tuần trước. **Phóng to trước khi kết luận.**
+    - Bổ sung cho #8 và #14: #8 nói *mã thoát phải của chính lệnh đó*; #14 nói *mã
+      thoát đó phải biết đổi màu*; #15 nói *phải có ít nhất một cổng đo đúng thứ
+      người dùng thật sự chạm vào*.
 
 ## Xác thực khi chạy thử cục bộ (từ 2026-07-23, module `iam`)
 **Nếu API trả 401 hàng loạt hoặc demo "tự nhiên chết" — kiểm tra chỗ này

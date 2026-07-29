@@ -5505,3 +5505,99 @@ kiểm `docs/dev/LAN_MOBILE_TEST.md`.
 > ✅ **Sprint 3 đạt Definition of Done.** Nhập lô → tồn kho phản ánh · FEFO chọn đúng lô cận date · 46 test xanh · domain coverage 97% · import-linter 6/0 · mypy strict · migration `0002` live/reversible · seed ATC idempotent.
 
 </details>
+
+---
+
+## 7by. ✅ SAFARI TRẮNG + MÀN NHẬN HÀNG + CỘT GHIM (2026-07-29, phiên 3, Opus)
+
+Chain: *"Duyệt tiếp tục, luôn mở cổng để Safari iPhone vào được, đang mở lên khoản trắng."*
+
+### A. Màn trắng trên iPhone — **không phải lỗi Safari**
+
+| Bước | Kết quả |
+|---|---|
+| Dựng đúng engine Safari (WebKit qua Playwright) để **tái hiện**, không đoán | 6/6 ca **trắng** — Firefox y hệt, mọi màn trong app khi chưa đăng nhập |
+| Đo `AppShell` bằng log | **không effect nào chạy** ⇒ React chưa từng hydrate |
+| Nguyên nhân | Next **chặn request chéo nguồn tới tài nguyên dev**, mặc định chỉ cho `localhost` |
+| Vá | `allowedDevOrigins` ← `NEXT_PUBLIC_LAN_ORIGIN` do `lan-dev.sh` truyền (IP LAN đổi mỗi lần router cấp lại) |
+| Sau vá | 6/6 chuyển đúng `/login`, 866 ký tự nội dung, cả hai engine · luồng đầy đủ trên WebKit qua LAN: đăng nhập → 6 màn → đổi theme, xanh |
+
+🔴 **Ba lớp phòng thủ cùng mù, mỗi lớp một lý do khác nhau** — đã đưa thành **kỷ luật
+#15** (CLAUDE.md, *chờ Chain duyệt*):
+
+| Lớp | Kết quả | Vì sao mù |
+|---|---|---|
+| lint · tsc · test · build | xanh hết | không lớp nào mở trình duyệt |
+| 22 ảnh chụp màn hình | đẹp hết | bộ chụp chạy qua **localhost**, điện thoại đi **LAN IP** |
+| `lan-dev.sh` 7 phép kiểm | xanh hết | kiểm bằng `curl` — **curl không chạy JavaScript** |
+
+⇒ Hai cổng mới **chạy trình duyệt thật qua LAN IP**: `npm run check:browsers`
+(trang có hiện không) · `npm run check:receive` (bấm vào có chạy không).
+
+### B. Màn Nhận hàng — đóng vòng *đơn mua → nhận hàng → tồn kho*
+
+3 endpoint `goods-receipts` đã chạy được từ lâu nhưng **không đường nào gọi tới**.
+
+**Đo thật trên máy chủ LAN đang chạy** (không phải trên test):
+
+| Phép đo | Trước | Sau |
+|---|---|---|
+| ca **sai thuốc** `POST /goods-receipts` | **201** 🔴 | **422** ✓ |
+| tồn thuốc A · B | 8 · 7 | — |
+| sau khi **TẠO** phiếu (DRAFT) | 8 · 7 | **không đổi** ✓ |
+| sau khi **CHỐT** | — | **68 · 207** (+60, +200) ✓ |
+| PO-0002 | ORDERED | **PARTIALLY_RECEIVED** (60/100 · 200/200 · 0/100) |
+
+### C. Ba lỗi thật, không lỗi nào bắt được bằng đọc mã
+
+| # | Lỗi | Bắt bằng gì |
+|---|---|---|
+| 1 | `PO_STATUSES` **thiếu `RECEIVED`** ⇒ đơn nhận **đủ** rơi khỏi mọi bộ lọc, hiện mã thô. Sống qua trọn Sprint 10 | dựng màn mới; cổng mới **đọc file Python thật** để đối chiếu enum |
+| 2 | `drug_id` phiếu nhập **không được kiểm gì cả** ⇒ hàng vào kho cho thuốc **không tồn tại**, im lặng, 0 dòng `stock_reconciliation_needed` | gõ ẩu một UUID khi chạy thử API thật |
+| 3 | Cột **định danh trượt khỏi màn hình** khi bảng cuộn ngang — **5/5 bảng** | **nhìn ảnh chụp** rồi đo `scrollLeft` = 395/784, cột đầu x = −362 |
+
+Lỗi 2 nguy hiểm nhất ở dạng *drug_id có thật nhưng sai dòng*: đặt thuốc A, hàng vào
+tồn kho thuốc B; đơn vẫn ghi "đã nhận" nên **không ai đi tìm**. Đúng thứ truy vết lô
+phải làm được khi có công văn thu hồi. Vá **không phá kiến trúc** — dòng đơn hàng đã
+mang sẵn `drug_id`, 18 contract giữ nguyên.
+
+### D. Quyết định nghiệp vụ tự chốt (full-auto #3)
+
+| | Quyết định | Lý do |
+|---|---|---|
+| ① | Số lô + hạn dùng **bắt buộc** | thiếu số lô ⇒ có công văn thu hồi lô thì không biết gọi ai |
+| ② | Hàng cận hạn/quá hạn: **cảnh báo, KHÔNG chặn** | nhà thuốc vẫn phải ghi nhận lô giao nhầm hạn để trả NCC; chặn ở giao diện là buộc họ ghi sai cho qua cửa. Backend không cấm — giao diện cấm hơn backend là giao diện tự quyết nghiệp vụ |
+| ③ | Nhận thiếu bình thường, nhận thừa chặn tại chỗ | NCC giao thiếu suốt; nhận thừa thì backend từ chối **cả phiếu** |
+
+### E. 🔴 Ba lần cái đỏ là PHÉP ĐO, không phải sản phẩm
+
+| Triệu chứng | Sự thật |
+|---|---|
+| mypy 1 lỗi `celery` | chạy từ **gốc repo** nên mất file cấu hình. Chạy từ `backend/`: **0 lỗi, 263 file** |
+| cổng mới báo `dòng=0` mà `có-tên=4/0` — **tự mâu thuẫn** | đếm dòng trước khi dòng kịp hiện. Kết quả tự mâu thuẫn **luôn** là lỗi phép đo |
+| WebKit *"due to access control checks"* trên `/drugs` | **không phải CORS** — request bị huỷ khi chuyển trang. Đóng dấu thời gian: đợi yên 6s thì lỗi **biến mất hoàn toàn**. Suýt đuổi theo **hai lần** trong một ngày |
+
+Và **hai lần suýt sửa thứ không hỏng** vì tin mắt nhìn ảnh **thu nhỏ**: `mm/dd/y`
+(thật ra là locale trình duyệt headless; `html lang="vi"` vốn đúng) · "Con 48 ngay"
+(thật ra `innerText` = "Còn 48 ngày"; **cắt ảnh phóng 4×** thì dấu hiện rõ). Phóng 4×
+lại tìm ra một lỗi **thật** nhỏ: viền focus cắt ngang dấu huyền ⇒ +2px `margin-top`.
+
+### F. Cổng (đo tường minh)
+
+| Cổng | Kết quả |
+|---|---|
+| ruff · import-linter (18) · mypy (263 file) | 0 · 0 · 0 |
+| pytest | **0 — 1136 passed** |
+| FE lint · tsc · vitest · build | 0 · 0 · 0 (**39**) · 0 |
+| `check:browsers` · `check:receive` | 0 · 0 (ổn định **3/3** lượt) |
+
+**Kỷ luật #14 — 4 lượt đột biến, cả 4 đỏ vì đúng lý do:**
+`RECEIVED` gỡ khỏi danh sách → 1 · nhãn tiếng Việt gỡ → 1 · phép kiểm `drug_id` vô
+hiệu hoá → 1 (`assert 201 == 422`) · `position: sticky` → `static` → 1 (5/5 bảng mất cột).
+
+### G. Còn nợ
+
+- Chain chạy `DROP DATABASE` cho `s10_probe`, `demo_v2`, `demo_v3`, `demo_v4` (chặn ở tầng quyền).
+- **Kỷ luật #15 chờ Chain duyệt.**
+- 3 câu hỏi Kế toán để mở khoá phạm vi sổ quỹ.
+- Màn Tuân thủ (12 endpoint) · AI (5) · Đơn thuốc (5) chưa có giao diện.
