@@ -5601,3 +5601,105 @@ hiệu hoá → 1 (`assert 201 == 422`) · `position: sticky` → `static` → 1
 - **Kỷ luật #15 chờ Chain duyệt.**
 - 3 câu hỏi Kế toán để mở khoá phạm vi sổ quỹ.
 - Màn Tuân thủ (12 endpoint) · AI (5) · Đơn thuốc (5) chưa có giao diện.
+
+---
+
+## 7bz. ⏸️ ĐÓNG PHIÊN 2026-07-29 (phiên 3) — Safari trắng · Nhận hàng · video hướng dẫn
+
+**8 commit trong phiên này** (`1cc9ae8` → `7237d81`). Chuỗi việc: Chain báo *"Safari
+iPhone mở lên khoảng trắng"* → vá → làm tiếp màn Nhận hàng → dựng video hướng dẫn →
+**việc dựng video lôi ra lỗi nặng nhất của cả phiên**.
+
+### A. Bốn lỗi thật, không lỗi nào bắt được bằng đọc mã
+
+| # | Lỗi | Mức | Bắt bằng gì |
+|---|---|---|---|
+| 1 | **App TRẮNG trên mọi điện thoại** — Next chặn nguồn chéo ⇒ React không hydrate | chặn đứng | Chain cầm máy bấm |
+| 2 | **POS không bán được gì trên điện thoại** — `crypto.randomUUID` không tồn tại ngoài ngữ cảnh bảo mật | chặn đứng | **quay video** tới bước Thanh toán |
+| 3 | Hàng vào kho cho thuốc **không tồn tại** — `drug_id` phiếu nhập không được kiểm | toàn vẹn dữ liệu | gõ ẩu một UUID khi chạy thử API thật |
+| 4 | Cột định danh **trượt khỏi màn hình** khi bảng cuộn — 5/5 bảng | dùng được/không | **nhìn ảnh chụp** rồi đo `scrollLeft` |
+| 5 | `PO_STATUSES` thiếu `RECEIVED` ⇒ đơn nhận **đủ** rơi khỏi mọi bộ lọc | im lặng | dựng màn mới |
+
+🔴 **Lỗi 2 là lỗi đắt nhất và đáng nhớ nhất.** Đo được:
+
+```
+http://localhost:3000     isSecureContext=true   crypto.randomUUID=function
+http://192.168.1.10:3000  isSecureContext=FALSE  crypto.randomUUID=UNDEFINED
+```
+
+Bấm Thanh toán ném `TypeError` **trước khi** gửi request — **0 lời gọi `POST /sales`
+rời khỏi máy** — màn hình chỉ hiện *"Thanh toán thất bại"*. POS **vô dụng trên thiết
+bị bán hàng chính**, suốt từ lúc viết. Không lớp nào thấy: `vitest` chạy trong **Node**
+(luôn có hàm đó) · 4 cổng kia không mở trình duyệt · **mọi ảnh chụp đều qua localhost**.
+
+### B. Cùng MỘT điểm mù sinh ra lỗi 1 và lỗi 2
+
+Không lớp phòng thủ nào **chạy đúng thứ người dùng chạy**. Đã đưa thành **kỷ luật #15**
+(CLAUDE.md — *chờ Chain duyệt*) và dựng **2 cổng thực thi**:
+`npm run check:browsers` (trang có hiện không) · `npm run check:receive` (bấm vào có
+chạy không). Cả hai mở Firefox + WebKit thật, qua LAN IP, khổ iPhone.
+
+### C. Màn Nhận hàng — đóng vòng *đơn mua → nhận hàng → tồn kho*
+
+Đo thật trên máy chủ LAN: tồn 8·7 → **tạo phiếu DRAFT không đổi tồn** (8·7) → **chốt**
+thành 68·207 → đơn sang `PARTIALLY_RECEIVED` (60/100 · 200/200 · 0/100). Ba tính chất,
+ba phép đo riêng; *"tạo phiếu không đụng tồn kho"* là tính chất dễ tin nhất và cũng là
+tính chất chưa ai từng kiểm.
+
+### D. Video hướng dẫn — `capturedemo/`
+
+3 phút 07 · 804×1748 (tỉ lệ iPhone) · **WebKit** · giọng **Bera** `vi-VN-NamMinhNeural`
+· **giao diện Warm** · nhà thuốc **lâu năm** (CSDL `nt650v2`, 572 hoá đơn / 60 ngày) ·
+intro 3,4s có hoạt hình · đánh dấu **bản thử nghiệm** ở 3 chỗ.
+
+Ba thứ chỉ đo mới biết, đã ghi trong `capturedemo/README.md`:
+
+| | Tưởng là | Thật ra |
+|---|---|---|
+| Ghép tiếng theo tổng thời lượng | đủ | **lệch 7,1s** (hình 187,2 · tiếng 180,0) ⇒ phải xuất `timeline.json` và đặt từng câu bằng `adelay` |
+| `locale: "vi-VN"` là xong | đủ | Firefox vẫn ra `09/20/2026`; `navigator.language` và `toLocaleDateString()` **đều đúng** nên nhìn qua tưởng ổn. Chỉ ô `<input type="date">` mới lộ ⇒ quay bằng WebKit |
+| Dữ liệu nền là trang trí | — | lời đọc tả nhà thuốc đang chạy mà màn hình toàn số 0 ⇒ **tiếng và hình mâu thuẫn** |
+
+### E. 🔴 BỐN lần cái đỏ là PHÉP ĐO, không phải sản phẩm
+
+| Triệu chứng | Sự thật |
+|---|---|
+| mypy 1 lỗi `celery` | chạy từ **gốc repo** nên mất file cấu hình. Từ `backend/`: 0 lỗi / 263 file |
+| cổng mới báo `dòng=0` mà `có-tên=4/0` | **tự mâu thuẫn** ⇒ đếm trước khi dòng kịp hiện |
+| WebKit *"due to access control checks"* | **không phải CORS** — request bị huỷ khi chuyển trang. Đóng dấu thời gian: đợi yên 6s là lỗi biến mất |
+| kiểm bán hàng báo đỏ sau khi đã vá | `isVisible()` **trả về ngay, không chờ**. Sản phẩm đã đúng từ trước lượt đo đó |
+
+Và **hai lần suýt sửa thứ không hỏng** vì tin mắt nhìn ảnh **thu nhỏ**: `mm/dd/y` (locale
+trình duyệt headless; `html lang="vi"` vốn đúng) · "Con 48 ngay" (`innerText` = "Còn 48
+ngày"; **phóng 4×** thì dấu hiện rõ). Phóng 4× lại tìm ra một lỗi **thật** nhỏ: viền focus
+cắt ngang dấu huyền ⇒ +2px `margin-top`.
+
+### F. Cổng đóng phiên (đo tường minh, 2026-07-29)
+
+| Cổng | Kết quả |
+|---|---|
+| ruff · mypy (263 file) · import-linter (18) | 0 · 0 · 0 |
+| pytest | **0 — 1136 passed** (201s) |
+| FE lint · tsc · vitest · build | 0 · 0 · 0 (**42**) · 0 |
+| `check:browsers` · `check:receive` | 0 · 0 |
+
+**Kỷ luật #14 — 7 lượt đột biến trong phiên, cả 7 đỏ vì đúng lý do:** `RECEIVED` gỡ khỏi
+danh sách · nhãn tiếng Việt gỡ · phép kiểm `drug_id` vô hiệu (`assert 201 == 422`) ·
+`position: sticky` → `static` (5/5 bảng mất cột) · ô Số lô gỡ khỏi ngăn kéo · phương án
+dự phòng UUID gỡ (`TypeError: crypto.randomUUID is not a function`) · `allowedDevOrigins`
+gỡ.
+
+### G. Hạ tầng cuối phiên (xác nhận bằng lệnh thật)
+
+postgres/redis `Up (healthy)`, **chỉ nghe `127.0.0.1`** · FE 200 · API 200 trên
+`192.168.1.10` · UFW mở đúng 2 cổng cho `192.168.1.0/24` · cây git **sạch**.
+
+### H. Còn nợ
+
+| | Việc | Ai |
+|---|---|---|
+| 1 | **Duyệt kỷ luật #15** — đã ghi sẵn CLAUDE.md, đánh dấu chưa duyệt | Chain |
+| 2 | Xoá 6 CSDL thử: `s10_probe`, `demo_v2`, `demo_v3`, `demo_v4`, `nhathuoc650`, `nt650` (giữ **`nt650v2`**) | Chain (lệnh xoá bị chặn ở tầng quyền, cố ý) |
+| 3 | **Chạy thử đủ một vòng nghiệp vụ trên điện thoại thật** trước khi mở tính năng mới — lỗi POS nằm im qua cả Sprint 10 vì chưa ai bấm hết một vòng | GĐ đề nghị |
+| 4 | 3 câu hỏi Kế toán để mở khoá phạm vi sổ quỹ | Chain |
+| 5 | Màn Tuân thủ (12 endpoint) · AI (5) · Đơn thuốc (5) chưa có giao diện | Trợ lý Code |
