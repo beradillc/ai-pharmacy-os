@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/shared/api/client";
 import { ApiError } from "@/shared/api/errors";
 import type { CreateSaleRequest, Sale } from "@/shared/api/types";
+import { randomUuid } from "@/shared/id/uuid";
 import { enqueueSale } from "@/shared/offline/sync-queue";
 
 import type { CartLine } from "./cart-store";
@@ -25,7 +26,10 @@ export interface CheckoutResult {
  * idempotency key `sales.application.service` dedupes on, so retrying this
  * exact mutation object (React Query's default retry, or a resubmit after a
  * timeout) can never double-charge. The offline queue reuses the same
- * generated id when it replays through `/sync/sales`.
+ * generated id when it replays through `/sync/sales`. Sinh bằng `randomUuid()`
+ * chứ KHÔNG phải `crypto.randomUUID()`: cái sau **không tồn tại** khi mở qua
+ * địa chỉ LAN (ngữ cảnh không bảo mật) ⇒ điện thoại bấm Thanh toán là ném lỗi
+ * trước khi kịp gửi request. Xem `shared/id/uuid.ts` để có bảng đo.
  *
  * A response the server actually sent back (`ApiError` — 4xx/5xx) is a real
  * rejection and is re-thrown as-is: a rejected sale must not silently become
@@ -42,7 +46,7 @@ export function useCheckout() {
       amountPaid: string;
     }): Promise<CheckoutResult> => {
       const body: CreateSaleRequest = {
-        client_uuid: crypto.randomUUID(),
+        client_uuid: randomUuid(),
         lines: lines.map((l) => ({
           drug_id: l.drugId,
           quantity: l.quantity,

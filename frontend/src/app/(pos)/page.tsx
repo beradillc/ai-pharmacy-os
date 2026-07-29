@@ -61,7 +61,16 @@ export default function PosPage() {
       if (result.queued) refreshCount();
       clearCart();
     } catch (err) {
-      setCheckoutError(err instanceof ApiError ? err.problem.detail : "Thanh toán thất bại");
+      // 🔴 KHÔNG nuốt lý do. Backend từ chối bán có những lý do thu ngân PHẢI
+      // đọc được — "thuốc kê đơn cần đơn thuốc hợp lệ", "không đủ tồn" — chứ
+      // một dòng "Thanh toán thất bại" trơ trọi thì họ chỉ biết bấm lại. Lỗi
+      // không phải từ máy chủ (mất mạng đã được xếp vào hàng chờ ở tầng dưới)
+      // thì kèm nguyên văn để còn chụp màn hình gửi kỹ thuật.
+      setCheckoutError(
+        err instanceof ApiError
+          ? err.problem.detail
+          : `Thanh toán thất bại — ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
