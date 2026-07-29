@@ -86,9 +86,22 @@ def build_router(get_context: ContextDep) -> APIRouter:
     async def list_customers(
         service: CrmService = Depends(_service),
         ctx: RequestContext = Depends(get_context),
+        phone: str | None = Query(
+            None,
+            description=(
+                "Tra theo ĐÚNG số điện thoại. Không khớp một phần, và không có tìm "
+                "theo tên — cột được mã hoá at-rest, xem CrmService.find_customer_by_phone."
+            ),
+        ),
         limit: int = Query(50, ge=1, le=200),
         offset: int = Query(0, ge=0),
     ) -> list[CustomerResponse]:
+        # Trả DANH SÁCH 0 hoặc 1 phần tử thay vì 404 khi không thấy: màn Bán hàng
+        # gõ số điện thoại từng chữ, nên "chưa thấy" là trạng thái BÌNH THƯỜNG
+        # của mọi lần gõ dở. Bắt nó là lỗi thì mỗi phím bấm sinh một dòng đỏ.
+        if phone is not None:
+            found = await service.find_customer_by_phone(phone, ctx)
+            return [] if found is None else [CustomerResponse.of(found)]
         items = await service.list_customers(ctx, limit=limit, offset=offset)
         return [CustomerResponse.of(o) for o in items]
 

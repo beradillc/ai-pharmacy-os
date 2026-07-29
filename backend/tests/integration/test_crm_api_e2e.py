@@ -128,3 +128,77 @@ def test_unknown_ingredient_id_rejected_with_404_not_500(client: TestClient) -> 
     )
     assert resp.status_code == 404, resp.text
     assert resp.headers["content-type"].startswith("application/problem+json")
+
+
+# --- Tra khách theo SĐT (A1, docs/features/khach-hang-tich-diem) --------------
+
+
+def test_tra_khach_theo_dung_so_dien_thoai(client: TestClient) -> None:
+    created = client.post(
+        "/api/v1/customers", json={"full_name": "Trần Thị Bích", "phone": "0912345678"}
+    )
+    assert created.status_code == 201, created.text
+
+    res = client.get("/api/v1/customers", params={"phone": "0912345678"})
+    assert res.status_code == 200, res.text
+    assert [c["id"] for c in res.json()] == [created.json()["id"]]
+
+
+def test_so_dien_thoai_khong_co_tra_DANH_SACH_RONG_chu_khong_phai_404(client: TestClient) -> None:
+    """🔴 Màn Bán hàng gõ số điện thoại TỪNG CHỮ.
+
+    "Chưa thấy ai" là trạng thái **bình thường** của mọi lần gõ dở, không phải
+    lỗi. Trả 404 thì mỗi phím bấm sinh một dòng đỏ trong log và một thông báo lỗi
+    nhấp nháy trước mặt thu ngân — rồi họ học cách bỏ qua thông báo lỗi.
+    """
+    res = client.get("/api/v1/customers", params={"phone": "0900000000"})
+    assert res.status_code == 200, res.text
+    assert res.json() == []
+
+
+def test_tra_theo_SDT_khong_lam_lo_du_lieu_suc_khoe(client: TestClient) -> None:
+    """Nhận diện ở quầy ≠ mở hồ sơ bệnh. Cùng lý do như `list_customers`."""
+    created = client.post(
+        "/api/v1/customers", json={"full_name": "Lê Văn Cường", "phone": "0987654321"}
+    ).json()
+    assert created["id"]
+
+    row = client.get("/api/v1/customers", params={"phone": "0987654321"}).json()[0]
+    assert row.get("allergies") in (None, [])
+    assert row.get("conditions") in (None, [])
+
+
+@pytest.mark.parametrize(
+    "typed",
+    ["0901112223", "  0901112223  ", "0901 112 223", "0901.112.223", "0901-112-223"],
+)
+def test_go_so_dien_thoai_kieu_nao_cung_ra(client: TestClient, typed: str) -> None:
+    """Thu ngân gõ số điện thoại theo đủ kiểu — khách đọc sao thì họ gõ vậy.
+
+    🔴 Công lao này KHÔNG phải của `.strip()` trong service. Nó là của
+    `normalize_for_index` (NFKC + casefold + bỏ mọi ký tự không phải chữ-số) mà
+    dấu vân tay dùng, nên `0901 112 223` băm ra cùng chuỗi với `0901112223`.
+    Bản đầu tôi viết test này để canh `.strip()`, đột biến bỏ `.strip()` vẫn
+    XANH — test mô tả sai thứ nó chứng minh. Nay nó canh đúng cái có thật, và
+    canh rộng hơn: **cả năm cách gõ**, không riêng khoảng trắng thừa.
+
+    (`.strip()` vẫn giữ trong service: nó là cái duy nhất còn tác dụng trên
+    deployment CHƯA bật khoá băm, nơi repo so sánh cột thô.)
+    """
+    client.post("/api/v1/customers", json={"full_name": "Phạm Thị D", "phone": "0901112223"})
+    res = client.get("/api/v1/customers", params={"phone": typed})
+    assert res.status_code == 200, res.text
+    assert len(res.json()) == 1
+
+
+def test_phone_rong_khong_tra_ve_toan_bo_danh_sach(client: TestClient) -> None:
+    """🔴 Chuỗi rỗng KHÔNG được rơi về nhánh "liệt kê tất cả".
+
+    Nếu rơi, thì một ô tìm kiếm bị xoá trắng sẽ **đổ toàn bộ danh sách khách
+    hàng** ra màn hình quầy — đúng thứ phép tra theo số điện thoại sinh ra để
+    tránh.
+    """
+    client.post("/api/v1/customers", json={"full_name": "Võ Thị E", "phone": "0933444555"})
+    res = client.get("/api/v1/customers", params={"phone": ""})
+    assert res.status_code == 200
+    assert res.json() == []

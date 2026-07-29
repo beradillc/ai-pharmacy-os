@@ -213,6 +213,37 @@ class CrmService:
             customers = await repo.list(limit=limit, offset=offset)
         return [CustomerOutput.of(c, include_sensitive=False) for c in customers]
 
+    async def find_customer_by_phone(
+        self, phone: str, ctx: RequestContext
+    ) -> CustomerOutput | None:
+        """Tra một khách theo **đúng** số điện thoại. Không thấy thì trả ``None``.
+
+        🔴 Chỉ khớp CHÍNH XÁC, và đó là hệ quả của mã hoá at-rest chứ không phải
+        lựa chọn tiện tay: cột ``phone`` là ``EncryptedText`` với bản mã **ngẫu
+        nhiên hoá** — cùng một số điện thoại ghi hai lần ra hai chuỗi khác nhau.
+        Nên `LIKE '%098%'` là vô nghĩa ở tầng SQL. Repo tra bằng
+        ``phone_fingerprint`` (băm tất định, có chỉ mục), và băm thì **không có
+        khái niệm khớp một phần**.
+
+        Cũng vì vậy **không có** tìm theo TÊN. Muốn có thì phải giải mã toàn bảng
+        rồi lọc trong bộ nhớ — tức là đọc tên của **mọi** khách hàng để trả về
+        một người. Đó là đánh đổi ngược hẳn với lý do mã hoá cột này ngay từ đầu.
+        Ai cần nó thật thì phải thêm một cột băm theo tên chuẩn hoá, và **đó là
+        một quyết định riêng tư riêng**, không phải một bản vá tìm kiếm.
+
+        Trả về bản **không** kèm dữ liệu sức khoẻ, cùng lý do như
+        :meth:`list_customers`: đây là thao tác nhận diện ở quầy, không phải mở
+        hồ sơ bệnh.
+        """
+        require_permission(ctx, "crm.read")
+        cleaned = phone.strip()
+        if not cleaned:
+            return None
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            customer = await repo.find_by_phone(cleaned)
+        return None if customer is None else CustomerOutput.of(customer, include_sensitive=False)
+
     async def export_customer_data(
         self, customer_id: UUID, ctx: RequestContext
     ) -> CustomerDataExport:
