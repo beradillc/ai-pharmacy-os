@@ -79,6 +79,8 @@ export interface CreateSaleRequest {
   lines: SaleLineRequest[];
   payments: PaymentRequest[];
   currency?: string;
+  /** Khách gắn vào đơn. `null` = khách vãng lai — bán hàng KHÔNG cần khách hàng. */
+  customer_id?: string | null;
 }
 
 export interface SaleLine {

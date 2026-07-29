@@ -43,9 +43,12 @@ export function useCheckout() {
     mutationFn: async ({
       lines,
       amountPaid,
+      customerId = null,
     }: {
       lines: CartLine[];
       amountPaid: string;
+      /** `null` = khách vãng lai. Bán hàng KHÔNG cần khách hàng — xem `CustomerCapture`. */
+      customerId?: string | null;
     }): Promise<CheckoutResult> => {
       const body: CreateSaleRequest = {
         client_uuid: randomUuid(),
@@ -56,6 +59,7 @@ export function useCheckout() {
           requires_prescription: l.requiresPrescription,
         })),
         payments: [{ method: "CASH", amount: amountPaid }],
+        customer_id: customerId,
       };
       try {
         const sale = await apiFetch<Sale>("/sales", { method: "POST", body });

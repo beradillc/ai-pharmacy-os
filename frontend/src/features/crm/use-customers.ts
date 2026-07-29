@@ -123,6 +123,56 @@ export function useCreateCustomer() {
 }
 
 /**
+ * Tạo hồ sơ khách **ngay tại quầy** từ số điện thoại khách vừa đọc, và ghi luôn
+ * sự đồng ý **cơ bản** với nguồn gốc `COUNTER`.
+ *
+ * 🔴 Hai lời gọi, một ý nghĩa — nên gộp vào một mutation: hồ sơ tạo xong mà chưa
+ * ghi đồng ý là một hồ sơ **không có căn cứ pháp lý để tồn tại**. Tách ra thành
+ * hai nút thì sẽ có ngày nút thứ hai không được bấm.
+ *
+ * `basis: "COUNTER"` là quyết định Đ-4 của Chain (29/07): khách tự đọc số khi
+ * được hỏi là **hành vi khẳng định**, không phải im lặng, nên thoả Điều 9.
+ * **Chỉ cho `BASIC`** — backend NÉM LỖI nếu ai đó gửi `COUNTER` kèm `LOYALTY`
+ * hoặc `HEALTH`, nên chỗ này không thể "tiện tay" nới ra.
+ *
+ * Nếu bước ghi đồng ý hỏng: **xoá hồ sơ vừa tạo là sai** (dữ liệu khách không
+ * phải thứ tự ý xoá), nên ném lỗi kèm id để màn hình nói rõ *"đã tạo hồ sơ,
+ * chưa ghi được đồng ý"* — cùng hình dạng với `ReceiptNotConfirmedError`.
+ */
+export class ConsentNotRecordedError extends Error {
+  constructor(
+    readonly customerId: string,
+    readonly cause: unknown,
+  ) {
+    super("Đã tạo hồ sơ khách nhưng CHƯA ghi được đồng ý.");
+    this.name = "ConsentNotRecordedError";
+  }
+}
+
+export function useQuickCreateAtCounter() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { full_name: string; phone: string }): Promise<Customer> => {
+      const made = await apiFetch<Customer>("/customers", { method: "POST", body: input });
+      try {
+        return await apiFetch<Customer>(`/customers/${made.id}/consents`, {
+          method: "POST",
+          body: {
+            purpose: "BASIC",
+            granted: true,
+            terms_version: TERMS_VERSION,
+            basis: "COUNTER",
+          },
+        });
+      } catch (err) {
+        throw new ConsentNotRecordedError(made.id, err);
+      }
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["crm"] }),
+  });
+}
+
+/**
  * `POST /customers/{id}/consents` — ghi MỘT quyết định đồng ý.
  *
  * Mỗi lần bấm là **một dòng mới**, không sửa dòng cũ: đây là lịch sử chỉ-ghi-thêm

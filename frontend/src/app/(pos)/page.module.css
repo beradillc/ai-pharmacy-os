@@ -193,3 +193,108 @@
     bottom: calc(var(--bottom-nav-clear) + env(safe-area-inset-bottom, 0));
   }
 }
+
+/* --- Ô hỏi số điện thoại khách, ngay trên giỏ hàng (Đ-4, 2026-07-29) --------
+   Nằm TRONG luồng bán hàng chứ không giấu sau một nút: Chain chốt rằng khách
+   đưa số lúc lên đơn chính là xác nhận cung cấp thông tin, nên chỗ hỏi phải ở
+   đúng nơi thu ngân đang nhìn. */
+.customerBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  border: 1px dashed var(--beras-border);
+  border-radius: var(--radius-md);
+  background: var(--beras-bg-alt);
+}
+
+/* Đã gắn khách thì đổi sang khối đặc, có viền liền: thu ngân phải liếc một cái
+   là biết đơn này CÓ khách hay không, không phải đọc chữ. */
+.customerBox:has(> div > strong) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-style: solid;
+  border-color: var(--beras-accent);
+  background: var(--beras-surface);
+}
+
+.customerField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.customerLabel {
+  font-size: var(--text-xs);
+  color: var(--beras-text-muted);
+}
+
+.customerInput {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--radius-sm);
+  background: var(--beras-surface);
+  color: var(--beras-text);
+  font-size: var(--text-base);
+  width: 100%;
+}
+
+.customerHint {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--beras-text-muted);
+  line-height: 1.5;
+}
+
+.customerPhone {
+  margin-left: var(--space-2);
+  font-family: var(--font-mono);
+  color: var(--beras-text-muted);
+}
+
+.customerNew {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.customerNewRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.customerNewRow > .customerInput {
+  flex: 1 1 auto;
+}
+
+.customerCreate,
+.customerClear {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--beras-accent);
+  background: var(--beras-accent);
+  color: #fff;
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.customerClear {
+  background: transparent;
+  color: var(--beras-accent);
+}
+
+.customerCreate:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.customerError {
+  font-size: var(--text-sm);
+  color: var(--beras-danger);
+  margin: 0;
+}

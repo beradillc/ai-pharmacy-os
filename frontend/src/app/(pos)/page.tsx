@@ -8,9 +8,10 @@ import { cartTotal, useCartStore } from "@/features/sales/cart-store";
 import { useCheckout } from "@/features/sales/use-checkout";
 import { useDrugs } from "@/features/sales/use-drugs";
 import { ApiError } from "@/shared/api/errors";
-import type { Drug } from "@/shared/api/types";
+import type { Customer, Drug } from "@/shared/api/types";
 import { useOfflineSync } from "@/shared/offline/use-offline-sync";
 
+import { CustomerCapture } from "./CustomerCapture";
 import styles from "./page.module.css";
 
 export default function PosPage() {
@@ -26,6 +27,10 @@ export default function PosPage() {
   const checkout = useCheckout();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<{ id: string; queued: boolean } | null>(null);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  // Tăng sau mỗi lần bán để `CustomerCapture` dựng lại từ đầu — xoá cả số điện
+  // thoại của khách trước, không chỉ bỏ gắn.
+  const [saleSeq, setSaleSeq] = useState(0);
   /** Thuốc chưa có giá, đang chờ thu ngân nhập đơn giá. */
   const [priceAsk, setPriceAsk] = useState<Drug | null>(null);
   const { refreshCount } = useOfflineSync();
@@ -56,10 +61,18 @@ export default function PosPage() {
   async function handleCheckout() {
     setCheckoutError(null);
     try {
-      const result = await checkout.mutateAsync({ lines, amountPaid: String(total) });
+      const result = await checkout.mutateAsync({
+        lines,
+        amountPaid: String(total),
+        customerId: customer?.id ?? null,
+      });
       setLastResult({ id: result.sale?.id ?? result.clientUuid, queued: result.queued });
       if (result.queued) refreshCount();
       clearCart();
+      // Bỏ gắn khách sau khi bán xong: người tiếp theo ở quầy là một người KHÁC.
+      // Giữ lại là cách gắn nhầm hoá đơn cho khách trước — và không ai nhận ra.
+      setCustomer(null);
+      setSaleSeq((n) => n + 1);
     } catch (err) {
       // 🔴 KHÔNG nuốt lý do. Backend từ chối bán có những lý do thu ngân PHẢI
       // đọc được — "thuốc kê đơn cần đơn thuốc hợp lệ", "không đủ tồn" — chứ
@@ -120,6 +133,11 @@ export default function PosPage() {
 
         <section className={styles.cart}>
           <h2 className={styles.cartTitle}>Giỏ hàng</h2>
+
+          {/* Hỏi số điện thoại NGAY TRÊN giỏ, không giấu sau một nút: Chain chốt
+              29/07 rằng khách đưa số lúc lên đơn chính là xác nhận cung cấp
+              thông tin, nên chỗ hỏi phải nằm đúng trong luồng bán hàng. */}
+          <CustomerCapture key={saleSeq} value={customer} onChange={setCustomer} />
           {lines.length === 0 ? (
             <p className={styles.hint}>Chưa có thuốc trong giỏ.</p>
           ) : (
