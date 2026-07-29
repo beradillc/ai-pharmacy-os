@@ -89,6 +89,15 @@ multi-tenant).
    - *Vì sao:* lỗi này đã làm hỏng **6 lần** báo cáo "cổng xanh", và **tái phát
      nguyên vẹn sau đúng 48 giờ** (§7ai 07-24 → §7az 07-26) vì lần đầu chỉ được ghi
      vào PROJECT_STATE chứ không vào file này.
+   - **(bổ sung 2026-07-29) ĐỌC mã thoát chưa đủ — nó phải CHẶN được việc tiếp theo.**
+     Ngày 29/07 tôi chạy 4 cổng, in ra `PYTEST=1`, **đọc thấy**, rồi vẫn commit —
+     vì lệnh nối bằng `&&` sau một `echo`, mà `echo` luôn thành công. Cổng nói đúng;
+     không có gì dừng tay tôi lại. Hook không cứu được vì hook **cố ý** không chạy
+     pytest (536s).
+     - Đúng: `pytest > out.txt 2>&1 || { echo "PYTEST ĐỎ — DỪNG"; exit 1; }` rồi mới
+       tới lệnh sau. Hoặc chạy cổng ở **một lượt riêng**, đọc kết quả, rồi mới gõ
+       lệnh commit — không nối chúng vào cùng một chuỗi.
+     - **CẤM đặt `git commit` sau `&&` nối từ một lệnh không phải chính cổng đó.**
 
 9. **"4 cổng xanh trước mỗi commit" nghĩa là trước MỖI commit.** (2026-07-26, audit
    R-2 — đóng C-01/C-02) Kỷ luật #1 đòi cổng xanh **trên cây của từng commit**,
