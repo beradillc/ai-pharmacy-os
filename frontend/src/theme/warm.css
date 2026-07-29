@@ -1,0 +1,90 @@
+/*
+ * ─── BERAS WARM ──────────────────────────────────────────────────────────────
+ *
+ * Theme thứ hai. Chỉ **ghi đè giá trị biến**; không thêm một luật bố cục nào,
+ * không chạm tới component nào.
+ *
+ * Cách hoạt động: mọi thứ trong `src/` đã đọc màu qua `var(--beras-*)` từ trước
+ * (kiểm lúc audit: 0 mã màu viết thẳng ngoài `tokens.css`). Nên đặt
+ * `<html data-theme="warm">` là đủ để đổi toàn bộ giao diện — không render lại
+ * React, không nạp lại trang, không có "nhấp nháy đổi theme".
+ *
+ * 🔴 **BERAS Classic KHÔNG có khối tương ứng.** Classic = không ghi đè gì cả,
+ * tức đúng cascade cũ, đúng từng pixel. Cách duy nhất chắc chắn không làm hỏng
+ * giao diện đang chạy là **không viết dòng CSS nào cho nó**.
+ *
+ * ─── Tương phản: ĐO TRƯỚC KHI VIẾT ───────────────────────────────────────────
+ * Chạy công thức WCAG trên từng cặp trước khi chốt giá trị. Ba cặp trượt ở bản
+ * nháp đầu, đã tìm bậc tối hơn cùng tông cho tới khi đạt:
+ *     nút amber chữ trắng   #B8730B → #A6680A  (3,82 → 4,56)
+ *     chữ chip coral        #C6413A → #BF3E37  (4,28 → 4,56)
+ *     chữ chip amber        #B8730B → #9C6209  (3,42 → 4,51)
+ * Kết quả cuối: 14/14 cặp PASS. Chi tiết ở `docs/ui/WARM_THEME.md`.
+ */
+
+:root[data-theme="warm"] {
+  /* --- nền & mặt --- */
+  --beras-bg: #fdf8f5; /* trắng ngà */
+  --beras-bg-alt: #faf0ea; /* đào rất nhạt */
+  --beras-surface: #ffffff;
+
+  /* --- màu chính: coral --- */
+  --beras-accent: #b1372f; /* coral đậm — thanh trên, chữ nhấn */
+  --beras-accent-hover: #9a2f28;
+  --beras-accent-contrast: #ffffff;
+  --beras-leaf: #c6413a; /* coral — vai trò "màu hành động" của Classic */
+  --beras-leaf-ink: #b1372f; /* nền nút chính (chữ trắng 6,07) */
+  --beras-leaf-soft: #fceae7;
+
+  /* --- màu phụ: hổ phách --- */
+  --beras-brown: #a6680a;
+  --beras-icon-border: #d9a441;
+
+  /* --- chữ --- */
+  --beras-text: #2a211e;
+  --beras-text-muted: #6e5c56;
+
+  /* --- trạng thái --- */
+  --beras-warning: #b8730b;
+  --beras-warning-ink: #9c6209;
+  --beras-warning-bg: #fdf1dc;
+  --beras-success: #2f7a4f;
+  --beras-success-ink: #2f7a4f;
+  --beras-success-bg: #e6f2ea;
+  --beras-danger: #c0392b;
+  --beras-danger-bg: #fbe9e7;
+
+  --beras-border: #eaddd6;
+  --beras-focus: #1d6ca8; /* xanh info — vẫn khác mọi màu trạng thái */
+  --beras-overlay: rgb(42 33 30 / 45%);
+  --beras-on-accent: #ffffff;
+
+  /* --- thẻ mềm hơn: bo góc 18px theo đặc tả Warm --- */
+  --radius-lg: 18px;
+
+  /* --- đổ bóng nhẹ hơn Classic, ám ấm thay vì ám xanh --- */
+  --shadow-1: 0 1px 2px rgb(122 74 62 / 6%);
+  --shadow-2: 0 6px 16px rgb(122 74 62 / 10%);
+  --shadow-3: 0 -4px 20px rgb(122 74 62 / 12%);
+
+  /*
+   * --- nền thanh trên: dải màu coral → hổ phách ---
+   * Đây là biến DUY NHẤT phải thêm mới vào `tokens.css` để Warm chạy được, vì
+   * `background` của thanh trên trước đó đọc thẳng `--beras-accent` — mà biến đó
+   * còn dùng làm *màu chữ* ở chỗ khác, nên không thể chứa dải màu.
+   * Classic đặt `--beras-header-bg: var(--beras-accent)` ⇒ y hệt trước.
+   */
+  --beras-header-bg: linear-gradient(100deg, #b1372f 0%, #b8730b 100%);
+
+  /*
+   * --- màu chuỗi dữ liệu ---
+   * ĐÃ CHẠY trình kiểm bảng màu như với Classic: 5 bậc PASS 6/6, coral ở slot 1.
+   */
+  --chart-1: #c6413a;
+  --chart-2: #1d6ca8;
+  --chart-3: #b8730b;
+  --chart-4: #2f7a4f;
+  --chart-5: #7a5ea8;
+  --chart-grid: #eaddd6;
+  --chart-area: rgb(198 65 58 / 12%);
+}

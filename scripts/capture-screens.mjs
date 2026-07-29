@@ -15,6 +15,8 @@ const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const EMAIL = process.env.DEMO_EMAIL ?? "demo@bera.vn";
 const PASSWORD = process.env.DEMO_PASSWORD ?? "NhaThuocDemo2026";
 const OUT = process.env.OUT_DIR ?? "./democapture";
+/** Theme cần chụp. Đặt qua localStorage đúng như người dùng chọn ở màn Cài đặt. */
+const THEME = process.env.THEME ?? "classic";
 
 const SCREENS = [
   { slug: "01-dang-nhap", path: "/login", label: "Đăng nhập", anonymous: true },
@@ -26,6 +28,7 @@ const SCREENS = [
   { slug: "07-don-mua-hang", path: "/don-mua-hang", label: "Đơn mua hàng" },
   { slug: "08-de-xuat-dat-hang", path: "/de-xuat-dat-hang", label: "Đề xuất đặt hàng" },
   { slug: "09-bao-cao", path: "/bao-cao", label: "Báo cáo" },
+  { slug: "10-cai-dat", path: "/cai-dat", label: "Cài đặt — Giao diện" },
 ];
 
 /**
@@ -61,6 +64,15 @@ for (const vp of VIEWPORTS) {
     locale: "vi-VN",
     timezoneId: "Asia/Ho_Chi_Minh",
   });
+  // Gieo lựa chọn theme TRƯỚC khi mở trang đầu tiên — giống hệt trạng thái của
+  // một người đã chọn theme ở lần dùng trước.
+  await context.addInitScript((t) => {
+    try {
+      if (t === "classic") localStorage.removeItem("beras.theme");
+      else localStorage.setItem("beras.theme", t);
+    } catch {}
+  }, THEME);
+
   const page = await context.newPage();
 
   const dir = `${OUT}/${vp.name}`;

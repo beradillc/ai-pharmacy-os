@@ -1,0 +1,108 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.sectionTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.sectionText {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+  max-width: 60ch;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.option,
+.optionActive {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: left;
+  padding: var(--space-4);
+  min-height: var(--touch-min);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--beras-border);
+  background: var(--beras-surface);
+  color: var(--beras-text);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.option:hover {
+  border-color: var(--beras-text-muted);
+}
+
+.option:active,
+.optionActive:active {
+  transform: scale(0.98);
+}
+
+.optionActive {
+  border-color: var(--beras-leaf-ink);
+  box-shadow: var(--shadow-2);
+}
+
+/* Ba ô màu xem trước. `background` đặt inline vì đó là màu CỦA THEME KHÁC —
+   không thể lấy từ biến của theme đang bật, và cũng không nên. */
+.swatch {
+  display: inline-flex;
+  flex: 0 0 auto;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  border: 1px solid var(--beras-border);
+}
+
+.chip {
+  width: 22px;
+  height: 36px;
+}
+
+.optionBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.optionName {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-weight: var(--weight-semibold);
+}
+
+.badge {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--beras-leaf-ink);
+  color: var(--beras-leaf-ink);
+}
+
+.optionDesc {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}
+
+@media (width >= 700px) {
+  .options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

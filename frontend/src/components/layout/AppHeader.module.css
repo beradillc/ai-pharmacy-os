@@ -4,7 +4,7 @@
   gap: var(--space-4);
   height: 56px;
   padding: 0 var(--space-4);
-  background: var(--beras-accent);
+  background: var(--beras-header-bg);
   color: var(--beras-accent-contrast);
   /* Header dính trên cùng: người dùng cuộn giữa bảng dài vẫn biết mình ở chi
      nhánh nào và vẫn đăng xuất được. */

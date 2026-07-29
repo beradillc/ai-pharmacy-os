@@ -1,4 +1,6 @@
 @import "../styles/tokens.css";
+/* Theme phụ — chỉ ghi đè biến dưới `:root[data-theme="warm"]`, không luật bố cục. */
+@import "../theme/warm.css";
 
 html {
   height: 100%;

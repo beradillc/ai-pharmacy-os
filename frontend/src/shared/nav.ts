@@ -27,6 +27,14 @@ export interface NavItem {
   group: NavGroup;
   /** Có mặt trong 5 ô bottom nav trên mobile. */
   primary: boolean;
+  /**
+   * Có mặt trong lưới "hành động nhanh" trên màn Tổng quan. Mặc định có.
+   *
+   * `false` cho những mục KHÔNG phải việc hằng ngày (ví dụ Cài đặt): lưới hành
+   * động nhanh là chỗ để bắt đầu một việc lúc 7 giờ sáng, không phải mục lục.
+   * Giữ nó nguyên vẹn cũng là cách thêm màn mới mà màn Tổng quan không đổi.
+   */
+  quickAction?: boolean;
   /** Tên icon — xem `components/layout/NavIcon.tsx`. */
   icon: NavIconName;
 }
@@ -40,6 +48,7 @@ export type NavIconName =
   | "purchase"
   | "suggest"
   | "report"
+  | "settings"
   | "more";
 
 export const NAV_GROUP_LABEL: Record<NavGroup, string> = {
@@ -117,6 +126,18 @@ export const NAV: readonly NavItem[] = [
     icon: "purchase",
   },
   {
+    href: "/cai-dat",
+    label: "Cài đặt",
+    short: "Cài đặt",
+    // Ai đăng nhập được cũng đổi được giao diện của chính mình ⇒ gắn vào quyền
+    // hẹp nhất mà mọi vai đều có. Không tạo quyền mới cho một tuỳ chọn hiển thị.
+    permission: "sales.read",
+    group: "quan-tri",
+    primary: false,
+    quickAction: false,
+    icon: "settings",
+  },
+  {
     href: "/de-xuat-dat-hang",
     label: "Đề xuất đặt hàng",
     short: "Đề xuất",
@@ -147,6 +168,11 @@ export function bottomNavItems(permissions: readonly string[]): NavItem[] {
   return visibleNav(permissions)
     .filter((item) => item.primary)
     .slice(0, BOTTOM_NAV_SLOTS - 1);
+}
+
+/** Mục hiện trên lưới hành động nhanh của màn Tổng quan. */
+export function quickActionItems(permissions: readonly string[]): NavItem[] {
+  return visibleNav(permissions).filter((item) => item.quickAction !== false);
 }
 
 /** Mục KHÔNG nằm trên bottom nav — nội dung của trang/ngăn "Thêm". */

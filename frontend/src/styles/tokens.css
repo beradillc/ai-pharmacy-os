@@ -71,6 +71,16 @@
   --beras-on-accent: #ffffff;
 
   /*
+   * Nền thanh trên. Tách thành biến riêng (2026-07-29, hệ theme) vì thanh trên
+   * trước đó đọc thẳng `--beras-accent`, mà biến đó còn dùng làm **màu chữ** ở
+   * chỗ khác — nên không thể chứa một dải màu. Theme nào muốn thanh trên là
+   * gradient thì ghi đè biến này.
+   *
+   * Giá trị mặc định = đúng thứ Classic vẫn dùng ⇒ Classic không đổi một pixel.
+   */
+  --beras-header-bg: var(--beras-accent);
+
+  /*
    * ─── Bậc "mực" — dùng cho CHỮ trên nền cùng tông ────────────────────────────
    * ĐO ĐƯỢC, không phải cảm nhận. Chạy công thức tương phản WCAG trên đúng các
    * cặp màu sản phẩm đang dùng, ba cặp KHÔNG ĐẠT AA (4,5:1):

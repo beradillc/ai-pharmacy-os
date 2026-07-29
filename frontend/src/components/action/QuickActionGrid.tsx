@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { NavIcon } from "@/components/layout/NavIcon";
-import { visibleNav } from "@/shared/nav";
+import { quickActionItems } from "@/shared/nav";
 
 import styles from "./QuickActionGrid.module.css";
 
@@ -18,7 +18,7 @@ import styles from "./QuickActionGrid.module.css";
  * *bán*, không phải để đọc số. Số liệu là thứ người ta xem khi đã rảnh tay.
  */
 export function QuickActionGrid({ permissions }: { permissions: readonly string[] }) {
-  const items = visibleNav(permissions).slice(0, 8);
+  const items = quickActionItems(permissions).slice(0, 8);
 
   if (items.length === 0) return null;
 

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro, IBM_Plex_Mono } from "next/font/google";
 
 import { QueryProvider } from "@/shared/query-provider";
+import { THEME_INIT_SCRIPT, ThemeProvider } from "@/theme/ThemeProvider";
 
 import "./globals.css";
 
@@ -55,9 +56,17 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="vi" className={`${sans.variable} ${mono.variable}`}>
+    <html lang="vi" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Đặt data-theme TRƯỚC khi trang vẽ lần đầu. Thiếu bước này, người đã
+            chọn Warm sẽ thấy một nháy Classic mỗi lần tải trang, vì React chỉ
+            chạy sau khi HTML đã vẽ xong. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body>
-        <QueryProvider>{children}</QueryProvider>
+        <ThemeProvider>
+          <QueryProvider>{children}</QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
