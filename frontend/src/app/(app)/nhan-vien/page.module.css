@@ -47,3 +47,27 @@
   justify-content: flex-end;
   margin-top: var(--space-2);
 }
+
+.spaced {
+  margin-right: var(--space-2);
+}
+
+.row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.row > .field {
+  flex: 1 1 220px;
+}
+
+/* Khối cảnh báo phạm vi "toàn chuỗi" — cấp nhầm là mở cửa mọi cơ sở. */
+.warnBox {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--beras-warning);
+  background: var(--beras-warning-bg);
+  color: var(--beras-text);
+  font-size: var(--text-sm);
+}

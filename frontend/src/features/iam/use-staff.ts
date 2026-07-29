@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/shared/api/client";
-import type { Role, StaffUser } from "@/shared/api/types";
+import type { Role, RoleAssignment, StaffUser } from "@/shared/api/types";
 
 export const STAFF_PAGE_SIZE = 50;
 
@@ -66,4 +66,50 @@ export const STAFF_STATUS_LABEL: Record<string, string> = {
   ACTIVE: "Đang hoạt động",
   DISABLED: "Đã tắt",
   LOCKED: "Đang khoá",
+};
+
+/** `GET /users/{id}/roles` — vai trò đang cấp cho một người. */
+export function useAssignments(userId: string | null) {
+  return useQuery({
+    queryKey: ["iam", "assignments", userId],
+    queryFn: () => apiFetch<RoleAssignment[]>(`/users/${userId}/roles`),
+    enabled: userId !== null,
+    retry: false,
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * `POST /users/{id}/roles` — cấp một vai.
+ *
+ * `branch_id: null` nghĩa là cấp cho **toàn chuỗi**, không riêng một chi nhánh
+ * (Luật 44/2024 Điều 17a — dược sĩ phụ trách chuỗi). Giao diện phải nói rõ khác
+ * biệt đó: cấp nhầm phạm vi chuỗi cho một thu ngân là mở cửa mọi chi nhánh.
+ */
+export function useAssignRole(userId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { role_id: string; branch_id: string | null }) =>
+      apiFetch<RoleAssignment>(`/users/${userId}/roles`, { method: "POST", body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["iam", "assignments", userId] }),
+  });
+}
+
+/** `DELETE /users/{id}/roles/{assignmentId}` — thu hồi một vai. */
+export function useRevokeRole(userId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (assignmentId: string) =>
+      apiFetch<void>(`/users/${userId}/roles/${assignmentId}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["iam", "assignments", userId] }),
+  });
+}
+
+/** Nhãn tiếng Việt cho vai hệ thống — mã vai là tiếng Anh trong CSDL. */
+export const ROLE_LABEL: Record<string, string> = {
+  system_admin: "Quản trị hệ thống",
+  chain_pharmacist: "Dược sĩ phụ trách chuỗi",
+  branch_pharmacist: "Dược sĩ phụ trách cơ sở",
+  cashier: "Thu ngân",
+  warehouse: "Thủ kho",
 };

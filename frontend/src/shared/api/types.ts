@@ -255,6 +255,11 @@ export interface Role {
 
 export interface RoleAssignment {
   id: string;
+  user_id: string;
   role_id: string;
+  role_code: string;
+  /** `null` = cấp cho TOÀN CHUỖI, không riêng một chi nhánh. */
   branch_id: string | null;
+  granted_by: string | null;
+  granted_at: string;
 }

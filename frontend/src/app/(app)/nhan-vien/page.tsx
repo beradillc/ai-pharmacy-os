@@ -3,6 +3,8 @@
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/overlay/ConfirmDialog";
+
+import { RolePanel } from "./RolePanel";
 import {
   STAFF_PAGE_SIZE,
   STAFF_STATUS_LABEL,
@@ -33,23 +35,23 @@ const STATUS_CLASS: Record<string, string> = {
  * viên trên giao diện** — phải chạy lệnh dòng. Mọi buổi demo đều kết thúc bằng câu
  * *"vậy tôi thêm nhân viên thế nào?"*.
  *
- * Màn này cố ý **không** làm gán vai trò: `POST /users/{id}/roles` cần chọn vai +
- * chọn chi nhánh + hiểu 50 mã quyền, đủ phức tạp để xứng một màn riêng. Ở đây chỉ
- * làm ba việc một nhà thuốc cần hằng ngày — **xem ai đang có tài khoản · thêm
- * người mới · tắt tài khoản người nghỉ việc** — và nói thẳng phần còn thiếu thay
- * vì làm một nửa rồi im lặng.
+ * Bốn việc: **xem ai đang có tài khoản · thêm người mới · cấp/thu hồi vai trò ·
+ * tắt tài khoản người nghỉ việc**. Phần vai trò tách sang `RolePanel` — nó là chỗ
+ * nguy hiểm nhất của cả sản phẩm và có lý do riêng cho từng quyết định giao diện.
  */
 export default function StaffPage() {
   const session = useAuthStore((s) => s.session);
   const held = new Set(session?.permissions ?? []);
   const canCreate = held.has("iam.user.create");
   const canWrite = held.has("iam.user.write");
+  const canAssign = held.has("iam.role.assign");
 
   const [page, setPage] = useState(0);
   const [creating, setCreating] = useState(false);
   const [toggling, setToggling] = useState<StaffUser | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [lastCreated, setLastCreated] = useState<string | null>(null);
+  const [rolesFor, setRolesFor] = useState<StaffUser | null>(null);
 
   const { data, isLoading, error, refetch } = useStaff(page);
   const roles = useRoles();
@@ -162,6 +164,15 @@ export default function StaffPage() {
                     </td>
                     {canWrite && (
                       <td className={styles.num}>
+                        {canAssign && (
+                          <button
+                            type="button"
+                            className={`${styles.ghost} ${local.spaced}`}
+                            onClick={() => setRolesFor(rolesFor?.id === user.id ? null : user)}
+                          >
+                            Vai trò
+                          </button>
+                        )}
                         <button
                           type="button"
                           className={styles.ghost}
@@ -208,11 +219,13 @@ export default function StaffPage() {
         </div>
       </div>
 
-      <p className={local.gap}>
-        <strong>Gán vai trò chưa làm ở màn này.</strong> Cấp quyền cho một tài khoản
-        cần chọn vai + chi nhánh và hiểu ~50 mã quyền — xứng một màn riêng. Hiện làm
-        bằng lệnh dòng; ghi trong <code>docs/ui/REMAINING_UI_ISSUES.md</code>.
-      </p>
+      {rolesFor && (
+        <RolePanel
+          user={rolesFor}
+          branches={session?.accessible_branches ?? []}
+          onClose={() => setRolesFor(null)}
+        />
+      )}
 
       <CreateStaffDialog
         open={creating}
