@@ -59,7 +59,7 @@ export default function ReportsPage() {
       <section className={styles.panel}>
         <div className={styles.panelHead}>
           <h2 className={styles.panelTitle}>Doanh thu {DASHBOARD_WINDOW_DAYS} ngày gần nhất</h2>
-          <span className={styles.total}>{formatMoney(String(total))} ₫</span>
+          <span className={styles.total}>{formatMoney(String(total))} đ</span>
         </div>
         {series.isLoading ? (
           <LoadingState rows={2} label="Đang tải biểu đồ" />

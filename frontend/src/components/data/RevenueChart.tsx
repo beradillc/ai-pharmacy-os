@@ -126,15 +126,15 @@ export function RevenueChart({
       <figcaption className={styles.caption}>
         {active ? (
           <span className={styles.tooltip}>
-            <strong>{viDate(active.date)}</strong> · {formatMoney(String(active.revenue))} ₫
+            <strong>{viDate(active.date)}</strong> · {formatMoney(String(active.revenue))} đ
           </span>
         ) : (
           <>
             <span>
-              Cao nhất {viDate(peak.date)} · {formatMoney(String(peak.revenue))} ₫
+              Cao nhất {viDate(peak.date)} · {formatMoney(String(peak.revenue))} đ
             </span>
             <span className={styles.muted}>
-              Thấp nhất {viDate(low.date)} · {formatMoney(String(low.revenue))} ₫
+              Thấp nhất {viDate(low.date)} · {formatMoney(String(low.revenue))} đ
             </span>
           </>
         )}

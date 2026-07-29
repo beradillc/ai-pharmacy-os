@@ -26,7 +26,7 @@ const STATUS_CLASS: Record<string, string> = {
  *
  * Cột đầu là **mã đơn** ("PO-0001"), không phải UUID: đó là chuỗi dược sĩ đọc
  * cho nhà cung cấp qua điện thoại (khe hở G-2, docs/19). Tổng tiền là tiền
- * **đặt**, nên đơn nháp do máy đề xuất có tổng 0 ₫ cho tới khi người ta điền
+ * **đặt**, nên đơn nháp do máy đề xuất có tổng 0 đ cho tới khi người ta điền
  * giá — màn hình nói rõ chỗ đó thay vì để người đọc tưởng hệ thống cộng sai.
  */
 export default function PurchaseOrdersPage() {
@@ -121,7 +121,7 @@ export default function PurchaseOrdersPage() {
                           chưa chốt giá
                         </span>
                       ) : (
-                        `${formatMoney(po.total_amount)} ₫`
+                        `${formatMoney(po.total_amount)} đ`
                       )}
                     </td>
                     <td className={styles.mono}>{formatTime(po.created_at)}</td>

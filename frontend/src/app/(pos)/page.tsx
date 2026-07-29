@@ -92,7 +92,10 @@ export default function PosPage() {
                     )}
                   </div>
                   <div className={styles.drugMeta}>
-                    {drug.strength ?? ""} · {drug.base_unit}
+                    {/* Không nối "· " khi thuốc không có hàm lượng — bản cũ hiện
+                        ra dòng "· viên" cụt đầu (thấy trên ảnh chụp 29/07). */}
+                    {drug.strength ? `${drug.strength} · ` : ""}
+                    {drug.base_unit}
                   </div>
                 </div>
                 <button className={styles.addButton} onClick={() => handleAdd(drug)}>
@@ -174,7 +177,7 @@ export default function PosPage() {
           label: `Đơn giá (VND/${priceAsk?.base_unit ?? ""})`,
           defaultValue: "0",
           type: "number",
-          suffix: "₫",
+          suffix: "đ",
         }}
         onConfirm={confirmPrice}
         onCancel={() => setPriceAsk(null)}

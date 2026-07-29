@@ -31,6 +31,13 @@ export interface RevenueSeries {
   truncated: boolean;
 }
 
+/** Ngày địa phương của một mốc thời gian ISO, dạng `YYYY-MM-DD`. */
+function localDayOf(iso: string): string {
+  const d = new Date(iso);
+  const offset = d.getTimezoneOffset() * 60_000;
+  return new Date(d.getTime() - offset).toISOString().slice(0, 10);
+}
+
 function isoDaysAgo(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
@@ -69,7 +76,17 @@ export function useRevenueSeries() {
 
       for (const row of rows) {
         if (row.status === "CANCELLED") continue; // cùng quy ước với màn Hoá đơn
-        const day = row.created_at.slice(0, 10);
+        // 🔴 Gom theo NGÀY ĐỊA PHƯƠNG, không cắt chuỗi ISO.
+        //
+        // Bản đầu dùng `row.created_at.slice(0, 10)` — tức lấy ngày theo UTC.
+        // Việt Nam UTC+7, nên đơn bán lúc 00:10 sáng nay mang dấu thời gian UTC
+        // của HÔM QUA và rơi vào cột hôm qua. Ảnh chụp 29/07 bắt được tận mắt:
+        // ô KPI ghi "Doanh thu hôm nay 536.300 đ" trong khi biểu đồ ghi
+        // "Thấp nhất 29/07 · 0 đ" — hai khối trên CÙNG MỘT MÀN nói ngược nhau.
+        //
+        // Cùng họ với lỗi cửa sổ "hôm nay" ở backend (PROJECT_STATE §7bw B-bis),
+        // và cũng chỉ lộ ra trong 7 giờ mỗi ngày.
+        const day = localDayOf(row.created_at);
         if (byDay.has(day)) byDay.set(day, (byDay.get(day) ?? 0) + Number(row.subtotal));
       }
 

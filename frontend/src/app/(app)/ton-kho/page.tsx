@@ -10,7 +10,7 @@ import {
   useStock,
 } from "@/features/inventory/use-stock";
 import { ApiError } from "@/shared/api/errors";
-import { formatQty } from "@/shared/format/number";
+import { formatDate, formatQty } from "@/shared/format/number";
 import styles from "@/shared/ui/screen.module.css";
 
 const TONE_CLASS: Record<string, string> = {
@@ -134,7 +134,7 @@ export default function StockPage() {
                       <td className={styles.mono}>{row.lot_no}</td>
                       <td>
                         <span className={`${styles.chip} ${TONE_CLASS[tone]}`}>
-                          {row.expiry_date} · {expiryLabel(days)}
+                          {formatDate(row.expiry_date)} · {expiryLabel(days)}
                         </span>
                       </td>
                       <td className={styles.num}>{formatQty(row.quantity)}</td>

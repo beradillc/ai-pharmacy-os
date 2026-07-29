@@ -57,7 +57,7 @@ export default function InvoicesPage() {
         <div>
           <h1 className={styles.title}>Hoá đơn</h1>
           <p className={styles.subtitle}>
-            {rows.length} đơn · tổng {formatMoney(String(dayTotal))} ₫ (không tính đơn đã huỷ)
+            {rows.length} đơn · tổng {formatMoney(String(dayTotal))} đ (không tính đơn đã huỷ)
           </p>
         </div>
         <div className={styles.controls}>
@@ -140,9 +140,9 @@ export default function InvoicesPage() {
                       </span>
                     </td>
                     <td className={styles.num}>{row.line_count}</td>
-                    <td className={styles.num}>{formatMoney(row.subtotal)} ₫</td>
+                    <td className={styles.num}>{formatMoney(row.subtotal)} đ</td>
                     <td className={`${styles.num} ${styles.muted}`}>
-                      {formatMoney(row.paid_total)} ₫
+                      {formatMoney(row.paid_total)} đ
                     </td>
                     <td className={styles.num}>
                       <button
@@ -214,8 +214,8 @@ export default function InvoicesPage() {
                     <tr key={line.id}>
                       <td>{names.nameOf(line.drug_id) ?? `Mã ${line.drug_id.slice(0, 8)}`}</td>
                       <td className={styles.num}>{formatQty(line.quantity)}</td>
-                      <td className={styles.num}>{formatMoney(line.unit_price)} ₫</td>
-                      <td className={styles.num}>{formatMoney(line.line_total)} ₫</td>
+                      <td className={styles.num}>{formatMoney(line.unit_price)} đ</td>
+                      <td className={styles.num}>{formatMoney(line.line_total)} đ</td>
                       <td className={`${styles.num} ${styles.muted}`}>
                         {Number(line.returned_quantity) > 0 ? formatQty(line.returned_quantity) : "—"}
                       </td>

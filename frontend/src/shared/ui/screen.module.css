@@ -175,6 +175,24 @@
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+
+  /* Vệt mờ ở mép phải khi bảng còn cuộn được.
+     🔴 Sinh từ ảnh chụp 29/07: ở khổ 390px, cột "Hạn dùng" bị cắt ngang và cột
+     "Tồn" biến mất hoàn toàn — bảng CÓ cuộn ngang nhưng không có dấu hiệu nào
+     nói vậy, nên người dùng chỉ thấy một bảng bị cụt. Kỹ thuật: hai lớp nền, một
+     lớp bám theo khung cuộn (`local`) che vệt mờ khi đã cuộn hết. */
+  background:
+    linear-gradient(to right, var(--beras-surface) 30%, rgb(255 255 255 / 0%)) left center,
+    linear-gradient(to left, var(--beras-surface) 30%, rgb(255 255 255 / 0%)) right center,
+    linear-gradient(to right, rgb(35 41 32 / 12%), rgb(255 255 255 / 0%)) left center,
+    linear-gradient(to left, rgb(35 41 32 / 12%), rgb(255 255 255 / 0%)) right center;
+  background-repeat: no-repeat;
+  background-size:
+    40px 100%,
+    40px 100%,
+    14px 100%,
+    14px 100%;
+  background-attachment: local, local, scroll, scroll;
 }
 
 .table {

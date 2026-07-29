@@ -39,3 +39,35 @@ export function daysOfStockLeft(onHand: string, velocityPerDay: string): number 
   if (!Number.isFinite(stock) || !Number.isFinite(velocity) || velocity <= 0) return null;
   return Math.floor(stock / velocity);
 }
+
+/**
+ * Ngày cho người Việt đọc: `dd/mm/yyyy`.
+ *
+ * 🔴 Sinh từ ảnh chụp màn hình 29/07: màn Tồn kho hiện thẳng `2027-09-05` lấy
+ * nguyên từ API. ISO là định dạng để MÁY trao đổi; một dược sĩ đọc hạn dùng trên
+ * hộp thuốc thấy `05/09/2027`. Không ai đọc sai được `2027-09-05`, nhưng nó đọc
+ * chậm hơn và trông như dữ liệu chưa qua xử lý — đúng thứ phân biệt phần mềm
+ * hoàn thiện với bản dựng thử.
+ */
+export function formatDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+}
+
+/**
+ * Ký hiệu tiền dùng CHUNG một chỗ.
+ *
+ * 🔴 Cũng sinh từ ảnh chụp: bảng điều hành dùng `₫` (U+20AB) còn màn bán hàng
+ * dùng `đ`. `₫` **không nằm trong bộ ký tự Be Vietnam Pro đã nhúng**, nên nó rơi
+ * về font dự phòng — hiện ra với nét khác hẳn phần số ngay bên cạnh, và lệch cả
+ * khoảng cách. Trên ảnh chụp nhìn như một lỗi phông chữ, vì đúng là vậy.
+ *
+ * Chọn `đ`: là chữ cái tiếng Việt, chắc chắn có trong bộ đã nhúng, và là thứ
+ * người Việt viết tay hằng ngày. Ai cần `₫` cho hoá đơn in thì đổi ở đây, một chỗ.
+ */
+export const CURRENCY = "đ";
+
+/** Tiền + ký hiệu, dùng thay cho việc mỗi màn tự nối chuỗi một kiểu. */
+export function money(value: string | number): string {
+  return `${formatMoney(String(value))} ${CURRENCY}`;
+}

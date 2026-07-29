@@ -115,13 +115,13 @@ export default function DashboardPage() {
       <section className={styles.tiles}>
         <KpiCard
           title="Doanh thu hôm nay"
-          value={today.data ? `${formatMoney(String(today.data.revenue))} ₫` : null}
+          value={today.data ? `${formatMoney(String(today.data.revenue))} đ` : null}
           hint={`${today.data?.orderCount ?? 0} đơn`}
           status="good"
         />
         <KpiCard
           title={`Doanh thu ${DASHBOARD_WINDOW_DAYS} ngày`}
-          value={dashboard.data ? `${formatMoney(dashboard.data.revenue_total)} ₫` : null}
+          value={dashboard.data ? `${formatMoney(dashboard.data.revenue_total)} đ` : null}
           hint="đã ghi nhận"
         />
         <KpiCard
@@ -184,7 +184,7 @@ export default function DashboardPage() {
               <li key={sale.id} className={styles.txn}>
                 <span className={styles.txnTime}>{formatTime(sale.created_at)}</span>
                 <span className={styles.txnMeta}>{sale.line_count} mặt hàng</span>
-                <span className={styles.txnMoney}>{formatMoney(sale.subtotal)} ₫</span>
+                <span className={styles.txnMoney}>{formatMoney(sale.subtotal)} đ</span>
               </li>
             ))}
           </ul>
@@ -221,7 +221,7 @@ export default function DashboardPage() {
                   />
                 </span>
                 <span className={styles.rowQty}>{formatQty(drug.quantity_sold)}</span>
-                <span className={styles.rowMoney}>{formatMoney(drug.revenue)} ₫</span>
+                <span className={styles.rowMoney}>{formatMoney(drug.revenue)} đ</span>
               </li>
             ))}
           </ul>

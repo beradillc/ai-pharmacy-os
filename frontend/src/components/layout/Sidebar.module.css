@@ -54,10 +54,16 @@
     border-right: 1px solid var(--beras-border);
     background: var(--beras-surface);
     /* Tự cuộn khi menu dài hơn màn hình, không kéo cả trang cuộn theo. */
+    /* 🔴 `height` chứ không `max-height`: với `max-height` thanh chỉ cao bằng nội
+       dung của nó, nên trên trang dài (bảng 50 dòng) nền trắng của sidebar cụt
+       ngang giữa màn hình rồi lộ nền kem phía dưới — thấy rõ trên ảnh chụp
+       desktop 29/07, trông như thanh bị rơi mất một nửa.
+       `sticky` + `height: 100vh` giữ nó phủ trọn chiều cao khung nhìn và đứng yên
+       khi cuộn, đúng cách mọi phần mềm quản trị làm. */
     position: sticky;
     top: 0;
     align-self: flex-start;
-    max-height: 100vh;
+    height: 100vh;
     overflow-y: auto;
   }
 }
