@@ -225,6 +225,40 @@
   vertical-align: middle;
 }
 
+/* 🔴 Cột ĐỊNH DANH ghim lại khi bảng cuộn ngang.
+   Sinh từ ảnh chụp + phép đo 29/07 trên khổ 390px: bấm vào một ô nhập ở cột
+   phải thì trình duyệt cuộn ô đó vào tầm nhìn — `scrollLeft` nhảy lên 395/784
+   và cột đầu BIẾN MẤT HOÀN TOÀN. Người dùng đang gõ mà không thấy mình gõ cho
+   dòng nào; ở màn Nhận hàng đó là cách đặt số lô của thuốc B lên dòng thuốc A.
+
+   Cột đầu của cả sáu bảng đều là cột định danh — Thuốc · Thời gian · Họ tên ·
+   Mã đơn · Họ tên — nên quy tắc này đúng cho tất cả, không cần ngoại lệ.
+
+   Vệt mờ `.tableWrap` (thêm cùng ngày) chỉ nói "còn cuộn được"; nó không cứu
+   được việc mất mốc neo. Hai thứ bù nhau, không thay nhau. */
+.table th:first-child,
+.table td:first-child {
+  position: sticky;
+  left: 0;
+  /* Nền đục bắt buộc — trong suốt thì chữ các cột khác trượt xuyên qua. */
+  background: var(--beras-surface);
+  /* Vạch mảnh để mắt đọc đây là cột ghim, không phải bảng lỗi. */
+  box-shadow: 1px 0 0 var(--beras-border);
+  z-index: 1;
+}
+
+/* Ô góc trên-trái dính CẢ HAI chiều, nên phải cao hơn hai cột kia một bậc —
+   nếu không nó bị chính hàng tiêu đề đè khi cuộn chéo. */
+.table thead th:first-child {
+  z-index: 2;
+}
+
+/* Dòng đang rê chuột đổi nền; cột ghim phải đổi theo, nếu không nó lộ ra như
+   một mảng màu lạc lõng giữa dòng. */
+.table tbody tr:hover td:first-child {
+  background: var(--beras-bg-alt);
+}
+
 .table tbody tr:last-child td {
   border-bottom: none;
 }

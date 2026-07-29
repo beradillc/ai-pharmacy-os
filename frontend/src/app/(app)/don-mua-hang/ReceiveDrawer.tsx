@@ -227,7 +227,7 @@ export function ReceiveDrawer({
               </p>
 
               <div className={styles.tableWrap}>
-                <table className={styles.table}>
+                <table className={`${styles.table} ${local.receiveTable}`}>
                   <thead>
                     <tr>
                       <th>Thuốc</th>

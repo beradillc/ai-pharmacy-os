@@ -54,6 +54,13 @@ for (const [name, engine] of [
     // Đo dứt điểm bằng cách đóng dấu thời gian: đợi yên 6 giây thì lỗi biến
     // mất hoàn toàn, và `/drugs?limit=200` chạy xong bình thường. Lỗi ở phép
     // đo, không ở sản phẩm — cùng họ với `$UID` chỉ-đọc và mypy chạy sai thư mục.
+    // `networkidle` KHÔNG đủ: React Query bắn `/drugs` sau khi hydrate xong, tức
+    // là có thể sau lúc mạng đã "idle" một nhịp. Chờ đích danh phản hồi đó rồi
+    // mới rời trang — chặn tại GỐC thay vì lọc thông điệp lỗi, vì lọc thông điệp
+    // là cách làm cổng mất răng với một lỗi CORS thật sau này.
+    await page
+      .waitForResponse((r) => r.url().includes("/drugs"), { timeout: 15_000 })
+      .catch(() => {});
     await page.waitForLoadState("networkidle");
 
     await page.goto(`${BASE}/don-mua-hang`, { waitUntil: "networkidle" });
@@ -71,6 +78,12 @@ for (const [name, engine] of [
     await button.click();
     const drawer = page.locator('section[aria-label*="Nhận hàng cho đơn"]');
     await drawer.waitFor({ timeout: 20_000 });
+    // 🔴 Chờ DÒNG ĐẦU TIÊN, không chỉ chờ cái ngăn kéo. Ngăn kéo hiện ngay kèm
+    // khung xương; các dòng chỉ tới sau khi `GET /purchase-orders/{id}` về. Bản
+    // trước đếm ngay sau khi ngăn kéo hiện và ra kết quả TỰ MÂU THUẪN trên
+    // WebKit — `dòng=0` mà `có-tên=4/0`. Một cổng đo hụt còn tệ hơn không có
+    // cổng: nó dạy người đọc bỏ qua màu đỏ.
+    await drawer.locator("tbody tr").first().waitFor({ timeout: 20_000 });
     const rows = await drawer.locator("tbody tr").count();
     const names = await drawer.locator("tbody tr td:first-child").allInnerTexts();
     // Tên thuốc do `GET /drugs?ids=…` gắn vào. Hỏng cái đó thì cột đầu ra
