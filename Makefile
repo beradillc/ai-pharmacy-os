@@ -9,7 +9,7 @@
 # (`make up`). tests/concurrency/ FAIL chứ không SKIP khi thiếu Postgres — skip lặng
 # rồi báo xanh đúng là bệnh "niềm tin giả" mà đợt kiểm toán đang sửa. Đây là cái giá
 # đã biết của lựa chọn đó, không phải lỗi. Chi tiết: backend/tests/concurrency/README.md
-.PHONY: help install lint typecheck contracts test test-concurrency check hooks up down migrate seed serve demo lan
+.PHONY: help install lint typecheck contracts test test-concurrency check check-fe hooks up down migrate seed serve demo lan
 
 help:
 	@echo "install    - install backend with dev extras into current venv"
@@ -25,6 +25,7 @@ help:
 	@echo "serve      - run FastAPI dev server"
 	@echo "demo       - dựng bản demo cho khách (CSDL riêng + dữ liệu nhà thuốc thật)"
 	@echo "lan        - chạy FE+API cho điện thoại cùng Wi-Fi test (CSDL không ra LAN)"
+	@echo "check-fe   - cổng frontend: lint + typecheck + test + build"
 
 install:
 	cd backend && pip install -e ".[dev]"
@@ -85,3 +86,10 @@ demo:
 # toàn quyền mà không cần mật khẩu). Xem đầu scripts/lan-dev.sh.
 lan:
 	./scripts/lan-dev.sh
+
+# Cổng frontend. Từ 2026-07-29 có `test` THẬT (vitest) — trước đó cổng FE chỉ là
+# lint+tsc+build, và tài liệu phải ghi rõ đó KHÔNG phải "có test phủ".
+# Ranh giới tầng components/* ⇄ features/* nay do eslint cưỡng chế, không còn nằm
+# trong tài liệu (bản frontend của import-linter bên backend).
+check-fe:
+	cd frontend && npm run lint && npx tsc --noEmit && npm run test && npm run build

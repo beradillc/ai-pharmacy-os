@@ -6,15 +6,28 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "@/features/auth/auth-store";
 import { useOfflineSync } from "@/shared/offline/use-offline-sync";
 
-import { AppHeader } from "./AppHeader";
-import { BottomNavigation } from "./BottomNavigation";
-import { MoreSheet } from "./MoreSheet";
-import { PageTransition } from "./PageTransition";
-import { Sidebar } from "./Sidebar";
+import { AppHeader } from "@/components/layout/AppHeader";
+import { BottomNavigation } from "@/components/layout/BottomNavigation";
+import { MoreSheet } from "@/components/layout/MoreSheet";
+import { PageTransition } from "@/components/layout/PageTransition";
+import { Sidebar } from "@/components/layout/Sidebar";
+
 import styles from "./AppShell.module.css";
 
 /**
  * Khung dùng chung cho **mọi** màn sau đăng nhập — kể cả màn Bán hàng.
+ *
+ * 🔴 Sống ở `app/_shell/` chứ KHÔNG ở `components/`, và chỗ đứng đó là một tuyên
+ * bố: đây là **composition root của giao diện**, không phải một component tái
+ * dùng. Nó đọc phiên đăng nhập, đọc hàng đợi đồng bộ offline, đọc đường dẫn hiện
+ * tại — tức là biết về `features/*`, thứ mà `components/*` bị cấm.
+ *
+ * Phát hiện ra chỗ này đứng sai là nhờ luật `no-restricted-imports` mới thêm
+ * (2026-07-29): nó đỏ ngay ở lần chạy đầu. Chuyển tệp còn tốt hơn thêm một ngoại
+ * lệ — một luật KHÔNG có ngoại lệ nào mạnh hơn hẳn một luật có danh sách miễn
+ * trừ, vì danh sách đó không bao giờ ngắn lại.
+ *
+ * Thư mục `_shell` có gạch dưới ⇒ Next không coi là route (quy ước App Router).
  *
  * 🔴 Đây là chỗ đảo lại một phần quyết định Q1 (29/07), và lý do phải nói rõ:
  *

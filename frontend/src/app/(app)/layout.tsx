@@ -1,6 +1,6 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
+import { AppShell } from "@/app/_shell/AppShell";
 
 /**
  * Khung cho các màn quản lý. Toàn bộ phần khung nằm ở `AppShell` — dùng chung

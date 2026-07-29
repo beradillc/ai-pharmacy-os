@@ -1,6 +1,6 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
+import { AppShell } from "@/app/_shell/AppShell";
 
 /**
  * Khung màn Bán hàng.

@@ -45,6 +45,37 @@ function isoDaysAgo(days: number): string {
   return new Date(d.getTime() - offset).toISOString().slice(0, 10);
 }
 
+/**
+ * Gộp đơn bán thành doanh thu theo ngày. **Hàm thuần, tách riêng để test được** —
+ * đây là chỗ đã có một lỗi thật và không cổng nào bắt được.
+ *
+ * Hai tính chất phải giữ:
+ *
+ * ① **Gom theo NGÀY ĐỊA PHƯƠNG.** Bản đầu dùng `created_at.slice(0, 10)` = ngày
+ *    UTC. Việt Nam UTC+7 nên đơn bán 00:10 sáng nay rơi vào cột hôm qua — ảnh
+ *    chụp 29/07 bắt tận mắt: KPI ghi "Doanh thu hôm nay 536.300 đ" trong khi biểu
+ *    đồ ghi "Thấp nhất 29/07 · 0 đ", hai khối trên CÙNG MỘT MÀN nói ngược nhau.
+ *    Cùng họ với lỗi cửa sổ "hôm nay" ở backend (PROJECT_STATE §7bw B-bis), và
+ *    cũng chỉ lộ ra trong 7 giờ mỗi ngày.
+ *
+ * ② **Ngày không bán vẫn có mặt với giá trị 0.** Bỏ ngày rỗng đi thì đường biểu
+ *    đồ nối tắt qua khoảng trống và một tuần ế trông y như một tuần bình thường.
+ */
+export function bucketByDay(
+  rows: readonly SaleListItem[],
+  days: number,
+): { date: string; revenue: number }[] {
+  const byDay = new Map<string, number>();
+  for (let i = days - 1; i >= 0; i--) byDay.set(isoDaysAgo(i), 0);
+
+  for (const row of rows) {
+    if (row.status === "CANCELLED") continue; // cùng quy ước với màn Hoá đơn
+    const day = localDayOf(row.created_at);
+    if (byDay.has(day)) byDay.set(day, (byDay.get(day) ?? 0) + Number(row.subtotal));
+  }
+  return [...byDay.entries()].map(([date, revenue]) => ({ date, revenue }));
+}
+
 export function useRevenueSeries() {
   const dateFrom = isoDaysAgo(SERIES_DAYS - 1);
   const dateTo = isoDaysAgo(0);
@@ -69,31 +100,7 @@ export function useRevenueSeries() {
         if (page === 1) truncated = true;
       }
 
-      // Khởi tạo đủ 28 ngày với 0 trước khi cộng: ngày không bán được là một sự
-      // thật cần thấy trên biểu đồ, không phải một khoảng trống để đường nối tắt.
-      const byDay = new Map<string, number>();
-      for (let i = SERIES_DAYS - 1; i >= 0; i--) byDay.set(isoDaysAgo(i), 0);
-
-      for (const row of rows) {
-        if (row.status === "CANCELLED") continue; // cùng quy ước với màn Hoá đơn
-        // 🔴 Gom theo NGÀY ĐỊA PHƯƠNG, không cắt chuỗi ISO.
-        //
-        // Bản đầu dùng `row.created_at.slice(0, 10)` — tức lấy ngày theo UTC.
-        // Việt Nam UTC+7, nên đơn bán lúc 00:10 sáng nay mang dấu thời gian UTC
-        // của HÔM QUA và rơi vào cột hôm qua. Ảnh chụp 29/07 bắt được tận mắt:
-        // ô KPI ghi "Doanh thu hôm nay 536.300 đ" trong khi biểu đồ ghi
-        // "Thấp nhất 29/07 · 0 đ" — hai khối trên CÙNG MỘT MÀN nói ngược nhau.
-        //
-        // Cùng họ với lỗi cửa sổ "hôm nay" ở backend (PROJECT_STATE §7bw B-bis),
-        // và cũng chỉ lộ ra trong 7 giờ mỗi ngày.
-        const day = localDayOf(row.created_at);
-        if (byDay.has(day)) byDay.set(day, (byDay.get(day) ?? 0) + Number(row.subtotal));
-      }
-
-      return {
-        points: [...byDay.entries()].map(([date, revenue]) => ({ date, revenue })),
-        truncated,
-      };
+      return { points: bucketByDay(rows, SERIES_DAYS), truncated };
     },
   });
 }
