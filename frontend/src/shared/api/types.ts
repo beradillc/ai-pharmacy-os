@@ -218,6 +218,57 @@ export interface PurchaseOrderListItem {
   ordered_at: string | null;
 }
 
+/** Một dòng hàng của đơn mua, từ `GET /purchase-orders/{id}`.
+ *
+ * `quantity_received` là **số đã nhận cộng dồn qua mọi lần nhận**, không phải
+ * lần này — màn Nhận hàng trừ nó ra khỏi `quantity_ordered` để biết còn thiếu
+ * bao nhiêu. Chỉ có `drug_id`, tên thuốc do màn hình gắn qua `GET /drugs?ids=…`. */
+export interface PurchaseOrderItem {
+  id: string;
+  drug_id: string;
+  quantity_ordered: string;
+  unit_price: string;
+  quantity_received: string;
+}
+
+/** `GET /purchase-orders/{id}` — khác `PurchaseOrderListItem` ở chỗ CÓ `items`
+ * nhưng KHÔNG có `supplier_name`/`total_amount` (backend không trả). Muốn tên
+ * NCC thì lấy từ dòng danh sách đã có sẵn, đừng gọi thêm. */
+export interface PurchaseOrderDetail {
+  id: string;
+  code: string;
+  supplier_id: string;
+  status: string;
+  items: PurchaseOrderItem[];
+  created_at: string;
+  ordered_at: string | null;
+}
+
+/** Một dòng của phiếu nhập. `lot_no` + `expiry_date` là bắt buộc ở tầng
+ * backend — không phải lựa chọn giao diện: thiếu số lô thì thuốc vào kho mà
+ * không truy vết được, và thu hồi lô theo công văn Cục Quản lý Dược sẽ không
+ * biết phải gọi ai. */
+export interface GoodsReceiptItem {
+  id: string;
+  po_item_id: string;
+  drug_id: string;
+  quantity_received: string;
+  lot_no: string;
+  expiry_date: string;
+  unit_cost: string;
+  mfg_date: string | null;
+}
+
+export interface GoodsReceipt {
+  id: string;
+  po_id: string;
+  /** "DRAFT" | "CONFIRMED". Chỉ CONFIRMED mới làm tồn kho tăng. */
+  status: string;
+  received_by: string;
+  received_at: string;
+  items: GoodsReceiptItem[];
+}
+
 export interface Customer {
   id: string;
   full_name: string;
