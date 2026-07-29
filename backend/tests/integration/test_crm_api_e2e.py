@@ -14,6 +14,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from pharmacy_os.core.config import AppSettings, DatabaseSettings, SecuritySettings, Settings
+from pharmacy_os.core.db import configure_field_encryption, reset_field_encryption
+from pharmacy_os.core.security.crypto import KEY_BYTES, BlindIndex
 from pharmacy_os.main import create_app
 from pharmacy_os.models_registry import Base
 from pharmacy_os.modules.catalog.domain import ActiveIngredient
@@ -168,10 +170,32 @@ def test_tra_theo_SDT_khong_lam_lo_du_lieu_suc_khoe(client: TestClient) -> None:
     assert row.get("conditions") in (None, [])
 
 
+@pytest.fixture
+def blind_index(client: TestClient) -> Iterator[None]:
+    """Cài dấu vân tay tra cứu cho ĐÚNG test cần nó, rồi dọn sạch.
+
+    🔴 `_blind_index` là **trạng thái toàn tiến trình** (`configure_field_encryption`).
+    Bản đầu tôi viết test tra số điện thoại mà không cài gì — nó **xanh khi chạy
+    riêng file, đỏ khi chạy cả bộ**, vì kết quả phụ thuộc test nào chạy trước đã
+    để lại cái gì trong biến toàn cục đó. Một test đổi màu theo thứ tự chạy thì
+    không chứng minh được gì cả.
+
+    🔴 Và fixture này PHẢI nhận `client`. Không phải để dùng, mà để **chạy sau
+    nó**: `create_app` gọi `configure_field_encryption` ở composition root, nên
+    dựng app SAU khi cài dấu vân tay sẽ **xoá sạch** cái vừa cài. Lần sửa đầu tôi
+    quên chỗ này — test xanh khi chạy nhóm crm, vẫn đỏ khi chạy cả bộ, và tôi suýt
+    kết luận là "còn một test khác gây nhiễu".
+    """
+    configure_field_encryption(None, write_enabled=False, blind_index=BlindIndex(b"k" * KEY_BYTES))
+    yield
+    reset_field_encryption()
+
+
 @pytest.mark.parametrize(
     "typed",
     ["0901112223", "  0901112223  ", "0901 112 223", "0901.112.223", "0901-112-223"],
 )
+@pytest.mark.usefixtures("blind_index")
 def test_go_so_dien_thoai_kieu_nao_cung_ra(client: TestClient, typed: str) -> None:
     """Thu ngân gõ số điện thoại theo đủ kiểu — khách đọc sao thì họ gõ vậy.
 
@@ -182,8 +206,14 @@ def test_go_so_dien_thoai_kieu_nao_cung_ra(client: TestClient, typed: str) -> No
     XANH — test mô tả sai thứ nó chứng minh. Nay nó canh đúng cái có thật, và
     canh rộng hơn: **cả năm cách gõ**, không riêng khoảng trắng thừa.
 
+    🔴 Và chỉ đúng KHI DEPLOYMENT ĐÃ BẬT KHOÁ BĂM — nên fixture `blind_index`
+    cài tường minh. Không có khoá thì repo so sánh cột thô, và `0901 112 223`
+    KHÔNG tìm ra `0901112223`. Đó là một khoảng trống thật, đã ghi trong
+    docstring `CrmService.find_customer_by_phone`; `config.py` cũng đã bắt buộc
+    đặt `ENCRYPTION__BLIND_INDEX_KEY` ở môi trường thật vì đúng lý do này.
+
     (`.strip()` vẫn giữ trong service: nó là cái duy nhất còn tác dụng trên
-    deployment CHƯA bật khoá băm, nơi repo so sánh cột thô.)
+    deployment chưa bật khoá băm.)
     """
     client.post("/api/v1/customers", json={"full_name": "Phạm Thị D", "phone": "0901112223"})
     res = client.get("/api/v1/customers", params={"phone": typed})
