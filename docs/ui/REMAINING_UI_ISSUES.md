@@ -35,6 +35,31 @@
 | **12** | Điểm ngắt 600/900px lặp 9 chỗ. **Giới hạn của CSS** (`@media` không nhận biến), không phải chỗ chưa làm. Giá trị ghi ở `tokens.css` làm nguồn sự thật cho người đọc |
 | **13** | `NotificationBadge` / `AlertCard` / `DataTable` / `StatusChip` / `Button` chưa tách thành component React riêng — hiện là lớp CSS dùng chung, đã đủ nhất quán. Tách khi có màn thứ hai cần đúng hành vi đó |
 
+## 🔴 Bài học 29/07 — cổng xanh, ảnh đẹp, mà app vẫn trắng trên điện thoại
+
+Chain báo *"Safari iPhone mở lên khoảng trắng"*. Đo ra: **không phải lỗi Safari**.
+Firefox cũng trắng, và trắng ở **mọi màn trong ứng dụng khi chưa đăng nhập** — trên
+mọi trình duyệt.
+
+Nguyên nhân: Next **chặn request chéo nguồn tới tài nguyên dev** (mặc định chỉ cho
+`localhost`). Qua LAN IP thì HTML server-render vẫn về, nhưng thời chạy client bị
+chặn ⇒ **React không bao giờ hydrate** ⇒ màn server-render ra `null` rồi đứng im.
+
+**Vì sao không cổng nào bắt được, và đây mới là phần đáng nhớ:**
+
+| Cổng | Kết quả | Vì sao mù |
+|---|---|---|
+| `lint` · `tsc` · `test` · `build` | tất cả xanh | không có cái nào mở trình duyệt |
+| 22 ảnh chụp màn hình | tất cả đẹp | **bộ chụp chạy qua `localhost`**, còn điện thoại đi qua **LAN IP** |
+| `lan-dev.sh` 7 phép kiểm | tất cả xanh | kiểm `curl` — mà `curl` chỉ tải HTML, **không chạy JavaScript** |
+
+Ba lớp phòng thủ, cả ba cùng mù vì cùng một lý do: **không lớp nào chạy đúng thứ
+người dùng chạy** (một trình duyệt thật, qua đúng địa chỉ thật).
+
+⇒ Thêm `npm run check:browsers`: mở Firefox + WebKit thật, qua LAN IP, kiểm màn
+được bảo vệ có chuyển về `/login` và có nội dung không. Đây là cổng đầu tiên của dự
+án **chạy JavaScript trong một trình duyệt thật**.
+
 ## Điều đáng nhớ nhất của đợt này
 
 Bốn lỗi trong hai ngày, **cùng một nguyên nhân**: `viewport` (suy từ `grep` rỗng) ·

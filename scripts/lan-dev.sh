@@ -172,7 +172,11 @@ say "6/7 · Frontend (0.0.0.0:${FRONTEND_PORT})"
 # Điện thoại KHÔNG phân giải được `localhost` của laptop — mặc định
 # `http://localhost:8000/api/v1` trong `shared/api/client.ts` sẽ trỏ về chính
 # điện thoại. Phải trỏ thẳng LAN IP.
+# NEXT_PUBLIC_LAN_ORIGIN đi vào `allowedDevOrigins` của next.config.ts. Thiếu nó,
+# Next CHẶN mọi request chéo nguồn tới tài nguyên dev ⇒ React không hydrate ⇒ mọi
+# màn trong ứng dụng hiện ra TRẮNG khi mở qua LAN IP (Chain báo 29/07).
 ( cd frontend && NEXT_PUBLIC_API_BASE_URL="http://${LAN_IP}:${BACKEND_PORT}/api/v1" \
+    NEXT_PUBLIC_LAN_ORIGIN="${LAN_IP}" \
     exec npx next dev -H 0.0.0.0 -p "$FRONTEND_PORT" ) &
 FRONTEND_PID=$!
 

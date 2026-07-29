@@ -73,6 +73,7 @@ sudo ufw allow from 192.168.1.0/24 to any port 8000 proto tcp comment 'BERAS dev
 | Triệu chứng | Nguyên nhân hay gặp nhất |
 |---|---|
 | Trang **không mở được chút nào** | Chưa chạy 2 lệnh `ufw`, hoặc điện thoại đang dùng 4G / mạng khách |
+| Trang mở ra **TRẮNG TINH** | Next chặn request chéo nguồn tới tài nguyên dev ⇒ React không hydrate. Đã sửa 29/07 bằng `allowedDevOrigins` (`next.config.ts` + `NEXT_PUBLIC_LAN_ORIGIN` do `lan-dev.sh` truyền). Nếu tái phát: `cd frontend && npm run check:browsers` |
 | Trang mở nhưng **đăng nhập xoay mãi / báo lỗi mạng** | Điện thoại gọi API sai địa chỉ. Kiểm dòng `URL API trình duyệt nhận:` script in ra — phải là LAN IP, không phải `localhost` |
 | Đăng nhập được nhưng **màn nào cũng trống** | API tới được nhưng CSDL chưa seed. Chạy `make demo` rồi trỏ `DB__URL` như mục trên |
 

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check:browsers": "node scripts/check-browsers.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
@@ -24,6 +25,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
+    "playwright-core": "^1.62.0",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }
