@@ -5,24 +5,24 @@
   align-items: center;
   justify-content: center;
   background: linear-gradient(160deg, var(--beras-bg) 0%, var(--beras-bg-alt) 100%);
-  padding: 24px;
+  padding: var(--space-6);
 }
 
 .card {
   background: var(--beras-surface);
   border: 1px solid var(--beras-border);
-  border-radius: var(--beras-radius);
-  padding: 40px 32px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-8) var(--space-6);
   width: 100%;
   max-width: 380px;
   text-align: center;
-  box-shadow: 0 8px 24px rgba(47, 82, 51, 0.08);
+  box-shadow: var(--shadow-2);
 }
 
 .mascot {
   width: 88px;
   height: 88px;
-  margin: 0 auto 16px;
+  margin: 0 auto var(--space-4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -33,37 +33,37 @@
 }
 
 .brand {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: var(--text-hero);
+  font-weight: var(--weight-bold);
   color: var(--beras-accent);
   letter-spacing: 0.04em;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .tagline {
   color: var(--beras-text-muted);
-  font-size: 14px;
-  margin-bottom: 28px;
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-6);
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
   text-align: left;
 }
 
 .label {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
   color: var(--beras-text-muted);
   margin-top: 12px;
 }
 
 .input {
-  padding: 10px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--beras-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--beras-surface);
 }
 
@@ -74,13 +74,13 @@
 
 .submit {
   margin-top: 24px;
-  padding: 12px;
+  padding: var(--space-3);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--beras-accent);
   color: var(--beras-accent-contrast);
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
 }
 
 .submit:hover:not(:disabled) {
@@ -94,9 +94,9 @@
 
 .error {
   margin-top: 16px;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   background: var(--beras-danger-bg);
   color: var(--beras-danger);
-  font-size: 14px;
+  font-size: var(--text-sm);
 }

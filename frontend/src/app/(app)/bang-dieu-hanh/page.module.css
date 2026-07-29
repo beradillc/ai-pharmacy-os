@@ -1,39 +1,39 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   flex-wrap: wrap;
 }
 
 .title {
-  font-size: 22px;
-  font-weight: 600;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
 }
 
 .controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .select {
   font: inherit;
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--beras-border);
   background: var(--beras-surface);
   color: var(--beras-text);
 }
 
 .window {
-  font-size: 14px;
+  font-size: var(--text-sm);
   color: var(--beras-text-muted);
 }
 
@@ -41,9 +41,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: var(--beras-radius);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
   background: var(--beras-danger-bg);
   color: var(--beras-danger);
   border: 1px solid var(--beras-danger);
@@ -52,9 +52,9 @@
 .retry,
 .ghost {
   font: inherit;
-  font-size: 14px;
-  padding: 6px 12px;
-  border-radius: 8px;
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   border: 1px solid currentcolor;
   background: transparent;
   color: inherit;
@@ -75,18 +75,18 @@
 .tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .tile {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 16px 18px;
+  gap: var(--space-1);
+  padding: var(--space-4);
   background: var(--beras-surface);
   border: 1px solid var(--beras-border);
   border-left-width: 5px;
-  border-radius: var(--beras-radius);
+  border-radius: var(--radius-lg);
 }
 
 .toneAccent {
@@ -106,7 +106,7 @@
 }
 
 .tileLabel {
-  font-size: 12px;
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--beras-text-muted);
@@ -114,25 +114,25 @@
 
 .tileValue {
   font-family: var(--beras-font-mono);
-  font-size: 26px;
-  font-weight: 500;
+  font-size: var(--text-kpi);
+  font-weight: var(--weight-medium);
   line-height: 1.2;
 }
 
 .tileHint {
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--beras-text-muted);
 }
 
 .skeleton {
   height: 31px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--beras-bg-alt);
 }
 
 .skeletonRows {
   height: 96px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--beras-bg-alt);
 }
 
@@ -140,11 +140,11 @@
 .panel {
   background: var(--beras-surface);
   border: 1px solid var(--beras-border);
-  border-radius: var(--beras-radius);
-  padding: 16px 18px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .panelHead {
@@ -154,21 +154,21 @@
 }
 
 .panelTitle {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
 }
 
 .empty {
   color: var(--beras-text-muted);
-  padding: 8px 0;
+  padding: var(--space-2) 0;
 }
 
 .row {
   display: grid;
   grid-template-columns: minmax(140px, 1.4fr) minmax(80px, 2fr) 90px 130px;
   align-items: center;
-  gap: 12px;
-  font-size: 15px;
+  gap: var(--space-3);
+  font-size: var(--text-base);
 }
 
 .rowName {
@@ -180,7 +180,7 @@
 .barWrap {
   height: 12px;
   background: var(--beras-bg-alt);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   overflow: hidden;
 }
 

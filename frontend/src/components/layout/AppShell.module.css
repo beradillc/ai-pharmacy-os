@@ -24,7 +24,7 @@
   flex: 1;
   min-width: 0; /* cho bảng bên trong tự cuộn thay vì đẩy cả trang trượt ngang */
   padding: var(--space-4);
-  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0));
+  padding-bottom: calc(var(--bottom-nav-clear) + env(safe-area-inset-bottom, 0));
   width: 100%;
 }
 

@@ -17,22 +17,22 @@
 .cart {
   background: var(--beras-surface);
   border: 1px solid var(--beras-border);
-  border-radius: var(--beras-radius);
-  padding: 16px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
 }
 
 .search {
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--beras-border);
-  border-radius: 8px;
-  margin-bottom: 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-3);
 }
 
 .hint {
   color: var(--beras-text-muted);
-  font-size: 14px;
-  padding: 12px 0;
+  font-size: var(--text-sm);
+  padding: var(--space-3) 0;
 }
 
 .drugList,
@@ -40,7 +40,7 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .drugRow,
@@ -48,45 +48,45 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 8px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
   border-bottom: 1px solid var(--beras-border);
 }
 
 .drugName {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .rxBadge {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
   color: var(--beras-brown);
   border: 1px solid var(--beras-icon-border);
-  border-radius: 4px;
-  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
 }
 
 .drugMeta {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--beras-text-muted);
 }
 
 .addButton {
   background: var(--beras-bg-alt);
   border: 1px solid var(--beras-icon-border);
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
   color: var(--beras-accent);
 }
 
 .cartTitle {
-  font-size: 16px;
-  margin-bottom: 8px;
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-2);
 }
 
 .cartLineInfo {
@@ -95,9 +95,9 @@
 
 .qtyInput {
   width: 56px;
-  padding: 6px;
+  padding: var(--space-2);
   border: 1px solid var(--beras-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   text-align: center;
 }
 
@@ -105,7 +105,7 @@
   background: none;
   border: none;
   color: var(--beras-danger);
-  font-size: 16px;
+  font-size: var(--text-lg);
   line-height: 1;
 }
 
@@ -113,21 +113,21 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: 16px 8px;
-  font-size: 16px;
+  padding: var(--space-4) var(--space-2);
+  font-size: var(--text-lg);
   border-top: 1px solid var(--beras-border);
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 .checkoutButton {
   width: 100%;
-  padding: 14px;
+  padding: var(--space-3);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--beras-accent);
   color: var(--beras-accent-contrast);
-  font-weight: 700;
-  font-size: 15px;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-base);
 }
 
 .checkoutButton:disabled {
@@ -138,19 +138,19 @@
 .error {
   background: var(--beras-danger-bg);
   color: var(--beras-danger);
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 13px;
-  margin-bottom: 8px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-2);
 }
 
 .success {
   background: var(--beras-bg-alt);
   color: var(--beras-accent);
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 13px;
-  margin-bottom: 8px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-2);
 }
 
 /*
@@ -166,7 +166,7 @@
  *    trượt ngang. Nó không lộ ra suốt Sprint 4→10 vì chưa ai mở POS trên điện
  *    thoại thật. Đây là màn dùng nhiều nhất của cả hệ thống.
  */
-@media (width <= 899px) {
+@media (width < 900px) {
   /* Một cột: danh mục thuốc trước, giỏ hàng dưới — đúng thứ tự thao tác. */
   .body {
     grid-template-columns: 1fr;
@@ -190,6 +190,6 @@
      trong tầm ngón cái, không phải cuộn xuống cuối mới thấy. */
   .cart {
     position: sticky;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0));
+    bottom: calc(var(--bottom-nav-clear) + env(safe-area-inset-bottom, 0));
   }
 }

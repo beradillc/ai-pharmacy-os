@@ -65,7 +65,7 @@
 
 /* Xu hướng: ký hiệu + màu. Ký hiệu là phần bắt buộc — màu chỉ là phần thêm. */
 .trend-up {
-  color: var(--beras-success);
+  color: var(--beras-success-ink);
 }
 
 .trend-down {

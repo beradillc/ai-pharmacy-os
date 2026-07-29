@@ -70,6 +70,33 @@
      nếu sau này nền đậm đổi tông thì chỉ sửa một dòng. */
   --beras-on-accent: #ffffff;
 
+  /*
+   * ─── Bậc "mực" — dùng cho CHỮ trên nền cùng tông ────────────────────────────
+   * ĐO ĐƯỢC, không phải cảm nhận. Chạy công thức tương phản WCAG trên đúng các
+   * cặp màu sản phẩm đang dùng, ba cặp KHÔNG ĐẠT AA (4,5:1):
+   *
+   *     chữ trắng trên nút --beras-leaf        3,95  🔴
+   *     chữ --beras-warning trên nền vàng nhạt 2,82  🔴
+   *     chữ --beras-success trên nền xanh nhạt 4,37  🔴
+   *
+   * Nút chính là nút bấm nhiều nhất cả sản phẩm; chip "cận hạn" là một cảnh báo
+   * an toàn thuốc. Đọc dưới đèn huỳnh quang ở quầy (cảnh báo docs/16 §2) thì
+   * chênh lệch này không phải chuyện thẩm mỹ.
+   *
+   * KHÔNG đổi màu nhận diện — bảng Eco-Tech do Chain chốt 28/07 giữ nguyên từng
+   * giá trị. Chỉ THÊM bậc tối hơn CÙNG TÔNG cho vai trò "chữ/nền chữ", tìm bằng
+   * cách giảm dần độ sáng tới ngưỡng đạt:
+   *
+   *     --beras-leaf-ink     4,55 với chữ trắng
+   *     --beras-warning-ink  4,55 trên nền vàng nhạt
+   *     --beras-success-ink  4,60 trên nền xanh nhạt
+   *
+   * Màu gốc vẫn dùng cho viền, vạch, nét biểu đồ — chỗ ngưỡng là 3:1, không phải 4,5.
+   */
+  --beras-leaf-ink: #54814b;
+  --beras-warning-ink: #8d6922;
+  --beras-success-ink: #2e7668;
+
   /* --- khoảng cách, thang 4px --- */
   --space-1: 4px;
   --space-2: 8px;
@@ -95,6 +122,21 @@
      Là TOKEN chứ không phải quy ước ghi trong tài liệu, vì quy ước ghi trong tài
      liệu chính là thứ đã trôi mất ở hơn 10 chỗ (UI_GAP_REPORT G-05). */
   --touch-min: 44px;
+
+  /* Chiều cao thanh điều hướng dưới + đệm để nội dung không nằm dưới nó.
+     Là TOKEN vì hai tệp khác nhau (AppShell, màn Bán hàng) phải chừa đúng khoảng
+     này — đổi chiều cao thanh mà quên một chỗ thì nút Thanh toán chui xuống dưới
+     thanh và không ai bấm được. */
+  --bottom-nav-h: 56px;
+  --bottom-nav-clear: 72px;
+
+  /*
+   * ĐIỂM NGẮT — ghi ở đây làm nguồn sự thật cho người đọc, KHÔNG dùng được trong
+   * `@media` (CSS không cho biến vào media query, đây là giới hạn của chính ngôn
+   * ngữ chứ không phải chỗ chưa làm tới). Sửa điểm ngắt = tìm-thay cả repo.
+   *     600px  → 2 cột KPI, ô lọc có bề rộng tối thiểu
+   *     900px  → sidebar thay thanh dưới; POS về 2 cột
+   */
 
   /* --- chữ --- */
   --text-xs: 12px;

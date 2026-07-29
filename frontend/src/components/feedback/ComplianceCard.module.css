@@ -100,7 +100,7 @@
 }
 
 .warning .badge {
-  color: var(--beras-warning);
+  color: var(--beras-warning-ink);
 }
 
 .info .badge {

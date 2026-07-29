@@ -105,8 +105,8 @@
 }
 
 .button {
-  background: var(--beras-leaf);
-  border-color: var(--beras-leaf);
+  background: var(--beras-leaf-ink);
+  border-color: var(--beras-leaf-ink);
   color: var(--beras-on-accent);
 }
 
@@ -265,13 +265,13 @@
 
 .chipOk {
   border-color: var(--beras-success);
-  color: var(--beras-success);
+  color: var(--beras-success-ink);
   background: var(--beras-success-bg);
 }
 
 .chipWarn {
   border-color: var(--beras-warning);
-  color: var(--beras-warning);
+  color: var(--beras-warning-ink);
   background: var(--beras-warning-bg);
 }
 
