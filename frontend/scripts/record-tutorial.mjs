@@ -63,6 +63,20 @@ const ctx = await browser.newContext({
   timezoneId: "Asia/Ho_Chi_Minh",
   recordVideo: { dir: OUT, size: VIDEO },
 });
+/** Bật giao diện **Warm** trước khi trang kịp vẽ.
+ *
+ * Ghi thẳng vào `localStorage` chứ không bấm qua Cài đặt → Giao diện: bấm qua
+ * màn Cài đặt thì khung hình đầu tiên vẫn là Classic rồi mới đổi, tức là video
+ * mở màn bằng đúng cái theme KHÔNG định giới thiệu. `ThemeProvider` đọc khoá này
+ * trong `THEME_INIT_SCRIPT` đặt ở `<head>`, nên đặt sẵn là không có nháy màu. */
+await ctx.addInitScript(() => {
+  try {
+    localStorage.setItem("beras.theme", "warm");
+  } catch {
+    /* chế độ riêng tư — kệ, chỉ mất theme chứ không hỏng gì */
+  }
+});
+
 const page = await ctx.newPage();
 
 /** Mốc 0 của cuốn phim. Playwright bắt đầu quay từ lúc trang được tạo, nên mọi
@@ -130,6 +144,45 @@ async function type(locator, text, delay = 55) {
   await locator.type(text, { delay });
 }
 
+/**
+ * Bìa mở có hoạt hình — chữ hiện dần, vạch sáng quét ngang, rồi mờ đi.
+ *
+ * Ba giây là ngắn, nên mọi thứ phải xong trong khoảng đó: chữ vào ở 0,15s, vạch
+ * quét 0,5→1,4s, dòng phụ 1,0s. Dùng nền coral→hổ phách của chính theme Warm
+ * đang giới thiệu, không phải một màu thương hiệu khác — bìa mở lệch tông với
+ * sản phẩm là thứ người xem nhận ra ngay dù không gọi tên được.
+ */
+async function intro() {
+  await page.evaluate(() => {
+    const el = document.createElement("div");
+    el.id = "__intro";
+    el.innerHTML = `
+      <style>
+        @keyframes bIn{from{opacity:0;transform:translateY(14px) scale(.965)}to{opacity:1;transform:none}}
+        @keyframes bSweep{from{transform:translateX(-130%)}to{transform:translateX(130%)}}
+        @keyframes bBar{from{width:0}to{width:112px}}
+      </style>
+      <div style="position:relative;display:flex;flex-direction:column;
+                  align-items:center;gap:16px;padding:0 30px;text-align:center">
+        <div style="font-size:13px;letter-spacing:.52em;opacity:0;animation:bIn .7s .15s both;
+                    text-indent:.52em">PHẦN MỀM QUẢN LÝ NHÀ THUỐC</div>
+        <div style="font-size:58px;font-weight:800;letter-spacing:.06em;opacity:0;
+                    animation:bIn .8s .3s both">BERAS</div>
+        <div style="height:3px;border-radius:2px;background:rgba(255,255,255,.85);
+                    animation:bBar .7s .75s both"></div>
+        <div style="font-size:17px;opacity:0;animation:bIn .8s 1s both;line-height:1.5">
+          Nhà thuốc 650<br><span style="opacity:.8;font-size:14px">Bản thử nghiệm</span></div>
+      </div>
+      <div style="position:absolute;inset:0;pointer-events:none;
+                  background:linear-gradient(105deg,transparent 42%,rgba(255,255,255,.30) 50%,transparent 58%);
+                  animation:bSweep 1.5s .5s both"></div>`;
+    el.style.cssText = `position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;
+      justify-content:center;overflow:hidden;color:#fff;font-family:system-ui,sans-serif;
+      background:radial-gradient(120% 90% at 30% 15%,#E0574C 0%,#C6413A 45%,#B8730B 100%)`;
+    document.body.appendChild(el);
+  });
+}
+
 /** Tấm bìa đầu/cuối — vẽ chồng lên trang, gỡ ngay sau đó. */
 async function card(title, subtitle) {
   await page.evaluate(
@@ -138,7 +191,7 @@ async function card(title, subtitle) {
       el.id = "__card";
       el.style.cssText = `position:fixed;inset:0;z-index:2147483646;display:flex;flex-direction:column;
         align-items:center;justify-content:center;gap:14px;text-align:center;padding:0 34px;
-        background:linear-gradient(160deg,#1f3a2e,#2d7a5a);color:#fff;
+        background:linear-gradient(160deg,#C6413A,#B8730B);color:#fff;
         font-family:system-ui,sans-serif;opacity:0;transition:opacity .5s`;
       el.innerHTML =
         `<div style="font-size:15px;letter-spacing:.34em;opacity:.75">B E R A S</div>` +
@@ -166,10 +219,23 @@ const go = async (path) => {
 };
 
 try {
-  // ── 01 · bìa mở ───────────────────────────────────────────────────────────
+  // ── 00 · intro 3 giây ─────────────────────────────────────────────────────
   await go("/login");
+  begin("00");
+  await intro();
+  await hold();
+  await page.evaluate(() => {
+    const el = document.getElementById("__intro");
+    if (!el) return;
+    el.style.transition = "opacity .55s";
+    el.style.opacity = "0";
+    setTimeout(() => el.remove(), 600);
+  });
+  await page.waitForTimeout(560);
+
+  // ── 01 · lời chào ─────────────────────────────────────────────────────────
   begin("01");
-  await card("Nhà thuốc 650", "Hướng dẫn cơ bản · nhập hàng → tồn kho → bán hàng → hoá đơn");
+  await card("Nhà thuốc 650", "Bản thử nghiệm · nhập hàng → tồn kho → bán hàng → hoá đơn");
   await hold();
   await uncard();
 
