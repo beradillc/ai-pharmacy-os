@@ -25,6 +25,7 @@ from pharmacy_os.modules.procurement.application.dto import (
     SupplierOutput,
 )
 from pharmacy_os.modules.procurement.domain import (
+    DrugMismatchError,
     GoodsReceiptItem,
     GoodsReceiptNote,
     GoodsReceived,
@@ -295,10 +296,26 @@ class ProcurementService:
         a raw FK ``IntegrityError`` on insert or be caught late at
         :meth:`confirm_goods_receipt` — same failure mode ``apply_receipt``
         guards against, just reported earlier.
+
+        🔴 ``drug_id`` phải khớp dòng đơn hàng — vá 2026-07-29, đo thật, không suy luận.
+        Trước bản vá, trường này **không được kiểm gì cả**. Gửi một UUID bịa thì
+        API trả 201, ``confirm`` trả 200, và ``product_batches`` mọc ra hai lô cho
+        thuốc **không tồn tại** — im lặng, không dòng nào vào
+        ``stock_reconciliation_needed``.
+
+        Ca nguy hiểm hơn cái UUID bịa là một ``drug_id`` **có thật nhưng sai dòng**:
+        đặt Paracetamol, hàng vào tồn kho của Amoxicillin. Đơn mua vẫn ghi "đã
+        nhận", nên không ai đi tìm. Đúng thứ nghiệp vụ truy vết lô phải làm được
+        khi có công văn thu hồi.
+
+        Vì sao kiểm được ở đây mà không phá kiến trúc: dòng đơn hàng **đã mang sẵn**
+        ``drug_id``, và PO đang nằm trong tay. Không cần hỏi ``catalog`` câu nào —
+        contract import-linter giữ nguyên. Trường ``drug_id`` trên yêu cầu nay chỉ
+        còn là một khẳng định để đối chiếu, không phải một nguồn sự thật.
         """
         require_permission(ctx, "procurement.grn.create")
         po = await self._get_po_or_404(data.po_id, ctx)
-        known_item_ids = {item.id for item in po.items}
+        drug_by_item = {item.id: item.drug_id for item in po.items}
         grn = GoodsReceiptNote(
             tenant_id=po.tenant_id,
             branch_id=po.branch_id,
@@ -307,9 +324,15 @@ class ProcurementService:
         )
         try:
             for item in data.items:
-                if item.po_item_id not in known_item_ids:
+                if item.po_item_id not in drug_by_item:
                     raise UnknownPurchaseOrderItemError(
                         f"Dòng hàng {item.po_item_id} không thuộc đơn mua hàng {po.id}"
+                    )
+                if item.drug_id != drug_by_item[item.po_item_id]:
+                    raise DrugMismatchError(
+                        f"Dòng hàng {item.po_item_id} đặt thuốc "
+                        f"{drug_by_item[item.po_item_id]} nhưng phiếu nhập ghi "
+                        f"{item.drug_id}"
                     )
                 grn.add_item(
                     GoodsReceiptItem(

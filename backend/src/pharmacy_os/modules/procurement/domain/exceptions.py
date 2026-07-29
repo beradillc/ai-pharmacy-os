@@ -27,6 +27,16 @@ class UnknownPurchaseOrderItemError(ProcurementError):
     """Raised when a received line references a PO item that doesn't exist on the order."""
 
 
+class DrugMismatchError(ProcurementError):
+    """Raised when a received line names a different drug than the PO line ordered.
+
+    Not a typo guard — a traceability guard. Crediting stock to the wrong drug
+    leaves the PO reading "received" while nothing sellable arrived under that
+    drug, so nobody goes looking. See ``ProcurementService.create_goods_receipt``
+    for the measurement that found this (2026-07-29).
+    """
+
+
 class OverReceiptError(ProcurementError):
     """Raised when applying a receipt would exceed a line's ordered quantity."""
 

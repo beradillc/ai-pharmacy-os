@@ -18,6 +18,7 @@ from pharmacy_os.modules.procurement.domain.events import (
     ReceivedItem,
 )
 from pharmacy_os.modules.procurement.domain.exceptions import (
+    DrugMismatchError,
     EmptyGoodsReceiptError,
     EmptyPurchaseOrderError,
     InvalidGoodsReceiptItemError,
@@ -55,6 +56,7 @@ __all__ = [
     "InvalidSupplierError",
     "OverReceiptError",
     "ProcurementError",
+    "DrugMismatchError",
     "UnknownPurchaseOrderItemError",
     "GoodsReceiptRepository",
     "PurchaseOrderRepository",

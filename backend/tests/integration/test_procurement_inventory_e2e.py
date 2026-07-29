@@ -121,3 +121,47 @@ def test_two_partial_receipts_accumulate_stock(client: TestClient) -> None:
     receive("LOT-B", "60")  # distinct lots -> two batches -> accumulate
 
     assert _on_hand(client, drug) == Decimal("100")
+
+
+def test_receipt_naming_a_different_drug_is_rejected(client: TestClient) -> None:
+    """🔴 Nhận hàng ghi SAI thuốc phải bị từ chối — vá 2026-07-29.
+
+    Trước bản vá, ``drug_id`` trên phiếu nhập không được kiểm gì cả. Đo thật trên
+    API đang chạy: gửi một UUID bịa thì tạo phiếu trả **201**, chốt phiếu trả
+    **200**, và ``product_batches`` mọc ra lô cho thuốc **không tồn tại** — im
+    lặng, không dòng nào vào ``stock_reconciliation_needed``.
+
+    Ca nguy hiểm hơn cái UUID bịa là ca test này dựng: một ``drug_id`` **có thật
+    nhưng sai dòng**. Đặt thuốc A, hàng vào tồn kho thuốc B. Đơn mua vẫn ghi "đã
+    nhận" nên không ai đi tìm; thuốc A thì mãi không thấy hàng về. Đúng thứ
+    nghiệp vụ truy vết lô phải làm được khi có công văn thu hồi.
+    """
+    ordered_drug = str(uuid4())
+    other_drug = str(uuid4())
+    po = _ordered_po(client, ordered_drug, "100")
+
+    res = client.post(
+        "/api/v1/goods-receipts",
+        json={
+            "po_id": po["id"],
+            "items": [
+                {
+                    "po_item_id": po["items"][0]["id"],
+                    "drug_id": other_drug,  # ← không phải thuốc đã đặt
+                    "quantity_received": "100",
+                    "lot_no": "LOT-SAI-THUOC",
+                    "expiry_date": _expiry(),
+                    "unit_cost": "4800",
+                }
+            ],
+        },
+    )
+
+    assert res.status_code == 422, res.text
+    # Chặn ở bước TẠO, không phải bước chốt: phiếu nháp sai vẫn là một tờ giấy
+    # sai nằm trong hệ thống chờ ai đó bấm nhầm.
+    assert "thuốc" in res.json()["detail"].lower() or "drug" in res.json()["detail"].lower()
+
+    # Và không thuốc nào tăng tồn — kể cả thuốc bị ghi nhầm.
+    assert _on_hand(client, ordered_drug) == Decimal("0")
+    assert _on_hand(client, other_drug) == Decimal("0")
