@@ -126,6 +126,10 @@ class CustomerConsentORM(PkUuidMixin, Base):
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     actor_user_id: Mapped[UUID | None] = mapped_column()
     client_ip: Mapped[str | None] = mapped_column(String(45))
+    #: Cách sự đồng ý được lấy — xem ``ConsentBasis``. Dòng cũ (trước 2026-07-29)
+    #: mặc định "EXPLICIT" vì đó là cách DUY NHẤT tồn tại lúc chúng được ghi;
+    #: đoán rộng hơn là tự khai một nguồn gốc chưa ai kiểm chứng.
+    basis: Mapped[str] = mapped_column(String(16), nullable=False, server_default="EXPLICIT")
 
     customer: Mapped[CustomerORM] = relationship(back_populates="consents")
 

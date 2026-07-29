@@ -9,6 +9,7 @@ from pharmacy_os.modules.crm.domain import (
     Allergy,
     AllergySeverity,
     Condition,
+    ConsentBasis,
     ConsentPurpose,
     Customer,
     CustomerConsent,
@@ -69,6 +70,7 @@ def to_domain(row: CustomerORM) -> Customer:
         CustomerConsent(
             id=k.id,
             purpose=ConsentPurpose(k.purpose),
+            basis=ConsentBasis(k.basis),
             granted=k.granted,
             terms_version=k.terms_version,
             recorded_at=_as_utc(k.recorded_at) or k.recorded_at,
@@ -101,6 +103,7 @@ def to_orm(customer: Customer, tenant_id: UUID) -> CustomerORM:
                 recorded_at=k.recorded_at,
                 actor_user_id=k.actor_user_id,
                 client_ip=k.client_ip,
+                basis=k.basis.value,
             )
             for k in customer.consents
         ],

@@ -17,7 +17,7 @@ from pharmacy_os.modules.crm.application.dto import (
     CustomerOutput,
     RecordConsentInput,
 )
-from pharmacy_os.modules.crm.domain import AllergySeverity, ConsentPurpose
+from pharmacy_os.modules.crm.domain import AllergySeverity, ConsentBasis, ConsentPurpose
 
 
 class CreateCustomerRequest(BaseModel):
@@ -62,10 +62,16 @@ class RecordConsentRequest(BaseModel):
     purpose: ConsentPurpose
     granted: bool
     terms_version: str = Field(default=DEFAULT_TERMS_VERSION, min_length=1, max_length=32)
+    #: Mặc định EXPLICIT — cái CHẶT hơn. Người gọi phải NÓI RA nếu đây là số
+    #: khách tự đưa ở quầy; im lặng không được tự nhận một nguồn gốc dễ dãi hơn.
+    basis: ConsentBasis = ConsentBasis.EXPLICIT
 
     def to_input(self) -> RecordConsentInput:
         return RecordConsentInput(
-            purpose=self.purpose, granted=self.granted, terms_version=self.terms_version
+            purpose=self.purpose,
+            granted=self.granted,
+            terms_version=self.terms_version,
+            basis=self.basis,
         )
 
 
@@ -77,6 +83,9 @@ class ConsentResponse(BaseModel):
     recorded_at: datetime
     actor_user_id: UUID | None
     client_ip: str | None
+    #: Phơi ra vì đây là thứ đoàn kiểm tra hỏi — "đồng ý đó lấy thế nào" — chứ
+    #: không phải chi tiết nội bộ.
+    basis: str
 
     @classmethod
     def of(cls, out: ConsentOutput) -> ConsentResponse:
@@ -86,6 +95,7 @@ class ConsentResponse(BaseModel):
             granted=out.granted,
             terms_version=out.terms_version,
             recorded_at=out.recorded_at,
+            basis=out.basis,
             actor_user_id=out.actor_user_id,
             client_ip=out.client_ip,
         )

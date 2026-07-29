@@ -9,6 +9,7 @@ from uuid import UUID
 
 from pharmacy_os.modules.crm.domain import (
     AllergySeverity,
+    ConsentBasis,
     ConsentPurpose,
     Customer,
     CustomerConsent,
@@ -47,6 +48,8 @@ class RecordConsentInput:
     purpose: ConsentPurpose
     granted: bool
     terms_version: str
+    #: Mặc định EXPLICIT — cái chặt hơn. Xem ``ConsentBasis``.
+    basis: ConsentBasis = ConsentBasis.EXPLICIT
 
 
 @dataclass(slots=True)
@@ -58,12 +61,14 @@ class ConsentOutput:
     recorded_at: datetime
     actor_user_id: UUID | None
     client_ip: str | None
+    basis: str
 
     @classmethod
     def of(cls, consent: CustomerConsent) -> ConsentOutput:
         return cls(
             id=consent.id,
             purpose=consent.purpose.value,
+            basis=consent.basis.value,
             granted=consent.granted,
             terms_version=consent.terms_version,
             recorded_at=consent.recorded_at,

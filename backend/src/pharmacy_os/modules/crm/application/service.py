@@ -166,6 +166,7 @@ class CrmService:
                     recorded_at=datetime.now(UTC),
                     actor_user_id=ctx.user_id,
                     client_ip=ctx.client_ip,
+                    basis=data.basis,
                 )
             )
         except CrmError as exc:
