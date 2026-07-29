@@ -119,6 +119,53 @@ nặng:
 **Không tự tạo hồ sơ khi khách KHÔNG đưa số.** Bán hàng không cần khách hàng; ô số
 điện thoại để trống thì bán bình thường, không tạo hồ sơ nào.
 
+### 2c. 🔴 Đ-5 · Mốc thưởng — Chain chốt 2026-07-29
+
+| Tích luỹ trong năm | Quà | Giá trị |
+|---|---|---|
+| **1.000.000 đ** | 1 bịch khẩu trang 10 cái | ~10.000 đ (1,0%) |
+| **3.000.000 đ** | 1 hộp khẩu trang | ~50.000 đ (1,7%) |
+
+Ba điều Chain chốt kèm theo (đã hỏi vì mỗi cách hiểu lệch nhau **4 lần chi phí**):
+
+| | Quyết định |
+|---|---|
+| **Lặp lại?** | **Một lần mỗi mốc, mỗi năm.** Khách mua 11 triệu vẫn chỉ nhận 1 bịch + 1 hộp |
+| **Đạt 3 triệu?** | **Nhận cả hai** — bịch (mốc 1tr) rồi hộp (mốc 3tr) |
+| **"Trong năm"?** | **Năm dương lịch**, reset 01/01 |
+
+**Vì sao phải hỏi:** đo trên chính nhà thuốc demo, **60 ngày**: 10/12 khách đã vượt
+1 triệu, 3/12 đã vượt 3 triệu, trung bình 1.938.492 đ/khách. Suy ra cả năm thì gần
+như **mọi khách quen đều vượt cả hai mốc, nhiều lần**. Nếu hiểu là "lặp lại" thì
+chi phí ~260.000 đ/khách/năm thay vì ~60.000 đ — với 500 khách quen là **130 triệu
+so với 30 triệu**. Đó không phải chi tiết kỹ thuật.
+
+#### 🔴 Hai chỗ lệch giữa lời Chain và dữ liệu thật — CHƯA tự sửa
+
+| | Lệch | Cần Chain xác nhận |
+|---|---|---|
+| L-1 | Chain ghi hộp khẩu trang **~50.000 đ**; danh mục hiện có *"Khẩu trang y tế 4 lớp"* giá **35.000 đ/hộp** | Dùng hộp 35.000 đ hiện có, hay nhập loại khác giá 50.000 đ? |
+| L-2 | **Không có mã hàng "bịch 10 cái"** trong danh mục — chỉ có đơn vị *hộp* | Tạo mã hàng mới, hay tách lẻ từ hộp? |
+
+Không tự chọn: đây là **hàng thật rời khỏi kho thật**, và chọn sai mã hàng thì tồn
+kho lệch ở đúng mặt hàng đang được đem cho.
+
+#### Ảnh hưởng tới rào cản pháp lý — hẹp lại, chưa gỡ
+
+Quà là **khẩu trang y tế (vật tư), KHÔNG phải thuốc**. Điều đó **đổi hồ sơ rủi ro**:
+câu hỏi *"thuốc có bị cấm dùng làm hàng khuyến mại không"* nay **không còn áp cho
+phần quà**. Nhưng câu *"khuyến mại cho hành vi MUA THUỐC có bị hạn chế không"* thì
+**vẫn nguyên** — mốc tích luỹ tính trên tiền mua, mà phần lớn là tiền thuốc.
+
+⇒ **Q-1 hẹp lại**, Q-2 và Q-3 giữ nguyên. Vẫn **chưa kết luận được** (thiếu Luật
+Thương mại 2005 + NĐ 81/2018). Giai đoạn C vẫn **chặn**.
+
+#### Hệ quả thiết kế cho giai đoạn B
+
+Chain nghĩ bằng **tiền**, không bằng "điểm". Nên sổ ghi **đồng tích luỹ**, không
+phát minh một đơn vị điểm rồi quy đổi 1 điểm = 1 đồng — indirection đó chỉ tạo chỗ
+cho sai số và cho câu hỏi *"1 điểm là bao nhiêu tiền"*.
+
 ### 3. Phân loại dữ liệu
 
 | Dữ liệu | Phân loại | Ghi chú |
