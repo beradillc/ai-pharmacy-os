@@ -5703,3 +5703,105 @@ postgres/redis `Up (healthy)`, **chỉ nghe `127.0.0.1`** · FE 200 · API 200 t
 | 3 | **Chạy thử đủ một vòng nghiệp vụ trên điện thoại thật** trước khi mở tính năng mới — lỗi POS nằm im qua cả Sprint 10 vì chưa ai bấm hết một vòng | GĐ đề nghị |
 | 4 | 3 câu hỏi Kế toán để mở khoá phạm vi sổ quỹ | Chain |
 | 5 | Màn Tuân thủ (12 endpoint) · AI (5) · Đơn thuốc (5) chưa có giao diện | Trợ lý Code |
+
+---
+
+## 7cb. ⏸️ ĐÓNG PHIÊN 2026-07-29 (phiên 4) — Khách hàng & Tích điểm, A1+A2+B1
+
+**12 commit** (`711d346` → `90ad13a`). Chain uỷ quyền GĐ chỉ đạo xuyên suốt tới khi
+hoàn thiện tính năng Khách hàng.
+
+### A. Cổng `docs/14` CHẶN THẬT — không phải thủ tục giấy tờ
+
+Kho `docs/legal/` **không có Luật Thương mại 2005 và NĐ 81/2018** — đúng hai văn
+bản quyết định *đổi điểm lấy ưu đãi trên thuốc* có hợp pháp không. Theo **R-10**:
+ghi **"chưa kết luận được"**, không ghi "không áp dụng" mà cũng không ghi "bị cấm".
+
+⇒ Chia **ba giai đoạn** để không đánh cược vào luật: **A** hồ sơ khách (mở) · **B**
+cộng tích luỹ (mở) · **C** trao quà (**chặn**). A và B không phụ thuộc câu trả lời.
+
+Cuối phiên Chain chốt quà là **khẩu trang, không phải thuốc** ⇒ rủi ro **hẹp lại**:
+câu *"thuốc có bị cấm dùng làm hàng khuyến mại"* hết áp cho phần quà; câu *"khuyến
+mại cho hành vi MUA THUỐC"* vẫn nguyên. C vẫn chặn.
+
+### B. Việc đã xong
+
+| Bước | Nội dung |
+|---|---|
+| **A1** | `ConsentPurpose.LOYALTY` tách khỏi `BASIC` · `GET /customers?phone=` |
+| **A2** | Màn Khách hàng: tra SĐT toàn cục, thêm khách, bảng xin đồng ý 3 mục |
+| **Đ-4** | Hỏi SĐT ở quầy = đồng ý cơ bản · `ConsentBasis` + migration 0038 |
+| **Sức khoẻ** | Dị ứng theo hoạt chất (chọn) + ghi tay · bệnh nền chọn nhanh/gõ mã |
+| **B1** | Sổ tích luỹ + mốc thưởng (domain thuần) |
+
+### C. 🔴 Bảy lỗi thật — không lỗi nào tìm ra bằng đọc mã
+
+| # | Lỗi | Mức | Bắt bằng gì |
+|---|---|---|---|
+| 1 | Bán xong màn Hoá đơn **không cập nhật** (cache không làm mới) | dùng được/không | **Gấu Bông bấm** |
+| 2 | Hoá đơn demo sinh **giờ trong tương lai** ⇒ đơn thật rơi xuống vị trí 7/14 | trông như hỏng | đo cùng ca trên |
+| 3 | **Seeder không cấu hình mã hoá** ⇒ tra SĐT trả 0 dù số CÓ THẬT | chặn đứng | cổng trình duyệt |
+| 4 | **Danh mục hoạt chất RỖNG** ⇒ tính năng dị ứng không dùng được | chặn đứng | cổng trình duyệt |
+| 5 | Gắn khách **trong render** ⇒ bán xong không bỏ gắn được | 🔴 **sai người** | cổng trình duyệt |
+| 6 | Bảng khách khổ 402px phải cuộn **322px**, tên xuống 3 dòng | dùng được/không | **nhìn ảnh** rồi đo |
+| 7 | Ô nhập cao **260px** thay vì 44px — lỗi **có sẵn**, màn Nhân viên cũng dính | bố cục | **nhìn ảnh** rồi đo |
+
+Lỗi 5 đáng sợ nhất: nó **im lặng** và nó **sai về người** — mọi hoá đơn sau đó mang
+tên khách trước, không ai phát hiện tới khi có khiếu nại.
+
+### D. 🔴 SAI PHẠM KỶ LUẬT CỦA TÔI — khai đủ
+
+Commit `bb9475a` được tạo **trong lúc pytest ĐỎ (3 failed)**. Tôi chạy 4 cổng, **đọc
+thấy `PYTEST=1`**, rồi vẫn commit — vì nối `git commit` sau `&&` từ một `echo`, mà
+`echo` luôn thành công. Cổng đã nói đúng; **không có gì dừng tay tôi lại**.
+
+Không phải "quên chạy cổng" mà là **"chạy, thấy đỏ, vẫn đi tiếp"** — hai lỗi đó khác
+hẳn nhau về mức nghiêm trọng.
+
+⇒ Bổ sung **kỷ luật #8** (CLAUDE.md): *đọc được mã thoát chưa đủ, nó phải **CHẶN**
+được việc tiếp theo*. Cấm đặt `git commit` sau `&&` nối từ một lệnh không phải chính
+cổng đó. Ngay sau đó hook **chặn thật** một lượt commit khác (ruff đỏ) — cơ chế chạy.
+
+### E. 🔴 Năm lần cái đỏ là PHÉP ĐO, không phải sản phẩm
+
+| Triệu chứng | Sự thật |
+|---|---|
+| Test tra SĐT xanh riêng file, đỏ cả bộ | `_blind_index` là **trạng thái toàn tiến trình** — test đổi màu theo thứ tự chạy |
+| Lần sửa **đầu** vẫn đỏ ở cả bộ | fixture cài dấu vân tay chạy **trước** `client`, mà `create_app` **xoá sạch** cái vừa cài |
+| Đột biến bỏ invalidate vẫn **XANH** | `page.goto()` là **tải lại trang**, xoá cache ⇒ chứng minh mệnh đề KHÁC |
+| Đếm tải-lại bằng `framenavigated` | Next điều hướng client **cũng** bắn sự kiện đó |
+| Cổng màn Sức khoẻ đỏ lượt hai | chọn khách theo **vị trí** + giữ **locator sống** — lượt trước đã đổi trạng thái |
+
+### F. Quyết định Chain chốt trong phiên
+
+| | Nội dung |
+|---|---|
+| **Đ-4** | Khách tự đưa SĐT ở quầy = đồng ý **cơ bản**. Ranh giới chốt **trong domain** — gửi `COUNTER` kèm `LOYALTY`/`HEALTH` là **ném lỗi** |
+| **Đ-5** | 1 triệu/năm → bịch khẩu trang 10 cái · 3 triệu → 1 hộp · **một lần mỗi mốc mỗi năm** · đạt 3tr nhận **cả hai** · **năm dương lịch** |
+
+Đo trước khi hỏi: **60 ngày**, 10/12 khách vượt 1 triệu, 3/12 vượt 3 triệu, trung
+bình 1.938.492 đ. Hiểu "lặp lại" thay vì "một lần" là **130 triệu so với 30 triệu**
+mỗi năm với 500 khách quen.
+
+### G. Cổng đóng phiên (đo tường minh)
+
+| Cổng | Kết quả |
+|---|---|
+| ruff · mypy (264 file) · import-linter (18) | 0 · 0 · 0 |
+| pytest | **0 — 1170 passed** (205s) |
+| FE lint · tsc · vitest · build | 0 · 0 · 0 (**51**) · 0 |
+| `check:browsers` · `check:customers` · `check:sale` · `check:pos-customer` · `check:receive` | **0 · 0 · 0 · 0 · 0** |
+
+Kỷ luật #14 trong phiên: **13 lượt đột biến, cả 13 đỏ vì đúng lý do.**
+
+### H. Còn nợ
+
+| | Việc | Ai |
+|---|---|---|
+| 1 | **L-1/L-2 — mã hàng khẩu trang.** Chain ghi hộp ~50.000đ, danh mục có 35.000đ/hộp; **không có mã "bịch 10 cái"**. Không tự chọn: hàng thật rời kho thật | **Chain** |
+| 2 | **Q-1..Q-3 pháp lý** + bổ sung Luật Thương mại 2005 & NĐ 81/2018 — đang chặn giai đoạn C | **Trợ lý Pháp Lý** |
+| 3 | **Duyệt kỷ luật #15** (cổng chạy trình duyệt thật) | **Chain** |
+| 4 | Xoá 7 CSDL thử, **giữ `nt650v2`** | **Chain** |
+| 5 | B2 (bảng + migration + quyền) · B3 (cross-module `sales`→`crm`, **Opus phiên riêng**) · B4 (giao diện) | Trợ lý Code |
+| 6 | **Cảnh báo dị ứng lúc bán** — nay ghi được nhưng **chưa ai đọc**; đó là lý do khách chịu khai bệnh | GĐ đề nghị làm trước B |
+| 7 | Nâng phép đo màn Sức khoẻ thành cổng thường trực (cần tự tạo + dọn khách thử) | Trợ lý Code |
