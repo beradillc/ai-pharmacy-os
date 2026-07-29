@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { useAuthStore } from "@/features/auth/auth-store";
 import {
   PO_PAGE_SIZE,
   PO_STATUS_LABEL,
@@ -11,14 +12,32 @@ import {
 } from "@/features/procurement/use-purchase-orders";
 import { ApiError } from "@/shared/api/errors";
 import { formatMoney, formatTime } from "@/shared/format/number";
+import type { PurchaseOrderListItem } from "@/shared/api/types";
 import styles from "@/shared/ui/screen.module.css";
+
+import { ReceiveDrawer } from "./ReceiveDrawer";
+import local from "./page.module.css";
 
 const STATUS_CLASS: Record<string, string> = {
   DRAFT: styles.chipMuted,
   ORDERED: styles.chipOk,
   PARTIALLY_RECEIVED: styles.chipWarn,
+  RECEIVED: styles.chipOk,
   CLOSED: styles.chipMuted,
   CANCELLED: styles.chipDanger,
+};
+
+/** Chỉ đơn ĐÃ GỬI NCC mới nhận hàng được — `apply_receipt` ở domain từ chối mọi
+ * trạng thái khác. Đơn nháp phải "Gửi NCC" trước; đơn đã nhận đủ/đóng/huỷ thì
+ * hết việc. Hiện nút cho những đơn đó là mời người dùng bấm để lấy về một lỗi. */
+const RECEIVABLE = new Set(["ORDERED", "PARTIALLY_RECEIVED"]);
+
+/** Vì sao dòng này không có nút — hiện qua `title`, đỡ hơn một gạch ngang câm. */
+const WHY_NOT: Record<string, string> = {
+  DRAFT: "Đơn còn nháp — phải gửi cho NCC trước khi nhận hàng",
+  RECEIVED: "Đơn đã nhận đủ hàng",
+  CLOSED: "Đơn đã đóng sau khi đối chiếu",
+  CANCELLED: "Đơn đã huỷ",
 };
 
 /**
@@ -28,10 +47,23 @@ const STATUS_CLASS: Record<string, string> = {
  * cho nhà cung cấp qua điện thoại (khe hở G-2, docs/19). Tổng tiền là tiền
  * **đặt**, nên đơn nháp do máy đề xuất có tổng 0 đ cho tới khi người ta điền
  * giá — màn hình nói rõ chỗ đó thay vì để người đọc tưởng hệ thống cộng sai.
+ *
+ * 29/07: thêm cột **Nhận hàng**, đóng nốt vòng *đơn mua → nhận hàng → tồn kho
+ * tăng*. Trước đó ba endpoint `goods-receipts` chạy được nhưng không đường nào
+ * gọi tới, nên câu hỏi "đặt xong thì hàng về kho bằng cách nào" không có câu
+ * trả lời trên giao diện.
  */
 export default function PurchaseOrdersPage() {
   const [status, setStatus] = useState<PoStatus | null>(null);
   const [page, setPage] = useState(0);
+  const [receiving, setReceiving] = useState<PurchaseOrderListItem | null>(null);
+
+  // Quyền do backend cấp; đây chỉ là ẩn nút cho đỡ vướng mắt. Người không có
+  // quyền mà gọi thẳng API vẫn bị 403 — giao diện KHÔNG phải chỗ quyết
+  // authorization, chỉ phản ánh nó.
+  const canReceive = new Set(useAuthStore((s) => s.session)?.permissions ?? []).has(
+    "procurement.grn.create",
+  );
 
   const { data, isLoading, error, refetch } = usePurchaseOrders(status, page);
   const rows = data ?? [];
@@ -98,6 +130,7 @@ export default function PurchaseOrdersPage() {
                   <th className={styles.num}>Mặt hàng</th>
                   <th className={styles.num}>Tổng đặt</th>
                   <th>Tạo lúc</th>
+                  {canReceive && <th />}
                 </tr>
               </thead>
               <tbody>
@@ -125,6 +158,23 @@ export default function PurchaseOrdersPage() {
                       )}
                     </td>
                     <td className={styles.mono}>{formatTime(po.created_at)}</td>
+                    {canReceive && (
+                      <td className={styles.num}>
+                        {RECEIVABLE.has(po.status) ? (
+                          <button
+                            type="button"
+                            className={styles.ghost}
+                            onClick={() => setReceiving(po)}
+                          >
+                            Nhận hàng
+                          </button>
+                        ) : (
+                          <span className={local.hint} title={WHY_NOT[po.status]}>
+                            —
+                          </span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -152,6 +202,8 @@ export default function PurchaseOrdersPage() {
           </button>
         </div>
       </div>
+
+      {receiving && <ReceiveDrawer po={receiving} onClose={() => setReceiving(null)} />}
     </div>
   );
 }

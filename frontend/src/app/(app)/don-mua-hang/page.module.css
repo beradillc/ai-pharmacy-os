@@ -1,0 +1,71 @@
+.notice {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--beras-success);
+  background: var(--beras-success-bg);
+  color: var(--beras-text);
+  font-size: var(--text-sm);
+}
+
+.hint {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--beras-text-muted);
+}
+
+.tag {
+  margin-left: var(--space-2);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+/* Hạn dùng đã qua. Dùng `--beras-warning-ink` chứ không phải `--beras-warning`:
+   bậc nền vàng trên nền trắng chỉ đạt ~2,1:1, dưới ngưỡng WCAG AA cho chữ. */
+.warnInline {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--beras-danger);
+}
+
+/* Ô số trong bảng. Hẹp nhưng KHÔNG dưới --touch-min: trên điện thoại đây là ô
+   người ta gõ nhiều nhất trong cả màn, bấm hụt là nhập nhầm dòng. */
+.qty {
+  width: 6.5rem;
+  min-height: var(--touch-min);
+  text-align: right;
+}
+
+.lot {
+  width: 8rem;
+  min-height: var(--touch-min);
+}
+
+.date {
+  width: 9.5rem;
+  min-height: var(--touch-min);
+}
+
+/* Khổ điện thoại: bảng nhận hàng có 6 cột, cuộn ngang trong khung của nó
+   (`.tableWrap` lo phần đó). Ô nhập co lại để bớt quãng cuộn, nhưng vùng chạm
+   giữ nguyên chiều cao. */
+@media (max-width: 640px) {
+  .qty {
+    width: 4.5rem;
+  }
+
+  .lot {
+    width: 6rem;
+  }
+
+  .date {
+    width: 8.5rem;
+  }
+}
