@@ -65,8 +65,10 @@ qua. Script quay xuất ra mốc thật của từng đoạn để khâu ghép �
 - **Dùng thuốc không kê đơn (OTC).** Thuốc ETC bị backend chặn đúng theo quy định
   (*"cần đơn thuốc hợp lệ"*); quay cảnh đó vào video **cơ bản** thì người mới
   tưởng phần mềm hỏng.
-- **Dọn dữ liệu trước mỗi lượt quay.** Lượt trước để lại hoá đơn và phiếu nhập ⇒
-  màn Tổng quan hiện doanh thu trong khi lời đọc nói "còn bằng không".
+- **Dữ liệu nền phải khớp lời đọc, và dọn phiếu nhập của lượt trước.** Lượt quay
+  trước để lại phiếu nhập đã chốt ⇒ đơn mua không còn ở trạng thái nhận được, và
+  đoạn 4–7 hỏng. Riêng hoá đơn thì **giữ** — nhà thuốc trong video là nhà thuốc
+  lâu năm, màn Tổng quan phải có doanh thu.
 - **Bật theme bằng `localStorage`, đừng bấm qua màn Cài đặt.** Bấm qua Cài đặt
   thì khung hình đầu tiên vẫn là Classic rồi mới đổi — video mở màn bằng đúng cái
   theme không định giới thiệu. Đặt `beras.theme` trong `addInitScript` là không
