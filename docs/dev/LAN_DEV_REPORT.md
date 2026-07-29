@@ -12,7 +12,7 @@
 | **Backend URL (điện thoại)** | **http://192.168.1.10:8000/api/v1** |
 | Trên chính laptop | http://localhost:3000 |
 | **Cổng đã dùng** | FE **3000** · API **8000** · PG **5432** *(loopback)* · Redis **6379** *(loopback)* |
-| **Tường lửa** | UFW **BẬT**, `DEFAULT_INPUT_POLICY=DROP` → ⚠️ **cần Chain chạy 2 lệnh `ufw`** |
+| **Tường lửa** | UFW **BẬT** · 2 cổng dev **đã mở** cho `192.168.1.0/24` (29/07 08:03) |
 | **CORS** | Danh sách đúng 2 nguồn, **không** wildcard |
 | **CSDL có ra LAN không** | **KHÔNG** — `127.0.0.1:5432`, kiểm bằng kết nối TCP từ LAN IP: **đóng** |
 | **Xác thực** | JWT thật; **dev-auth đã tắt** ở chế độ LAN |
@@ -75,18 +75,30 @@ URL API nhúng sai.
 | Đăng nhập thật qua LAN IP | **200 + JWT** | FE → BE → **CSDL** thông suốt |
 | `GET /drugs` kèm token qua LAN IP | **200**, trả tên thuốc thật | Toàn chuỗi tới tận CSDL chạy được |
 
-## 5. ⚠️ NEEDS REVIEW — một việc script cố ý KHÔNG tự làm
+## 5. ✅ Tường lửa — ĐÃ MỞ (29/07 08:03, Chain uỷ quyền kèm mật khẩu sudo)
 
-UFW đang chặn mọi kết nối vào. **Điện thoại chưa vào được cho tới khi Chain chạy:**
+```
+$ sudo ufw status numbered
+[ 1] 3000/tcp   ALLOW IN   192.168.1.0/24   # BERAS dev FE
+[ 2] 8000/tcp   ALLOW IN   192.168.1.0/24   # BERAS dev API
+```
+
+🔴 **Điều này CHƯA chứng minh điện thoại vào được.** Máy không tự kiểm được tường
+lửa của chính nó: lưu lượng từ laptop gọi tới `192.168.1.10` đi qua loopback và
+UFW không lọc — nên kết quả `200` ở mục 3 phía trên **không phải** bằng chứng.
+Phép thử thật duy nhất là **cầm điện thoại lên mở**.
+
+Lệnh đã chạy (giữ lại để dựng lại khi đổi máy/đổi dải mạng):
 
 ```bash
 sudo ufw allow from 192.168.1.0/24 to any port 3000 proto tcp comment 'BERAS dev FE'
 sudo ufw allow from 192.168.1.0/24 to any port 8000 proto tcp comment 'BERAS dev API'
 ```
 
-**Vì sao không tự chạy:** cần `sudo`, và sửa tường lửa là loại thay đổi mà một
-công cụ tự động **không nên** làm thay người — kể cả khi có uỷ quyền cao nhất.
-Yêu cầu số 9 cũng nói rõ *"không tắt firewall; chỉ đề xuất/mở đúng port"*.
+**Vì sao script không tự chạy:** cần `sudo`. Lần này Chain **uỷ quyền riêng kèm
+mật khẩu** nên GĐ chạy hộ; script thì vẫn giữ nguyên nguyên tắc chỉ *in ra lệnh*,
+vì mật khẩu là thứ được cấp cho một lần cụ thể, không phải một quyền thường trực.
+Không tắt firewall dòng nào — chỉ **thêm** đúng 2 luật, giới hạn theo dải mạng nhà.
 
 Lệnh trên giới hạn theo **dải mạng nhà**, không mở cho mọi nguồn. Gỡ khi xong:
 
@@ -125,7 +137,7 @@ Chi tiết bằng chứng: `LAN_DEV_AUDIT.md`.
 | DoD | Trạng thái |
 |---|---|
 | Laptop chạy BERAS | ✅ `make lan`, 7/7 phép kiểm xanh |
-| Điện thoại vào `http://LAN_IP:3000` | ⚠️ **sau khi chạy 2 lệnh `ufw`** (mục 5) |
+| Điện thoại vào `http://LAN_IP:3000` | ⚠️ Cổng đã mở; **chưa ai cầm điện thoại thử** — máy không tự kiểm được tường lửa của chính nó |
 | Frontend gọi được backend | ✅ URL nhúng = LAN IP, đã đọc từ JS phục vụ thật |
 | Backend gọi được database | ✅ login 200 + `/drugs` trả tên thuốc thật |
 | Authentication hoạt động | ✅ 401 không token · 403 token hỏng · 200 token thật |
