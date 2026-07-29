@@ -342,3 +342,45 @@ def test_anonymised_record_never_allows_health_data_even_with_consent() -> None:
     # The consent row is still in history, but the record is closed.
     assert c.has_consent(ConsentPurpose.HEALTH) is True
     assert c.health_data_allowed is False
+
+
+# --- ConsentPurpose.LOYALTY (giai đoạn A1, docs/features/khach-hang-tich-diem) ---
+
+
+def test_dong_y_co_ban_KHONG_keo_theo_dong_y_tich_diem() -> None:
+    """🔴 Điều 9 đòi đồng ý theo TỪNG mục đích — đây là chỗ dễ sai nhất.
+
+    Khách đồng ý cho lưu tên + SĐT để ghi lên hoá đơn. Điều đó **không** có nghĩa
+    họ đồng ý cho nhà thuốc theo dõi mình mua gì để cộng điểm. Gộp hai thứ là lấy
+    đồng ý cho việc A rồi dùng cho việc B.
+    """
+    c = _customer_without_consent(consents=[_consent(purpose=ConsentPurpose.BASIC, granted=True)])
+    assert c.has_consent(ConsentPurpose.BASIC) is True
+    assert c.loyalty_allowed is False
+
+
+def test_dong_y_tich_diem_KHONG_mo_duong_cho_du_lieu_suc_khoe() -> None:
+    """Và ngược lại — đồng ý tích điểm không phải đồng ý lưu dị ứng/bệnh nền."""
+    c = _customer_without_consent(consents=[_consent(purpose=ConsentPurpose.LOYALTY, granted=True)])
+    assert c.loyalty_allowed is True
+    assert c.health_data_allowed is False
+
+
+def test_rut_lai_dong_y_thi_ngung_cong_diem() -> None:
+    """Rút lại = một dòng MỚI, không sửa dòng cũ. Quyết định sau cùng thắng."""
+    early = datetime(2026, 1, 1, tzinfo=UTC)
+    late = datetime(2026, 6, 1, tzinfo=UTC)
+    c = _customer(
+        consents=[
+            _consent(purpose=ConsentPurpose.LOYALTY, granted=True, at=early),
+            _consent(purpose=ConsentPurpose.LOYALTY, granted=False, at=late),
+        ]
+    )
+    assert c.loyalty_allowed is False
+
+
+def test_kho_so_da_khu_nhan_dang_thi_khong_cong_diem_du_con_dong_y() -> None:
+    """Khử nhận dạng rồi thì không còn ai để thưởng — đừng để cờ đồng ý cũ nói khác."""
+    c = _customer_without_consent(consents=[_consent(purpose=ConsentPurpose.LOYALTY, granted=True)])
+    c.anonymise(NOW)
+    assert c.loyalty_allowed is False

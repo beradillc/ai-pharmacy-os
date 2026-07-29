@@ -61,6 +61,26 @@ class ConsentPurpose(StrEnum):
     BASIC = "BASIC"
     """Name and phone — to identify the buyer on a sale and its invoice."""
 
+    LOYALTY = "LOYALTY"
+    """Tracking what the customer buys, in order to award points.
+
+    A **separate purpose from** :attr:`BASIC`, and deliberately so. ``BASIC`` is
+    consent to *identify the buyer on an invoice*; awarding points means following
+    their buying behaviour over time, which is a different purpose. Điều 9 requires
+    consent per purpose, so folding this into ``BASIC`` would be taking agreement
+    for one thing and using it for another.
+
+    Not :attr:`HEALTH` either: the points ledger deliberately carries no drug
+    identity (quyết định Đ-3, ``docs/features/khach-hang-tich-diem/01_DECISIONS.md``),
+    so no health data is processed for this purpose.
+
+    Withdrawing it **freezes** the balance rather than erasing it — points already
+    earned are an obligation the pharmacy owes the customer, and deleting them
+    would cancel their entitlement unasked. Erasure happens only on an actual
+    erasure request (Điều 13, 14), which goes through
+    :meth:`Customer.anonymise`.
+    """
+
     HEALTH = "HEALTH"
     """Allergies, conditions, medication history — for pharmacological safety advice.
     Sensitive personal data (NĐ356 Điều 4.1.d)."""
@@ -190,6 +210,15 @@ class Customer:
             if latest is None or consent.recorded_at >= latest.recorded_at:
                 latest = consent
         return latest is not None and latest.granted
+
+    @property
+    def loyalty_allowed(self) -> bool:
+        """Whether points may be awarded to this customer right now.
+
+        Checked **at the moment of awarding**, not at profile creation: consent is
+        an append-only history and can be withdrawn between the two (rủi ro R-3).
+        """
+        return not self.is_anonymised and self.has_consent(ConsentPurpose.LOYALTY)
 
     @property
     def health_data_allowed(self) -> bool:
