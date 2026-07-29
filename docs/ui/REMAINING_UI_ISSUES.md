@@ -15,7 +15,7 @@
 |---|---|---|
 | ~~**3**~~ | ~~Frontend vẫn 0 test~~ → ✅ **ĐÓNG 29/07** | **27 test** (vitest) phủ `shared/nav.ts`, `format/number.ts`, và hàm gộp doanh thu theo ngày. Ba mutant đều đỏ đúng lý do. `make check-fe` chạy lint+tsc+test+build. **Còn nợ hẹp hơn:** chưa có test render component (cần jsdom + testing-library) |
 | ~~**4**~~ | ~~Không cưỡng chế ranh giới `components/*` ⇄ `features/*`~~ → ✅ **ĐÓNG 29/07** | `no-restricted-imports` trong `eslint.config.mjs`. **Bắt được vi phạm thật ngay lần chạy đầu**: `AppShell` import `features/auth` ⇒ đã chuyển sang `app/_shell/` (nó là composition root, không phải component tái dùng). Luật KHÔNG có ngoại lệ nào |
-| **5** | Màn **Nhân viên** chưa có | 21 endpoint IAM, 0 màn ⇒ **không tạo được nhân viên trên giao diện**. Chặn pilot thật, không chặn demo |
+| ~~**5**~~ | ~~Màn **Nhân viên** chưa có~~ → ✅ **ĐÓNG 29/07** | Xem danh sách · thêm nhân viên · bật/tắt tài khoản. Đã chạy thật: `POST /users → 201`, `must_change_password: true`. **Còn nợ hẹp hơn: GÁN VAI TRÒ** — cần chọn vai + chi nhánh + hiểu ~50 mã quyền, xứng một màn riêng; màn hiện tại **nói thẳng điều đó ngay trên giao diện** thay vì làm một nửa rồi im lặng |
 | **6** | Màn **Tuân thủ** (12 endpoint) · **AI** (5) · **Nhập hàng** (3) · **Đơn thuốc** (5) | Mỗi màn là một tính năng mới, không phải "đổi giao diện dựa trên cái đã có" |
 
 ## 🟡 Vừa

@@ -88,6 +88,14 @@ export function NavIcon({ name, filled = false }: { name: NavIconName; filled?: 
           <path d="M8.5 17v-3M12 17v-5M15.5 17v-2" />
         </svg>
       );
+    case "staff":
+      return (
+        <svg {...common}>
+          <circle cx="9" cy="8" r="3" />
+          <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+          <path d="M16 5.5a3 3 0 0 1 0 5.5M18 20a6.5 6.5 0 0 0-2.2-4.9" />
+        </svg>
+      );
     case "settings":
       return (
         <svg {...common}>

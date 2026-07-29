@@ -49,6 +49,7 @@ export type NavIconName =
   | "suggest"
   | "report"
   | "settings"
+  | "staff"
   | "more";
 
 export const NAV_GROUP_LABEL: Record<NavGroup, string> = {
@@ -124,6 +125,16 @@ export const NAV: readonly NavItem[] = [
     group: "kho",
     primary: false,
     icon: "purchase",
+  },
+  {
+    href: "/nhan-vien",
+    label: "Nhân viên",
+    short: "Nhân viên",
+    permission: "iam.user.read",
+    group: "quan-tri",
+    primary: false,
+    quickAction: false,
+    icon: "staff",
   },
   {
     href: "/cai-dat",

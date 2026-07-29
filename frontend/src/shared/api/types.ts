@@ -228,3 +228,33 @@ export interface Customer {
   anonymised_at: string | null;
   health_data_allowed: boolean;
 }
+
+// --- IAM: nhân viên & vai trò -------------------------------------------
+// Khớp `modules/iam/interface/schemas.py`.
+
+export interface StaffUser {
+  id: string;
+  tenant_id: string;
+  email: string;
+  full_name: string;
+  /** "ACTIVE" | "DISABLED" | "LOCKED" — hiển thị qua nhãn, không suy từ chuỗi thô. */
+  status: string;
+  must_change_password: boolean;
+  last_login_at: string | null;
+  locked_until: string | null;
+}
+
+export interface Role {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  is_system: boolean;
+  permissions: string[];
+}
+
+export interface RoleAssignment {
+  id: string;
+  role_id: string;
+  branch_id: string | null;
+}
