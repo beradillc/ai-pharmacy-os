@@ -14,9 +14,9 @@
  *
  * KHÔNG nhúng mật khẩu — đọc từ biến môi trường (yêu cầu số 7 của Chain).
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
-import { firefox } from "playwright-core";
+import { webkit } from "playwright-core";
 
 const BASE = process.env.BERAS_BASE ?? "http://192.168.1.10:3000";
 const EMAIL = process.env.BERAS_EMAIL;
@@ -37,7 +37,25 @@ const VIDEO = { width: 804, height: 1748 };
 /** Khoảng lặng giữa hai đoạn nói — không có nó thì câu nọ dính câu kia. */
 const GAP_MS = 700;
 
-const browser = await firefox.launch();
+/** Quay bằng **WebKit** — đúng engine Safari trên iPhone, tức là đúng thứ người
+ * xem sẽ thấy khi họ tự làm theo.
+ *
+ * 🔴 Không phải chọn cho có: ô `<input type="date">` vẽ theo **vùng miền của
+ * trình duyệt**, không theo `lang` của trang. Đo cả ba cách:
+ *
+ * | Cách quay | Ô ngày hiện ra |
+ * |---|---|
+ * | Firefox mặc định | `09 / 20 / 2026` — kiểu Mỹ |
+ * | Firefox + `LC_ALL=vi_VN` + `use_OS_locale` | `09 / 20 / 2026` — **không đổi** |
+ * | **WebKit** | **`20/09/2026`** — đúng kiểu Việt Nam |
+ *
+ * (`navigator.language` và `toLocaleDateString()` đều đúng `vi-VN` ở cả ba —
+ * nên nhìn qua thì tưởng đã đặt locale xong. Chỉ ô ngày mới lộ ra.) Bản Firefox
+ * Playwright đóng gói không có gói ngôn ngữ tiếng Việt nên `intl.locale.requested`
+ * không có tác dụng. Đây KHÔNG phải lỗi sản phẩm — `html lang="vi"` vốn đúng và
+ * máy Chain đặt tiếng Việt sẽ ra `dd/mm/yyyy` — nhưng để nguyên trong video thì
+ * người mới sẽ tưởng phần mềm ghi ngày kiểu Mỹ. */
+const browser = await webkit.launch();
 const ctx = await browser.newContext({
   viewport: VIEWPORT,
   deviceScaleFactor: 2,
@@ -46,6 +64,17 @@ const ctx = await browser.newContext({
   recordVideo: { dir: OUT, size: VIDEO },
 });
 const page = await ctx.newPage();
+
+/** Mốc 0 của cuốn phim. Playwright bắt đầu quay từ lúc trang được tạo, nên mọi
+ * thứ sau dòng này đo được bằng mili-giây so với khung hình đầu tiên.
+ *
+ * 🔴 Cần cái này vì ghép tiếng theo TỔNG thời lượng là sai: giữa các đoạn còn
+ * `goto`, còn hiệu ứng gỡ bìa, còn thời gian trình duyệt tải. Lượt ghép đầu
+ * lệch **7,1 giây** (hình 187,2s · tiếng 180,0s) — tới đoạn cuối thì giọng nói
+ * về một màn hình đã trôi qua. Nên script XUẤT RA mốc thật của từng đoạn, và
+ * khâu ghép đặt từng câu vào đúng mốc đó thay vì nối đuôi nhau. */
+const T0 = Date.now();
+const timeline = {};
 
 /** Chấm chạm: video không quay được con trỏ, nên người xem sẽ thấy giao diện tự
  * đổi mà không biết vừa bấm vào đâu. Vẽ một vòng tròn lan toả tại đúng điểm bấm. */
@@ -71,6 +100,7 @@ let seg = null;
 function begin(id) {
   seg = id;
   segStart = Date.now();
+  timeline[id] = segStart - T0;
   process.stdout.write(`  đoạn ${id} (${DUR[id]}s) … `);
 }
 
@@ -213,10 +243,13 @@ try {
   // ── 09 · bán hàng: tìm thuốc ─────────────────────────────────────────────
   begin("09");
   await go("/");
+  // Thuốc KHÔNG kê đơn. Thuốc ETC bị backend chặn đúng theo quy định
+  // ("cần đơn thuốc hợp lệ") — quay cảnh đó vào video hướng dẫn CƠ BẢN thì
+  // người mới sẽ tưởng phần mềm hỏng.
   const search = page.locator('input[placeholder*="Tìm thuốc"]');
   await search.waitFor({ timeout: 25_000 });
   await page.waitForTimeout(900);
-  await type(search, "Amoxi", 120);
+  await type(search, "Berberin", 110);
   await page.waitForTimeout(1500);
   await hold();
 
@@ -228,7 +261,7 @@ try {
 
   // ── 11 · thêm hai loại nữa ───────────────────────────────────────────────
   begin("11");
-  for (const q of ["Paracetamol", "Vitamin C"]) {
+  for (const q of ["Efferalgan", "Cetirizin"]) {
     await type(search, q, 70);
     await page.waitForTimeout(900);
     await tap(page.locator('button:has-text("Thêm")').first());
@@ -268,4 +301,6 @@ try {
   await ctx.close();
   await browser.close();
 }
+writeFileSync(`${OUT}/timeline.json`, JSON.stringify(timeline, null, 2));
+console.log("Mốc thời gian từng đoạn đã ghi ra timeline.json");
 console.log("Đã quay xong.");
