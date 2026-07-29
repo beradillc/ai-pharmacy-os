@@ -90,3 +90,133 @@
     flex: 1 1 0;
   }
 }
+
+.spaced {
+  margin-right: var(--space-2);
+}
+
+.row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.row > .field {
+  flex: 1 1 240px;
+}
+
+.sectionTitle {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  margin: var(--space-4) 0 var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--beras-border);
+}
+
+.warnBox {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--beras-warning);
+  background: var(--beras-warning-bg);
+  color: var(--beras-text);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+/* Danh sách dị ứng / bệnh nền đã ghi. Mỗi dòng: mức độ (hoặc mã) → tên → ghi chú.
+   Mức độ đứng TRƯỚC vì đó là thứ mắt phải bắt được đầu tiên khi liếc qua. */
+.chipList {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.chipRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.chipMain {
+  font-weight: var(--weight-semibold);
+}
+
+/* Nút chọn nhanh bệnh nền. Vùng chạm đủ lớn cho ngón tay — đây là màn dùng trên
+   máy tính bảng ở quầy, không phải chuột trên bàn giấy. */
+.quickPick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.quickOff,
+.quickOn {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--beras-border);
+  background: var(--beras-surface);
+  color: var(--beras-text);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.quickOn {
+  border-color: var(--beras-accent);
+  background: var(--beras-accent);
+  color: #fff;
+  font-weight: var(--weight-semibold);
+}
+
+/* 🔴 Bảng khách ở khổ điện thoại: đo thật 402px → nội dung 690px trong khung
+   368px, tức là phải cuộn 322px, và cột họ tên chỉ được 88px nên "Đỗ Trọng
+   Nghĩa" xuống BA dòng.
+
+   Bỏ cột "Giới tính" ở khổ nhỏ. Đây là cột ít hành động nhất ở quầy — thu ngân
+   cần tên, số điện thoại, và trạng thái đồng ý để quyết định làm gì tiếp; giới
+   tính không đổi quyết định nào. Vẫn còn nguyên ở khổ máy tính và trong hồ sơ.
+
+   Đồng thời nới cột tên: tên xuống ba dòng làm mỗi dòng cao 69px, nhìn như một
+   danh sách 4 người trong khi có 12. */
+@media (max-width: 640px) {
+  .customerTable th:nth-child(3),
+  .customerTable td:nth-child(3) {
+    display: none;
+  }
+
+  .customerTable th:first-child,
+  .customerTable td:first-child {
+    min-width: 7.5rem;
+  }
+
+  /* Tiêu đề dài nhất bảng, và ở khổ này nó chỉ cần nói đủ nghĩa. */
+  .healthCol {
+    font-size: 0;
+  }
+
+  .healthCol::after {
+    content: "Sức khoẻ";
+    font-size: var(--text-xs);
+  }
+}
+
+/* 🔴 `.input` ở `screen.module.css` có `flex: 1 1 auto` — đúng cho hàng NGANG
+   (ô tìm kiếm phải nở ra cho hết chỗ). Nhưng `.field` xếp DỌC, và trong hộp
+   dọc thì `flex-grow` ăn theo CHIỀU CAO: ô nhập nuốt hết chỗ trống còn lại.
+
+   Đo thật 29/07 ở màn Sức khoẻ: ô "Khách kể lại" cao **260px** trong khi ô
+   chọn bên cạnh chỉ 44px — một ô nhập một dòng cao bằng nửa màn hình. Lỗi này
+   CÓ SẴN ở mọi biểu mẫu xếp dọc, không riêng màn mới; chỉ là tới khi có một
+   biểu mẫu dài mới lộ ra.
+
+   Dùng bộ chọn theo THẺ (`input`/`select`) chứ không theo lớp: lớp `.input`
+   thuộc CSS module khác, không tham chiếu chéo được. */
+.field > input,
+.field > select {
+  flex: 0 0 auto;
+}

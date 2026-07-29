@@ -271,6 +271,25 @@ export interface GoodsReceipt {
   items: GoodsReceiptItem[];
 }
 
+/** Một hoạt chất người bệnh dị ứng. Khoá theo **hoạt chất**, không phải tên
+ * thuốc: cùng một hoạt chất nằm trong hàng chục biệt dược khác nhau, ghi tên
+ * thương mại thì lần sau bán biệt dược khác là hệ thống không cảnh báo được. */
+export interface CustomerAllergy {
+  id: string;
+  ingredient_id: string;
+  /** "MILD" | "MODERATE" | "SEVERE" */
+  severity: string;
+  note: string | null;
+}
+
+/** Một bệnh nền. `condition_code` là mã ICD-10 (≤16 ký tự); mô tả bằng lời nằm
+ * ở `note` — mã để máy đối chiếu, lời để người đọc. */
+export interface CustomerCondition {
+  id: string;
+  condition_code: string;
+  note: string | null;
+}
+
 export interface Customer {
   id: string;
   full_name: string;
@@ -280,6 +299,16 @@ export interface Customer {
   national_id: string | null;
   anonymised_at: string | null;
   health_data_allowed: boolean;
+  /** Chỉ có khi người gọi giữ `crm.sensitive.read` VÀ khách đã đồng ý HEALTH.
+   * Danh sách khách (`GET /customers`) **luôn** trả rỗng — xem `list_customers`. */
+  allergies?: CustomerAllergy[];
+  conditions?: CustomerCondition[];
+}
+
+/** `GET /active-ingredients` — danh mục hoạt chất để chọn khi ghi dị ứng. */
+export interface ActiveIngredient {
+  id: string;
+  name: string;
 }
 
 // --- IAM: nhân viên & vai trò -------------------------------------------

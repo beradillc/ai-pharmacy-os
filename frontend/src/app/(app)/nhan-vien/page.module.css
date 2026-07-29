@@ -71,3 +71,19 @@
   color: var(--beras-text);
   font-size: var(--text-sm);
 }
+
+/* 🔴 `.input` ở `screen.module.css` có `flex: 1 1 auto` — đúng cho hàng NGANG
+   (ô tìm kiếm phải nở ra cho hết chỗ). Nhưng `.field` xếp DỌC, và trong hộp
+   dọc thì `flex-grow` ăn theo CHIỀU CAO: ô nhập nuốt hết chỗ trống còn lại.
+
+   Đo thật 29/07 ở màn Sức khoẻ: ô "Khách kể lại" cao **260px** trong khi ô
+   chọn bên cạnh chỉ 44px — một ô nhập một dòng cao bằng nửa màn hình. Lỗi này
+   CÓ SẴN ở mọi biểu mẫu xếp dọc, không riêng màn mới; chỉ là tới khi có một
+   biểu mẫu dài mới lộ ra.
+
+   Dùng bộ chọn theo THẺ (`input`/`select`) chứ không theo lớp: lớp `.input`
+   thuộc CSS module khác, không tham chiếu chéo được. */
+.field > input,
+.field > select {
+  flex: 0 0 auto;
+}

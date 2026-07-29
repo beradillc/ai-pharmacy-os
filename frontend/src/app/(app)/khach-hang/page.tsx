@@ -17,6 +17,7 @@ import type { Customer } from "@/shared/api/types";
 import styles from "@/shared/ui/screen.module.css";
 
 import { ConsentPanel } from "./ConsentPanel";
+import { HealthPanel } from "./HealthPanel";
 import local from "./page.module.css";
 
 const GENDER_LABEL: Record<string, string> = { M: "Nam", F: "Nữ", O: "Khác" };
@@ -45,6 +46,7 @@ export default function CustomersPage() {
   const [term, setTerm] = useState("");
   const [creating, setCreating] = useState(false);
   const [consentFor, setConsentFor] = useState<Customer | null>(null);
+  const [healthFor, setHealthFor] = useState<Customer | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const canCreate = new Set(useAuthStore((s) => s.session)?.permissions ?? []).has("crm.create");
@@ -117,13 +119,13 @@ export default function CustomersPage() {
           </p>
         ) : (
           <div className={styles.tableWrap}>
-            <table className={styles.table}>
+            <table className={`${styles.table} ${local.customerTable}`}>
               <thead>
                 <tr>
                   <th>Họ tên</th>
                   <th>Điện thoại</th>
                   <th>Giới tính</th>
-                  <th>Dữ liệu sức khoẻ</th>
+                  <th className={local.healthCol}>Dữ liệu sức khoẻ</th>
                   <th />
                 </tr>
               </thead>
@@ -164,6 +166,19 @@ export default function CustomersPage() {
                       >
                         Đồng ý
                       </button>
+                      <button
+                        type="button"
+                        className={`${styles.ghost} ${local.spaced}`}
+                        onClick={() => setHealthFor(customer)}
+                        disabled={customer.anonymised_at !== null}
+                        title={
+                          customer.health_data_allowed
+                            ? "Dị ứng và bệnh nền"
+                            : "Khách chưa đồng ý cho lưu dữ liệu sức khoẻ — mở ra sẽ thấy hướng dẫn"
+                        }
+                      >
+                        Sức khoẻ
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -200,6 +215,8 @@ export default function CustomersPage() {
       {consentFor && (
         <ConsentPanel customer={consentFor} onClose={() => setConsentFor(null)} />
       )}
+
+      {healthFor && <HealthPanel customer={healthFor} onClose={() => setHealthFor(null)} />}
 
       <CreateCustomerDialog
         open={creating}

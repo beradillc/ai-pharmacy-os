@@ -48,6 +48,7 @@ import asyncio
 import os
 import random
 import sys
+from contextlib import suppress
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from uuid import UUID
@@ -73,6 +74,7 @@ from pharmacy_os.modules.catalog.application import (
     CreateDrugInput,
     DrugUnitInput,
 )
+from pharmacy_os.modules.catalog.application.dto import CreateIngredientInput
 from pharmacy_os.modules.catalog.domain import RxClass
 from pharmacy_os.modules.catalog.infrastructure import (
     SqlAlchemyActiveIngredientRepository,
@@ -144,6 +146,45 @@ _SEED_PERMISSIONS = frozenset(
 
 #: (tên, nhóm kê đơn, dạng, hàm lượng, đơn vị lẻ, giá bán lẻ VND, mức bán/ngày)
 #: Giá là giá bán lẻ tham khảo, làm tròn — dữ liệu demo, không phải bảng giá.
+#: Hoạt chất của chính 36 thuốc dưới đây, kèm tên tiếng Anh để tra cứu.
+#:
+#: 🔴 Không có danh mục này thì **tính năng ghi dị ứng không dùng được** — backend
+#: đòi `ingredient_id` (UUID) chứ không nhận chuỗi, nên ô "chọn hoạt chất" rỗng là
+#: cụt đường. Đo thật 29/07 trên `nt650v2`: `GET /active-ingredients` trả **0** dù
+#: nhà thuốc đã có 36 thuốc, 572 hoá đơn — bảng `active_ingredients` chưa từng
+#: được seed bởi bất kỳ script nào.
+#:
+#: Chỉ liệt kê hoạt chất; vật tư (băng gạc, khẩu trang, nhiệt kế) không có hoạt
+#: chất nên không nằm ở đây — và cũng không ai dị ứng "nhiệt kế".
+_INGREDIENTS: list[tuple[str, str]] = [
+    ("Paracetamol", "Paracetamol"),
+    ("Ibuprofen", "Ibuprofen"),
+    ("Cafein", "Caffeine"),
+    ("Vitamin C", "Ascorbic acid"),
+    ("Vitamin B1", "Thiamine"),
+    ("Berberin", "Berberine"),
+    ("Diosmectit", "Diosmectite"),
+    ("Loratadin", "Loratadine"),
+    ("Cetirizin", "Cetirizine"),
+    ("Dextromethorphan", "Dextromethorphan"),
+    ("Domperidon", "Domperidone"),
+    ("Omeprazol", "Omeprazole"),
+    ("Nhôm phosphat", "Aluminium phosphate"),
+    ("Natri clorid", "Sodium chloride"),
+    ("Povidon iod", "Povidone-iodine"),
+    ("Calci carbonat", "Calcium carbonate"),
+    ("Amoxicillin", "Amoxicillin"),
+    ("Acid clavulanic", "Clavulanic acid"),
+    ("Cefixim", "Cefixime"),
+    ("Azithromycin", "Azithromycin"),
+    ("Metformin", "Metformin"),
+    ("Amlodipin", "Amlodipine"),
+    ("Losartan", "Losartan"),
+    ("Atorvastatin", "Atorvastatin"),
+    ("Prednisolon", "Prednisolone"),
+    ("Salbutamol", "Salbutamol"),
+]
+
 _DRUGS: list[tuple[str, RxClass, str, str, str, int, int]] = [
     ("Paracetamol 500mg", RxClass.OTC, "Viên nén", "500mg", "viên", 1200, 40),
     ("Efferalgan 500mg", RxClass.OTC, "Viên sủi", "500mg", "viên", 4500, 12),
@@ -281,6 +322,17 @@ def _pack_units(base_unit: str) -> list[DrugUnitInput]:
 async def _seed_catalog(svc: _Services, ctx: RequestContext) -> dict[str, tuple[UUID, int, int]]:
     """Tạo danh mục thuốc. Trả về ``tên -> (id, giá bán, mức bán/ngày)``."""
     created: dict[str, tuple[UUID, int, int]] = {}
+    # Danh mục hoạt chất phải có TRƯỚC thuốc: nó là thứ dị ứng khoá vào, và
+    # cũng là thứ duy nhất cho phép cảnh báo hoạt động khi bán một biệt dược
+    # khác chứa cùng hoạt chất.
+    for ten, ten_en in _INGREDIENTS:
+        # Đã có (chạy lại seeder) — hoạt chất là danh mục dùng chung toàn hệ
+        # thống, không thuộc tenant nào, nên trùng là chuyện bình thường.
+        with suppress(AppError):
+            await svc.catalog.create_ingredient(
+                CreateIngredientInput(name=ten, name_en=ten_en), ctx
+            )
+
     for index, (name, rx, form, strength, unit, price, velocity) in enumerate(_DRUGS):
         out = await svc.catalog.create_drug(
             CreateDrugInput(
