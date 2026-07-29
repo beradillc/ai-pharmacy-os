@@ -13,6 +13,7 @@ from pharmacy_os.modules.crm.domain import (
     Allergy,
     AllergySeverity,
     Condition,
+    ConsentBasis,
     ConsentPurpose,
     ConsentRequiredError,
     Customer,
@@ -36,12 +37,14 @@ def _consent(
     *,
     granted: bool = True,
     at: datetime = NOW,
+    basis: ConsentBasis = ConsentBasis.EXPLICIT,
 ) -> CustomerConsent:
     return CustomerConsent(
         purpose=purpose,
         granted=granted,
         terms_version="v1",
         recorded_at=at,
+        basis=basis,
         actor_user_id=uuid4(),
         client_ip="10.0.0.1",
     )
@@ -384,3 +387,36 @@ def test_kho_so_da_khu_nhan_dang_thi_khong_cong_diem_du_con_dong_y() -> None:
     c = _customer_without_consent(consents=[_consent(purpose=ConsentPurpose.LOYALTY, granted=True)])
     c.anonymise(NOW)
     assert c.loyalty_allowed is False
+
+
+# --- ConsentBasis: nguồn gốc của sự đồng ý (Đ-4, Chain chốt 2026-07-29) -------
+
+
+def test_khach_dua_so_o_quay_la_dong_y_CO_BAN() -> None:
+    """Khách tự đọc số khi được hỏi = hành vi khẳng định, không phải im lặng."""
+    c = _customer_without_consent(
+        consents=[_consent(purpose=ConsentPurpose.BASIC, basis=ConsentBasis.COUNTER)]
+    )
+    assert c.has_consent(ConsentPurpose.BASIC) is True
+
+
+@pytest.mark.parametrize("purpose", [ConsentPurpose.LOYALTY, ConsentPurpose.HEALTH])
+def test_dong_y_o_quay_KHONG_the_mo_rong_sang_muc_dich_khac(purpose: ConsentPurpose) -> None:
+    """🔴 Ranh giới Đ-4, chốt cứng trong domain chứ không để tầng trên tự giữ.
+
+    Đưa số điện thoại để ghi lên hoá đơn **không phải** đồng ý cho theo dõi lịch
+    sử mua, càng không phải đồng ý lưu dị ứng/bệnh nền. Nới chỗ này ra sẽ trông
+    rất hợp lý lúc làm — vì đằng nào cũng chỉ là một số điện thoại — nên nó phải
+    bị chặn ở nơi không ai đi vòng được.
+    """
+    with pytest.raises(InvalidConsentError):
+        _consent(purpose=purpose, basis=ConsentBasis.COUNTER)
+
+
+def test_mac_dinh_la_hoi_tuong_minh_khong_phai_o_quay() -> None:
+    """Không ghi nguồn ⇒ coi là đã hỏi tường minh.
+
+    Mặc định phải là cái CHẶT HƠN. Nếu mặc định là "lấy ở quầy" thì mọi dòng cũ
+    trong CSDL bỗng nhiên tự khai một nguồn gốc chưa ai kiểm chứng.
+    """
+    assert _consent().basis is ConsentBasis.EXPLICIT

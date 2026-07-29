@@ -87,6 +87,38 @@ quyền lợi của họ. Xoá hẳn chỉ khi khách yêu cầu xoá dữ liệ
 > thay đổi có ảnh hưởng pháp lý, không phải refactor. Phải có **phiên bản điều
 > khoản mới** (`terms_version`) — đồng ý cũ không tự động phủ mục đích mới.
 
+### 2b. 🔴 Đ-4 · Khách tự đưa số điện thoại ở quầy = đồng ý mục đích `BASIC`
+
+**Chain chốt 2026-07-29.** Khi thu ngân hỏi *"cho em xin số điện thoại"* và khách
+**đọc số**, đó là **hành vi khẳng định, tự nguyện, cho một mục đích đã nói rõ**.
+Không cần thêm một hộp thoại nữa để bấm.
+
+**Vì sao chấp nhận được về pháp lý:** Điều 9 cấm coi **im lặng** là đồng ý. Đây
+không phải im lặng — khách chủ động đưa dữ liệu sau khi được hỏi. Bằng chứng vẫn
+đủ bốn thứ Điều 9 đòi: **thời điểm** (lúc lập đơn), **ai ghi** (tài khoản thu ngân),
+**từ đâu** (IP máy quầy), **theo điều khoản nào** (`terms_version`).
+
+**🔴 CHỈ ÁP CHO `BASIC`, DỪNG ĐÚNG Ở ĐÓ.** Đưa số điện thoại để ghi lên hoá đơn
+**không phải** đồng ý cho theo dõi lịch sử mua (`LOYALTY`), càng không phải đồng ý
+lưu dị ứng/bệnh nền (`HEALTH`). Suy rộng ra hai mục kia chính là lỗi *"lấy đồng ý
+cho việc A rồi dùng cho việc B"* mà toàn bộ mục 2 dựng lên để tránh — và nó sẽ
+**trông rất hợp lý** lúc làm, vì đằng nào cũng chỉ là một số điện thoại.
+
+**Ghi lại NGUỒN GỐC, không chỉ ghi "đã đồng ý".** Câu đoàn kiểm tra hỏi không phải
+*"có đồng ý không"* mà *"đồng ý đó lấy thế nào"*. Hai nguồn khác hẳn nhau về sức
+nặng:
+
+| Nguồn | Nghĩa |
+|---|---|
+| `COUNTER` | Khách tự đọc số ở quầy khi được hỏi (Đ-4) |
+| `EXPLICIT` | Nhân viên đọc nội dung rồi bấm thay khách trên bảng đồng ý |
+
+⇒ Thêm trường `basis` vào `CustomerConsent`. Không nhét vào `terms_version` — trường
+đó có nghĩa riêng, mượn tạm là làm hỏng cả hai.
+
+**Không tự tạo hồ sơ khi khách KHÔNG đưa số.** Bán hàng không cần khách hàng; ô số
+điện thoại để trống thì bán bình thường, không tạo hồ sơ nào.
+
 ### 3. Phân loại dữ liệu
 
 | Dữ liệu | Phân loại | Ghi chú |

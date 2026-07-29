@@ -86,6 +86,29 @@ class ConsentPurpose(StrEnum):
     Sensitive personal data (NĐ356 Điều 4.1.d)."""
 
 
+class ConsentBasis(StrEnum):
+    """**Cách** sự đồng ý được lấy — không phải *có* đồng ý hay không.
+
+    Câu đoàn kiểm tra thật sự hỏi không phải *"khách có đồng ý không"* mà *"sự
+    đồng ý đó lấy thế nào"*. Hai nguồn dưới đây khác hẳn nhau về sức nặng, và một
+    trường `granted=True` trơ trọi không phân biệt được.
+    """
+
+    EXPLICIT = "EXPLICIT"
+    """Nhân viên đọc nội dung từng mục đích rồi bấm thay khách trên bảng đồng ý."""
+
+    COUNTER = "COUNTER"
+    """Khách **tự đọc số điện thoại** ở quầy khi được hỏi lúc lập đơn (Chain chốt
+    2026-07-29, quyết định Đ-4).
+
+    Là hành vi **khẳng định**, không phải im lặng — nên thoả Điều 9. Nhưng **chỉ
+    thoả cho** :attr:`ConsentPurpose.BASIC`: đưa số để ghi lên hoá đơn không phải
+    đồng ý cho theo dõi lịch sử mua, càng không phải đồng ý lưu dị ứng/bệnh nền.
+    Suy rộng ra hai mục kia là đúng lỗi "lấy đồng ý cho việc A rồi dùng cho việc B"
+    — và nó sẽ **trông rất hợp lý** lúc làm, vì đằng nào cũng chỉ là một số điện thoại.
+    """
+
+
 @dataclass(slots=True)
 class CustomerConsent:
     """One consent decision, recorded and never edited.
@@ -103,12 +126,20 @@ class CustomerConsent:
     recorded_at: datetime
     actor_user_id: UUID | None = None
     client_ip: str | None = None
+    basis: ConsentBasis = ConsentBasis.EXPLICIT
     id: UUID = field(default_factory=uuid4)
 
     def __post_init__(self) -> None:
         self.terms_version = self.terms_version.strip()
         if not self.terms_version:
             raise InvalidConsentError("Thiếu phiên bản điều khoản đã đồng ý")
+        # Chốt cứng ranh giới của Đ-4 ngay trong domain, không để tầng nào bên
+        # trên "tiện tay" nới ra: quầy chỉ lấy được đồng ý CƠ BẢN.
+        if self.basis is ConsentBasis.COUNTER and self.purpose is not ConsentPurpose.BASIC:
+            raise InvalidConsentError(
+                "Khách đưa số điện thoại ở quầy chỉ là đồng ý mục đích cơ bản; "
+                f"mục đích {self.purpose} phải hỏi riêng"
+            )
 
 
 @dataclass(slots=True)
