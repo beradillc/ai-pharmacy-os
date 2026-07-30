@@ -122,6 +122,32 @@ class Drug:
             raise DuplicateIngredientError("Hoạt chất này đã được thêm cho thuốc")
         self.ingredients.append(ingredient)
 
+    def replace_ingredients(self, ingredients: list[DrugIngredient]) -> None:
+        """Đặt lại TOÀN BỘ danh sách hoạt chất — sửa nhầm, bổ sung thiếu, xoá sai.
+
+        Vì sao thay cả danh sách chứ không thêm/xoá từng cái: ca dùng thật là *sửa một
+        hoạt chất nhập sai*, mà "sửa" = xoá cái sai + thêm cái đúng. Làm hai lượt thì tồn
+        tại một khoảng thuốc mang danh sách **sai theo cách khác** — và trong khoảng đó
+        cảnh báo dị ứng vẫn đang chạy. Một lượt thì không có khoảng đó.
+
+        Danh sách rỗng là **hợp lệ**: băng gạc, khẩu trang, nhiệt kế đúng là không có hoạt
+        chất nào. Nhưng nó cũng chính là cách vô hiệu hoá cảnh báo dị ứng cho một thuốc,
+        nên tầng ứng dụng phải ghi vết số lượng trước/sau — ở đây không chặn được, vì
+        domain không biết thuốc này là thuốc hay vật tư.
+
+        **Toàn-bộ-hoặc-không-gì:** trùng hoạt chất thì `DuplicateIngredientError` và
+        `self.ingredients` **giữ nguyên như trước khi gọi**. Áp dụng nửa vời một danh sách
+        hoạt chất trên tính năng cảnh báo dị ứng còn tệ hơn từ chối hẳn.
+        """
+        seen: set[UUID] = set()
+        for i in ingredients:
+            if i.ingredient_id in seen:
+                raise DuplicateIngredientError(
+                    f"Hoạt chất {i.ingredient_id} xuất hiện hai lần trong danh sách"
+                )
+            seen.add(i.ingredient_id)
+        self.ingredients = list(ingredients)
+
     def is_prescription_required(self) -> bool:
         return self.rx_class in (RxClass.ETC, RxClass.CONTROLLED)
 

@@ -98,3 +98,92 @@ def test_duplicate_ingredient_rejected() -> None:
         d.add_ingredient(
             DrugIngredient(ingredient_id=ingredient_id, amount=Decimal("250"), unit="mg")
         )
+
+
+# --- replace_ingredients: sửa hoạt chất nhập sai (§7ch) ----------------------
+
+
+def _hc(amount: str = "500") -> DrugIngredient:
+    return DrugIngredient(ingredient_id=uuid4(), amount=Decimal(amount), unit="mg")
+
+
+def test_replace_ingredients_dat_lai_toan_bo_danh_sach() -> None:
+    d = _drug()
+    cu = _hc()
+    d.add_ingredient(cu)
+    moi_1, moi_2 = _hc("325"), _hc("200")
+    d.replace_ingredients([moi_1, moi_2])
+    assert {i.ingredient_id for i in d.ingredients} == {moi_1.ingredient_id, moi_2.ingredient_id}
+    assert cu.ingredient_id not in {i.ingredient_id for i in d.ingredients}
+
+
+def test_replace_ingredients_sua_nham_trong_MOT_luot() -> None:
+    """🔴 Ca dùng thật: dược sĩ nhập sai hoạt chất, sửa lại cho đúng.
+
+    Một lượt là điều đáng giá ở đây — làm hai lượt (xoá rồi thêm) thì tồn tại một khoảng
+    thuốc mang danh sách sai theo cách khác, và trong khoảng đó cảnh báo dị ứng vẫn chạy.
+    """
+    d = _drug()
+    sai = _hc()
+    d.add_ingredient(sai)
+    dung = _hc()
+    d.replace_ingredients([dung])
+    assert [i.ingredient_id for i in d.ingredients] == [dung.ingredient_id]
+
+
+def test_replace_ingredients_danh_sach_rong_la_hop_le() -> None:
+    """Băng gạc, khẩu trang, nhiệt kế đúng là không có hoạt chất nào.
+
+    Domain không biết thuốc này là thuốc hay vật tư nên không chặn được ở đây — việc ghi
+    vết "trước N, sau 0" thuộc tầng ứng dụng.
+    """
+    d = _drug()
+    d.add_ingredient(_hc())
+    d.replace_ingredients([])
+    assert d.ingredients == []
+
+
+def test_replace_ingredients_trung_hoat_chat_BI_TU_CHOI() -> None:
+    d = _drug()
+    trung = uuid4()
+    with pytest.raises(DuplicateIngredientError):
+        d.replace_ingredients(
+            [
+                DrugIngredient(ingredient_id=trung, amount=Decimal("500"), unit="mg"),
+                DrugIngredient(ingredient_id=trung, amount=Decimal("250"), unit="mg"),
+            ]
+        )
+
+
+def test_replace_ingredients_that_bai_thi_GIU_NGUYEN_danh_sach_cu() -> None:
+    """🔴 Toàn-bộ-hoặc-không-gì. Áp dụng nửa vời một danh sách hoạt chất trên tính năng
+    cảnh báo dị ứng còn tệ hơn từ chối hẳn: thuốc sẽ mang danh sách không ai chủ ý đặt."""
+    d = _drug()
+    cu = _hc()
+    d.add_ingredient(cu)
+    trung = uuid4()
+    with pytest.raises(DuplicateIngredientError):
+        d.replace_ingredients(
+            [
+                DrugIngredient(ingredient_id=trung, amount=Decimal("1"), unit="mg"),
+                DrugIngredient(ingredient_id=trung, amount=Decimal("2"), unit="mg"),
+            ]
+        )
+    assert [i.ingredient_id for i in d.ingredients] == [cu.ingredient_id]
+
+
+def test_replace_ingredients_khong_dung_chung_list_voi_ben_goi() -> None:
+    """Giữ tham chiếu tới list của bên gọi thì sửa list đó sau sẽ âm thầm sửa cả thuốc."""
+    d = _drug()
+    ds = [_hc()]
+    d.replace_ingredients(ds)
+    ds.append(_hc())
+    assert len(d.ingredients) == 1
+
+
+def test_replace_ingredients_giu_nguyen_ham_luong_va_don_vi() -> None:
+    d = _drug()
+    hc = DrugIngredient(ingredient_id=uuid4(), amount=Decimal("62.5"), unit="mg/ml")
+    d.replace_ingredients([hc])
+    assert d.ingredients[0].amount == Decimal("62.5")
+    assert d.ingredients[0].unit == "mg/ml"
