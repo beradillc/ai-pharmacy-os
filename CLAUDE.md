@@ -20,8 +20,8 @@
 | Xác thực khi chạy thử cục bộ | **2026-07-23** (cùng module `iam`) |
 | Kỷ luật bắt buộc **8–13** + bổ sung kỷ luật **7** (nền test Postgres) | **2026-07-26** — sinh từ kiểm toán độc lập 3 phiên (`docs/audit/2026-07-26_BAO_CAO_KIEM_TOAN.md`, quy tắc R-1→R-7). Chain duyệt cùng ngày, xếp ngay sau F-1 vì *"rẻ, đòn bẩy cao nhất trong cả lộ trình"* |
 | Kỷ luật bắt buộc **14** (cổng phải thấy đỏ một lần vì lý do đúng) | **2026-07-28** — GĐ đề nghị sau khi cơ chế này bắt được 2 ca thật trong 2 phiên (test e2e xanh vì lý do sai · test đua xanh với bản cài đặt sai). Chain duyệt cùng ngày |
-| Kỷ luật bắt buộc **15** (cổng chạy trình duyệt thật, qua đúng địa chỉ thật) | **2026-07-29** — GĐ đề nghị sau khi app trắng trên iPhone trong lúc 3 lớp phòng thủ cùng xanh. **CHƯA được Chain duyệt** — ghi trước theo kỷ luật #13 |
-| Kỷ luật bắt buộc **16** (kiểm composition root trước khi code tính năng "chưa có") | **2026-07-30** — GĐ ghi sau khi viết trùng một bộ luật khớp dị ứng đã tồn tại và nối dây sẵn, phải xoá 262 dòng. Ghi ngay theo kỷ luật #13 |
+| Kỷ luật bắt buộc **15** (cổng chạy trình duyệt thật, qua đúng địa chỉ thật) | **2026-07-29** — GĐ đề nghị sau khi app trắng trên iPhone trong lúc 3 lớp phòng thủ cùng xanh; ghi trước theo kỷ luật #13. **Chain DUYỆT 2026-07-30** |
+| Kỷ luật bắt buộc **16** (kiểm composition root trước khi code tính năng "chưa có") | **2026-07-30** — GĐ ghi sau khi viết trùng một bộ luật khớp dị ứng đã tồn tại và nối dây sẵn, phải xoá 262 dòng; ghi ngay theo kỷ luật #13. **Chain DUYỆT cùng ngày** |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -180,8 +180,9 @@ multi-tenant).
       chính lệnh đó*; #14 nói *mã thoát đó phải biết đổi màu*.
 
 15. **Không cổng nào của dự án này chạy JavaScript trong một trình duyệt thật, qua đúng
-    địa chỉ người dùng gõ.** (2026-07-29, GĐ đề nghị — **CHỜ CHAIN DUYỆT**, ghi ở đây
-    ngay vì kỷ luật #13 đòi bài học phương pháp vào FILE NÀY chứ không vào nhật ký)
+    địa chỉ người dùng gõ.** (2026-07-29, GĐ đề nghị — **Chain DUYỆT 2026-07-30**; ghi ở
+    đây ngay từ lúc đề nghị vì kỷ luật #13 đòi bài học phương pháp vào FILE NÀY chứ không
+    vào nhật ký)
     Mọi khẳng định về **giao diện** — "màn X chạy", "responsive", "bấm được" — chỉ có
     căn cứ khi đã mở một trình duyệt thật, qua **đúng URL người dùng dùng**, và **đo**
     thứ mình khẳng định.
@@ -294,7 +295,7 @@ luật hành vi ở trên. Lưu ý: `.claude/` bị `.gitignore` bỏ qua nên
 máy này, khác với văn bản ủy quyền (file này) nay đã có lịch sử phiên bản.
 
 16. **Trước khi code một tính năng "chưa có", KIỂM COMPOSITION ROOT xem nó đã được nối
-    dây chưa.** (2026-07-30, GĐ ghi ngay theo kỷ luật #13)
+    dây chưa.** (2026-07-30, GĐ ghi ngay theo kỷ luật #13 — **Chain DUYỆT cùng ngày**)
 
     Ba lệnh, trước khi viết dòng domain đầu tiên:
 

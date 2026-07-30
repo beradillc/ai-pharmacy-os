@@ -5904,8 +5904,8 @@ truy vấn `nt650v2` — đúng lỗi kỷ luật #8 cấm. Sửa cách đo trư
 | 1 | **Dị ứng bước 2–4**: adapter `AllergyRiskProvider` (dùng lại `resolve_basket` + `crm` + `clinical`, **không viết luật mới**) · nối cổng vào `complete_sale` + audit `SALES_ALLERGY_WARNING_OVERRIDDEN` · endpoint kiểm trước khi bán (Đ-7) · cổng trình duyệt #15 + thử CSDL có dữ liệu #7 | Trợ lý Code |
 | 2 | **B2** (bảng + migration + quyền cho sổ tích luỹ) · **B3** (cross-module `sales`→`crm`, Opus phiên riêng) · **B4** (giao diện, nhớ nêu hệ quả Đ-9b ở quầy) | Trợ lý Code |
 | 3 | **Q-1..Q-3 pháp lý** + bổ sung Luật Thương mại 2005 & NĐ 81/2018 — chặn giai đoạn C. **Nay thêm câu hỏi hoá đơn/thuế GTGT hàng cho tặng** (Đ-8 mục c) | Trợ lý Pháp Lý + **Trợ lý Kế toán** |
-| 4 | **Duyệt kỷ luật #15** (cổng trình duyệt thật) và **#16** (grep composition root) | **Chain** |
-| 5 | Xoá 7 CSDL thử, **giữ `nt650v2`** | **Chain** |
+| 4 | ~~Duyệt kỷ luật #15 và #16~~ ✅ **Chain DUYỆT 30/07** — cả hai nay có hiệu lực đầy đủ | — |
+| 5 | ~~Xoá 7 CSDL thử, giữ `nt650v2`~~ ✅ **XONG 30/07** — Chain duyệt, đã xoá `audit_empty_a` · `demo_v2/v3/v4` · `f4_probe` · `f5_fresh_test` · `s10_probe` (7/7, EXIT=0). `nt650v2` nguyên vẹn (595 hoá đơn). Sao lưu trước: `~/backup_7csdl_thu_20260730_1621.sql.gz` (684 KB) | — |
 | 6 | **F-9 rate limit 8/12** — vẫn dở từ 28/07 | Trợ lý Code |
 | 7 | Nâng phép đo màn Sức khoẻ thành cổng thường trực | Trợ lý Code |
 
