@@ -18,7 +18,7 @@ from pharmacy_os.modules.sales.application.dto import (
     SaleOutput,
     VnpayInitiateOutput,
 )
-from pharmacy_os.modules.sales.domain import PaymentMethod, SalesOrderListRow
+from pharmacy_os.modules.sales.domain import AllergyRisk, PaymentMethod, SalesOrderListRow
 
 
 class SaleLineRequest(BaseModel):
@@ -40,6 +40,9 @@ class CreateSaleRequest(BaseModel):
     prescription_ref: UUID | None = None
     customer_id: UUID | None = None
     currency: str = Field(default="VND", max_length=8)  # độ rộng cột sales_orders.currency
+    #: Lý do người bán vẫn bán dù có cảnh báo dị ứng (Đ-6). Chỉ cần khi đơn có xung đột.
+    #: Chuỗi toàn khoảng trắng KHÔNG tính là đã xác nhận — domain chặn, không phải Field.
+    allergy_acknowledgement: str | None = Field(default=None, max_length=500)
 
     def to_input(self) -> CreateSaleInput:
         return CreateSaleInput(
@@ -57,6 +60,41 @@ class CreateSaleRequest(BaseModel):
             prescription_ref=self.prescription_ref,
             customer_id=self.customer_id,
             currency=self.currency,
+            allergy_acknowledgement=self.allergy_acknowledgement,
+        )
+
+
+class AllergyCheckRequest(BaseModel):
+    """Hỏi cảnh báo dị ứng cho một giỏ hàng đang dựng (Đ-7)."""
+
+    customer_id: UUID
+    drug_ids: list[UUID] = Field(min_length=1)
+
+
+class AllergyCheckResponse(BaseModel):
+    """Phán quyết dị ứng cho quầy.
+
+    ``consent_granted=False`` nghĩa là **phép kiểm không chạy** (khách chưa đồng ý cho
+    xử lý dữ liệu sức khoẻ), KHÔNG phải "đã kiểm và sạch" — giao diện phải hiện hai
+    trạng thái đó khác nhau, nếu không nó nói dối người dùng.
+
+    ``checked=False`` khi hệ thống chưa nối cổng dị ứng hoặc không tìm thấy khách.
+    """
+
+    checked: bool
+    consent_granted: bool = False
+    conflict_count: int = 0
+    worst_severity: str | None = None
+
+    @classmethod
+    def of(cls, risk: AllergyRisk | None) -> AllergyCheckResponse:
+        if risk is None:
+            return cls(checked=False)
+        return cls(
+            checked=True,
+            consent_granted=risk.consent_granted,
+            conflict_count=risk.conflict_count,
+            worst_severity=risk.worst_severity,
         )
 
 

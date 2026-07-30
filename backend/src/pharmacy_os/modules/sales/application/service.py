@@ -187,6 +187,31 @@ class SalesService:
             await self._record_allergy_override(ctx, order.id, risk)
         return SaleOutput.of(order)
 
+    async def check_allergy_risk(
+        self, customer_id: UUID, drug_ids: frozenset[UUID], ctx: RequestContext
+    ) -> AllergyRisk | None:
+        """Hỏi trước khi bán — Đ-7: quầy thấy cảnh báo ngay lúc thêm thuốc vào đơn.
+
+        Chỉ **đọc**, không tạo đơn, không ghi gì. POS gọi mỗi lần giỏ hàng hoặc khách
+        thay đổi, rồi hiện cảnh báo tại chỗ để nhân viên còn kịp đổi thuốc **trước khi
+        thu tiền**.
+
+        🔴 **Không thay thế cổng ở** :meth:`complete_sale`. Kết quả ở đây là để *hiện
+        cho người xem*, không phải để cấp phép: giỏ có thể đổi sau lượt gọi này, và một
+        client hoàn toàn có thể không gọi. Điểm cưỡng chế vẫn là lúc hoàn tất, quyết lại
+        từ chính đơn đang được lưu. Hai chỗ hỏi cùng một cổng, khác mục đích.
+
+        Quyền dùng ``sales.create`` chứ không phải một quyền mới: ai bán được thì phải
+        thấy được cảnh báo của đơn mình đang bán. Đòi thêm quyền riêng chỉ tạo ra tình
+        huống thu ngân bán được mà không thấy cảnh báo — đúng thứ Đ-6 dựng lên để tránh.
+
+        Trả ``None`` khi chưa nối provider hoặc khách không tồn tại trong cơ sở.
+        """
+        require_permission(ctx, "sales.create")
+        if self._allergy_risk is None:
+            return None
+        return await self._allergy_risk.for_sale(drug_ids, customer_id, ctx.tenant_id)
+
     async def _resolve_allergy_risk(
         self, order: SalesOrder, ctx: RequestContext
     ) -> AllergyRisk | None:

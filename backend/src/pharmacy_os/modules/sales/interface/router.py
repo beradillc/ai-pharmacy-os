@@ -14,6 +14,8 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.sales.application import SalesService, VnpayConfirmOutcome
 from pharmacy_os.modules.sales.interface.receipt_rendering import render_pdf, render_thermal_k80
 from pharmacy_os.modules.sales.interface.schemas import (
+    AllergyCheckRequest,
+    AllergyCheckResponse,
     CreateSaleRequest,
     ReceiptFormat,
     ReceiptResponse,
@@ -65,6 +67,19 @@ def build_router(get_context: ContextDep) -> APIRouter:
         ctx: RequestContext = Depends(get_context),
     ) -> SaleResponse:
         return SaleResponse.of(await service.complete_sale(body.to_input(), ctx))
+
+    # Đ-7: quầy hỏi TRƯỚC khi bán, lúc thêm thuốc vào đơn. Chỉ đọc — không tạo đơn,
+    # không ghi gì. Quyền `sales.create` như create_sale: ai bán được thì phải thấy được
+    # cảnh báo của đơn mình đang bán. KHÔNG thay cổng cưỡng chế ở complete_sale.
+    @sales.post("/allergy-check", response_model=AllergyCheckResponse)
+    async def check_allergy(
+        body: AllergyCheckRequest,
+        service: SalesService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> AllergyCheckResponse:
+        return AllergyCheckResponse.of(
+            await service.check_allergy_risk(body.customer_id, frozenset(body.drug_ids), ctx)
+        )
 
     # Sprint 8 mục 4/4 (payment_vnpay): authenticated like `create_sale` — a cashier
     # starts the checkout — but does not complete the order. See

@@ -5969,3 +5969,47 @@ kế thừa `SalesError` nên sẽ tự thành `ValidationError` (HTTP 422), đ�
 
 Endpoint kiểm **trước** khi bán cho POS gọi lúc thêm thuốc (Đ-7) · cổng trình duyệt
 (**#15**, nay đã được Chain duyệt) · thử trên CSDL có dữ liệu sẵn (**#7**).
+
+## 7ce. 🔴 KHIẾM KHUYẾT DỮ LIỆU — seeder tạo hoạt chất nhưng KHÔNG NỐI vào thuốc
+
+Phát hiện 30/07 khi chạy **kỷ luật #7** (thử trên CSDL đã có dữ liệu sẵn) cho bước 4/4
+cảnh báo dị ứng. **1210 test xanh không thấy được điều này** — pytest tự tạo thuốc kèm
+hoạt chất, còn dữ liệu thật thì không.
+
+Đo trên `nt650v2`:
+
+| Bảng | Số dòng |
+|---|---|
+| `active_ingredients` | 26 |
+| `customers` | 12 |
+| khách có đồng ý `HEALTH` | 4 |
+| `customer_allergies` | 2 |
+| **`drug_ingredients`** | **0** ← 🔴 |
+
+⇒ Trên dữ liệu thật, **cảnh báo dị ứng không bao giờ kích hoạt**. Giỏ hàng nào cũng ra
+0 hoạt chất, nên `find_allergy_alerts` luôn trả rỗng. Tính năng chạy đúng về mã, **chết
+về dữ liệu**.
+
+**Nguyên nhân:** `seeds/demo_pharmacy.py::_seed_catalog` tạo 26 hoạt chất rồi tạo 36
+thuốc, nhưng `CreateDrugInput` **không truyền `ingredients=[...]`**. Chú thích ngay phía
+trên nói đúng mục đích — *"hoạt chất là thứ dị ứng khoá vào, và cũng là thứ duy nhất cho
+phép cảnh báo hoạt động khi bán một biệt dược khác chứa cùng hoạt chất"* — nhưng phần nối
+chưa bao giờ được viết. Cùng họ với lỗi §7cb #4 (*"danh mục hoạt chất RỖNG"*): lần đó vá
+nửa đầu, nửa sau còn nguyên.
+
+**Đo mức khớp nếu nối theo tên:** 20/36 thuốc có tên chứa thẳng tên hoạt chất
+(Paracetamol 500mg, Ibuprofen 400mg…). **16 thuốc còn lại không khớp**, và trong đó có
+đúng nhóm quan trọng nhất:
+
+| Nhóm | Ví dụ | Ghi chú |
+|---|---|---|
+| **Biệt dược** — cần nối tay | Efferalgan · Panadol Extra · Alaxan · Smecta · Augmentin · Phosphalugel · Prospan | 🔴 **Đây chính là ca tính năng sinh ra để bắt**: khách dị ứng Paracetamol mua Efferalgan thì tên thuốc không hề nhắc tới Paracetamol |
+| Vật tư | Băng gạc · Khẩu trang · Nhiệt kế | ✅ Đúng là không có hoạt chất, để trống |
+| Hỗn hợp/khác | Vitamin 3B · Oresol · Canxi D3 · Dầu gió xanh · Bổ phế Nam Hà · Men vi sinh | Cần Chain xác nhận thành phần |
+
+**Chưa tự sửa.** Nối theo tên chỉ vá được nửa dễ và **bỏ sót đúng nửa nguy hiểm**. Bản đồ
+biệt dược → hoạt chất là dữ liệu dược, Chain đọc bao bì là biết ngay, tôi đoán thì không
+nên. Đề nghị Chain xác nhận bảng ánh xạ cho 16 mã còn lại rồi tôi nối một lượt.
+
+**Không chặn bước 4/4** — mã đã đúng và đã có 8 test e2e đi hết chuỗi thật chứng minh.
+Đây là khiếm khuyết **dữ liệu demo**, sửa bằng seeder, không phải sửa bằng mã nghiệp vụ.
