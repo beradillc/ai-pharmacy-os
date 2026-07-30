@@ -17,7 +17,12 @@ from pharmacy_os.modules.crm.application.dto import (
     CustomerOutput,
     RecordConsentInput,
 )
-from pharmacy_os.modules.crm.domain import AllergySeverity, ConsentBasis, ConsentPurpose
+from pharmacy_os.modules.crm.domain import (
+    DEFAULT_TERMS_VERSION,
+    AllergySeverity,
+    ConsentBasis,
+    ConsentPurpose,
+)
 
 
 class CreateCustomerRequest(BaseModel):
@@ -39,16 +44,6 @@ class CreateCustomerRequest(BaseModel):
             weight_kg=self.weight_kg,
             national_id=self.national_id,
         )
-
-
-DEFAULT_TERMS_VERSION = "v1"
-"""Recorded when the client sends no version.
-
-Counter staff press one button (chốt của sếp 2026-07-23), so the flow must not
-demand a version they would have to type. Send a real one once a written terms
-document exists — the field is what lets an inspection ask *what* the customer was
-told, and today it can only answer *that* someone recorded a yes.
-"""
 
 
 class RecordConsentRequest(BaseModel):
@@ -184,6 +179,8 @@ class CustomerResponse(BaseModel):
     consents: list[ConsentResponse]
     anonymised_at: datetime | None
     health_data_allowed: bool
+    accrued_this_year: Decimal
+    """Tiền đã mua trong năm dương lịch — cơ số tích luỹ. `0` khi chưa mua gì."""
 
     @classmethod
     def of(cls, out: CustomerOutput) -> CustomerResponse:
@@ -219,4 +216,5 @@ class CustomerResponse(BaseModel):
             consents=[ConsentResponse.of(k) for k in out.consents],
             anonymised_at=out.anonymised_at,
             health_data_allowed=out.health_data_allowed,
+            accrued_this_year=out.accrued_this_year,
         )

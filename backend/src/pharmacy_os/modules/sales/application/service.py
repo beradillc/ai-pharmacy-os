@@ -12,7 +12,7 @@ result **without** re-processing — so no duplicate order and no duplicate
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import TypeVar
@@ -186,6 +186,30 @@ class SalesService:
         if risk is not None and risk.conflict_count > 0:
             await self._record_allergy_override(ctx, order.id, risk)
         return SaleOutput.of(order)
+
+    async def accrued_by_customer(
+        self,
+        customer_ids: Sequence[UUID],
+        ctx: RequestContext,
+        *,
+        created_from: datetime,
+        created_to: datetime,
+    ) -> dict[UUID, Decimal]:
+        """Tiền từng khách đã mua trong khoảng — cơ số tích luỹ của chương trình khách quen.
+
+        🔴 **Không** gọi `require_permission`: đây là đường cho **adapter ở composition
+        root** chạy dưới danh tính hệ thống, để nhân viên chỉ cần `crm.read` là thấy được
+        cột điểm trên màn Khách hàng, không phải cấp thêm `sales.read` trên toàn bộ đơn
+        hàng chỉ vì một con số tổng. Cùng khuôn với đường tên thuốc cấp cho `analytics`
+        (§7bt), và `ctx` do chính composition root dựng như mọi phản ứng cross-module khác.
+
+        Vì thế nó **không được nối vào router**. Kiểm quyền là việc của use-case gọi nó.
+        """
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            return await repo.accrued_by_customer(
+                ctx.tenant_id, customer_ids, created_from=created_from, created_to=created_to
+            )
 
     async def check_allergy_risk(
         self, customer_id: UUID, drug_ids: frozenset[UUID], ctx: RequestContext

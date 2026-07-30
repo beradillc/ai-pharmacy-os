@@ -291,19 +291,27 @@ export function HealthPanel({
 
             <div className={local.row}>
               <label className={local.field}>
-                <span className={local.label}>Mã ICD-10</span>
+                <span className={local.label}>Bệnh khác — mã ICD-10 (không bắt buộc)</span>
                 <input
                   className={`${styles.input} ${styles.mono}`}
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="VD: E11"
                   maxLength={16}
-                  required
                   aria-label="Mã bệnh nền ICD-10"
                 />
+                {/* 🔴 Bỏ `required` (Chain chốt 31/07: "mã ICD-10 tự động lấy theo tên,
+                    không phải nhập tay"). Chọn ở danh sách trên là ĐÃ CÓ mã — mỗi mục
+                    mang sẵn cặp (tên bệnh, mã), nên gõ lại mã là gõ thừa. Ô này chỉ còn
+                    để dành cho bệnh KHÔNG có trong 12 mục.
+
+                    KHÔNG mở rộng danh sách bằng cách tự đoán thêm mã: ICD-10 có hơn
+                    14.000 mã và một mã bịa ra sẽ nằm im trong hồ sơ bệnh nhân. Muốn tra
+                    theo tên cho toàn bộ ICD-10 thì phải nhập một bộ mã có nguồn — việc
+                    riêng, không làm lẫn vào đây. */}
                 <span className={local.hint}>
-                  Danh sách trên chỉ là <strong>12 bệnh hay gặp</strong>, không phải toàn bộ
-                  ICD-10 — bệnh khác thì gõ mã vào đây.
+                  Chọn ở danh sách trên là <strong>đã có mã</strong> — ô này chỉ dùng khi
+                  bệnh không nằm trong 12 mục đó.
                 </span>
               </label>
 

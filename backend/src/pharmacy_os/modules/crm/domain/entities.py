@@ -86,6 +86,22 @@ class ConsentPurpose(StrEnum):
     Sensitive personal data (NĐ356 Điều 4.1.d)."""
 
 
+DEFAULT_TERMS_VERSION = "v1"
+"""Phiên bản điều khoản đang hiệu lực, ghi kèm mỗi lần lấy đồng ý.
+
+Đặt ở DOMAIN vì đây là dữ kiện nghiệp vụ, không phải mặc định của một biểu mẫu HTTP —
+tầng application cũng ghi đồng ý (lúc tạo khách có SĐT) và không được nhập ngược lên
+tầng interface.
+
+Recorded when the client sends no version.
+
+Counter staff press one button (chốt của sếp 2026-07-23), so the flow must not
+demand a version they would have to type. Send a real one once a written terms
+document exists — the field is what lets an inspection ask *what* the customer was
+told, and today it can only answer *that* someone recorded a yes.
+"""
+
+
 class ConsentBasis(StrEnum):
     """**Cách** sự đồng ý được lấy — không phải *có* đồng ý hay không.
 

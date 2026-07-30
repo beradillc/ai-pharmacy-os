@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -173,6 +174,28 @@ class SalesRepository(Protocol):
         pharmacy's catalogue), not by order volume, so a plain list is returned (no
         paging, unlike :meth:`completed_in_range` which the report streams). Fully
         returned lines net to ``0`` and are excluded (see :class:`DrugSalesAggRow`)."""
+        ...
+
+    async def accrued_by_customer(
+        self,
+        tenant_id: UUID,
+        customer_ids: Sequence[UUID],
+        *,
+        created_from: datetime,
+        created_to: datetime,
+    ) -> dict[UUID, Decimal]:
+        """Tiền đã mua (đã trừ hàng trả) của từng khách trong ``[from, to)``.
+
+        Đây là **cơ số tích luỹ** của chương trình khách quen — `crm.loyalty.boxes_earned`
+        chia số này cho `REWARD_STEP`. Cố ý **tính ra từ đơn hàng thay vì giữ một cột số
+        dư**: một cột số dư sẽ lệch khỏi doanh thu thật ngay lần đầu có đơn trả hàng, hoặc
+        có đơn ghi bù, và không ai biết bên nào đúng. Tính ra thì luôn khớp, đổi kỳ chỉ là
+        đổi khoảng ngày.
+
+        Nhận nhiều id một lượt vì màn Khách hàng cần điền cả một trang — một lượt gọi,
+        không phải một lượt mỗi dòng. Khách chưa mua gì **vắng mặt** trong kết quả (không
+        phải `0`), để bên gọi tự chọn hiển thị "0" hay "—".
+        """
         ...
 
 

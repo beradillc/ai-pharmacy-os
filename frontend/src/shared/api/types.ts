@@ -299,6 +299,8 @@ export interface Customer {
   national_id: string | null;
   anonymised_at: string | null;
   health_data_allowed: boolean;
+  /** Tiền đã mua trong năm dương lịch — cơ số tích điểm. Chuỗi vì backend trả Decimal. */
+  accrued_this_year: string;
   /** Chỉ có khi người gọi giữ `crm.sensitive.read` VÀ khách đã đồng ý HEALTH.
    * Danh sách khách (`GET /customers`) **luôn** trả rỗng — xem `list_customers`. */
   allergies?: CustomerAllergy[];

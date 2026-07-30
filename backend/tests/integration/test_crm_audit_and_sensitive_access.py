@@ -87,7 +87,10 @@ async def test_granting_and_revoking_consent_are_both_audited(
     )
 
     actions = await _actions(audit_repo, ctx.tenant_id)
-    assert actions.count(AuditAction.CONSENT_GRANTED) == 1
+    # HAI dòng GRANTED từ 31/07: một do test này ghi tay, một do `create_customer` ghi
+    # tự động cho BASIC vì khách có số điện thoại (cơ sở COUNTER — Chain chốt 31/07).
+    # Đổi có chủ ý, không phải ghi trùng.
+    assert actions.count(AuditAction.CONSENT_GRANTED) == 2
     assert actions.count(AuditAction.CONSENT_REVOKED) == 1
 
     granted = next(
@@ -425,7 +428,8 @@ async def test_export_returns_everything_with_a_provenance_line(
 
     assert export.customer.full_name == "Nguyễn Văn A"
     assert len(export.customer.allergies) == 1
-    assert len(export.customer.consents) == 1
+    # 2 = đồng ý test này ghi tay + đồng ý BASIC tự ghi lúc tạo khách có SĐT (31/07).
+    assert len(export.customer.consents) == 2
     assert export.exported_by == ctx.user_id
     assert export.exported_at.tzinfo is not None
 

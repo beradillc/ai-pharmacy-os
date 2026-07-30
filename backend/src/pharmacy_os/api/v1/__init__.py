@@ -20,6 +20,7 @@ from pharmacy_os.api.v1.cross_module import (
     CrmClinicalAllergyRiskProvider,
     IamAuthReauthProvider,
     PrescriptionInfoAdapter,
+    SalesLoyaltyAccrualReader,
     wire_goods_receipt_stock_in,
     wire_medication_history,
     wire_safety_checks,
@@ -45,6 +46,7 @@ from pharmacy_os.modules.inventory.interface import register as register_invento
 from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.interface import register as register_prescription
 from pharmacy_os.modules.procurement.interface import register as register_procurement
+from pharmacy_os.modules.sales.application import SalesService
 from pharmacy_os.modules.sales.interface import register as register_sales
 
 
@@ -98,6 +100,13 @@ def build_api_router(container: Container) -> APIRouter:
     )
     rx_info = PrescriptionInfoAdapter(container.resolve(PrescriptionService))
     api.include_router(register_sales(container, get_context, drug_info, rx_info, allergy_risk))
+
+    # Cột "Điểm" trên màn Khách hàng: crm đọc tổng đã mua trong năm từ sales. Nối ở ĐÂY,
+    # sau khi sales đã dựng — thứ tự đăng ký có vòng (sales cần CrmService cho cổng dị
+    # ứng), nên một trong hai phải nối muộn; chọn cái phụ, không chọn cái an toàn.
+    container.resolve(CrmService).attach_accrual_reader(
+        SalesLoyaltyAccrualReader(container.resolve(SalesService))
+    )
 
     # Sprint 7 report exports (composition root, like the audit dashboard): reads
     # sales + inventory's own report methods, neither module imports the other.

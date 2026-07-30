@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
@@ -231,6 +232,38 @@ class SqlAlchemySalesRepository:
             )
             for r in rows
         ]
+
+    async def accrued_by_customer(
+        self,
+        tenant_id: UUID,
+        customer_ids: Sequence[UUID],
+        *,
+        created_from: datetime,
+        created_to: datetime,
+    ) -> dict[UUID, Decimal]:
+        if not customer_ids:
+            # `IN ()` là lỗi cú pháp ở nền này và quét toàn bảng ở nền kia — cùng lý do
+            # với `names_by_ids` bên catalog.
+            return {}
+        net_qty = SaleLineORM.quantity - SaleLineORM.returned_quantity
+        stmt = (
+            select(
+                SalesOrderORM.customer_id,
+                func.sum(net_qty * SaleLineORM.unit_price).label("accrued"),
+            )
+            .join(SaleLineORM, SaleLineORM.order_id == SalesOrderORM.id)
+            .where(
+                SalesOrderORM.tenant_id == tenant_id,
+                SalesOrderORM.customer_id.in_(customer_ids),
+                # Cùng bộ lọc với `aggregate_sold_by_drug`: đơn nháp chưa phải doanh thu.
+                SalesOrderORM.status != SaleStatus.DRAFT.value,
+                SalesOrderORM.created_at >= created_from,
+                SalesOrderORM.created_at < created_to,
+            )
+            .group_by(SalesOrderORM.customer_id)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return {r.customer_id: Decimal(r.accrued or 0) for r in rows if r.customer_id}
 
     async def aggregate_sold_by_drug(
         self,

@@ -8,6 +8,9 @@ the first such link: a completed sale drives an inventory dispense (FEFO).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
 import structlog
@@ -593,3 +596,38 @@ class PrescriptionInfoAdapter:
         except NotFoundError:
             return None
         return PrescriptionInfo(prescription_id=prescription_id, status=rx.status)
+
+
+class SalesLoyaltyAccrualReader:
+    """Nối `crm` → `sales` để màn Khách hàng hiện điểm đã tích trong năm.
+
+    Adapter, không phải logic: phép cộng nằm ở `sales` (nơi có đơn hàng), mốc năm nằm ở
+    `crm.loyalty` (nơi có luật tích điểm). Chỗ này chỉ ráp hai thứ lại — kỷ luật #16.
+
+    Chạy dưới **danh tính hệ thống**: nhân viên xem danh sách khách chỉ cần `crm.read`,
+    không phải cấp thêm `sales.read` trên toàn bộ đơn hàng chỉ để thấy một con số tổng.
+    Cùng khuôn với adapter tên thuốc cho `analytics` (§7bt).
+    """
+
+    def __init__(self, sales: SalesService) -> None:
+        self._sales = sales
+
+    async def accrued_this_year(
+        self, customer_ids: Sequence[UUID], tenant_id: UUID
+    ) -> dict[UUID, Decimal]:
+        # Năm DƯƠNG LỊCH, đúng như Chain chốt 29/07 cho chương trình khách quen. Mốc tính
+        # theo giờ UTC vì `created_at` lưu UTC; lệch múi giờ chỉ ảnh hưởng đơn trong vài
+        # giờ quanh giao thừa, và đổi mốc sang giờ VN là một quyết định nghiệp vụ riêng.
+        dau_nam = datetime(datetime.now(UTC).year, 1, 1, tzinfo=UTC)
+        het_nam = datetime(dau_nam.year + 1, 1, 1, tzinfo=UTC)
+        ctx = RequestContext(
+            tenant_id=tenant_id,
+            # Tổng theo tenant, không theo chi nhánh: khách tích điểm với NHÀ THUỐC, mua ở
+            # cơ sở nào cũng vậy. `branch_id` phải có giá trị nên dùng chính tenant.
+            branch_id=tenant_id,
+            user_id=_SYSTEM_USER,
+            permissions=_SYSTEM_PERMISSIONS,
+        )
+        return await self._sales.accrued_by_customer(
+            customer_ids, ctx, created_from=dau_nam, created_to=het_nam
+        )

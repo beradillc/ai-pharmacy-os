@@ -168,9 +168,20 @@ class CustomerOutput:
     """Whether health data may lawfully be processed right now — the interface layer
     uses this (together with the caller's permissions) to decide what to return."""
 
+    accrued_this_year: Decimal = Decimal(0)
+    """Tiền khách đã mua trong năm dương lịch — cơ số tích luỹ (`loyalty.boxes_earned`).
+
+    Mặc định `0` chứ không `None`: chưa nối cổng đọc và khách chưa mua gì là hai chuyện
+    khác nhau về nguyên nhân nhưng giống nhau về thứ phải hiện — số không."""
+
     @classmethod
     def of(
-        cls, customer: Customer, *, include_sensitive: bool = True, reveal_phone: bool = False
+        cls,
+        customer: Customer,
+        *,
+        include_sensitive: bool = True,
+        reveal_phone: bool = False,
+        accrued_this_year: Decimal = Decimal(0),
     ) -> CustomerOutput:
         """Build the DTO, optionally withholding the health data.
 
@@ -191,6 +202,7 @@ class CustomerOutput:
             id=customer.id,
             full_name=customer.full_name,
             phone=customer.phone if reveal_phone else mask_phone(customer.phone),
+            accrued_this_year=accrued_this_year,
             dob=customer.dob,
             gender=customer.gender,
             weight_kg=customer.weight_kg,

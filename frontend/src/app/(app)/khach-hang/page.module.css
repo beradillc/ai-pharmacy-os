@@ -197,14 +197,51 @@
    Đồng thời nới cột tên: tên xuống ba dòng làm mỗi dòng cao 69px, nhìn như một
    danh sách 4 người trong khi có 12. */
 @media (max-width: 640px) {
-  .customerTable th:nth-child(3),
-  .customerTable td:nth-child(3) {
-    display: none;
+  /* 🔴 Bốn cột phải VỪA khung 390px, không cuộn ngang (Chain chốt 31/07): Họ tên ·
+     Điện thoại · Điểm · Dữ liệu. Cột "Giới tính" đã bỏ hẳn khỏi bảng, cột nút cũng
+     — bấm tên là mở hồ sơ. Đo thật: trước khi gọn lại, bảng tràn 322px. */
+  .customerTable {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  /* `screen.module.css` cho ô bảng `padding: var(--space-3) var(--space-4)` — hợp lý ở
+     khổ rộng, nhưng 4 cột × 2 mép ở khung 390px thì riêng phần đệm đã ăn hết chỗ. Đo
+     thật: sau khi gọn cột vẫn còn tràn ĐÚNG 12px, và 12px chính là phần đệm dư. */
+  .customerTable th,
+  .customerTable td {
+    padding-right: var(--space-2);
+    padding-left: var(--space-2);
   }
 
   .customerTable th:first-child,
   .customerTable td:first-child {
-    min-width: 7.5rem;
+    width: 38%;
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  .customerTable th:nth-child(2),
+  .customerTable td:nth-child(2) {
+    width: 26%;
+  }
+
+  .customerTable th:nth-child(3),
+  .customerTable td:nth-child(3) {
+    width: 18%;
+  }
+
+  .customerTable th:nth-child(4),
+  .customerTable td:nth-child(4) {
+    width: 18%;
+  }
+
+  /* Tiêu đề bảng viết HOA + giãn chữ 0,06em ở `screen.module.css`. Ở khổ này riêng
+     phần giãn của "DỮ LIỆU" làm chữ rộng hơn ô ĐÚNG 4px — bảng không tràn, nhưng chữ
+     bị cắt mất chân chữ cuối. Đo bằng `scrollWidth > clientWidth` trên từng `th`; phép
+     đo tràn ở mức bảng KHÔNG bắt được chuyện này, chỉ mắt nhìn ảnh mới lộ ra. */
+  .customerTable th {
+    letter-spacing: 0.02em;
   }
 
   /* Tiêu đề đã ngắn lại thành "Dữ liệu" (31/07) nên không cần đổi chữ ở khổ hẹp nữa;
@@ -406,4 +443,32 @@
 .dongChonOn {
   background: var(--beras-success-bg);
   font-weight: var(--weight-semibold);
+}
+
+
+/* Tên khách là NÚT mở hồ sơ (Chain chốt 31/07) — bỏ cột nút riêng. Trông như chữ
+   thường có gạch chân mờ: nó nằm trong một bảng dữ liệu, tô nó thành nút đặc sẽ làm
+   cả bảng trông như một dãy nút. */
+.moHoSo {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--beras-ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--beras-border);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.moHoSo:hover:not(:disabled),
+.moHoSo:focus-visible {
+  text-decoration-color: currentcolor;
+}
+
+.moHoSo:disabled {
+  color: var(--beras-ink-muted);
+  text-decoration: none;
+  cursor: default;
 }

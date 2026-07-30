@@ -21,7 +21,24 @@ import { ConsentPanel } from "./ConsentPanel";
 import { HealthPanel } from "./HealthPanel";
 import local from "./page.module.css";
 
-const GENDER_LABEL: Record<string, string> = { M: "Nam", F: "Nữ", O: "Khác" };
+/** Mốc đổi một hộp khẩu trang — phải khớp `REWARD_STEP` ở backend (crm/domain/loyalty). */
+const MOC_DOI_QUA = 2_000_000;
+
+/** `3450000` → `3,4tr`. Cột hẹp trên điện thoại không chứa nổi "3.450.000 đ". */
+function diemGon(raw: string): string {
+  const n = Number(raw ?? 0);
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  if (n < 1_000_000) return `${Math.round(n / 1000)}k`;
+  return `${(n / 1_000_000).toFixed(1).replace(".", ",")}tr`;
+}
+
+/** Số đầy đủ + số hộp đã đạt, để trong `title` — con số rút gọn không được làm mất nó. */
+function diemDayDu(c: { accrued_this_year: string }): string {
+  const n = Number(c.accrued_this_year ?? 0);
+  if (!Number.isFinite(n) || n <= 0) return "Chưa mua gì trong năm nay";
+  const hop = Math.floor(n / MOC_DOI_QUA);
+  return `${n.toLocaleString("vi-VN")} đ trong năm nay · đạt ${hop} hộp khẩu trang`;
+}
 
 /**
  * Màn Khách hàng (Sprint 10, D7).
@@ -129,16 +146,30 @@ export default function CustomersPage() {
                 <tr>
                   <th>Họ tên</th>
                   <th>Điện thoại</th>
-                  <th>Giới tính</th>
+                  <th className={local.giua}>Điểm</th>
                   <th className={`${local.healthCol} ${local.giua}`}>Dữ liệu</th>
-                  <th />
                 </tr>
               </thead>
               <tbody>
                 {visible.map((customer) => (
                   <tr key={customer.id}>
                     <td>
-                      {customer.full_name}
+                      {/* Bấm TÊN để mở hồ sơ (Chain chốt 31/07) — bỏ hẳn cột nút riêng.
+                          Vẫn là `<button>` chứ không phải `<td onClick>`: bàn phím tab
+                          tới được, trình đọc màn hình đọc ra là nút, và nó không biến cả
+                          hàng thành một vùng bấm mà người ta vô tình chạm khi cuộn. */}
+                      <button
+                        type="button"
+                        className={local.moHoSo}
+                        onClick={() => {
+                          setConsentFor(null);
+                          setHealthFor(customer);
+                        }}
+                        disabled={customer.anonymised_at !== null}
+                        title="Mở hồ sơ: dị ứng, bệnh nền, đồng ý dữ liệu"
+                      >
+                        {customer.full_name}
+                      </button>
                       {customer.anonymised_at && (
                         <span className={`${styles.chip} ${styles.chipMuted}`}> đã ẩn danh</span>
                       )}
@@ -146,7 +177,9 @@ export default function CustomersPage() {
                     <td className={styles.mono}>
                       <PhoneCell customer={customer} coQuyenXem={coQuyenXem} />
                     </td>
-                    <td>{customer.gender ? (GENDER_LABEL[customer.gender] ?? customer.gender) : "—"}</td>
+                    <td className={`${local.giua} ${styles.mono}`} title={diemDayDu(customer)}>
+                      {diemGon(customer.accrued_this_year)}
+                    </td>
                     <td className={local.giua}>
                       {/* Chain chốt 31/07: ký hiệu thay cho chữ, để bảng vừa màn hẹp.
                           Đồng ý xử lý dữ liệu sức khoẻ vẫn là một trạng thái PHÁP LÝ
@@ -168,32 +201,6 @@ export default function CustomersPage() {
                       >
                         {customer.health_data_allowed ? "✓" : "✗"}
                       </span>
-                    </td>
-                    <td className={styles.num}>
-                      {/* MỘT nút, không phải hai (Chain nêu 31/07 — đã đo: hai nút chiếm
-                          226px trên khung 390px, tức 58% chiều ngang, đẩy chính cột dữ
-                          liệu ra khỏi màn). Không phải bỏ bớt chức năng: bảng Sức khoẻ
-                          khi khách chưa đồng ý vốn đã chỉ đường sang phần đồng ý, nay nó
-                          có nút bấm thẳng sang thay vì bảo người dùng tự đóng rồi tìm. */}
-                      <button
-                        type="button"
-                        className={styles.ghost}
-                        onClick={() => {
-                          // Đóng bảng kia trước: hai bảng chồng nhau thì nút "Đóng" nào
-                          // đóng bảng nào là chuyện phải đoán. Phát hiện khi xem ảnh
-                          // chụp 31/07 — cả hai cùng hiện trong một tấm.
-                          setConsentFor(null);
-                          setHealthFor(customer);
-                        }}
-                        disabled={customer.anonymised_at !== null}
-                        title={
-                          customer.anonymised_at !== null
-                            ? "Hồ sơ đã ẩn danh — không còn gì để mở"
-                            : "Dị ứng, bệnh nền và đồng ý dữ liệu"
-                        }
-                      >
-                        Hồ sơ
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -242,8 +249,12 @@ export default function CustomersPage() {
         />
       )}
 
+      {/* 🔴 Gắn khi MỞ, không gắn sẵn rồi ẩn. Trước đây hộp thoại luôn nằm trong cây và
+          `useState(initialPhone)` chỉ chạy đúng một lần lúc tải trang — nên số vừa gõ ở ô
+          tìm KHÔNG BAO GIỜ vào được ô số điện thoại. Đó chính là chỗ Chain nêu 31/07:
+          tìm không thấy, bấm Thêm, phải gõ lại số. */}
+      {creating && (
       <CreateCustomerDialog
-        open={creating}
         pending={create.isPending}
         initialPhone={looksLikePhone(term) ? term.trim() : ""}
         onCancel={() => setCreating(false)}
@@ -252,9 +263,11 @@ export default function CustomersPage() {
           try {
             const made = await create.mutateAsync(input);
             setCreating(false);
-            // Mở ngay bảng đồng ý: tạo hồ sơ xong mà chưa hỏi đồng ý thì hồ sơ đó
-            // chưa dùng được vào việc gì — và người ta sẽ quên quay lại hỏi.
-            setConsentFor(made);
+            // Có số ⇒ đồng ý BASIC đã ghi ngay lúc tạo (cơ sở COUNTER), nên mở thẳng hồ
+            // sơ sức khoẻ — thứ DUY NHẤT còn cần hỏi. Không số ⇒ chưa có hành vi khẳng
+            // định nào, vẫn phải qua bảng đồng ý.
+            if (input.phone) setHealthFor(made);
+            else setConsentFor(made);
           } catch (err) {
             setActionError(
               err instanceof ApiError ? err.problem.detail : "Không tạo được khách hàng.",
@@ -262,6 +275,7 @@ export default function CustomersPage() {
           }
         }}
       />
+      )}
 
       <ConfirmDialog
         open={actionError !== null}
@@ -314,13 +328,11 @@ function PhoneCell({ customer, coQuyenXem }: { customer: Customer; coQuyenXem: b
 }
 
 function CreateCustomerDialog({
-  open,
   pending,
   initialPhone,
   onSubmit,
   onCancel,
 }: {
-  open: boolean;
   pending: boolean;
   initialPhone: string;
   onSubmit: (input: { full_name: string; phone?: string | null }) => void;
@@ -328,8 +340,6 @@ function CreateCustomerDialog({
 }) {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState(initialPhone);
-
-  if (!open) return null;
 
   return (
     <section className={styles.drawer} aria-label="Thêm khách hàng">

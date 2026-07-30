@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -39,15 +40,18 @@ from pharmacy_os.modules.crm.application.dto import (
     RecordConsentInput,
 )
 from pharmacy_os.modules.crm.domain import (
+    DEFAULT_TERMS_VERSION,
     Allergy,
     Condition,
+    ConsentBasis,
+    ConsentPurpose,
     CrmError,
     Customer,
     CustomerConsent,
     MedicationHistoryEntry,
     MedicationHistorySource,
 )
-from pharmacy_os.modules.crm.domain.ports import CustomerRepository
+from pharmacy_os.modules.crm.domain.ports import CustomerRepository, LoyaltyAccrualReader
 
 UowFactory = Callable[[], UnitOfWork]
 RepoFactory = Callable[[UnitOfWork, RequestContext], CustomerRepository]
@@ -61,11 +65,30 @@ SENSITIVE_WRITE = "crm.sensitive.write"
 
 class CrmService:
     def __init__(
-        self, uow_factory: UowFactory, repo_factory: RepoFactory, audit: AuditLogger
+        self,
+        uow_factory: UowFactory,
+        repo_factory: RepoFactory,
+        audit: AuditLogger,
+        accrual: LoyaltyAccrualReader | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._repo_factory = repo_factory
         self._audit = audit
+        #: `None` = chưa nối dây ⇒ danh sách khách vẫn chạy, chỉ không có cột điểm.
+        self._accrual = accrual
+
+    def attach_accrual_reader(self, accrual: LoyaltyAccrualReader) -> None:
+        """Nối cổng đọc điểm SAU khi dựng — không phải qua hàm dựng.
+
+        🔴 Vì thứ tự đăng ký có vòng: `sales` cần `CrmService` (cổng dị ứng Đ-6), còn
+        `crm` cần `SalesService` (cột điểm). Một trong hai phải nối muộn. Chọn nối muộn ở
+        đây vì cột điểm là tính năng **phụ** — thiếu nó màn Khách hàng vẫn chạy, chỉ mất
+        một cột; còn thiếu cổng dị ứng thì mất một cơ chế an toàn.
+
+        Không đặt là bắt buộc: `self._accrual` mặc định `None` và mọi đường đọc chịu được
+        `None`, nên quên gọi hàm này không làm sập gì — chỉ mất cột điểm.
+        """
+        self._accrual = accrual
 
     async def create_customer(
         self, data: CreateCustomerInput, ctx: RequestContext
@@ -84,10 +107,36 @@ class CrmService:
         except CrmError as exc:
             raise ValidationError(str(exc)) from exc
 
+        # 🔴 Khách đưa số điện thoại ⇒ ghi luôn đồng ý BASIC, cơ sở COUNTER
+        # (Chain chốt 2026-07-31: "lưu số đt là mặc định").
+        #
+        # KHÔNG phải một ô tick sẵn — Luật 91/2025 Điều 9 cấm coi im lặng là đồng ý, và
+        # bảng đồng ý cố ý không có nút "đồng ý tất cả". Cái được ghi ở đây là một hành
+        # vi KHẲNG ĐỊNH có thật: khách vừa tự đọc số của mình ở quầy. `ConsentBasis`
+        # đã dựng sẵn đúng tình huống này từ 29/07 và ghi rõ nó **chỉ thoả cho BASIC**.
+        #
+        # Nên hai mục kia KHÔNG suy rộng ra: đưa số để ghi lên hoá đơn không phải đồng ý
+        # cho theo dõi lịch sử mua, càng không phải đồng ý lưu dị ứng/bệnh nền — đúng
+        # như Chain nói, hai thứ đó vẫn phải bấm riêng.
+        if data.phone:
+            customer.record_consent(
+                CustomerConsent(
+                    purpose=ConsentPurpose.BASIC,
+                    granted=True,
+                    terms_version=DEFAULT_TERMS_VERSION,
+                    recorded_at=datetime.now(UTC),
+                    actor_user_id=ctx.user_id,
+                    client_ip=ctx.client_ip,
+                    basis=ConsentBasis.COUNTER,
+                )
+            )
+
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)
             await repo.add(customer)
             await uow.commit()
+        if data.phone:
+            await self._record(ctx, AuditAction.CONSENT_GRANTED, customer.id, purpose="BASIC")
         return CustomerOutput.of(customer)
 
     async def add_allergy(
@@ -232,7 +281,17 @@ class CrmService:
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)
             customers = await repo.list(limit=limit, offset=offset)
-        return [CustomerOutput.of(c, include_sensitive=False) for c in customers]
+
+        # Điểm tích trong năm: MỘT lượt hỏi cho cả trang, không phải một lượt mỗi dòng.
+        diem: dict[UUID, Decimal] = {}
+        if self._accrual is not None and customers:
+            diem = await self._accrual.accrued_this_year([c.id for c in customers], ctx.tenant_id)
+        return [
+            CustomerOutput.of(
+                c, include_sensitive=False, accrued_this_year=diem.get(c.id, Decimal(0))
+            )
+            for c in customers
+        ]
 
     async def find_customer_by_phone(
         self, phone: str, ctx: RequestContext

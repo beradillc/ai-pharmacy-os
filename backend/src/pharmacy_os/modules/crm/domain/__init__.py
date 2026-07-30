@@ -2,6 +2,7 @@
 
 from pharmacy_os.modules.crm.domain.entities import (
     ANONYMISED_NAME,
+    DEFAULT_TERMS_VERSION,
     Allergy,
     AllergySeverity,
     Condition,
@@ -26,6 +27,7 @@ from pharmacy_os.modules.crm.domain.exceptions import (
 from pharmacy_os.modules.crm.domain.ports import CustomerRepository
 
 __all__ = [
+    "DEFAULT_TERMS_VERSION",
     "ANONYMISED_NAME",
     "Allergy",
     "AllergySeverity",
