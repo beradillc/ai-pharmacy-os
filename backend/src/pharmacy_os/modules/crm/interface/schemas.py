@@ -181,6 +181,8 @@ class CustomerResponse(BaseModel):
     health_data_allowed: bool
     accrued_this_year: Decimal
     """Tiền đã mua trong năm dương lịch — cơ số tích luỹ. `0` khi chưa mua gì."""
+    boxes_this_year: int
+    """Số hộp đã đạt, tính sẵn ở backend — giao diện KHÔNG tự chia cho mốc."""
 
     @classmethod
     def of(cls, out: CustomerOutput) -> CustomerResponse:
@@ -217,4 +219,5 @@ class CustomerResponse(BaseModel):
             anonymised_at=out.anonymised_at,
             health_data_allowed=out.health_data_allowed,
             accrued_this_year=out.accrued_this_year,
+            boxes_this_year=out.boxes_this_year,
         )

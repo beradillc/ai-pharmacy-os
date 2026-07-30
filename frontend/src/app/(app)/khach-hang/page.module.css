@@ -104,9 +104,6 @@
   }
 }
 
-.spaced {
-  margin-right: var(--space-2);
-}
 
 .row {
   display: flex;

@@ -21,9 +21,6 @@ import { ConsentPanel } from "./ConsentPanel";
 import { HealthPanel } from "./HealthPanel";
 import local from "./page.module.css";
 
-/** Mốc đổi một hộp khẩu trang — phải khớp `REWARD_STEP` ở backend (crm/domain/loyalty). */
-const MOC_DOI_QUA = 2_000_000;
-
 /** `3450000` → `3,4tr`. Cột hẹp trên điện thoại không chứa nổi "3.450.000 đ". */
 function diemGon(raw: string): string {
   const n = Number(raw ?? 0);
@@ -32,12 +29,16 @@ function diemGon(raw: string): string {
   return `${(n / 1_000_000).toFixed(1).replace(".", ",")}tr`;
 }
 
-/** Số đầy đủ + số hộp đã đạt, để trong `title` — con số rút gọn không được làm mất nó. */
-function diemDayDu(c: { accrued_this_year: string }): string {
+/** Số đầy đủ + số hộp đã đạt, để trong `title` — con số rút gọn không được làm mất nó.
+ *
+ * 🔴 Số hộp lấy THẲNG từ backend (`boxes_this_year`), không tự chia cho mốc 2 triệu. Rà
+ * soát 31/07 bắt được mốc đó đang khai ở hai ngôn ngữ; đổi một bên thì bên kia im lặng
+ * sai — và sai theo hướng tệ nhất: quầy hứa với khách một con số hệ thống không công nhận.
+ */
+function diemDayDu(c: { accrued_this_year: string; boxes_this_year: number }): string {
   const n = Number(c.accrued_this_year ?? 0);
   if (!Number.isFinite(n) || n <= 0) return "Chưa mua gì trong năm nay";
-  const hop = Math.floor(n / MOC_DOI_QUA);
-  return `${n.toLocaleString("vi-VN")} đ trong năm nay · đạt ${hop} hộp khẩu trang`;
+  return `${n.toLocaleString("vi-VN")} đ trong năm nay · đạt ${c.boxes_this_year} hộp khẩu trang`;
 }
 
 /**

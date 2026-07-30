@@ -22,6 +22,7 @@
 | Kỷ luật bắt buộc **14** (cổng phải thấy đỏ một lần vì lý do đúng) | **2026-07-28** — GĐ đề nghị sau khi cơ chế này bắt được 2 ca thật trong 2 phiên (test e2e xanh vì lý do sai · test đua xanh với bản cài đặt sai). Chain duyệt cùng ngày |
 | Kỷ luật bắt buộc **15** (cổng chạy trình duyệt thật, qua đúng địa chỉ thật) | **2026-07-29** — GĐ đề nghị sau khi app trắng trên iPhone trong lúc 3 lớp phòng thủ cùng xanh; ghi trước theo kỷ luật #13. **Chain DUYỆT 2026-07-30** |
 | Kỷ luật bắt buộc **16** (kiểm composition root trước khi code tính năng "chưa có") | **2026-07-30** — GĐ ghi sau khi viết trùng một bộ luật khớp dị ứng đã tồn tại và nối dây sẵn, phải xoá 262 dòng; ghi ngay theo kỷ luật #13. **Chain DUYỆT cùng ngày** |
+| Kỷ luật bắt buộc **17** (giai đoạn phát triển tính năng) + **18** (trí nhớ ghi vào chỗ đã có) | **2026-07-31** — Chain ban hành chính sách phát triển; ánh xạ vào cấu trúc tài liệu sẵn có thay vì dựng song song |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -324,3 +325,53 @@ máy này, khác với văn bản ủy quyền (file này) nay đã có lịch s
       để nó tiếp tục sai cho phiên sau. Nếu chỉ có một phần được nối, ghi rõ **phần nào
       nối rồi và nó làm gì** — *"đã subscribe, warn-only, chỉ ghi log sau khi hoàn tất"*
       là một dòng sổ hữu ích; *"chưa ai đọc"* là một dòng sổ gây hại.
+
+17. **Giai đoạn PHÁT TRIỂN TÍNH NĂNG — thêm là chính, sửa cũ là ngoại lệ.** (2026-07-31,
+    Chain ban hành chính sách phát triển)
+
+    Dự án đã qua giai đoạn dựng nền: lõi ổn định, frontend ổn định. Thứ tự ưu tiên nay là
+    **thêm tính năng · cải thiện giao diện · tối ưu trải nghiệm · hiệu năng · lỗi nhỏ ·
+    refactor (chỉ khi thật cần)**.
+
+    **Được:** thêm module/màn hình/component/API/service/migration · tối ưu UI/UX/tốc độ ·
+    cập nhật tài liệu và test.
+
+    **Không được, trừ khi Chain yêu cầu rõ:** sửa logic đã có test · đổi cấu trúc dự án,
+    framework, kiến trúc · đổi tên API cũ · đổi lược đồ gây mất tương thích · xoá mã đang
+    dùng · tạo breaking change · **refactor toàn dự án**.
+
+    - **Mỗi thay đổi phải trả lời được bốn câu:** frontend cũ còn chạy? API cũ còn chạy?
+      CSDL cũ còn chạy? migration lùi lại được không? Không trả lời được câu nào ⇒ dừng,
+      hỏi Chain.
+    - 🔴 **"Hình dạng không đổi" KHÔNG có nghĩa là "không phá vỡ tương thích".** Ngày 31/07
+      `GET /customers` giữ nguyên đường dẫn, mã trạng thái và kiểu dữ liệu, nhưng **giá
+      trị** `phone` đổi từ số thật sang `*494`. Bên gọi nào dùng nó để nhắn tin sẽ hỏng —
+      và hỏng **im lặng**, không mã lỗi nào. Thay đổi **ngữ nghĩa** phải khai báo và ghi
+      ADR y như thay đổi hình dạng. Xem `docs/adr/ADR-0002`.
+    - **Sau mỗi mục: tự rà** mã mới tìm trùng lặp, mã chết, TODO, lỗi tiềm ẩn. Lượt rà
+      31/07 bắt được ba thứ mà bốn cổng tự động đều bỏ qua: một khối CSS chết, một hằng
+      chết, và **mốc 2 triệu khai ở hai ngôn ngữ** — loại lỗi không bao giờ làm đỏ test,
+      chỉ làm quầy hứa với khách một con số hệ thống không công nhận.
+    - **Test đỏ ⇒ dừng triển khai.** Không nới lỏng phép kiểm để nó xanh. Hành vi đổi có
+      chủ ý thì sửa kỳ vọng **kèm chú thích vì sao**, không xoá assert.
+
+18. **Trí nhớ dự án ghi vào chỗ ĐÃ CÓ, không dựng cấu trúc song song.** (2026-07-31)
+
+    | Loại | Ghi ở đâu |
+    |---|---|
+    | Quy tắc mới cho Claude | **file này** (kỷ luật #1…) |
+    | Quyết định kiến trúc | `docs/adr/ADR-xxxx.md` — chỉ tạo mới, không sửa cũ |
+    | Quyết định nghiệp vụ/pháp lý của một tính năng | `docs/features/<tên>/01_DECISIONS.md` |
+    | Kinh nghiệm triển khai theo phiên | `PROJECT_STATE.md` §7xx (chỉ-ghi-thêm) |
+    | Cái gì đổi, cho người dùng/người tích hợp | `CHANGELOG.md` |
+    | Cải tiến giao diện + ảnh trước/sau | `docs/ui-history/` |
+    | Vấn đề UI còn treo | `docs/ui/REMAINING_UI_ISSUES.md` |
+    | Cổng bắt buộc cho tính năng mới | `docs/14_FEATURE_PROCESS.md` |
+
+    - **Trước khi ghi, tìm nội dung tương tự.** Có rồi ⇒ **cập nhật**, không tạo bản thứ hai.
+    - **KHÔNG tạo `optimization-cycle/`.** `PROJECT_STATE.md` đã đúng là thứ đó, 3.600+
+      dòng. Dựng dòng thời gian thứ hai là chia đôi trí nhớ dự án — đúng nguyên nhân kiểm
+      toán 26/07 chỉ ra khiến bài học không được kế thừa (kỷ luật #13).
+    - **Quy tắc lỗi thời thì đánh dấu `Deprecated` kèm lý do, KHÔNG xoá.** Người đọc sau
+      cần biết quy tắc từng tồn tại và vì sao thôi áp dụng.
+    - Cùng một vấn đề lặp **từ 3 lần** ⇒ đề xuất nâng thành kỷ luật chính thức ở file này.

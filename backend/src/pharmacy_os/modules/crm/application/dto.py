@@ -14,6 +14,7 @@ from pharmacy_os.modules.crm.domain import (
     Customer,
     CustomerConsent,
 )
+from pharmacy_os.modules.crm.domain.loyalty import boxes_earned
 
 
 @dataclass(slots=True)
@@ -174,6 +175,15 @@ class CustomerOutput:
     Mặc định `0` chứ không `None`: chưa nối cổng đọc và khách chưa mua gì là hai chuyện
     khác nhau về nguyên nhân nhưng giống nhau về thứ phải hiện — số không."""
 
+    boxes_this_year: int = 0
+    """Số hộp khẩu trang đã đạt trong năm, tính sẵn từ :func:`loyalty.boxes_earned`.
+
+    🔴 Trả kèm chứ không để giao diện tự chia cho mốc 2 triệu. Rà soát 31/07 bắt được:
+    mốc đó đang khai ở **hai ngôn ngữ** — `REWARD_STEP` (Python) và `MOC_DOI_QUA`
+    (TypeScript). Đổi mốc ở một bên thì bên kia im lặng sai, và sai theo hướng tệ nhất:
+    quầy hứa với khách một con số mà hệ thống không công nhận. Luật tích điểm ở đúng
+    một chỗ — `crm.domain.loyalty` — còn giao diện chỉ hiện lại."""
+
     @classmethod
     def of(
         cls,
@@ -203,6 +213,7 @@ class CustomerOutput:
             full_name=customer.full_name,
             phone=customer.phone if reveal_phone else mask_phone(customer.phone),
             accrued_this_year=accrued_this_year,
+            boxes_this_year=boxes_earned(accrued_this_year),
             dob=customer.dob,
             gender=customer.gender,
             weight_kg=customer.weight_kg,

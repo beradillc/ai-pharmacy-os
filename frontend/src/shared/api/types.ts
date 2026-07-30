@@ -301,6 +301,8 @@ export interface Customer {
   health_data_allowed: boolean;
   /** Tiền đã mua trong năm dương lịch — cơ số tích điểm. Chuỗi vì backend trả Decimal. */
   accrued_this_year: string;
+  /** Số hộp đã đạt trong năm — backend tính sẵn, giao diện KHÔNG tự chia cho mốc. */
+  boxes_this_year: number;
   /** Chỉ có khi người gọi giữ `crm.sensitive.read` VÀ khách đã đồng ý HEALTH.
    * Danh sách khách (`GET /customers`) **luôn** trả rỗng — xem `list_customers`. */
   allergies?: CustomerAllergy[];
