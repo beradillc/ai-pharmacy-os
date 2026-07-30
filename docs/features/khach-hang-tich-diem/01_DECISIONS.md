@@ -144,11 +144,66 @@ so với 30 triệu**. Đó không phải chi tiết kỹ thuật.
 
 | | Lệch | Cần Chain xác nhận |
 |---|---|---|
-| L-1 | Chain ghi hộp khẩu trang **~50.000 đ**; danh mục hiện có *"Khẩu trang y tế 4 lớp"* giá **35.000 đ/hộp** | Dùng hộp 35.000 đ hiện có, hay nhập loại khác giá 50.000 đ? |
-| L-2 | **Không có mã hàng "bịch 10 cái"** trong danh mục — chỉ có đơn vị *hộp* | Tạo mã hàng mới, hay tách lẻ từ hộp? |
+| L-1 | Chain ghi hộp khẩu trang **~50.000 đ**; danh mục hiện có *"Khẩu trang y tế 4 lớp"* giá **35.000 đ/hộp** | 🟡 **Đ-8 trả lời một phần**: "chọn từ kho" ⇒ dùng mã hàng đang có, tức hộp **35.000 đ**. Rẻ hơn dự tính, không chặn |
+| L-2 | **Không có mã hàng "bịch 10 cái"** trong danh mục — chỉ có đơn vị *hộp* (`demo_pharmacy.py:211`, mã duy nhất chứa "khẩu trang") | 🔴 **CÒN MỞ sau Đ-8** — xem L-2b bên dưới |
+
+##### 🔴 L-2b · Mốc 1 triệu tặng gì, khi kho chỉ có "hộp"?
+
+Đ-8 nói "chọn từ kho", nhưng kho chỉ có **một** mã khẩu trang: hộp 35.000 đ. Mốc
+1 triệu của Đ-5 là *bịch 10 cái ~10.000 đ* — **không có mã hàng nào ứng với nó**.
+Ba đường đi, và chúng lệch nhau về tiền:
+
+| Cách | Mốc 1 tr | Mốc 3 tr | Chi phí/khách đạt cả hai | 500 khách quen |
+|---|---|---|---|---|
+| Đ-5 giả định ban đầu | bịch ~10.000 | hộp ~50.000 | 60.000 đ | 30 triệu |
+| (a) Cả hai mốc tặng **hộp 35.000** | 35.000 | 35.000 | **70.000 đ** | **35 triệu** |
+| (b) Nhập thêm mã **bịch 10 cái** | ~10.000 | 35.000 | 45.000 đ | 22,5 triệu |
+| (c) Mốc 1 tr tặng thứ khác | ? | 35.000 | ? | ? |
+
+Cách (a) làm **mốc 1 triệu đắt gấp 3,5 lần** dự tính — và mốc 1 triệu là mốc **gần
+như mọi khách quen đều đạt** (10/12 khách trong 60 ngày). Không tự chọn: đây vẫn là
+hàng thật rời kho thật, đúng lý do L-1/L-2 được nêu ra ban đầu.
 
 Không tự chọn: đây là **hàng thật rời khỏi kho thật**, và chọn sai mã hàng thì tồn
 kho lệch ở đúng mặt hàng đang được đem cho.
+
+#### 2d. 🔴 Đ-8 · Cách ghi quà vào đơn — Chain chốt 2026-07-30
+
+Trả lời trực tiếp cho L-1/L-2 ở trên:
+
+| | Quyết định |
+|---|---|
+| **Nguồn hàng** | **Chọn từ kho** — không phải mặt hàng ảo. Xuất kho thật, có lô, theo FEFO |
+| **Giá** | **Bán 0 đ** — một dòng bán bình thường, đơn giá 0 |
+| **Đánh dấu** | **Ghi chú "tặng" vào đơn** |
+
+**Kiểm mã: cơ chế này chạy được, không cần đổi domain.** `Money` không ràng buộc
+`> 0` (có sẵn `Money.zero()`), nên dòng 0 đ hợp lệ ngay hôm nay. `SaleLine.quantity`
+đòi `> 0` — quà số lượng 1 thoả. Xuất kho vẫn đi đúng đường `dispense` nên tồn kho
+và FEFO không lệch.
+
+**Hai hệ quả Chain nên biết trước khi code giai đoạn C:**
+
+**(a) `SaleLine` hiện KHÔNG có trường ghi chú.** Phải thêm. Và ghi chú dạng chữ tự do
+là **không đủ để cưỡng chế Đ-5**: Đ-5 nói *một lần mỗi mốc, mỗi năm*, nhưng một dòng
+0 đ kèm chữ "tặng" thì không có gì ngăn tặng lại lần thứ hai — hệ thống không biết
+dòng đó ứng với **mốc nào**, của **khách nào**, **năm nào**. Cần liên kết có cấu trúc
+`(customer_id, mốc, năm)` chứ không chỉ chuỗi ghi chú. Đây đúng chỗ đã đo được chênh
+**130 triệu so với 30 triệu**/năm ở Đ-5 — để hở là để hở đúng khoản đó.
+
+**(b) Dòng 0 đ còn có nghĩa thứ hai: nhập sai giá.** Nếu chỉ dựa vào `unit_price == 0`
+để nhận ra quà thì báo cáo không phân biệt được *"tặng theo chương trình"* với
+*"bán 0 đ do gõ nhầm"*. ⇒ cần **cờ riêng**, không suy ra từ giá.
+
+**(c) 🔴 Hoá đơn và thuế GTGT của hàng cho tặng — CHƯA KẾT LUẬN ĐƯỢC.** Việc xuất hoá
+đơn 0 đ cho hàng khuyến mại phụ thuộc chương trình khuyến mại có được **thông báo/đăng
+ký đúng thủ tục** hay không; nếu không thì hàng cho biếu tặng có thể phải xuất hoá đơn
+theo giá thị trường. Kho `docs/legal/` **thiếu đúng hai văn bản quyết định việc này**
+(Luật Thương mại 2005 + NĐ 81/2018) ⇒ theo **R-10**, ghi *"chưa kết luận được"*,
+**không** ghi "không phải xuất hoá đơn". Cần **Trợ lý Kế toán** + **Trợ lý Pháp Lý**.
+
+⇒ **Đ-8 gỡ được câu "ghi thế nào", KHÔNG gỡ câu "có được phép không".** Giai đoạn C
+vẫn **chặn** bởi Q-1..Q-3, nay thêm câu hỏi hoá đơn/thuế ở (c).
 
 #### Ảnh hưởng tới rào cản pháp lý — hẹp lại, chưa gỡ
 
