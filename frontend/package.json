@@ -29,6 +29,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
+    "fake-indexeddb": "^6.2.5",
     "playwright-core": "^1.62.0",
     "typescript": "^5",
     "vitest": "^4.1.10"

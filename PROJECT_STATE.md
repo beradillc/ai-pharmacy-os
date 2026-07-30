@@ -6343,3 +6343,63 @@ nhanh. Một cổng bị đi vòng thường xuyên tệ hơn một lời nhắc
 
 Cổng: `make ui-gates` EXIT=0 (**6/6**) · RUFF=0 · MYPY=0 · IMPORTLINTER=0 · TSC=0 ·
 ESLINT=0 · VITEST=0 (51).
+
+## 7ck. 🔴 Vá một lỗi MẤT DỮ LIỆU: đơn offline bị từ chối biến mất không dấu vết (2026-07-31)
+
+Chain uỷ quyền toàn bộ. Chọn việc này vì nó gần nhất với **mất tiền thật**, không phải
+"trải nghiệm xấu" như tôi ghi hôm qua — đọc kỹ mã thì nặng hơn nhiều.
+
+### Lỗi thật, ba bước
+
+1. `flushQueue` gặp `ApiError` ⇒ **`delete()`** đơn khỏi IndexedDB.
+2. Đẩy vào callback `onRejected` ⇒ `useOfflineSync` gom vào state React `rejected`.
+3. **Không màn nào đọc `rejected`.** `AppShell` chỉ lấy `pendingCount`; POS chỉ lấy
+   `refreshCount`. State chết khi rời trang.
+
+⇒ Thu ngân bấm Thanh toán lúc mất mạng, đưa thuốc, **nhận tiền**. Có mạng lại, máy chủ từ
+chối. Đơn biến mất. Hàng đã ra khỏi quầy, không có hoá đơn, không ai biết.
+
+Hôm qua tôi ghi món này là *"thu ngân biết mình mất đơn sau nhiều giờ"* — **sai**, họ
+không bao giờ biết. Đã sửa lại nhận định.
+
+### Cách vá
+
+| | Trước | Sau |
+|---|---|---|
+| Đơn bị từ chối | `delete()` khỏi IndexedDB | **chuyển sang bảng `rejectedSales`** |
+| Nơi lưu | state React (chết khi rời trang) | IndexedDB (sống qua F5, mọi tab thấy như nhau) |
+| Ai thấy | không ai | khối cảnh báo đỏ **trên mọi màn**, không có nút đóng |
+| Lối ra | tự động, im lặng | **Thử lại** hoặc **Bỏ hẳn** — đều phải có người bấm |
+
+Vẫn **rời khỏi hàng chờ** — giữ lại thì mọi đơn xếp sau bị chặn vĩnh viễn vì một lý do sẽ
+không tự hết. Chuyển chỗ, không xoá.
+
+Dexie **v2**: chỉ THÊM bảng, không đụng bảng cũ ⇒ nâng cấp tại chỗ, đơn đang chờ của người
+dùng giữ nguyên. Không mất gì nên không cần đường lùi.
+
+`retryRejected` giữ nguyên `client_uuid` ⇒ `/sync/sales` vẫn idempotent ⇒ thử lại **không
+bao giờ** thành hai đơn.
+
+### Kỷ luật #14 — đột biến chính cái lỗi vừa vá
+
+| Đột biến | Kết quả |
+|---|---|
+| M1 — quay lại hành vi cũ (`delete` thẳng) | **8/11 test đỏ** |
+| M2 — coi mất mạng như bị từ chối | **2/11 test đỏ** |
+| khôi phục | 11 passed |
+
+### 🔴 Cổng trình duyệt của tôi đỏ OAN lần đầu — và đó là lỗi phép đo
+
+Dựng tình huống bằng `drug_id` không tồn tại; cổng đỏ. Nhưng truy vấn lại thì **cả hai
+bảng đều rỗng** và `/sync/sales` trả **200**. Kết quả tự mâu thuẫn ⇒ theo kỷ luật #15,
+**luôn** là lỗi phép đo. Dựng lại bằng đúng ca đã sinh ra việc này — đơn có cảnh báo dị
+ứng chưa ghi lý do ⇒ 422 thật ⇒ cổng xanh.
+
+### 🟠 Phát hiện phụ, CHƯA xử lý, ghi để không trôi
+
+**`POST /sync/sales` nhận đơn có `drug_id` KHÔNG TỒN TẠI và trả 200.** Đo được ở trên.
+Chưa rõ nó tạo ra đơn với thuốc ma hay bỏ qua dòng đó. Nằm ngoài phạm vi mục này và chạm
+logic đã có test, nên **không tự sửa** — cần Chain quyết mức ưu tiên.
+
+Cổng: `make ui-gates` EXIT=0 (**7/7**, thêm `check-rejected-sales`) · TSC=0 · ESLINT=0 ·
+VITEST=0 (**62 passed**, thêm 11).

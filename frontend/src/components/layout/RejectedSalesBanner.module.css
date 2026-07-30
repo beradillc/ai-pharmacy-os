@@ -1,0 +1,127 @@
+/* Khối cảnh báo đơn bị từ chối. Đỏ, bám trên cùng vùng nội dung, KHÔNG có nút đóng —
+   đây là tiền đã thu của khách, không phải một thông báo. */
+.banner {
+  border: 1px solid var(--beras-danger);
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  background: var(--beras-danger-bg);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.count {
+  color: var(--beras-danger);
+  font-size: var(--text-base);
+}
+
+.toggle {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--beras-danger);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--beras-danger);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.why {
+  margin: var(--space-2) 0 0;
+  color: var(--beras-danger);
+  font-size: var(--text-sm);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--beras-surface);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* `flex: 1 1 12rem` chứ KHÔNG `1 1 260px`: ở khổ hẹp `.item` xoay thành cột và
+     `flex-basis` khi ấy ăn theo CHIỀU CAO — đúng lỗi đã gặp hai lần ở màn Khách hàng. */
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.code {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-xs);
+  color: var(--beras-text-muted);
+}
+
+.reason {
+  color: var(--beras-ink);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  color: var(--beras-text-muted);
+  font-size: var(--text-xs);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+
+.retry,
+.drop {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.retry {
+  border: 1px solid var(--beras-leaf-ink);
+  background: var(--beras-leaf-ink);
+  color: #fff;
+}
+
+/* "Bỏ hẳn" là đường DUY NHẤT làm một đơn biến mất — nên nó trông nhạt hơn "Thử lại",
+   không phải vì nó phụ mà vì nó không được là thao tác bấm theo phản xạ. */
+.drop {
+  border: 1px solid var(--beras-border);
+  background: transparent;
+  color: var(--beras-text-muted);
+}
+
+@media (max-width: 640px) {
+  .item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions > button {
+    flex: 1 1 0;
+  }
+}

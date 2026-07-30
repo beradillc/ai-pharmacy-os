@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuthStore } from "@/features/auth/auth-store";
+import { RejectedSalesBanner } from "@/components/layout/RejectedSalesBanner";
 import { useOfflineSync } from "@/shared/offline/use-offline-sync";
 
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -58,7 +59,7 @@ export function AppShell({
   const hydrated = useAuthStore((s) => s.hydrated);
   const hydrate = useAuthStore((s) => s.hydrate);
   const logout = useAuthStore((s) => s.logout);
-  const { pendingCount } = useOfflineSync();
+  const { pendingCount, rejected, thuLai, boHan } = useOfflineSync();
   const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
@@ -86,6 +87,9 @@ export function AppShell({
         <Sidebar permissions={session.permissions} pathname={pathname} />
         <main className={wide ? styles.mainWide : styles.main}>
           <div className={wide ? styles.innerWide : styles.inner}>
+            {/* Trên MỌI màn, không riêng màn bán hàng: thu ngân có thể đang ở màn Kho
+                lúc mạng có lại, và đơn bị từ chối là tiền đã thu của khách. */}
+            <RejectedSalesBanner rejected={rejected} onThuLai={thuLai} onBoHan={boHan} />
             <PageTransition>{children}</PageTransition>
           </div>
         </main>

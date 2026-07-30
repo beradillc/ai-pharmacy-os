@@ -49,6 +49,13 @@ mục đã phát hành**, sai thì ghi một mục mới đính chính.
 
 ### Đã sửa
 
+- 🔴 **MẤT DỮ LIỆU: đơn bán offline bị máy chủ từ chối thì biến mất không dấu vết.**
+  `flushQueue` **xoá** đơn khỏi IndexedDB rồi chỉ báo qua một callback mà **không màn nào
+  đọc**; state chết khi rời trang. Thu ngân đã thu tiền của khách, đơn không tồn tại ở đâu
+  cả, và không ai biết. Nay đơn bị từ chối **chuyển sang bảng `rejectedSales`** (bền vững,
+  sống qua F5), hiện thành khối cảnh báo đỏ **trên mọi màn**, với **Thử lại** / **Bỏ hẳn**
+  — bỏ hẳn nay là hành động có người bấm, không còn tự xảy ra.
+
 - **Cảnh báo dị ứng chưa từng kích hoạt được**: seeder tạo thuốc và hoạt chất nhưng không
   nối, `drug_ingredients` = 0 dòng trên mọi CSDL. Nay 26/36 thuốc có hoạt chất; trên
   `nt650v2` hai khách khai dị ứng Acid clavulanic nay được cảnh báo ở **Augmentin 625mg** —

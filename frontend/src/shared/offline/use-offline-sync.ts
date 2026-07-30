@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { ApiError } from "@/shared/api/errors";
-
-import type { PendingSale } from "./db";
-import { flushQueue, pendingSalesCount } from "./sync-queue";
+import type { RejectedSale } from "./db";
+import {
+  discardRejected,
+  flushQueue,
+  pendingSalesCount,
+  rejectedSales,
+  retryRejected,
+} from "./sync-queue";
 
 /**
  * Keeps the offline sale queue draining: flushes once on mount (covers a hard
@@ -14,16 +18,19 @@ import { flushQueue, pendingSalesCount } from "./sync-queue";
  */
 export function useOfflineSync() {
   const [pendingCount, setPendingCount] = useState(0);
-  const [rejected, setRejected] = useState<{ sale: PendingSale; error: ApiError }[]>([]);
+  const [rejected, setRejected] = useState<RejectedSale[]>([]);
 
+  // 🔴 Đọc từ IndexedDB, KHÔNG tích luỹ vào state. Trước 31/07 danh sách bị-từ-chối chỉ
+  // sống trong state của lượt chạy này ⇒ F5 hoặc rời trang là mất, và không màn nào đọc
+  // nó cả. Nay nó nằm trong bảng `rejectedSales`, nên mọi tab, mọi lượt tải đều thấy
+  // cùng một sự thật.
   const refreshCount = useCallback(() => {
     void pendingSalesCount().then(setPendingCount);
+    void rejectedSales().then(setRejected);
   }, []);
 
   const flush = useCallback(async () => {
-    await flushQueue((sale, error) => {
-      setRejected((prev) => [...prev, { sale, error }]);
-    });
+    await flushQueue();
     refreshCount();
   }, [refreshCount]);
 
@@ -35,5 +42,21 @@ export function useOfflineSync() {
     return () => window.removeEventListener("online", flush);
   }, [flush, refreshCount]);
 
-  return { pendingCount, rejected, refreshCount };
+  const thuLai = useCallback(
+    async (clientUuid: string) => {
+      await retryRejected(clientUuid);
+      await flush();
+    },
+    [flush],
+  );
+
+  const boHan = useCallback(
+    async (clientUuid: string) => {
+      await discardRejected(clientUuid);
+      refreshCount();
+    },
+    [refreshCount],
+  );
+
+  return { pendingCount, rejected, refreshCount, thuLai, boHan };
 }
