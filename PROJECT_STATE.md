@@ -6403,3 +6403,47 @@ logic đã có test, nên **không tự sửa** — cần Chain quyết mức ư
 
 Cổng: `make ui-gates` EXIT=0 (**7/7**, thêm `check-rejected-sales`) · TSC=0 · ESLINT=0 ·
 VITEST=0 (**62 passed**, thêm 11).
+
+## 7cl. 🟠 Điều tra `/sync/sales` nhận thuốc không tồn tại — KHÔNG sửa, và vì sao (2026-07-31)
+
+Chain uỷ quyền toàn bộ. Tôi điều tra (đọc, không sửa) rồi **dừng lại** — lý do ở cuối.
+
+### Kết quả điều tra
+
+| Câu hỏi | Trả lời |
+|---|---|
+| `/sync/sales` có lỏng hơn `/sales` không? | **Không.** Cùng gọi một `complete_sale`. Không phải lỗ hổng riêng của đường đồng bộ |
+| Vì sao nhận thuốc lạ? | `_resolve_requires_rx`: `if info is None: return line.requires_prescription  # unknown drug — trust the caller` — **có chủ ý**, cho cờ Rx |
+| CSDL có chặn không? | **Không.** `sale_lines.drug_id` là `uuid not null` **KHÔNG có khoá ngoại** tới `drugs` |
+| Hệ quả thật | Đơn được tạo, **doanh thu ghi nhận**, nhưng không trừ tồn kho nào ⇒ **sổ sách lệch tồn kho**, im lặng |
+
+Phơi nhiễm thực tế thấp: POS chỉ cho chọn thuốc từ danh mục. Nhưng nó nằm trong **đường
+tiền** và không có lớp nào bắt.
+
+### 🔴 Tôi đã tự tạo ra 2 đơn ma trong `nt650v2` — đã dọn
+
+Hai lệnh dò của chính tôi (`gate-rejected-0001`, `dbg1`) tạo 2 đơn COMPLETED với thuốc
+không tồn tại, cộng khống 2.000đ doanh thu. Đã `pg_dump` rồi xoá chính xác theo
+`client_uuid`: **598 → 596 hoá đơn**, dòng thuốc-ma **2 → 0**, khách và hoạt chất nguyên vẹn.
+
+**Lần xoá đầu THẤT BẠI mà vẫn trả `EXIT=0`** — `docker exec` thiếu cờ `-i` nên heredoc
+không vào được `psql`. Đúng cái bẫy CLAUDE.md kỷ luật #14 đã ghi từ 28/07. Bắt được vì
+đếm lại sau khi xoá thay vì tin mã thoát.
+
+### Vì sao KHÔNG tự sửa
+
+Thêm phép kiểm thuốc-tồn-tại vào `complete_sale` là **sửa logic đã có test**, và chính
+sách Chain ban hành sáng nay cấm điều đó khi không có yêu cầu. Quan trọng hơn: sự khoan
+dung ấy **có thể là cố ý** cho đường offline — một thuốc bị gỡ khỏi danh mục sau khi đơn
+đã xếp hàng thì siết lại sẽ làm **mất đơn**, tức đổi một lỗi im lặng lấy một lỗi mất tiền.
+Đoán sai ở tầng đồng bộ đơn hàng là chỗ đắt nhất để đoán sai.
+
+**Cần Chain quyết một trong ba:**
+
+| Phương án | Đánh đổi |
+|---|---|
+| **A.** Thêm khoá ngoại `sale_lines.drug_id → drugs.id` | Chặt nhất, nhưng migration trên bảng lớn và **đơn offline có thuốc đã gỡ sẽ hỏng** |
+| **B.** Từ chối ở tầng ứng dụng, chỉ với đơn **mới** (không áp cho `/sync`) | Giữ khoan dung cho đơn đã bán offline; vẫn chặn client sai |
+| **C.** Giữ nguyên, thêm cảnh báo + báo cáo đối soát định kỳ | Rẻ nhất, không đổi hành vi; lỗi vẫn im lặng nhưng có chỗ nhìn ra |
+
+GĐ nghiêng về **B** — nó chặn đúng nguồn rủi ro (client sai) mà không đụng đường đã bán.

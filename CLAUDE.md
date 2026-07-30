@@ -24,6 +24,7 @@
 | Kỷ luật bắt buộc **16** (kiểm composition root trước khi code tính năng "chưa có") | **2026-07-30** — GĐ ghi sau khi viết trùng một bộ luật khớp dị ứng đã tồn tại và nối dây sẵn, phải xoá 262 dòng; ghi ngay theo kỷ luật #13. **Chain DUYỆT cùng ngày** |
 | Kỷ luật bắt buộc **17** (giai đoạn phát triển tính năng) + **18** (trí nhớ ghi vào chỗ đã có) | **2026-07-31** — Chain ban hành chính sách phát triển; ánh xạ vào cấu trúc tài liệu sẵn có thay vì dựng song song |
 | Kỷ luật bắt buộc **19** (đóng mục giao diện phải chạy cổng trình duyệt) | **2026-07-31** — gom 6 cổng vào `make ui-gates` thì lộ ra 2 cổng đã hỏng cùng ngày mà không ai biết |
+| Kỷ luật bắt buộc **20** (Chain nghiệm thu bằng ảnh chụp) | **2026-07-31** — Chain chốt: *"mở trình duyệt test, chụp màn hình lại là coi như xong; xem trên ảnh là đủ"* |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -355,6 +356,26 @@ máy này, khác với văn bản ủy quyền (file này) nay đã có lịch s
       chỉ làm quầy hứa với khách một con số hệ thống không công nhận.
     - **Test đỏ ⇒ dừng triển khai.** Không nới lỏng phép kiểm để nó xanh. Hành vi đổi có
       chủ ý thì sửa kỳ vọng **kèm chú thích vì sao**, không xoá assert.
+
+20. **Chain nghiệm thu bằng ẢNH CHỤP. Mỗi lần cần kiểm thực tế: mở trình duyệt, thử,
+    chụp lại — Chain xem ảnh là xong.** (2026-07-31, Chain chốt)
+
+    Nghĩa là **luôn phải có ảnh** khi báo cáo một thay đổi giao diện, không phải "đã đo,
+    số liệu đây". Ảnh là thứ Chain duyệt; bảng số là phụ lục.
+
+    - **Vẫn đo, nhưng đo cho MÌNH, không bắt Chain đọc.** Chỉ nêu số khi nó đổi kết luận.
+    - 🔴 **Ảnh và phép đo từng nói ngược nhau, mỗi bên một lần, cùng trong tuần này:**
+
+      | | Ảnh nói | Sự thật |
+      |---|---|---|
+      | thanh điều hướng "đè lên bảng" | có lỗi | **không** — `fullPage` vẽ phần tử `fixed` một lần ở vị trí cố định |
+      | tiêu đề `DỮ LIỆU` bị cắt 4px | có lỗi | **có** — mà phép đo mức bảng báo ✓ |
+
+      Nên: chụp **và** đo, rồi khi hai bên lệch thì **dừng lại tìm hiểu**, đừng chọn bừa
+      một bên. Kỷ luật #15 gọi đó là "phải đo cả chính phép đo".
+    - Chụp ở **cả hai khổ** (1440×900 và 390×844), `deviceScaleFactor: 2` — kỷ luật #15 đã
+      ghi hai lần suýt sửa thứ không hỏng vì tin ảnh thu nhỏ.
+    - Ảnh đáng giữ ⇒ `docs/ui-history/<ngày>-<màn>/`, kèm bảng trước/sau (kỷ luật #18).
 
 19. **Đóng một mục có động tới GIAO DIỆN thì `make check` KHÔNG đủ.** (2026-07-31)
 
