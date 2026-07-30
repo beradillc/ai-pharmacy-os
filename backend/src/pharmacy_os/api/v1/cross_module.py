@@ -38,7 +38,12 @@ from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.domain import PrescriptionDispensed
 from pharmacy_os.modules.procurement.domain import GoodsReceived
 from pharmacy_os.modules.sales.application import SalesService
-from pharmacy_os.modules.sales.domain import DrugInfo, PrescriptionInfo, SaleCompleted
+from pharmacy_os.modules.sales.domain import (
+    AllergyRisk,
+    DrugInfo,
+    PrescriptionInfo,
+    SaleCompleted,
+)
 
 _log = structlog.get_logger("cross_module.sales_inventory")
 
@@ -373,6 +378,91 @@ def wire_medication_history(container: Container) -> None:
 
     event_bus.subscribe(SaleCompleted, on_sale_completed)
     event_bus.subscribe(PrescriptionDispensed, on_prescription_dispensed)
+
+
+# Thứ tự nặng-nhẹ để chọn ra cảnh báo nặng nhất khi một giỏ có nhiều xung đột.
+# Đặt ở composition root chứ không trong module nào: đây là việc **gộp để hiển thị**,
+# không phải luật lâm sàng — `clinical` quyết CÓ xung đột hay không và nặng cỡ nào,
+# chỗ này chỉ sắp chúng lại. Mức độ lạ (crm thêm sau) xếp 0: vẫn tính là xung đột,
+# chỉ không được chọn làm "nặng nhất" nếu có mức đã biết.
+_SEVERITY_RANK: dict[str, int] = {"SEVERE": 3, "MODERATE": 2, "MILD": 1}
+
+
+class CrmClinicalAllergyRiskProvider:
+    """Adapter cấp phán quyết dị ứng cho `sales`, để sales không import crm/clinical.
+
+    Hiện thực cổng ``AllergyRiskProvider`` bằng cách nối lại **ba mảnh đã có sẵn**,
+    không viết luật mới (kỷ luật #16):
+
+    * ``catalog.get_drug_ingredients`` — giỏ hàng ra danh sách hoạt chất
+    * ``crm.allergy_severities_for_safety_check`` — dị ứng khách đã khai; đây là
+      đường đọc **có chủ đích** cho phép kiểm máy: không gác sau ``crm.sensitive.read``
+      (duyệt Q3), trả **id + mức độ** chứ không trả hồ sơ/tên/bệnh nền, và ghi audit
+      riêng ``CUSTOMER_SENSITIVE_AUTO_CHECK``
+    * ``clinical.check_allergies`` — phép khớp thật (``find_allergy_alerts``)
+
+    Vì sao vẫn phải gọi thêm ``crm.get_customer``: hàm safety-check trả ``{}`` cho **cả
+    hai** trường hợp *"khách không có dị ứng nào"* và *"chưa đồng ý nên không được xem"*.
+    Hai cái đó khác hẳn nhau ở quầy (xem :class:`AllergyRisk`), nên ``health_data_allowed``
+    phải đọc riêng. Lượt đọc này chỉ cần ``crm.read`` và **không** kéo theo dữ liệu sức
+    khoẻ — ``CustomerOutput`` giữ lại cờ đồng ý ngay cả khi giấu danh sách dị ứng.
+    """
+
+    def __init__(self, catalog: CatalogService, crm: CrmService, clinical: ClinicalService) -> None:
+        self._catalog = catalog
+        self._crm = crm
+        self._clinical = clinical
+
+    async def for_sale(
+        self, drug_ids: frozenset[UUID], customer_id: UUID, tenant_id: UUID
+    ) -> AllergyRisk | None:
+        ctx = RequestContext(
+            tenant_id=tenant_id,
+            branch_id=tenant_id,
+            user_id=_SYSTEM_USER,
+            permissions=_SAFETY_PERMISSIONS,
+        )
+        try:
+            customer = await self._crm.get_customer(customer_id, ctx)
+        except NotFoundError:
+            return None  # đơn ghi một khách không còn tồn tại — không có gì để đối chiếu
+        if not customer.health_data_allowed:
+            # Chưa đồng ý ⇒ phép kiểm KHÔNG CHẠY. Trả về nói rõ điều đó thay vì trả
+            # một kết quả sạch — quầy phải phân biệt được hai thứ.
+            return AllergyRisk(consent_granted=False)
+
+        severities = await self._crm.allergy_severities_for_safety_check(customer_id, ctx)
+        if not severities:
+            return AllergyRisk(consent_granted=True)
+
+        basket: list[BasketIngredient] = []
+        seen: set[UUID] = set()
+        for drug_id in drug_ids:
+            try:
+                refs = await self._catalog.get_drug_ingredients(drug_id, ctx)
+            except NotFoundError:
+                continue  # thuốc không có trong danh mục thì không đối chiếu được
+            for ref in refs:
+                if ref.ingredient_id not in seen:
+                    seen.add(ref.ingredient_id)
+                    basket.append(BasketIngredient(ingredient_id=ref.ingredient_id, name=ref.name))
+        if not basket:
+            return AllergyRisk(consent_granted=True)
+
+        result = await self._clinical.check_allergies(
+            CheckAllergiesInput(
+                basket=basket, allergy_severities=severities, context_id=customer_id
+            ),
+            ctx,
+        )
+        if not result.alerts:
+            return AllergyRisk(consent_granted=True)
+        worst = max(result.alerts, key=lambda a: _SEVERITY_RANK.get(a.severity, 0))
+        return AllergyRisk(
+            consent_granted=True,
+            conflict_count=len(result.alerts),
+            worst_severity=worst.severity,
+        )
 
 
 class CatalogDrugInfoProvider:
