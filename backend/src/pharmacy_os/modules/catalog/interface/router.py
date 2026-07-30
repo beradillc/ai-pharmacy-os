@@ -14,6 +14,7 @@ from pharmacy_os.modules.catalog.interface.schemas import (
     CreateDrugRequest,
     CreateIngredientRequest,
     DrugResponse,
+    ReplaceDrugIngredientsRequest,
 )
 
 ContextDep = Callable[..., Awaitable[RequestContext]]
@@ -52,6 +53,30 @@ def _build_drugs_router(get_context: ContextDep) -> APIRouter:
         liệu chỉ có id — một lượt gọi, không phải một lượt mỗi dòng."""
         items = await service.list_drugs(ctx, search=search, ids=ids, limit=limit, offset=offset)
         return [DrugResponse.of(o) for o in items]
+
+    @router.put("/{drug_id}/ingredients", response_model=DrugResponse)
+    async def replace_drug_ingredients(
+        drug_id: UUID,
+        body: ReplaceDrugIngredientsRequest,
+        service: CatalogService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> DrugResponse:
+        """Đặt lại toàn bộ hoạt chất của một thuốc — sửa nhầm, bổ sung thiếu, xoá sai.
+
+        ``PUT`` chứ không ``PATCH``: thân yêu cầu **là** danh sách mới, đầy đủ, nên gọi
+        hai lần cùng một thân cho cùng một kết quả. ``PATCH`` sẽ hàm ý "trộn vào cái đang
+        có", mà trộn thì không có cách nào diễn đạt *bỏ* một hoạt chất.
+
+        Là tài nguyên con ``/ingredients`` chứ không phải ``PUT /drugs/{id}``: chỉ động
+        tới đúng một thứ, nên không có đường nào để một lượt sửa hoạt chất vô tình ghi đè
+        tên, giá hay mã vạch.
+
+        Quyền ``catalog.update`` (cấp chuỗi). Trả 404 nếu thuốc không thuộc nhà thuốc hoặc
+        một ``ingredient_id`` không có trong danh mục hoạt chất; 422 nếu danh sách trùng
+        hoạt chất.
+        """
+        out = await service.replace_drug_ingredients(drug_id, body.to_input(), ctx)
+        return DrugResponse.of(out)
 
     @router.get("/{drug_id}", response_model=DrugResponse)
     async def get_drug(

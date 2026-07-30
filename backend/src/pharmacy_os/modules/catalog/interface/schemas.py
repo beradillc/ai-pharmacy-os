@@ -50,6 +50,25 @@ class DrugIngredientSchema(BaseModel):
     unit: str = Field(max_length=32)
 
 
+class ReplaceDrugIngredientsRequest(BaseModel):
+    """Danh sách hoạt chất MỚI của thuốc — thay toàn bộ, không phải thêm vào.
+
+    Danh sách rỗng là hợp lệ và **có nghĩa**: nó xoá hết hoạt chất của thuốc. Đó là câu
+    trả lời đúng cho vật tư (băng gạc, khẩu trang, nhiệt kế) và cũng chính là cách vô hiệu
+    hoá cảnh báo dị ứng cho một mã hàng — nên nó không mặc định được, người gọi phải gửi
+    trường ``ingredients`` một cách tường minh. Nhầm lẫn ở đây im lặng và nguy hiểm, vì
+    body rỗng ``{}`` mà lỡ có mặc định sẽ xoá sạch mà trông như một lượt gọi vô hại.
+    """
+
+    ingredients: list[DrugIngredientSchema]
+
+    def to_input(self) -> list[DrugIngredientInput]:
+        return [
+            DrugIngredientInput(ingredient_id=i.ingredient_id, amount=i.amount, unit=i.unit)
+            for i in self.ingredients
+        ]
+
+
 class CreateDrugRequest(BaseModel):
     name: str = Field(max_length=255)
     rx_class: RxClass
