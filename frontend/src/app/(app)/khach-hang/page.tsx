@@ -130,7 +130,7 @@ export default function CustomersPage() {
                   <th>Họ tên</th>
                   <th>Điện thoại</th>
                   <th>Giới tính</th>
-                  <th className={local.healthCol}>Dữ liệu</th>
+                  <th className={`${local.healthCol} ${local.giua}`}>Dữ liệu</th>
                   <th />
                 </tr>
               </thead>
@@ -147,7 +147,7 @@ export default function CustomersPage() {
                       <PhoneCell customer={customer} coQuyenXem={coQuyenXem} />
                     </td>
                     <td>{customer.gender ? (GENDER_LABEL[customer.gender] ?? customer.gender) : "—"}</td>
-                    <td>
+                    <td className={local.giua}>
                       {/* Chain chốt 31/07: ký hiệu thay cho chữ, để bảng vừa màn hẹp.
                           Đồng ý xử lý dữ liệu sức khoẻ vẫn là một trạng thái PHÁP LÝ
                           (Luật 91/2025), nên KHÔNG mã hoá bằng riêng màu: ✓ và ✗ là hai
@@ -170,31 +170,29 @@ export default function CustomersPage() {
                       </span>
                     </td>
                     <td className={styles.num}>
+                      {/* MỘT nút, không phải hai (Chain nêu 31/07 — đã đo: hai nút chiếm
+                          226px trên khung 390px, tức 58% chiều ngang, đẩy chính cột dữ
+                          liệu ra khỏi màn). Không phải bỏ bớt chức năng: bảng Sức khoẻ
+                          khi khách chưa đồng ý vốn đã chỉ đường sang phần đồng ý, nay nó
+                          có nút bấm thẳng sang thay vì bảo người dùng tự đóng rồi tìm. */}
                       <button
                         type="button"
                         className={styles.ghost}
-                        onClick={() => setConsentFor(customer)}
+                        onClick={() => {
+                          // Đóng bảng kia trước: hai bảng chồng nhau thì nút "Đóng" nào
+                          // đóng bảng nào là chuyện phải đoán. Phát hiện khi xem ảnh
+                          // chụp 31/07 — cả hai cùng hiện trong một tấm.
+                          setConsentFor(null);
+                          setHealthFor(customer);
+                        }}
                         disabled={customer.anonymised_at !== null}
                         title={
                           customer.anonymised_at !== null
-                            ? "Hồ sơ đã ẩn danh — không còn gì để đồng ý"
-                            : undefined
+                            ? "Hồ sơ đã ẩn danh — không còn gì để mở"
+                            : "Dị ứng, bệnh nền và đồng ý dữ liệu"
                         }
                       >
-                        Đồng ý
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.ghost} ${local.spaced}`}
-                        onClick={() => setHealthFor(customer)}
-                        disabled={customer.anonymised_at !== null}
-                        title={
-                          customer.health_data_allowed
-                            ? "Dị ứng và bệnh nền"
-                            : "Khách chưa đồng ý cho lưu dữ liệu sức khoẻ — mở ra sẽ thấy hướng dẫn"
-                        }
-                      >
-                        Sức khoẻ
+                        Hồ sơ
                       </button>
                     </td>
                   </tr>
@@ -233,7 +231,16 @@ export default function CustomersPage() {
         <ConsentPanel customer={consentFor} onClose={() => setConsentFor(null)} />
       )}
 
-      {healthFor && <HealthPanel customer={healthFor} onClose={() => setHealthFor(null)} />}
+      {healthFor && (
+        <HealthPanel
+          customer={healthFor}
+          onClose={() => setHealthFor(null)}
+          onXinDongY={() => {
+            setHealthFor(null);
+            setConsentFor(healthFor);
+          }}
+        />
+      )}
 
       <CreateCustomerDialog
         open={creating}

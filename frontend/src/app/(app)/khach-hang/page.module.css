@@ -86,6 +86,19 @@
     align-items: stretch;
   }
 
+  /* 🔴 `flex: 1 1 260px` ở trên đúng cho hàng NGANG (khối chữ chiếm chỗ còn lại bên
+     trái hai nút). Nhưng ở khổ này `.consentItem` xoay thành cột, mà trong hộp dọc thì
+     `flex-basis` ăn theo CHIỀU CAO ⇒ khối chữ được cấp sẵn **260px chiều cao** dù chỉ
+     có hai dòng chữ, đẩy hai nút xuống tít dưới. Đó chính là "khoảng trắng dư thừa"
+     Chain nêu 31/07 — nhìn ảnh chụp thì thấy ngay, đọc CSS thì không.
+
+     Cùng một lỗi với ô nhập cao 260px ở màn Sức khoẻ (ghi ở cuối tệp này, 29/07): hai
+     lần rồi, cùng một nguyên nhân — `flex-basis` đặt cho hàng ngang, thừa hưởng vào
+     hộp dọc. */
+  .consentText {
+    flex: 0 0 auto;
+  }
+
   .consentActions > button {
     flex: 1 1 0;
   }
@@ -271,4 +284,126 @@
 .xemSo:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+
+/* ═══ Chỉnh theo góp ý Chain 31/07 ═══════════════════════════════════════════ */
+
+/* ① Dấu ✓ / ✗ căn giữa ô "Dữ liệu". Đo trước khi sửa: tâm dấu lệch tâm ô 48px
+   (desktop) và 21px (mobile) — dấu bám mép trái vì ô thừa hưởng canh trái của bảng. */
+.giua {
+  text-align: center;
+}
+
+/* ② Nút mở bảng chọn hoạt chất — trông như một ô chọn, nhưng là nút của ứng dụng. */
+.chonNut {
+  display: block;
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--radius-md);
+  background: var(--beras-surface);
+  color: var(--beras-ink);
+  font-size: var(--text-base);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* ③ Mức độ: ba nút thay cho danh sách xổ. Xếp DỌC để phần diễn giải đọc được —
+   xếp ngang thì "Sốc phản vệ, phù nề đường thở — CẤM dùng" lại bị cắt, tức là đổi
+   một lỗi tràn lấy một lỗi tràn khác. */
+.mucDo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mucOff,
+.mucOn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--radius-md);
+  background: var(--beras-surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mucOn {
+  border-color: var(--beras-success-ink);
+  background: var(--beras-success-bg);
+}
+
+.mucTen {
+  font-weight: var(--weight-semibold);
+  color: var(--beras-ink);
+}
+
+.mucY {
+  font-size: var(--text-xs);
+  color: var(--beras-ink-muted);
+}
+
+/* ④ Bảng chọn hoạt chất — lớp phủ của CHÍNH ứng dụng, không phải bộ chọn hệ điều
+   hành. Nền mờ vừa làm nổi bảng vừa là một lối đóng (bấm ra ngoài). */
+.lopPhu {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgb(0 0 0 / 45%);
+}
+
+.bangChon {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(28rem, 100%);
+  /* KHÔNG phủ kín màn: chừa mép để thấy được nền mờ phía sau, nhờ vậy "bấm ra ngoài
+     để đóng" là một lối thoát NHÌN THẤY ĐƯỢC chứ không phải mẹo phải biết trước. */
+  max-height: min(70vh, 32rem);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--beras-surface);
+}
+
+.bangChonDau {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.bangChonDs {
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dongChon,
+.dongChonOn {
+  display: block;
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: var(--space-2);
+  border: 0;
+  border-bottom: 1px solid var(--beras-border);
+  background: transparent;
+  color: var(--beras-ink);
+  font-size: var(--text-base);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dongChonOn {
+  background: var(--beras-success-bg);
+  font-weight: var(--weight-semibold);
 }

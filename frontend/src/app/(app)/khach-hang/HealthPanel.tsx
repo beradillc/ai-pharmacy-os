@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   COMMON_CONDITIONS,
@@ -45,13 +45,24 @@ import local from "./page.module.css";
  *    là thứ người sau đọc để quyết định có bán thuốc hay không; một dòng bị xoá
  *    lặng lẽ là một cảnh báo biến mất mà không ai biết.
  */
-export function HealthPanel({ customer, onClose }: { customer: Customer; onClose: () => void }) {
+export function HealthPanel({
+  customer,
+  onClose,
+  onXinDongY,
+}: {
+  customer: Customer;
+  onClose: () => void;
+  onXinDongY: () => void;
+}) {
   const detail = useCustomerDetail(customer.id);
   const ingredients = useIngredients();
   const addAllergy = useAddAllergy(customer.id);
   const addCondition = useAddCondition(customer.id);
 
   const [ingredientId, setIngredientId] = useState("");
+  const [moChonHoatChat, setMoChonHoatChat] = useState(false);
+  /** Bệnh nền chọn được NHIỀU cùng lúc (Chain nêu 31/07) — trước chỉ một mã mỗi lượt. */
+  const [maDaChon, setMaDaChon] = useState<Set<string>>(new Set());
   const [severity, setSeverity] = useState<SeverityId>("MODERATE");
   const [allergyNote, setAllergyNote] = useState("");
 
@@ -90,16 +101,26 @@ export function HealthPanel({ customer, onClose }: { customer: Customer; onClose
 
   async function submitCondition(e: React.FormEvent) {
     e.preventDefault();
-    const trimmed = code.trim().toUpperCase();
-    if (!trimmed) return;
+    // Gộp mã gõ tay với các mã bấm nhanh; `Set` khử trùng nếu gõ đúng mã vừa bấm.
+    const goTay = code.trim().toUpperCase();
+    const ds = [...new Set([...maDaChon, ...(goTay ? [goTay] : [])])];
+    if (ds.length === 0) return;
     setError(null);
     try {
-      await addCondition.mutateAsync({
-        condition_code: trimmed,
-        note: conditionNote.trim() || null,
-      });
+      // Ghi TUẦN TỰ, không `Promise.all`: mỗi lượt là một dòng hồ sơ sức khoẻ có ghi
+      // vết audit riêng, và nếu mã thứ ba hỏng thì hai mã đầu vẫn phải đã vào — gom
+      // song song rồi hỏng giữa chừng sẽ để lại trạng thái không ai đoán được.
+      for (const ma of ds) {
+        await addCondition.mutateAsync({
+          condition_code: ma,
+          // Ghi chú gõ tay chỉ gắn cho mã gõ tay: dán chung một ghi chú cho năm bệnh
+          // khác nhau là làm hồ sơ sai, không phải làm nhanh.
+          note: ma === goTay ? conditionNote.trim() || null : null,
+        });
+      }
       setCode("");
       setConditionNote("");
+      setMaDaChon(new Set());
     } catch (err) {
       report(err, "Không ghi được bệnh nền.");
     }
@@ -116,12 +137,18 @@ export function HealthPanel({ customer, onClose }: { customer: Customer; onClose
 
       {!allowed ? (
         // ① Chưa đồng ý ⇒ không một ô nhập nào. Chỉ nói vì sao và chỉ đường.
-        <p className={local.warnBox}>
-          <strong>Khách chưa đồng ý cho lưu dữ liệu sức khoẻ.</strong> Dị ứng và bệnh nền
-          là <strong>dữ liệu nhạy cảm</strong> — phải hỏi và được đồng ý trước khi ghi.
-          Đóng bảng này, bấm <strong>“Đồng ý”</strong> ở dòng của khách, hỏi khách mục
-          “Lưu dị ứng, bệnh nền”, rồi quay lại.
-        </p>
+        <div className={local.warnBox}>
+          <p>
+            <strong>Khách chưa đồng ý cho lưu dữ liệu sức khoẻ.</strong> Dị ứng và bệnh
+            nền là <strong>dữ liệu nhạy cảm</strong> — phải hỏi và được đồng ý trước khi
+            ghi.
+          </p>
+          {/* Trước đây chỗ này bảo người dùng "đóng bảng này, bấm Đồng ý ở dòng của
+              khách" — một chỉ dẫn ba bước cho việc lẽ ra là một cú bấm. Nay bấm thẳng. */}
+          <button type="button" className={styles.button} onClick={onXinDongY}>
+            Hỏi khách để lấy đồng ý
+          </button>
+        </div>
       ) : (
         <>
           {error && (
@@ -156,42 +183,46 @@ export function HealthPanel({ customer, onClose }: { customer: Customer; onClose
           )}
 
           <form className={local.form} onSubmit={submitAllergy}>
-            <div className={local.row}>
-              <label className={local.field}>
-                <span className={local.label}>Hoạt chất</span>
-                <select
-                  className={styles.select}
-                  value={ingredientId}
-                  onChange={(e) => setIngredientId(e.target.value)}
-                  required
-                >
-                  <option value="">— chọn hoạt chất —</option>
-                  {(ingredients.data ?? []).map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {i.name}
-                    </option>
-                  ))}
-                </select>
-                <span className={local.hint}>
-                  Chọn <strong>hoạt chất</strong>, không phải tên thuốc — cùng một hoạt chất
-                  nằm trong nhiều biệt dược khác nhau.
-                </span>
-              </label>
+            <div className={local.field}>
+              <span className={local.label}>Hoạt chất</span>
+              {/* 🔴 KHÔNG dùng `<select>` nữa (Chain nêu 31/07): trên điện thoại nó mở
+                  bộ chọn của hệ điều hành, phủ kín màn và không phải máy nào cũng có
+                  nút đóng thấy được. Đây là bảng chọn của chính ứng dụng — có ô tìm,
+                  có nút Đóng, và bấm ra ngoài cũng đóng. */}
+              <button
+                type="button"
+                className={local.chonNut}
+                onClick={() => setMoChonHoatChat(true)}
+              >
+                {ingredientId ? nameOf(ingredientId) : "— chọn hoạt chất —"}
+              </button>
+              <span className={local.hint}>
+                Chọn <strong>hoạt chất</strong>, không phải tên thuốc — cùng một hoạt chất
+                nằm trong nhiều biệt dược khác nhau.
+              </span>
+            </div>
 
-              <label className={local.field}>
-                <span className={local.label}>Mức độ</span>
-                <select
-                  className={styles.select}
-                  value={severity}
-                  onChange={(e) => setSeverity(e.target.value as SeverityId)}
-                >
-                  {SEVERITIES.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label} — {s.hint}
-                    </option>
-                  ))}
-                </select>
-              </label>
+            <div className={local.field}>
+              <span className={local.label}>Mức độ</span>
+              {/* Ba lựa chọn thì một danh sách xổ là thừa — và chính nó gây lỗi Chain
+                  nêu: chuỗi "Vừa — Sưng, khó thở nhẹ — cần theo dõi" dài 52 ký tự làm ô
+                  chọn rộng 452px trên khung 390px, tràn 95px (đo 31/07). Ba nút thì
+                  không có gì để tràn, và thấy được cả ba mức cùng lúc. */}
+              <div className={local.mucDo} role="radiogroup" aria-label="Mức độ dị ứng">
+                {SEVERITIES.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={severity === s.id}
+                    className={severity === s.id ? local.mucOn : local.mucOff}
+                    onClick={() => setSeverity(s.id as SeverityId)}
+                  >
+                    <span className={local.mucTen}>{s.label}</span>
+                    <span className={local.mucY}>{s.hint}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <label className={local.field}>
@@ -236,15 +267,22 @@ export function HealthPanel({ customer, onClose }: { customer: Customer; onClose
 
           <form className={local.form} onSubmit={submitCondition}>
             {/* ③ Chọn nhanh — lối tắt, KHÔNG phải toàn bộ ICD-10. */}
-            <span className={local.label}>Chọn nhanh</span>
+            <span className={local.label}>Chọn nhanh — bấm nhiều bệnh rồi thêm một lượt</span>
             <div className={local.quickPick}>
               {COMMON_CONDITIONS.map((c) => (
                 <button
                   key={c.code}
                   type="button"
-                  className={code === c.code ? local.quickOn : local.quickOff}
-                  onClick={() => setCode(c.code)}
-                  aria-pressed={code === c.code}
+                  className={maDaChon.has(c.code) ? local.quickOn : local.quickOff}
+                  onClick={() =>
+                    setMaDaChon((truoc) => {
+                      const sau = new Set(truoc);
+                      if (sau.has(c.code)) sau.delete(c.code);
+                      else sau.add(c.code);
+                      return sau;
+                    })
+                  }
+                  aria-pressed={maDaChon.has(c.code)}
                 >
                   {c.label}
                 </button>
@@ -285,9 +323,13 @@ export function HealthPanel({ customer, onClose }: { customer: Customer; onClose
               <button
                 type="submit"
                 className={styles.button}
-                disabled={!code.trim() || addCondition.isPending}
+                disabled={(maDaChon.size === 0 && !code.trim()) || addCondition.isPending}
               >
-                {addCondition.isPending ? "Đang ghi…" : "Thêm bệnh nền"}
+                {addCondition.isPending
+                  ? "Đang ghi…"
+                  : maDaChon.size > 1
+                    ? `Thêm ${maDaChon.size} bệnh nền`
+                    : "Thêm bệnh nền"}
               </button>
             </div>
           </form>
@@ -300,6 +342,100 @@ export function HealthPanel({ customer, onClose }: { customer: Customer; onClose
           </p>
         </>
       )}
+
+      {moChonHoatChat && (
+        <ChonHoatChat
+          dsHoatChat={ingredients.data ?? []}
+          dangChon={ingredientId}
+          onChon={(id) => {
+            setIngredientId(id);
+            setMoChonHoatChat(false);
+          }}
+          onDong={() => setMoChonHoatChat(false)}
+        />
+      )}
     </section>
+  );
+}
+
+/**
+ * Bảng chọn hoạt chất của CHÍNH ứng dụng, thay cho `<select>` gốc.
+ *
+ * 🔴 Vì sao phải tự viết (Chain nêu 31/07): `<select>` trên điện thoại mở bộ chọn của
+ * hệ điều hành — phủ kín màn hình, và không phải máy nào cũng có nút đóng thấy được.
+ * Người dùng bị kẹt trong một lớp phủ mà chính ứng dụng không điều khiển được.
+ *
+ * Ba lối thoát, cố ý dư: nút **Đóng**, bấm ra **nền mờ**, và phím **Esc**. Một bảng chọn
+ * phủ kín màn mà chỉ có một lối thoát là một cái bẫy — đúng thứ vừa phải sửa.
+ *
+ * Có ô tìm vì danh mục đã 27 hoạt chất và còn dài ra; cuộn tay qua 27 dòng ở quầy trong
+ * lúc khách đứng đợi là chuyện khác hẳn với gõ ba chữ.
+ */
+function ChonHoatChat({
+  dsHoatChat,
+  dangChon,
+  onChon,
+  onDong,
+}: {
+  dsHoatChat: { id: string; name: string }[];
+  dangChon: string;
+  onChon: (id: string) => void;
+  onDong: () => void;
+}) {
+  const [tim, setTim] = useState("");
+  const loc = dsHoatChat.filter((i) =>
+    i.name.toLowerCase().includes(tim.trim().toLowerCase()),
+  );
+
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onDong();
+    };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [onDong]);
+
+  return (
+    <div
+      className={local.lopPhu}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Chọn hoạt chất"
+      onClick={onDong}
+    >
+      <div className={local.bangChon} onClick={(e) => e.stopPropagation()}>
+        <div className={local.bangChonDau}>
+          <strong>Chọn hoạt chất</strong>
+          <button type="button" className={styles.ghost} onClick={onDong}>
+            Đóng
+          </button>
+        </div>
+        <input
+          className={styles.input}
+          value={tim}
+          onChange={(e) => setTim(e.target.value)}
+          placeholder="Gõ để tìm — VD: para"
+          aria-label="Tìm hoạt chất"
+          autoFocus
+        />
+        {loc.length === 0 ? (
+          <p className={local.hint}>Không có hoạt chất nào khớp “{tim}”.</p>
+        ) : (
+          <ul className={local.bangChonDs}>
+            {loc.map((i) => (
+              <li key={i.id}>
+                <button
+                  type="button"
+                  className={i.id === dangChon ? local.dongChonOn : local.dongChon}
+                  onClick={() => onChon(i.id)}
+                >
+                  {i.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
