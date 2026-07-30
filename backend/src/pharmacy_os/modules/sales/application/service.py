@@ -47,10 +47,13 @@ from pharmacy_os.modules.sales.domain import (
     SalesOrder,
     SaleStatus,
     SoldItem,
+    ensure_allergy_acknowledged,
     ensure_prescription_valid_for_sale,
 )
 from pharmacy_os.modules.sales.domain.exceptions import EmptyOrderError
 from pharmacy_os.modules.sales.domain.ports import (
+    AllergyRisk,
+    AllergyRiskProvider,
     DrugInfoProvider,
     DrugSalesAggRow,
     OrderRevenueRow,
@@ -93,6 +96,7 @@ class SalesService:
         drug_info: DrugInfoProvider | None = None,
         prescription_info: PrescriptionInfoProvider | None = None,
         audit: AuditLogger | None = None,
+        allergy_risk: AllergyRiskProvider | None = None,
         hook_registry: HookRegistry | None = None,
         gateway_timeout_seconds: float = 10.0,
     ) -> None:
@@ -101,6 +105,7 @@ class SalesService:
         self._drug_info = drug_info
         self._prescription_info = prescription_info
         self._audit = audit
+        self._allergy_risk = allergy_risk
         self._hook_registry = hook_registry
         self._gateway_timeout = gateway_timeout_seconds
 
@@ -143,6 +148,8 @@ class SalesService:
                     Payment(method=payment.method, amount=Money(payment.amount, data.currency))
                 )
             await self._verify_prescription_ref(order, ctx)
+            risk = await self._resolve_allergy_risk(order, ctx)
+            ensure_allergy_acknowledged(risk, data.allergy_acknowledgement)
             order.complete()
         except SalesError as exc:
             raise ValidationError(str(exc)) from exc
@@ -176,7 +183,55 @@ class SalesService:
                 raise ConflictError("Không thể ghi nhận đơn bán") from exc
 
         await self._record_sale_completed(ctx, order.id)
+        if risk is not None and risk.conflict_count > 0:
+            await self._record_allergy_override(ctx, order.id, risk)
         return SaleOutput.of(order)
+
+    async def _resolve_allergy_risk(
+        self, order: SalesOrder, ctx: RequestContext
+    ) -> AllergyRisk | None:
+        """Hỏi phán quyết dị ứng cho giỏ hàng đang hoàn tất (Đ-6).
+
+        ``None`` khi chưa nối provider (mọi cài đặt cũ giữ nguyên hành vi) hoặc khi đơn
+        không ghi tên khách — bán vãng lai OTC hợp lệ không có khách, và không có khách
+        thì không có dị ứng nào để đối chiếu.
+
+        **Quyết lại ở đây, trên server, từ chính đơn đang hoàn tất** — không tin kết quả
+        POS đã kiểm lúc thêm thuốc (Đ-7): giỏ có thể đổi sau lần kiểm đó, và một client
+        hoàn toàn có thể bỏ qua lượt kiểm ấy. Đây là điểm cưỡng chế thật của Đ-6.
+        """
+        if self._allergy_risk is None or order.customer_id is None:
+            return None
+        return await self._allergy_risk.for_sale(
+            frozenset(line.drug_id for line in order.lines), order.customer_id, ctx.tenant_id
+        )
+
+    async def _record_allergy_override(
+        self, ctx: RequestContext, order_id: UUID, risk: AllergyRisk
+    ) -> None:
+        """Ghi vết một đơn được bán dù có cảnh báo dị ứng (Đ-6).
+
+        Chỉ gọi sau khi ``ensure_allergy_acknowledged`` đã cho qua — tới đây nghĩa là
+        người bán ĐÃ ghi lý do. Metadata thôi: số cảnh báo và mức nặng nhất, không ghi
+        hoạt chất nào hay bệnh gì (giữ đúng nguyên tắc tối thiểu hoá dữ liệu mà
+        ``allergy_severities_for_safety_check`` đã đặt ra).
+        """
+        if self._audit is None:
+            return
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=AuditAction.SALES_ALLERGY_WARNING_OVERRIDDEN,
+                target_type="sale",
+                target_id=str(order_id),
+            ).with_context(
+                client_ip=ctx.client_ip,
+                branch_id=str(ctx.branch_id),
+                conflict_count=str(risk.conflict_count),
+                worst_severity=risk.worst_severity or "",
+            )
+        )
 
     async def _record_sale_completed(self, ctx: RequestContext, order_id: UUID) -> None:
         """Append one audit row — metadata only, never line items/prices."""

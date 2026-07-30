@@ -17,6 +17,7 @@ from pharmacy_os.api.v1.compliance_cross import wire_compliance_sync
 from pharmacy_os.api.v1.cross_module import (
     CatalogDrugInfoProvider,
     CatalogDrugMasterProvider,
+    CrmClinicalAllergyRiskProvider,
     IamAuthReauthProvider,
     PrescriptionInfoAdapter,
     wire_goods_receipt_stock_in,
@@ -33,8 +34,10 @@ from pharmacy_os.core.di import Container
 from pharmacy_os.modules.analytics.interface import register as register_analytics
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.catalog.interface import register as register_catalog
+from pharmacy_os.modules.clinical.application import ClinicalService
 from pharmacy_os.modules.clinical.interface import register as register_clinical
 from pharmacy_os.modules.compliance.interface import register as register_compliance
+from pharmacy_os.modules.crm.application import CrmService
 from pharmacy_os.modules.crm.interface import register as register_crm
 from pharmacy_os.modules.iam.application import AuthService
 from pharmacy_os.modules.iam.interface import register as register_iam
@@ -87,8 +90,14 @@ def build_api_router(container: Container) -> APIRouter:
     # Catalog is authoritative for a sale's Rx status; prescription for its ref
     # validity (adapters over their services — sales imports neither module).
     drug_info = CatalogDrugInfoProvider(container.resolve(CatalogService))
+    # Cổng dị ứng Đ-6: nối lại catalog + crm + clinical, sales không import module nào.
+    allergy_risk = CrmClinicalAllergyRiskProvider(
+        container.resolve(CatalogService),
+        container.resolve(CrmService),
+        container.resolve(ClinicalService),
+    )
     rx_info = PrescriptionInfoAdapter(container.resolve(PrescriptionService))
-    api.include_router(register_sales(container, get_context, drug_info, rx_info))
+    api.include_router(register_sales(container, get_context, drug_info, rx_info, allergy_risk))
 
     # Sprint 7 report exports (composition root, like the audit dashboard): reads
     # sales + inventory's own report methods, neither module imports the other.

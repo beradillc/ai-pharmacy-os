@@ -15,7 +15,11 @@ from pharmacy_os.core.db import UnitOfWork, UnitOfWorkFactory
 from pharmacy_os.core.di import Container
 from pharmacy_os.core.plugins import HookRegistry
 from pharmacy_os.modules.sales.application import SalesService
-from pharmacy_os.modules.sales.domain import DrugInfoProvider, PrescriptionInfoProvider
+from pharmacy_os.modules.sales.domain import (
+    AllergyRiskProvider,
+    DrugInfoProvider,
+    PrescriptionInfoProvider,
+)
 from pharmacy_os.modules.sales.infrastructure import SqlAlchemySalesRepository
 from pharmacy_os.modules.sales.interface.router import ContextDep, build_router
 
@@ -25,6 +29,7 @@ def register(
     get_context: ContextDep,
     drug_info: DrugInfoProvider | None = None,
     prescription_info: PrescriptionInfoProvider | None = None,
+    allergy_risk: AllergyRiskProvider | None = None,
 ) -> APIRouter:
     uow_factory = container.resolve(UnitOfWorkFactory)
 
@@ -37,6 +42,7 @@ def register(
         drug_info,
         prescription_info,
         container.resolve(AuditLogger),
+        allergy_risk,
         container.resolve(HookRegistry),
         container.resolve(Settings).plugins.call_timeout_seconds,
     )

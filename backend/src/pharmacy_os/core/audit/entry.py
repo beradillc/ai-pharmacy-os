@@ -73,6 +73,13 @@ class AuditAction(StrEnum):
     """A person opened a customer's allergies / conditions / medication history."""
 
     CUSTOMER_SENSITIVE_AUTO_CHECK = "CUSTOMER_SENSITIVE_AUTO_CHECK"
+    SALES_ALLERGY_WARNING_OVERRIDDEN = "SALES_ALLERGY_WARNING_OVERRIDDEN"
+    """Bán một đơn dù đã cảnh báo dị ứng — người bán ghi lý do và chịu trách nhiệm (Đ-6).
+
+    Quyết định Đ-6 chọn *cảnh báo + xác nhận* thay cho chặn cứng, nên dòng audit này
+    **chính là** cái làm cho lựa chọn đó chịu trách nhiệm được: nó ghi ai bán, đơn nào,
+    bao nhiêu cảnh báo và mức nặng nhất. Không có nó thì "buộc xác nhận" chỉ là một ô
+    nhập chữ rồi trôi mất."""
     """The system read the same data on its own (clinical safety check during a sale).
 
     Deliberately distinct from :attr:`CUSTOMER_SENSITIVE_READ` (duyệt Q3): machine

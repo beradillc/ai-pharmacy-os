@@ -91,6 +91,12 @@ class CreateSaleInput:
     prescription_ref: UUID | None = None
     customer_id: UUID | None = None
     currency: str = "VND"
+    allergy_acknowledgement: str | None = None
+    """Lý do người bán vẫn bán dù có cảnh báo dị ứng (Đ-6).
+
+    Chỉ cần khi đơn có xung đột dị ứng; mọi đơn khác để ``None``. Có mặc định nên mọi
+    caller cũ không phải đổi. Chuỗi toàn khoảng trắng **không** tính là đã xác nhận —
+    xem ``ensure_allergy_acknowledged``."""
 
 
 @dataclass(slots=True)
