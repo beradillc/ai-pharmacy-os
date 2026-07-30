@@ -6013,3 +6013,54 @@ nên. Đề nghị Chain xác nhận bảng ánh xạ cho 16 mã còn lại rồ
 
 **Không chặn bước 4/4** — mã đã đúng và đã có 8 test e2e đi hết chuỗi thật chứng minh.
 Đây là khiếm khuyết **dữ liệu demo**, sửa bằng seeder, không phải sửa bằng mã nghiệp vụ.
+
+## 7cf. ✅ VÁ §7ce — seeder nối thuốc → hoạt chất, 26/36 mã (2026-07-30)
+
+Chain duyệt nối 6 biệt dược đã tra ở cổng Cục Quản lý Dược. Nối luôn 20 mã tên-trùng-hoạt-chất
+(chúng cũng đang chưa nối — đó mới là toàn bộ khiếm khuyết §7ce).
+
+### Đo trước / sau, trên Postgres thật với dữ liệu seeder thật (kỷ luật #7)
+
+| | Trước | Sau |
+|---|---|---|
+| `drug_ingredients` | **0 dòng** | **29 dòng** |
+| Thuốc có hoạt chất | 0 / 36 | **26 / 36** |
+
+Cách đo: tạo CSDL `ing_probe` → `alembic upgrade head` (EXIT=0, tới `0038_consent_basis`)
+→ `python -m seeds.demo_pharmacy --days 3` (EXIT=0, *36 thuốc · 72 lô · 10 khách · 25 hoá
+đơn*) → truy vấn SQL. Đã **xoá `ing_probe`** sau khi đo (DROP_EXIT=0).
+
+### 🔴 Bằng chứng tính năng THẬT SỰ kích hoạt, không chỉ có dòng trong bảng
+
+Mô phỏng đúng phép giao tập của `find_allergy_alerts` cho một khách dị ứng **Paracetamol**:
+
+| Thuốc bị cảnh báo | Vì hoạt chất |
+|---|---|
+| Paracetamol 500mg | Paracetamol |
+| **Alaxan** | Paracetamol |
+| **Efferalgan 500mg** | Paracetamol |
+| **Panadol Extra** | Paracetamol |
+
+**Ba trong bốn thuốc có tên không hề nhắc tới Paracetamol.** Trước bản vá cả bốn đều im
+lặng. Đây chính là lý do §7ce được xếp mức nghiêm trọng, và là thứ chứng minh bản vá có
+tác dụng thật — khác với việc chỉ đếm số dòng trong bảng.
+
+### 10 mã chưa nối — đúng như dự kiến, không phải sót
+
+| Nhóm | Mã | Trạng thái |
+|---|---|---|
+| Vật tư, **cố ý** không có hoạt chất | Băng gạc y tế · Khẩu trang y tế 4 lớp · Nhiệt kế điện tử | ✅ đúng |
+| Chờ Chain quyết | Vitamin 3B · Oresol · Bổ phế Nam Hà · Prospan · Men vi sinh Enterogermina · Canxi D3 · Dầu gió xanh | 🟡 mỗi mã cần một quyết định, không phải một phép tra — xem `docs/features/ho-so-suc-khoe-khach-hang/02_NGUON_DANH_MUC_THUOC.md` mục 4 |
+
+### 🔴 CÒN NỢ — bản vá seeder KHÔNG sửa dữ liệu đang có
+
+`nt650v2` (CSDL demo Chain đang dùng, 595 hoá đơn) **vẫn 0 dòng** `drug_ingredients`.
+Sửa seeder chỉ có tác dụng cho lần seed **mới**. Hai đường:
+
+| Cách | Ưu | Nhược |
+|---|---|---|
+| Seed lại một CSDL mới từ đầu | Sạch, đúng ngay | Mất 595 hoá đơn + 12 khách + 2 dị ứng đã có trong `nt650v2` |
+| Viết script backfill nối `drug_ingredients` cho `nt650v2` theo `_DRUG_INGREDIENTS` | Giữ nguyên dữ liệu đang có | Thêm một script, cần đối chiếu tên thuốc khớp đúng |
+
+Khuyến nghị **backfill** — `nt650v2` là CSDL Chain đã giữ lại có chủ đích (§7cb mục H-4),
+và nó có 2 dị ứng thật đã khai, tức đúng dữ liệu để thử cảnh báo.
