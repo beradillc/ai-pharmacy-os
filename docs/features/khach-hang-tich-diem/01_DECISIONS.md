@@ -119,7 +119,12 @@ nặng:
 **Không tự tạo hồ sơ khi khách KHÔNG đưa số.** Bán hàng không cần khách hàng; ô số
 điện thoại để trống thì bán bình thường, không tạo hồ sơ nào.
 
-### 2c. 🔴 Đ-5 · Mốc thưởng — Chain chốt 2026-07-29
+### 2c. ⚠️ Đ-5 · Mốc thưởng — Chain chốt 2026-07-29 — **ĐÃ BỊ Đ-9 THAY về cấu trúc mốc**
+
+> 🔴 **Đọc Đ-9 (mục 2e) trước.** Chain đổi cấu trúc ngày 2026-07-30: không còn hai mốc
+> một-lần-mỗi-năm, mà là **một bậc lặp lại — mỗi 2 triệu được 1 hộp**. Phần dưới đây giữ
+> lại vì **lý do đo lường và phần "năm dương lịch" vẫn còn hiệu lực**; riêng bảng hai mốc
+> 1 tr/3 tr và dòng *"một lần mỗi mốc mỗi năm"* thì **không còn áp dụng**.
 
 | Tích luỹ trong năm | Quà | Giá trị |
 |---|---|---|
@@ -166,6 +171,80 @@ hàng thật rời kho thật, đúng lý do L-1/L-2 được nêu ra ban đầu
 
 Không tự chọn: đây là **hàng thật rời khỏi kho thật**, và chọn sai mã hàng thì tồn
 kho lệch ở đúng mặt hàng đang được đem cho.
+
+### 2e. 🔴 Đ-9 · Bậc thưởng LẶP LẠI — Chain chốt 2026-07-30, thay cấu trúc mốc của Đ-5
+
+> *"Cứ mỗi khi đủ 2 triệu 1 hộp khẩu trang, trong cùng 1 năm."*
+
+| | Đ-5 (29/07) | **Đ-9 (30/07)** |
+|---|---|---|
+| Cấu trúc | Hai mốc: 1 tr → bịch · 3 tr → hộp | **Một bậc: mỗi 2 tr → 1 hộp** |
+| Lặp lại? | **Không** — một lần mỗi mốc mỗi năm | **Có** — không giới hạn số lần |
+| Cửa sổ | Năm dương lịch, reset 01/01 | **giữ nguyên** |
+| Mã hàng | cần thêm mã "bịch 10 cái" | **chỉ hộp 35.000 đ đang có** |
+
+#### Đo trước khi chốt — `nt650v2`, 59 ngày, 12 khách gắn tên / 199 trong 595 hoá đơn
+
+| Khách | Chi 59 ngày | Hộp 59 ngày | Ước cả năm | Hộp/năm |
+|---|---|---|---|---|
+| 1 | 4.048.900 | 2 | 25.048.280 | 12 |
+| 2 | 3.410.700 | 1 | 21.100.093 | 10 |
+| 3 | 3.071.000 | 1 | 18.998.559 | 9 |
+| 4 | 2.805.600 | 1 | 17.356.678 | 8 |
+| 5–10 | 1,14 → 1,83 tr | 0 | 7,06 → 11,34 tr | 3–5 |
+| 11–12 | 80k · 550k | 0 | 0,49 · 3,40 tr | 0–1 |
+| **Tổng 12 khách** | **TB 1.938.533** | **5 hộp** | **TB 11.992.621** | **66 hộp** |
+
+**5,5 hộp/khách/năm × 35.000 đ = 192.500 đ/khách/năm.**
+
+| Mô hình | đ/khách/năm | 500 khách quen | % doanh thu |
+|---|---|---|---|
+| Đ-5 một lần mỗi mốc (giá giả định) | 60.000 | 30 triệu | 0,50 % |
+| Đ-5 với mã hàng thật (2 hộp 35k) | 70.000 | 35 triệu | 0,58 % |
+| **Đ-9 — 2 tr/hộp lặp lại** | **192.500** | **96,25 triệu** | **1,61 %** |
+
+**GĐ nêu rõ khi trình:** Đ-9 **là** mô hình lặp lại mà Đ-5 đã cân nhắc và loại — tốn
+**2,75 lần** phương án Đ-5 tính theo mã hàng thật. Chain xác nhận đổi ý sau khi xem số.
+Ở mức **1,61 % doanh thu** thì vẫn trong khoảng thường của chương trình khách quen
+(1–2 %), nên GĐ **không có cơ sở phản đối** — chỉ có nghĩa vụ để Chain đổi ý *có biết*.
+
+**Ba giới hạn của phép đo, đừng tin quá vào con số:** ước cả năm là **nhân số học**
+59 ngày × 6,19, không có yếu tố mùa; mẫu chỉ **12 khách**; và **Đ-2 (loại ETC) không
+có tác dụng trên dữ liệu này** — toàn bộ chi tiêu của khách gắn tên đều là OTC, nên số
+thật có thể **thấp hơn** nếu khách thật mua nhiều thuốc kê đơn.
+
+#### 🔴 Đ-9b · Trả hàng thì KHÔNG thu hồi quà — Chain chốt cùng ngày
+
+Khách trả hàng sau khi đã nhận quà, tích luỹ tụt xuống dưới bậc:
+
+| | Quyết định |
+|---|---|
+| Thu hồi hộp đã tặng? | **Không** |
+| Ghi nợ trừ lần sau? | **Không** |
+| Cơ chế | **Khoá ở mức đã trao**: `số hộp còn được nhận = max(0, được hưởng − đã trao)` |
+
+Hệ quả cần biết ở quầy: sau một lần trả hàng lớn, khách có thể **mua thêm một lúc mà
+vẫn chưa có hộp nào** — đó là đúng ý *"khoá ở mức đã trao"*, không phải lỗi hệ thống.
+
+#### Hệ quả: L-1, L-2, L-2b ĐÓNG HẾT
+
+Chỉ cần **một** mã hàng — hộp khẩu trang y tế 4 lớp 35.000 đ đã có trong danh mục
+(`demo_pharmacy.py:211`). Không cần mã "bịch 10 cái", nên L-2 và L-2b hết mở. L-1 đóng
+theo Đ-8 (*"chọn từ kho"* ⇒ dùng hộp 35.000 đ).
+
+#### Hệ quả mã nguồn
+
+`crm/domain/loyalty.py` đổi từ **mô hình tập hợp mốc** sang **mô hình đếm**:
+
+| Bỏ | Thay bằng |
+|---|---|
+| `RewardTier` (enum 2 mốc) · `TIER_THRESHOLDS` · `tiers_reached()` | `REWARD_STEP = 2.000.000` · `boxes_earned(accrued) -> int` |
+| `granted_tiers()` · `pending_tiers()` | `boxes_granted` · `pending_boxes()` (sàn 0) |
+| `RewardGrant.tier` | `RewardGrant.sequence` — hộp thứ mấy trong năm, phải liên tục |
+
+Giữ nguyên toàn bộ nửa **tiền vào**: `AccrualEntry`, `accrue()` (chặn trùng `order_id`),
+`reverse()` (bút toán đảo), `accrued`. B2 (bảng + migration) **chưa làm** nên viết lại
+không phát sinh migration.
 
 #### 2d. 🔴 Đ-8 · Cách ghi quà vào đơn — Chain chốt 2026-07-30
 

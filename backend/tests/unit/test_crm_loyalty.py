@@ -1,6 +1,10 @@
-"""Sổ tích luỹ và mốc thưởng (Đ-5, Chain chốt 2026-07-29).
+"""Sổ tích luỹ và quà thưởng (Đ-9, Chain chốt 2026-07-30 — thay Đ-5).
 
 Mỗi test dưới đây canh một câu Chain đã nói, không phải một nhánh mã.
+
+Đ-9 đổi cấu trúc: *"cứ mỗi khi đủ 2 triệu, 1 hộp khẩu trang, trong cùng 1 năm"* —
+một bậc **lặp lại**, thay cho hai mốc một-lần-mỗi-năm của Đ-5. Nên phần thưởng
+chuyển từ **tập hợp mốc** sang **số đếm**.
 """
 
 from __future__ import annotations
@@ -12,18 +16,18 @@ from uuid import UUID, uuid4
 import pytest
 
 from pharmacy_os.modules.crm.domain.loyalty import (
+    REWARD_STEP,
     AccrualEntry,
     DuplicateAccrualError,
     LoyaltyError,
     RewardAlreadyGrantedError,
     RewardGrant,
     RewardNotEarnedError,
-    RewardTier,
     YearlyLoyalty,
-    tiers_reached,
+    boxes_earned,
 )
 
-NOW = datetime(2026, 7, 29, 12, 0, tzinfo=UTC)
+NOW = datetime(2026, 7, 30, 12, 0, tzinfo=UTC)
 
 
 def _so(customer_id: UUID | None = None) -> YearlyLoyalty:
@@ -41,34 +45,43 @@ def _cong(so: YearlyLoyalty, tien: str, order_id: UUID | None = None) -> Accrual
     return e
 
 
-# --- Mốc: cộng dồn, không thay thế -------------------------------------------
+def _qua(so: YearlyLoyalty, sequence: int | None = None) -> RewardGrant:
+    return RewardGrant(
+        customer_id=so.customer_id,
+        year=so.year,
+        sequence=sequence if sequence is not None else so.boxes_granted + 1,
+        granted_at=NOW,
+    )
 
 
-def test_chua_du_mot_trieu_thi_chua_co_moc_nao() -> None:
-    assert tiers_reached(Decimal("999999")) == frozenset()
+# --- Bậc thưởng: LẶP LẠI, không phải hai mốc một lần -------------------------
 
 
-def test_dung_mot_trieu_la_dat_moc_khong_phai_hon_mot_trieu() -> None:
-    """Biên là ">=", không phải ">". Khách tích đúng 1.000.000 đ mà bị nói "chưa
-    đủ" thì không ai giải thích nổi."""
-    assert tiers_reached(Decimal("1000000")) == {RewardTier.ONE_MILLION}
+def test_bac_thuong_la_hai_trieu() -> None:
+    """Canh chính con số Chain nói, để đổi bậc là phải sửa test."""
+    assert int(REWARD_STEP) == 2_000_000
 
 
-def test_dat_ba_trieu_duoc_CA_HAI_moc() -> None:
-    """🔴 Chain chốt: "Cả hai — bịch rồi tới hộp".
-
-    Đây là chỗ dễ cài sai nhất: viết `if >= 3tr: moc3 elif >= 1tr: moc1` là mất
-    quà mốc 1 triệu của người mua nhiều nhất.
-    """
-    assert tiers_reached(Decimal("3000000")) == {
-        RewardTier.ONE_MILLION,
-        RewardTier.THREE_MILLION,
-    }
+def test_chua_du_hai_trieu_thi_chua_co_hop_nao() -> None:
+    assert boxes_earned(Decimal("1999999")) == 0
 
 
-def test_mua_rat_nhieu_van_chi_hai_moc_do() -> None:
-    """ "Một lần mỗi mốc, mỗi năm" — 11 triệu không sinh ra mốc thứ ba."""
-    assert len(tiers_reached(Decimal("11000000"))) == 2
+def test_dung_hai_trieu_la_dat_bac_khong_phai_hon_hai_trieu() -> None:
+    """ "Đủ 2 triệu" là >= 2 triệu. Khách tích đúng 2.000.000 đ phải được hộp."""
+    assert boxes_earned(Decimal("2000000")) == 1
+
+
+def test_bac_lap_lai_khong_co_tran() -> None:
+    """🔴 Đây là chỗ Đ-9 khác Đ-5. Đ-5: 11 triệu vẫn chỉ 2 mốc. Đ-9: lặp lại."""
+    assert boxes_earned(Decimal("4000000")) == 2
+    assert boxes_earned(Decimal("5900000")) == 2  # chưa tới 6 triệu
+    assert boxes_earned(Decimal("6000000")) == 3
+    assert boxes_earned(Decimal("25000000")) == 12  # khách cao nhất đo được ở nt650v2
+
+
+def test_tich_luy_am_tra_ve_khong_chu_khong_am() -> None:
+    """Sổ bị đảo nhiều hơn cộng. Một phép đếm âm không có nghĩa gì ở quầy."""
+    assert boxes_earned(Decimal("-5000000")) == 0
 
 
 # --- Sổ chỉ ghi thêm ---------------------------------------------------------
@@ -77,7 +90,7 @@ def test_mua_rat_nhieu_van_chi_hai_moc_do() -> None:
 def test_cong_cung_mot_don_hai_lan_bi_chan() -> None:
     """🔴 Sự kiện bán hàng ĐƯỢC GỬI LẠI khi outbox thử lại (rủi ro R-1).
 
-    Không chặn thì một đơn 3 triệu cộng hai lần là khách chạm mốc bằng tiền
+    Không chặn thì một đơn 3 triệu cộng hai lần là khách chạm bậc bằng tiền
     không có thật — và nhà thuốc mất quà cho một giao dịch không tồn tại.
     """
     so = _so()
@@ -89,15 +102,15 @@ def test_cong_cung_mot_don_hai_lan_bi_chan() -> None:
 
 
 def test_huy_don_thi_DAO_but_toan_chu_khong_xoa() -> None:
-    """Rủi ro R-2. Lịch sử phải còn nguyên để trả lời "tháng trước có đủ mốc không"."""
+    """Rủi ro R-2. Lịch sử phải còn nguyên để trả lời "tháng trước có đủ bậc không"."""
     so = _so()
-    e = _cong(so, "1200000")
-    assert so.pending_tiers() == {RewardTier.ONE_MILLION}
+    e = _cong(so, "2200000")
+    assert so.pending_boxes() == 1
 
     dao = so.reverse(e.id, at=NOW)
-    assert dao.amount == Decimal("-1200000")
+    assert dao.amount == Decimal("-2200000")
     assert so.accrued == Decimal("0")
-    assert so.pending_tiers() == frozenset()
+    assert so.pending_boxes() == 0
     # Cả hai dòng còn nguyên — không dòng nào bị xoá.
     assert len(so.entries) == 2
 
@@ -137,53 +150,87 @@ def test_thoi_diem_phai_co_mui_gio() -> None:
 # --- Trao quà ----------------------------------------------------------------
 
 
-def _qua(so: YearlyLoyalty, tier: RewardTier) -> RewardGrant:
-    return RewardGrant(customer_id=so.customer_id, year=so.year, tier=tier, granted_at=NOW)
-
-
-def test_chua_du_moc_thi_khong_trao_duoc() -> None:
-    so = _so()
-    _cong(so, "900000")
-    with pytest.raises(RewardNotEarnedError):
-        so.grant(_qua(so, RewardTier.ONE_MILLION))
-
-
-def test_mot_moc_chi_trao_MOT_LAN_moi_nam() -> None:
-    """🔴 Đây là câu "một lần mỗi mốc, mỗi năm" của Chain, đặt ở domain.
-
-    Đặt ở giao diện thì hai thu ngân ở hai máy cùng bấm là trao hai lần — và đây
-    là hàng thật rời khỏi kho thật.
-    """
+def test_chua_du_bac_thi_khong_trao_duoc() -> None:
     so = _so()
     _cong(so, "1500000")
-    so.grant(_qua(so, RewardTier.ONE_MILLION))
-    with pytest.raises(RewardAlreadyGrantedError):
-        so.grant(_qua(so, RewardTier.ONE_MILLION))
+    with pytest.raises(RewardNotEarnedError):
+        so.grant(_qua(so))
 
 
-def test_pending_chi_con_moc_chua_trao() -> None:
+def test_trao_lien_tiep_theo_so_hop_duoc_huong() -> None:
+    """Khách tích 6 triệu được 3 hộp — trao đủ 3, không hơn."""
     so = _so()
-    _cong(so, "3200000")
-    assert so.pending_tiers() == {RewardTier.ONE_MILLION, RewardTier.THREE_MILLION}
-    so.grant(_qua(so, RewardTier.ONE_MILLION))
-    assert so.pending_tiers() == {RewardTier.THREE_MILLION}
-    so.grant(_qua(so, RewardTier.THREE_MILLION))
-    assert so.pending_tiers() == frozenset()
+    _cong(so, "6000000")
+    assert so.pending_boxes() == 3
+    for _ in range(3):
+        so.grant(_qua(so))
+    assert so.boxes_granted == 3
+    assert so.pending_boxes() == 0
 
 
-def test_trao_qua_roi_moi_huy_don_thi_qua_KHONG_bi_doi_lai() -> None:
-    """🔴 Ca ngoài đời: khách đạt mốc, nhận khẩu trang, hôm sau trả hàng.
+def test_khong_trao_vuot_so_duoc_huong() -> None:
+    """🔴 Chặn cả trường hợp gọi nhiều lần liên tiếp khi chỉ còn đúng một hộp."""
+    so = _so()
+    _cong(so, "2500000")  # 1 hộp
+    so.grant(_qua(so))
+    with pytest.raises(RewardAlreadyGrantedError):
+        so.grant(_qua(so, sequence=2))
 
-    Tích luỹ tụt xuống dưới mốc, nhưng quà **đã ở trong tay khách** — sổ phải
-    phản ánh sự thật đó, không được tự xoá bản ghi đã trao. Người quản lý nhìn
-    thấy chênh lệch này và tự quyết xử lý; phần mềm không được giả vờ là nó
-    chưa từng xảy ra.
+
+def test_so_thu_tu_phai_lien_tuc() -> None:
+    """Không có phép kiểm này thì hai lượt trao đồng thời cùng ghi số 3, và sổ mất
+    khả năng trả lời "đã trao mấy hộp" — cùng họ với rủi ro cộng trùng order_id."""
+    so = _so()
+    _cong(so, "6000000")  # 3 hộp
+    so.grant(_qua(so, sequence=1))
+    with pytest.raises(RewardAlreadyGrantedError):
+        so.grant(_qua(so, sequence=3))  # nhảy số
+    with pytest.raises(RewardAlreadyGrantedError):
+        so.grant(_qua(so, sequence=1))  # trùng số đã trao
+    so.grant(_qua(so, sequence=2))  # đúng thứ tự thì đi được
+    assert so.boxes_granted == 2
+
+
+def test_mua_them_sinh_ra_hop_moi() -> None:
+    """Bậc lặp lại: nhận xong hộp 1, mua thêm tới 4 triệu thì có hộp 2."""
+    so = _so()
+    _cong(so, "2000000")
+    so.grant(_qua(so))
+    assert so.pending_boxes() == 0
+    _cong(so, "2000000")
+    assert so.pending_boxes() == 1
+
+
+# --- Đ-9: trả hàng thì KHÔNG thu hồi quà -------------------------------------
+
+
+def test_tra_hang_sau_khi_nhan_qua_thi_KHONG_bi_doi_lai() -> None:
+    """🔴 Đ-9 (Chain chốt 30/07): không thu hồi, khoá ở mức đã trao.
+
+    Hộp khẩu trang đã cho thì không đòi lại, và cũng không ghi nợ — ``pending_boxes``
+    chạm sàn 0 chứ không đi âm.
     """
     so = _so()
-    e = _cong(so, "1100000")
-    so.grant(_qua(so, RewardTier.ONE_MILLION))
-    so.reverse(e.id, at=NOW)
+    e = _cong(so, "2200000")
+    so.grant(_qua(so))
+    assert so.boxes_granted == 1
 
-    assert so.accrued == Decimal("0")
-    assert so.granted_tiers() == {RewardTier.ONE_MILLION}  # vẫn còn vết
-    assert so.pending_tiers() == frozenset()
+    so.reverse(e.id, at=NOW)  # khách trả hàng, tích luỹ về 0
+    assert boxes_earned(so.accrued) == 0
+    assert so.boxes_granted == 1  # vẫn còn vết đã trao
+    assert so.pending_boxes() == 0  # KHÔNG âm
+
+
+def test_sau_khi_tra_hang_phai_mua_lai_tu_dau_moi_co_hop_moi() -> None:
+    """Hệ quả của "khoá ở mức đã trao": khách đã nhận 2 hộp rồi trả gần hết hàng,
+    mua thêm một lúc vẫn chưa có hộp nào — đúng ý Chain, không phải lỗi."""
+    so = _so()
+    e = _cong(so, "4000000")  # 2 hộp
+    so.grant(_qua(so))
+    so.grant(_qua(so))
+    so.reverse(e.id, at=NOW)  # về 0, nhưng đã trao 2
+
+    _cong(so, "4000000")  # được hưởng 2, đã trao 2
+    assert so.pending_boxes() == 0
+    _cong(so, "2000000")  # tổng 6 triệu ⇒ được hưởng 3
+    assert so.pending_boxes() == 1

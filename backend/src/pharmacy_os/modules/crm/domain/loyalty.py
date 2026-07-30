@@ -1,9 +1,22 @@
-"""Tích luỹ chi tiêu trong năm và các mốc thưởng (Đ-5, Chain chốt 2026-07-29).
+"""Tích luỹ chi tiêu trong năm và quà thưởng (Đ-9, Chain chốt 2026-07-30).
 
-Ghi **tiền**, không ghi "điểm". Chain phát biểu chương trình bằng đồng — *"tích 1
-triệu tặng bịch khẩu trang"* — nên phát minh một đơn vị điểm rồi quy đổi 1 điểm =
-1 đồng chỉ thêm một lớp để sai, và thêm một câu hỏi ở quầy: *"1 điểm là bao nhiêu
-tiền?"*.
+Ghi **tiền**, không ghi "điểm". Chain phát biểu chương trình bằng đồng — *"cứ mỗi
+khi đủ 2 triệu, 1 hộp khẩu trang"* — nên phát minh một đơn vị điểm rồi quy đổi
+1 điểm = 1 đồng chỉ thêm một lớp để sai, và thêm một câu hỏi ở quầy: *"1 điểm là
+bao nhiêu tiền?"*.
+
+**Đ-9 THAY Đ-5 về cấu trúc mốc.** Đ-5 (29/07) là *hai mốc một lần mỗi năm* — 1 triệu
+tặng bịch, 3 triệu tặng hộp. Đ-9 (30/07) là **một bậc lặp lại**: mỗi 2 triệu tích luỹ
+trong năm dương lịch được 1 hộp, không giới hạn số lần. Nên mô hình đổi từ **tập hợp
+mốc** sang **số đếm**: câu hỏi không còn là *"đã chạm mốc nào"* mà là *"được bao nhiêu
+hộp, đã trao bao nhiêu"*.
+
+Đo trước khi chốt (`nt650v2`, 59 ngày, 12 khách): trung bình 1.938.533 đ/khách ⇒ ước
+11.992.621 đ/khách/năm ⇒ **5,5 hộp/khách/năm** = 192.500 đ, tức **1,61 % doanh thu**.
+Gấp 2,75 lần Đ-5 nhưng vẫn trong mức thường của chương trình khách quen (1–2 %).
+
+Giữ nguyên từ Đ-5: **năm dương lịch** (reset 01/01) và cách ghi sổ chỉ-thêm bằng bút
+toán đảo. Phần tiền vào không đổi; chỉ nửa phần thưởng viết lại.
 """
 
 from __future__ import annotations
@@ -11,7 +24,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
-from enum import StrEnum
 from uuid import UUID, uuid4
 
 from pharmacy_os.modules.crm.domain.exceptions import CrmError
@@ -26,39 +38,33 @@ class DuplicateAccrualError(LoyaltyError):
 
 
 class RewardAlreadyGrantedError(LoyaltyError):
-    """Một mốc thưởng đã trao rồi lại trao lần nữa trong cùng năm."""
+    """Trao quà khi đã trao hết số hộp khách được hưởng, hoặc trao trùng số thứ tự."""
 
 
 class RewardNotEarnedError(LoyaltyError):
-    """Trao thưởng khi chưa tích đủ mốc."""
+    """Trao thưởng khi chưa tích đủ bậc 2 triệu tiếp theo."""
 
 
-class RewardTier(StrEnum):
-    """Hai mốc thưởng. Giá trị enum mang luôn con số để không ai phải tra bảng."""
-
-    ONE_MILLION = "ONE_MILLION"
-    THREE_MILLION = "THREE_MILLION"
-
-
-#: Ngưỡng của từng mốc, bằng đồng.
+#: Mỗi bao nhiêu đồng tích luỹ thì được 1 hộp khẩu trang (Đ-9).
 #:
 #: Để ở đây chứ không ở bảng cấu hình vì đây là **chương trình đang chạy với khách
-#: thật**: đổi ngưỡng giữa chừng là đổi lời hứa đã nói với người ta, nên nó phải là
-#: một thay đổi mã có commit, có người duyệt — không phải một ô nhập ai cũng sửa được.
-TIER_THRESHOLDS: dict[RewardTier, Decimal] = {
-    RewardTier.ONE_MILLION: Decimal("1000000"),
-    RewardTier.THREE_MILLION: Decimal("3000000"),
-}
+#: thật**: đổi bậc giữa chừng là đổi lời hứa đã nói với người ta, nên nó phải là một
+#: thay đổi mã có commit, có người duyệt — không phải một ô nhập ai cũng sửa được.
+REWARD_STEP: Decimal = Decimal("2000000")
 
 
-def tiers_reached(accrued: Decimal) -> frozenset[RewardTier]:
-    """Những mốc mà mức tích luỹ này đã chạm tới.
+def boxes_earned(accrued: Decimal) -> int:
+    """Số hộp mức tích luỹ này được hưởng — **lặp lại**, không có trần.
 
-    **Cộng dồn, không thay thế** (Chain chốt): đạt 3 triệu thì được **cả hai** —
-    đi qua mốc 1 triệu nhận quà mốc đó, đi tiếp tới 3 triệu nhận thêm quà mốc 3
-    triệu. Không ai cảm thấy bị mất phần đã đạt được.
+    Chia lấy phần nguyên: 2 triệu được 1 hộp, 5,9 triệu được 2 hộp, 25 triệu được 12.
+    Đúng 2 triệu là đạt bậc (``>=``), không phải "hơn 2 triệu".
+
+    Tích luỹ âm (sổ bị đảo nhiều hơn cộng) trả **0**, không trả số âm: số hộp được
+    hưởng là một phép đếm, và một phép đếm âm không có nghĩa gì ở quầy.
     """
-    return frozenset(t for t, nguong in TIER_THRESHOLDS.items() if accrued >= nguong)
+    if accrued < REWARD_STEP:
+        return 0
+    return int(accrued // REWARD_STEP)
 
 
 @dataclass(slots=True)
@@ -91,16 +97,19 @@ class AccrualEntry:
 
 @dataclass(slots=True)
 class RewardGrant:
-    """Một lần trao quà cho một mốc, trong một năm.
+    """Một lần trao **một hộp**, trong một năm.
 
-    Khoá duy nhất là **(khách, năm, mốc)** — đó chính là quy tắc *"một lần mỗi
-    mốc, mỗi năm"* của Chain, đặt ở chỗ không đi vòng được thay vì tin vào giao
-    diện nhớ hộ.
+    Khoá duy nhất là **(khách, năm, số thứ tự)**. Đ-9 bỏ khái niệm "mốc" nên không
+    còn khoá theo mốc được nữa; thay bằng ``sequence`` — hộp thứ mấy trong năm. Số
+    thứ tự làm hai việc cùng lúc: chặn trao trùng (không đi vòng bằng giao diện nhớ
+    hộ), và cho người đọc sổ trả lời được *"đây là hộp thứ mấy, ứng với bậc 2 triệu
+    thứ mấy"* mà không phải đếm lại cả danh sách.
     """
 
     customer_id: UUID
     year: int
-    tier: RewardTier
+    #: Hộp thứ mấy trong năm, đếm từ 1. Phải liên tục — xem :meth:`YearlyLoyalty.grant`.
+    sequence: int
     granted_at: datetime
     granted_by: UUID | None = None
     #: Mã hàng đã trao. Quà là **hàng thật rời khỏi kho thật**, nên phải ghi lại
@@ -166,25 +175,52 @@ class YearlyLoyalty:
         self.entries.append(dao)
         return dao
 
-    def granted_tiers(self) -> frozenset[RewardTier]:
-        return frozenset(g.tier for g in self.grants)
+    @property
+    def boxes_granted(self) -> int:
+        """Số hộp đã trao trong năm."""
+        return len(self.grants)
 
-    def pending_tiers(self) -> frozenset[RewardTier]:
-        """Mốc đã tích đủ nhưng **chưa trao quà** — thứ quầy cần nhìn thấy."""
-        return tiers_reached(self.accrued) - self.granted_tiers()
+    def pending_boxes(self) -> int:
+        """Số hộp khách đã tích đủ nhưng **chưa nhận** — thứ quầy cần nhìn thấy.
+
+        🔴 **Không bao giờ âm** (Đ-9, Chain chốt 2026-07-30: *không thu hồi*). Khách
+        trả hàng sau khi đã nhận quà thì tích luỹ tụt xuống, số hộp được hưởng có thể
+        **thấp hơn số đã trao** — khi đó kết quả là 0, không phải số âm. Hộp khẩu trang
+        đã cho thì không đòi lại, và cũng không ghi nợ: khách phải mua thêm cho tới bậc
+        2 triệu kế tiếp mới sinh ra hộp mới.
+
+        Hệ quả cần biết: sau một lần trả hàng lớn, khách có thể mua thêm một lúc mà
+        vẫn chưa có hộp nào — đúng ý *"khoá ở mức đã trao"*, không phải lỗi.
+        """
+        return max(0, boxes_earned(self.accrued) - self.boxes_granted)
 
     def grant(self, grant: RewardGrant) -> None:
-        """Ghi nhận đã trao quà một mốc.
+        """Ghi nhận đã trao một hộp.
 
-        Hai phép kiểm, và cả hai đều đặt ở domain chứ không ở giao diện:
-        **chưa đủ mốc thì không trao**, và **một mốc chỉ trao một lần mỗi năm**.
-        Đây là chỗ hàng thật rời kho, nên nó phải chặt ở nơi mọi đường đều đi qua.
+        Ba phép kiểm, cả ba đặt ở domain chứ không ở giao diện — đây là chỗ **hàng
+        thật rời kho thật**, nên nó phải chặt ở nơi mọi đường đều đi qua:
+
+        1. **Chưa tích đủ bậc kế tiếp thì không trao.**
+        2. **Không trao vượt số được hưởng** — chặn cả trường hợp gọi nhiều lần liên
+           tiếp khi chỉ còn đúng một hộp.
+        3. **Số thứ tự phải liên tục** (``sequence == boxes_granted + 1``). Không có
+           phép kiểm này thì hai lượt trao đồng thời cùng ghi ``sequence=3`` và sổ mất
+           khả năng trả lời *"đã trao mấy hộp"* — cùng họ với rủi ro cộng trùng
+           ``order_id`` mà :meth:`accrue` đã chặn.
         """
-        if grant.tier not in tiers_reached(self.accrued):
-            nguong = TIER_THRESHOLDS[grant.tier]
+        duoc_huong = boxes_earned(self.accrued)
+        if duoc_huong == 0:
             raise RewardNotEarnedError(
-                f"Chưa đủ mốc {nguong:,.0f} đ — mới tích {self.accrued:,.0f} đ"
+                f"Chưa đủ bậc {REWARD_STEP:,.0f} đ — mới tích {self.accrued:,.0f} đ"
             )
-        if grant.tier in self.granted_tiers():
-            raise RewardAlreadyGrantedError(f"Mốc {grant.tier} đã trao trong năm {self.year} rồi")
+        if self.boxes_granted >= duoc_huong:
+            raise RewardAlreadyGrantedError(
+                f"Đã trao {self.boxes_granted} hộp trong năm {self.year}, "
+                f"tích luỹ {self.accrued:,.0f} đ chỉ được hưởng {duoc_huong} hộp"
+            )
+        mong_doi = self.boxes_granted + 1
+        if grant.sequence != mong_doi:
+            raise RewardAlreadyGrantedError(
+                f"Hộp phải trao theo thứ tự liên tục — chờ số {mong_doi}, nhận số {grant.sequence}"
+            )
         self.grants.append(grant)
