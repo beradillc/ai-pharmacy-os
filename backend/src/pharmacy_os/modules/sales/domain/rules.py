@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -14,13 +12,13 @@ from pharmacy_os.modules.sales.domain.exceptions import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover — types only, see note below
-    from pharmacy_os.modules.sales.domain.ports import CustomerAllergy, DrugInfo
+    from pharmacy_os.modules.sales.domain.ports import AllergyRisk
 
 # Type-only import on purpose: ``ports`` imports ``SalesOrder`` from ``entities``, and
 # ``entities`` imports ``ensure_rx_for_etc`` from this module — importing ``ports`` at
-# runtime here would close that loop. The rule functions below only read attributes
-# (``ingredient_ids``, ``ingredient_id``, ``severity``), so they need the names for
-# annotations and nothing more. ``from __future__ import annotations`` (above) keeps
+# runtime here would close that loop. The rule function below only reads attributes
+# (``conflict_count``, ``worst_severity``), so it needs the name for the annotation and
+# nothing more. ``from __future__ import annotations`` (above) keeps
 # those annotations as strings at runtime.
 
 # States of a referenced prescription that authorise selling its ETC items.
@@ -62,91 +60,37 @@ def ensure_prescription_valid_for_sale(status: str | None) -> None:
         )
 
 
-# Ordering used only to put the most dangerous conflict first when several are
-# found on one order — sales owns this ranking the same way it owns
-# `_SALE_AUTHORISING_RX_STATES`, rather than importing the crm enum. A value not
-# listed here (a severity crm adds later) ranks 0: it still produces a conflict and
-# still demands acknowledgement, it just sorts last instead of crashing.
-_ALLERGY_SEVERITY_RANK: dict[str, int] = {"SEVERE": 3, "MODERATE": 2, "MILD": 1}
+def ensure_allergy_acknowledged(risk: AllergyRisk | None, acknowledgement: str | None) -> None:
+    """Block completing a sale that collides with a declared allergy unless the seller
+    has explicitly taken responsibility, in writing.
 
+    Quyết định Đ-6 (Chain, 2026-07-30): **warn, do not hard-block**. A pharmacist may
+    have a sound reason to dispense anyway — a mild reaction, no substitute in stock, a
+    prescriber who already weighed it up. A hard block would push counter staff into not
+    recording allergies at all, or into leaving the customer off the order, which
+    destroys the record this warning depends on.
 
-@dataclass(frozen=True, slots=True)
-class AllergyConflict:
-    """One drug on the order carries one ingredient the customer reacts to.
-
-    Per *ingredient*, not per drug: a combination product can collide with two
-    separate declared allergies, and the counter needs to see both — collapsing
-    them to one row per drug would hide the second reason.
-    """
-
-    drug_id: UUID
-    ingredient_id: UUID
-    severity: str
-    note: str | None = None
-
-
-def find_allergy_conflicts(
-    drugs: Iterable[DrugInfo], allergies: Iterable[CustomerAllergy]
-) -> list[AllergyConflict]:
-    """Match the order's drugs against the customer's declared allergies.
-
-    Pure set intersection on ingredient ids — no lookup, no I/O. Both sides are
-    supplied by the caller (``DrugInfoProvider`` and ``CustomerAllergyProvider``),
-    so this stays a decision function that a unit test can drive directly.
-
-    Returns conflicts ordered most-severe first, then by drug then ingredient id, so
-    the counter always sees the same order for the same basket and a test can assert
-    on position. An empty result means *checked and clean* — it does **not** mean
-    "not checked"; that case is carried by
-    :attr:`CustomerAllergyProfile.consent_granted` and must be handled by the caller.
-    """
-    declared = {a.ingredient_id: a for a in allergies}
-    if not declared:
-        return []
-    conflicts = [
-        AllergyConflict(
-            drug_id=drug.drug_id,
-            ingredient_id=ingredient_id,
-            severity=declared[ingredient_id].severity,
-            note=declared[ingredient_id].note,
-        )
-        for drug in drugs
-        for ingredient_id in sorted(drug.ingredient_ids & declared.keys())
-    ]
-    conflicts.sort(
-        key=lambda c: (-_ALLERGY_SEVERITY_RANK.get(c.severity, 0), c.drug_id, c.ingredient_id)
-    )
-    return conflicts
-
-
-def ensure_allergy_acknowledged(
-    conflicts: Iterable[AllergyConflict], acknowledgement: str | None
-) -> None:
-    """Block completing a sale that collides with a declared allergy unless the
-    seller has explicitly taken responsibility, in writing.
-
-    Quyết định Đ-6 (Chain, 2026-07-30): **warn, do not hard-block**. A pharmacist
-    may have a sound reason to dispense anyway — a mild reaction, no substitute in
-    stock, a prescriber who already weighed it up. A hard block would push counter
-    staff into not recording allergies at all, or into leaving the customer off the
-    order, which destroys the record this warning depends on.
-
-    So the gate is an acknowledgement, not a prohibition: a non-blank reason. The
-    caller audits it (``SALES_ALLERGY_WARNING_OVERRIDDEN``); this function only
-    decides whether one was required and supplied.
+    So the gate is an acknowledgement, not a prohibition: a non-blank reason. The caller
+    audits it (``SALES_ALLERGY_WARNING_OVERRIDDEN``); this function only decides whether
+    one was required and supplied.
 
     **This is the enforcement point, and it is deliberately at completion time even
     though the warning is shown when the drug is added to the basket (Đ-7).** A check
-    that only ran while building the basket would be advisory only — a client could
-    skip it, or the basket could change after it passed. Re-deciding here, on the
-    server, from the order that is actually being completed, is what gives Đ-6 teeth.
+    that only ran while building the basket would be advisory only — a client could skip
+    it, or the basket could change after it passed. Re-deciding here, on the server,
+    from the order that is actually being completed, is what gives Đ-6 teeth.
+
+    ``risk is None`` (no customer named on the order, or the record is gone) and
+    ``conflict_count == 0`` both pass: there is nothing to acknowledge. A basket the
+    pharmacy was not allowed to check (``consent_granted=False``) also passes — refusing
+    to sell because consent for health data is absent would punish the customer for
+    exercising a right, and no conflict is known to exist.
     """
-    pending = list(conflicts)
-    if not pending:
+    if risk is None or risk.conflict_count == 0:
         return
     if acknowledgement is None or not acknowledgement.strip():
-        worst = pending[0]
+        nang_nhat = risk.worst_severity or "không rõ mức độ"
         raise AllergyAcknowledgementRequiredError(
-            f"Đơn có {len(pending)} cảnh báo dị ứng (nặng nhất: {worst.severity}). "
+            f"Đơn có {risk.conflict_count} cảnh báo dị ứng (nặng nhất: {nang_nhat}). "
             "Phải ghi lý do xác nhận vẫn bán mới hoàn tất được."
         )

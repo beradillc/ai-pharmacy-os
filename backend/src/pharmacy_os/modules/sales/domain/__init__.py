@@ -19,9 +19,8 @@ from pharmacy_os.modules.sales.domain.exceptions import (
     UnderpaidError,
 )
 from pharmacy_os.modules.sales.domain.ports import (
-    CustomerAllergy,
-    CustomerAllergyProfile,
-    CustomerAllergyProvider,
+    AllergyRisk,
+    AllergyRiskProvider,
     DrugInfo,
     DrugInfoProvider,
     DrugSalesAggRow,
@@ -32,11 +31,9 @@ from pharmacy_os.modules.sales.domain.ports import (
     SalesRepository,
 )
 from pharmacy_os.modules.sales.domain.rules import (
-    AllergyConflict,
     ensure_allergy_acknowledged,
     ensure_prescription_valid_for_sale,
     ensure_rx_for_etc,
-    find_allergy_conflicts,
 )
 
 __all__ = [
@@ -60,16 +57,13 @@ __all__ = [
     "OrderRevenueRow",
     "SalesOrderListRow",
     "DrugSalesAggRow",
-    "CustomerAllergy",
-    "CustomerAllergyProfile",
-    "CustomerAllergyProvider",
+    "AllergyRisk",
+    "AllergyRiskProvider",
     "DrugInfo",
     "DrugInfoProvider",
     "PrescriptionInfo",
     "PrescriptionInfoProvider",
-    "AllergyConflict",
     "ensure_allergy_acknowledged",
     "ensure_prescription_valid_for_sale",
     "ensure_rx_for_etc",
-    "find_allergy_conflicts",
 ]

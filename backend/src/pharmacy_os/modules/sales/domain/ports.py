@@ -189,62 +189,45 @@ class DrugInfo:
     requires_prescription: bool
     name: str = ""
     unit: str = ""
-    ingredient_ids: frozenset[UUID] = frozenset()
-    """Active ingredients this drug contains, for the allergy check (Đ-6).
-
-    Defaulted empty so every existing caller and test double keeps building
-    ``DrugInfo`` unchanged — an empty set simply yields no allergy conflict, which
-    is the correct reading for a product with no ingredients recorded (a consumable
-    such as a mask or a thermometer). Deliberately ids, not names: ``crm`` records
-    allergies against ``active_ingredients.id`` too, so matching is an id
-    intersection and never a string comparison across modules.
-    """
 
 
 @dataclass(frozen=True, slots=True)
-class CustomerAllergy:
-    """One allergy the customer has declared, as sales needs to read it.
+class AllergyRisk:
+    """The allergy verdict for one basket, as sales needs it to gate completion.
 
-    ``severity`` is the raw severity *value* (e.g. ``"SEVERE"``) rather than the
-    ``crm`` enum — the same convention as :attr:`PrescriptionInfo.status`, so sales
-    never imports the crm module. Sales owns its own ordering of these values for
-    display (see ``_ALLERGY_SEVERITY_RANK`` in the domain rules).
+    Deliberately **not** the conflicts themselves: matching a basket against a
+    customer's allergies is ``clinical``'s job (``find_allergy_alerts``), and sales
+    duplicating that rule would give the pharmacy two answers to one clinical
+    question. Sales needs only the facts its own rule turns on — *are there any*,
+    *how bad is the worst one* — plus enough to write a meaningful audit line.
+
+    ``consent_granted`` is carried separately from ``conflict_count == 0`` because
+    the two mean different things at the counter and must not be shown the same way:
+    *"this customer has no known allergies"* versus *"this pharmacy may not look"*.
+    Luật 91/2025 Điều 9 gates health data behind its own consent purpose, so a
+    customer identified only by phone at the till (``ConsentBasis.COUNTER``, quyết
+    định Đ-4) yields ``consent_granted=False`` — and the counter must be told the
+    check did not run, not that it came back clean.
     """
 
-    ingredient_id: UUID
-    severity: str
-    note: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class CustomerAllergyProfile:
-    """What sales is allowed to know about one customer's allergies.
-
-    ``consent_granted`` is carried separately from an empty ``allergies`` because
-    the two mean different things at the counter and must not be shown the same
-    way: *"this customer has no known allergies"* versus *"this pharmacy may not
-    look"*. Luật 91/2025 Điều 9 gates health data behind its own consent purpose
-    (``ConsentPurpose.HEALTH``), so a customer identified only by phone at the till
-    (``ConsentBasis.COUNTER``, quyết định Đ-4) yields ``consent_granted=False`` and
-    an empty list — and the counter must be told that the check did not run, not
-    that it came back clean.
-    """
-
-    customer_id: UUID
     consent_granted: bool
-    allergies: tuple[CustomerAllergy, ...] = ()
+    conflict_count: int = 0
+    worst_severity: str | None = None
 
 
-class CustomerAllergyProvider(Protocol):
-    """Read-port for crm allergy facts, so sales never imports the crm module.
+class AllergyRiskProvider(Protocol):
+    """Read-port for the allergy verdict, so sales imports neither crm nor clinical.
 
-    Implemented at the composition root (adapter over ``CrmService``). Returns
-    ``None`` when no customer with that id exists for the tenant — distinct from a
-    :class:`CustomerAllergyProfile` with ``consent_granted=False``, which means the
-    customer exists but has not agreed to health-data processing.
+    Implemented at the composition root over ``CrmService`` (the customer's recorded
+    allergies) and ``ClinicalService`` (the match). Returns ``None`` when no customer
+    with that id exists for the tenant — distinct from an :class:`AllergyRisk` with
+    ``consent_granted=False``, which means the customer exists but has not agreed to
+    health-data processing.
     """
 
-    async def get(self, customer_id: UUID, tenant_id: UUID) -> CustomerAllergyProfile | None: ...
+    async def for_sale(
+        self, drug_ids: frozenset[UUID], customer_id: UUID, tenant_id: UUID
+    ) -> AllergyRisk | None: ...
 
 
 class DrugInfoProvider(Protocol):
