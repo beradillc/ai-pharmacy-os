@@ -5911,3 +5911,61 @@ truy vấn `nt650v2` — đúng lỗi kỷ luật #8 cấm. Sửa cách đo trư
 
 **Đóng:** L-1, L-2, L-2b hết mở — Đ-9 chỉ cần **một** mã hàng, hộp khẩu trang y tế
 4 lớp 35.000 đ đã có trong danh mục (`demo_pharmacy.py:211`).
+
+## 7cd. 📋 ĐẶC TẢ BƯỚC 3/4 — nối cổng dị ứng vào `complete_sale` (chưa code)
+
+Viết sẵn cuối phiên 30/07 để phiên sau vào việc ngay. **Bước 2/4 đã xong** (`ebd511f`):
+`CrmClinicalAllergyRiskProvider` chạy được, có 8 test, **nhưng chưa ai gọi**.
+
+**Vì sao dừng ở đây, không code tiếp:** bước 3 sửa `complete_sale` — đường nóng nhất hệ
+thống (tiền + kho + cổng Rx đã có). Kỷ luật #1 đòi chạy trọn 1192 test (203 s) trước
+commit. Hạn mức cuối phiên đủ cho một lượt suôn sẻ, không đủ cho một lượt phải sửa lại.
+
+### Sáu việc, theo thứ tự
+
+| # | Việc | File | Ghi chú |
+|---|---|---|---|
+| 1 | Thêm `AuditAction.SALES_ALLERGY_WARNING_OVERRIDDEN` | `core/audit/entry.py` | Cột `action` là `String(64)` (`core/audit/models.py:52`) — tên 32 ký tự **vừa**, mìn `varchar(32)` cũ đã gỡ. **Không cần migration** |
+| 2 | Thêm `allergy_acknowledgement: str \| None = None` | `sales/application/dto.py::CreateSaleInput` | Đặt cuối, có mặc định ⇒ mọi caller cũ không đổi |
+| 3 | Thêm `allergy_risk: AllergyRiskProvider \| None = None` vào ctor | `sales/application/service.py::SalesService` | Cùng khuôn `drug_info`/`prescription_info` đã có |
+| 4 | Gọi cổng **trước `order.complete()`** | `complete_sale`, ngay sau `_verify_prescription_ref` | Xem mã mẫu dưới |
+| 5 | Nối dây | `sales/interface/register.py` + `api/v1/__init__.py` | Cùng chỗ `CatalogDrugInfoProvider` đang được resolve |
+| 6 | Test | `tests/unit/` + `tests/integration/` | Xem danh sách dưới |
+
+### Mã mẫu cho việc 4
+
+```python
+    async def _verify_allergy(
+        self, order: SalesOrder, data: CreateSaleInput, ctx: RequestContext
+    ) -> None:
+        """Cổng Đ-6. No-op khi chưa nối provider hoặc đơn không ghi tên khách."""
+        if self._allergy_risk is None or order.customer_id is None:
+            return
+        risk = await self._allergy_risk.for_sale(
+            frozenset(line.drug_id for line in order.lines), order.customer_id, ctx.tenant_id
+        )
+        ensure_allergy_acknowledged(risk, data.allergy_acknowledgement)   # ném nếu thiếu lý do
+        if risk is not None and risk.conflict_count > 0 and self._audit is not None:
+            # tới đây nghĩa là ĐÃ có lý do — ghi vết ai bán, bán gì, vì sao vẫn bán
+            ...  # AuditAction.SALES_ALLERGY_WARNING_OVERRIDDEN
+```
+
+🔴 **Đặt trong khối `try/except SalesError` hiện có** — `AllergyAcknowledgementRequiredError`
+kế thừa `SalesError` nên sẽ tự thành `ValidationError` (HTTP 422), đúng thứ POS cần đọc
+để hiện hộp thoại xác nhận. Đặt ngoài khối thì nó rơi ra thành 500.
+
+### Test phải có
+
+| Ca | Kỳ vọng |
+|---|---|
+| Đơn không ghi khách | bán được, **không gọi** provider |
+| Chưa nối provider | bán được (mọi test cũ phải vẫn xanh — đây là phép kiểm hồi quy chính) |
+| Có xung đột, **không** lý do | `ValidationError`, đơn **không** được lưu |
+| Có xung đột, **có** lý do | bán được **và** có dòng audit `SALES_ALLERGY_WARNING_OVERRIDDEN` |
+| Chưa đồng ý dữ liệu sức khoẻ | bán được (Đ-10) |
+| Đột biến #14 | bỏ lời gọi `ensure_allergy_acknowledged` ⇒ ca 3 phải đỏ |
+
+### Bước 4/4 sau đó
+
+Endpoint kiểm **trước** khi bán cho POS gọi lúc thêm thuốc (Đ-7) · cổng trình duyệt
+(**#15**, nay đã được Chain duyệt) · thử trên CSDL có dữ liệu sẵn (**#7**).
