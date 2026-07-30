@@ -6134,3 +6134,99 @@ Prospan · Enterogermina · Canxi D3 · Dầu gió xanh.
 
 4 cổng + pytest: RUFF_CHECK=0 · RUFF_FORMAT=0 · MYPY=0 (266 file) · IMPORTLINTER=0 (18 kept) ·
 PYTEST=0 (**1221 passed**, 211,62s — thêm 11 test so với 1210).
+
+## 7ch. ✅ Sửa được hoạt chất của thuốc đã tạo — `PUT /drugs/{id}/ingredients`, 3 bước (2026-07-30/31)
+
+Chain chọn việc này (thay vì POS gọi `allergy-check`) và duyệt hết. Phát hiện trong lúc viết
+backfill `024a2bd`: tôi phải đi thẳng xuống ORM vì **không có đường nào** sửa hoạt chất của
+một thuốc đã tạo — `create_drug` là use-case duy nhất, router chỉ có `POST`, repository chỉ
+có `add`/`get`. Nghĩa là nhập sai ⇒ cảnh báo dị ứng **sai người vĩnh viễn**; nhập thiếu ⇒
+**im lặng vĩnh viễn**, trên đúng tính năng chạm an toàn bệnh nhân.
+
+Kỷ luật #16 đã kiểm trước khi viết dòng đầu tiên: grep `update_drug` / `set_ingredients` /
+`edit_drug` / `DRUG_UPDATED` ở composition root và `modules/*/domain/rules.py` ⇒ **0 kết quả**.
+Lần này sổ nợ nói đúng.
+
+### Ba bước, chốt cứng tổng số từ đầu (kỷ luật #12)
+
+| Bước | Commit | Nội dung | Test mới |
+|---|---|---|---|
+| 1/3 | `0b3c4db` | `Drug.replace_ingredients` (domain thuần) | 7 |
+| 2/3 | `3bbde93` | service + port + repo + `catalog.update` + AuditAction | 14 |
+| 3/3 | `a393f3f` | `PUT /drugs/{id}/ingredients` + e2e | 12 |
+
+### 🔴 Bằng chứng đáng giá nhất — cảnh báo dị ứng đổi theo NGAY, hỏi qua đúng đường quầy dùng
+
+Không phải "PUT trả 200" mà là gọi `/sales/allergy-check` trước và sau:
+
+| Thao tác | `conflict_count` |
+|---|---|
+| Thêm hoạt chất cho thuốc đang trống (**đúng ca §7ce**) | 0 → **1** |
+| Bỏ hoạt chất khỏi thuốc | 1 → **0** |
+| Sửa nhầm sang đúng | thôi kêu ở người sai, **kêu ở người đúng** |
+
+Không cần seed lại, không cần khởi động lại.
+
+### Quyết định thiết kế đã tự chốt
+
+| Quyết định | Vì sao |
+|---|---|
+| **Thay cả danh sách**, không thêm/xoá từng cái | "Sửa" = xoá cái sai + thêm cái đúng. Hai lượt thì tồn tại một khoảng thuốc mang danh sách **sai theo cách khác**, và trong khoảng đó cảnh báo vẫn chạy |
+| **`PUT`**, không `PATCH` | Thân yêu cầu *là* danh sách mới ⇒ idempotent. `PATCH` hàm ý "trộn vào", mà trộn thì **không diễn đạt được việc bỏ** một hoạt chất |
+| Tài nguyên con `/ingredients`, không `PUT /drugs/{id}` | Chỉ động đúng một thứ ⇒ không có đường nào ghi đè tên/giá/mã vạch |
+| `ingredients` **không có mặc định** | Body `{}` phải 422. Có mặc định thì một lượt gọi hỏng xoá sạch mà trông vô hại — cảnh báo tắt trong im lặng |
+| Quyền **`catalog.update`** riêng | Tạo sai ⇒ thuốc mới chưa ai bán. Sửa sai ⇒ mọi cảnh báo đang chạy đổi hành vi ngay. Chỉ `chain_pharmacist` + `system_admin`; `branch_pharmacist` **không** (sửa ở một chi nhánh đổi hành vi **toàn chuỗi**) |
+| Port `save_ingredients` **hẹp**, không `update()` | `to_orm()` dựng `DrugORM` mới mang mọi trường ⇒ `merge` sẽ ghi đè tên/giá/mã vạch. Cổng hẹp không thể làm việc đó dù có muốn |
+| Audit chỉ mang `count_before`/`count_after` | Dòng `2 → 0` đủ cảnh báo người soát sổ; chép danh sách vào sổ là biến sổ audit thành bản sao thứ hai của dữ liệu nó canh (NĐ 356/2025 Điều 4.2) |
+
+### 🔴 Kỷ luật #7 — quyền mới, đo trên `nt650v2` (595 hoá đơn), đúng bẫy §7l
+
+| | `catalog.update` |
+|---|---|
+| trước | **vắng mặt ở cả 5 role** |
+| `python -m seeds.run` | EXIT=0, `system_roles_updated=2` |
+| sau | `chain_pharmacist` ✅ · `system_admin` ✅ · `branch_pharmacist` ❌ · `cashier` ❌ · `warehouse` ❌ |
+
+Tức `sync_system_roles` (bản vá §7l) thật sự đưa quyền mới tới role **đã tồn tại**, và đưa
+**đúng nơi** — không phải chỉ tới deployment mới.
+
+### 🔴 Kỷ luật #14 — 8 đột biến, và **một cái KHÔNG đỏ**
+
+| Bước | Đột biến | Kết quả |
+|---|---|---|
+| 1 | gán tham chiếu thay vì `list()` | 🔴 đỏ đúng chỗ |
+| 1 | gán **trước** khi kiểm trùng | 🔴 đỏ đúng chỗ |
+| 2 | mô phỏng `to_orm`+`merge` ghi đè trường khác | 🔴 đỏ đúng chỗ |
+| 2 | dùng chung quyền `catalog.create` | 🔴 đỏ đúng chỗ |
+| 2 | kiểm hoạt chất tồn tại **sau** khi đổi aggregate | ❗ **KHÔNG đỏ** |
+| 3 | route không nối vào app | 🔴 10/12 đỏ |
+| 3 | `ingredients` có mặc định | 🔴 đỏ đúng chỗ |
+| 3 | `PUT` hiểu là "trộn" | 🔴 4 đỏ, gồm test cảnh báo chuyển người |
+
+**Cái không đỏ là phần đáng ghi nhất.** Aggregate bị vứt đi khi exception ném ra, chưa kịp
+tới `save_ingredients` ⇒ thứ tự đó **không có hệ quả quan sát được**. Chú thích tôi viết
+trong service **và** docstring test đều đã nói quá về điều chúng chứng minh — đã sửa cả hai
+cho đúng sự thật thay vì để nguyên một lời khai sai trong mã. Giữ thứ tự kiểm-trước là để
+tính đúng đắn không phụ thuộc vào "không có gì ghi ở giữa", tính chất mà lần sửa sau có thể
+phá mà không ai nhận ra.
+
+### 🔴 Bắt được một lỗi test CÓ SẴN, không do thay đổi này
+
+`tests/integration/test_sales_list.py` đỏ **4 test** với `assert 0 == 3` — trông y hệt lỗi
+phân trang. Thật ra `_TODAY = date.today()` tính lúc **import module** (23:58 ngày 30/07),
+còn `created_at` do CSDL đặt lúc **chạy test** (sau nửa đêm, 31/07) ⇒ bộ lọc `date_to` loại
+sạch. **Chạy riêng thì xanh, chạy cả bộ thì đỏ.** Lỗi này nằm im cho tới khi có một lượt
+`pytest` đủ dài chạy qua đúng nửa đêm. Đã nới biên trên thành ngày mai; không làm yếu phép
+kiểm nào vì không test nào ở file đó canh việc loại đơn ở tương lai.
+
+Cùng họ với những ca kỷ luật #15 đã ghi: **cái đỏ là phép đo, không phải sản phẩm.**
+
+4 cổng cuối: RUFF_CHECK=0 · RUFF_FORMAT=0 · MYPY=0 (266 file) · IMPORTLINTER=0 (18 kept) ·
+PYTEST=0 (**1254 passed**, 221,20s — thêm 33 test qua 3 bước).
+
+### 🟡 Còn treo
+
+- **POS chưa gọi `/sales/allergy-check`** — quầy vẫn là "bấm hoàn tất rồi mới biết". Kỷ luật
+  #15 chưa đo được gì cho tới khi màn đó tồn tại. Đây là việc kế tiếp.
+- **Giao diện sửa hoạt chất** chưa có — API đã xong, dược sĩ vẫn chưa tự sửa được.
+- 7 mã thuốc chờ Chain quyết (không đổi).
