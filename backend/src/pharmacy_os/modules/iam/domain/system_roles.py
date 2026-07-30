@@ -20,7 +20,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-CATALOG_PERMISSIONS = frozenset({"catalog.read", "catalog.create"})
+#: ``catalog.update`` (2026-07-30) là quyền **sửa hồ sơ thuốc đã tạo** — cụ thể là danh
+#: sách hoạt chất, đường duy nhất làm cảnh báo dị ứng ngừng kêu. Tách khỏi ``catalog.create``
+#: vì hai việc khác nhau về hậu quả: tạo sai thì thuốc mới chưa ai bán, sửa sai thì mọi
+#: cảnh báo đang chạy trên thuốc đó đổi hành vi ngay.
+CATALOG_PERMISSIONS = frozenset({"catalog.read", "catalog.create", "catalog.update"})
 INVENTORY_PERMISSIONS = frozenset(
     {"inventory.read", "inventory.receive", "inventory.dispense", "inventory.reconcile"}
 )
@@ -163,12 +167,13 @@ _CHAIN_PHARMACIST_PERMISSIONS = (
     | {"iam.user.read", "iam.role.read"}
 )
 
-#: Branch-level professional. Excludes the chain-wide switches: ``catalog.create``
-#: (drug master stays consistent across the chain), ``clinical.settings.write`` and
-#: ``compliance.config.write`` (business-level decisions), and
-#: ``procurement.supplier.create``.
+#: Branch-level professional. Excludes the chain-wide switches: ``catalog.create`` and
+#: ``catalog.update`` (drug master stays consistent across the chain — sửa hoạt chất ở một
+#: chi nhánh sẽ đổi hành vi cảnh báo dị ứng của **toàn chuỗi**, đó là quyết định cấp chuỗi),
+#: ``clinical.settings.write`` and ``compliance.config.write`` (business-level decisions),
+#: and ``procurement.supplier.create``.
 _BRANCH_PHARMACIST_PERMISSIONS = (
-    (CATALOG_PERMISSIONS - {"catalog.create"})
+    (CATALOG_PERMISSIONS - {"catalog.create", "catalog.update"})
     | INVENTORY_PERMISSIONS
     | SALES_PERMISSIONS
     | RX_PERMISSIONS

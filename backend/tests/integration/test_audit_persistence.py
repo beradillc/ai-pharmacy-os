@@ -264,6 +264,9 @@ _COVERED_ELSEWHERE = {
     AuditAction.CLINICAL_INTERACTION_CHECKED,
     AuditAction.CLINICAL_RECOMMENDATION_ACCEPTED,
     AuditAction.CATALOG_DRUG_CREATED,
+    # Có test bền vững riêng: tests/integration/test_catalog_replace_ingredients.py
+    # ::test_ghi_vet_audit_kem_so_luong_TRUOC_va_SAU (đọc thẳng AuditLogORM).
+    AuditAction.CATALOG_DRUG_INGREDIENTS_REPLACED,
     AuditAction.SALE_RETURN_REGISTERED,
     AuditAction.INVENTORY_RECONCILIATION_RESOLVED,
     AuditAction.ANALYTICS_REORDER_RUN,

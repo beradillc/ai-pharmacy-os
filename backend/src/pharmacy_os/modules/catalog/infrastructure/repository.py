@@ -16,7 +16,11 @@ from pharmacy_os.modules.catalog.infrastructure.mappers import (
     to_domain,
     to_orm,
 )
-from pharmacy_os.modules.catalog.infrastructure.models import ActiveIngredientORM, DrugORM
+from pharmacy_os.modules.catalog.infrastructure.models import (
+    ActiveIngredientORM,
+    DrugIngredientORM,
+    DrugORM,
+)
 
 
 class SqlAlchemyDrugRepository:
@@ -78,6 +82,35 @@ class SqlAlchemyDrugRepository:
         )
         rows = (await self._session.execute(stmt)).all()
         return {row.id: row.name for row in rows}
+
+    async def save_ingredients(self, drug: Drug) -> None:
+        """Đồng bộ `drug_ingredients` bằng cách gán lại collection của ORM row.
+
+        Gán cả collection (chứ không tự tính thêm/bớt) là để `cascade="all,
+        delete-orphan"` trên `DrugORM.ingredients` **xoá đúng những dòng đã bị bỏ** —
+        tự tính là viết lại thứ ORM đã làm đúng, và viết sai thì để lại dòng mồ côi.
+
+        Tuyệt đối không dùng `to_orm()` ở đây: nó dựng một `DrugORM` MỚI mang mọi trường
+        của aggregate, nên `session.merge` sẽ ghi đè cả tên/giá/mã vạch — kể cả khi bên
+        gọi chỉ đổi hoạt chất. Cổng này chỉ được chạm đúng một collection.
+        """
+        stmt = select(DrugORM).where(
+            DrugORM.id == drug.id, DrugORM.tenant_id == self._ctx.tenant_id
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        if row is None:
+            return
+        row.ingredients = [
+            DrugIngredientORM(
+                id=i.id,
+                drug_id=drug.id,
+                ingredient_id=i.ingredient_id,
+                amount=i.amount,
+                unit=i.unit,
+            )
+            for i in drug.ingredients
+        ]
+        await self._session.flush()
 
 
 class SqlAlchemyActiveIngredientRepository:

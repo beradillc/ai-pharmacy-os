@@ -18,6 +18,7 @@ from pharmacy_os.modules.catalog.application.dto import (
     ActiveIngredientOutput,
     CreateDrugInput,
     CreateIngredientInput,
+    DrugIngredientInput,
     DrugIngredientRef,
     DrugOutput,
 )
@@ -97,6 +98,67 @@ class CatalogService:
             await repo.add(drug)
             await uow.commit()
         await self._record(ctx, AuditAction.CATALOG_DRUG_CREATED, drug.id)
+        return DrugOutput.of(drug)
+
+    async def replace_drug_ingredients(
+        self, drug_id: UUID, ingredients: Sequence[DrugIngredientInput], ctx: RequestContext
+    ) -> DrugOutput:
+        """Đặt lại toàn bộ danh sách hoạt chất của một thuốc — sửa nhầm, bổ sung thiếu.
+
+        Cho tới 2026-07-30 **không có đường nào** sửa được hoạt chất của một thuốc đã tạo:
+        `create_drug` là use-case duy nhất, router chỉ có `POST`, repository chỉ có
+        `add`/`get`. Nghĩa là dược sĩ nhập sai một hoạt chất thì cảnh báo dị ứng sai người
+        vĩnh viễn, nhập thiếu thì im lặng vĩnh viễn — trên đúng tính năng chạm an toàn
+        bệnh nhân.
+
+        Quyền là ``catalog.update``, **không** phải ``catalog.read``: đọc danh mục là việc
+        thường ngày của mọi vai ở quầy, còn sửa hoạt chất đổi hành vi cảnh báo của toàn
+        chuỗi. Cũng không dùng chung ``catalog.create``: tạo sai thì thuốc mới chưa ai bán,
+        sửa sai thì mọi cảnh báo đang chạy trên thuốc đó đổi hành vi ngay.
+
+        Raises :class:`NotFoundError` khi thuốc không thuộc tenant hoặc một
+        ``ingredient_id`` không có trong danh mục hoạt chất, :class:`ValidationError` khi
+        danh sách trùng hoạt chất hoặc hàm lượng/đơn vị không hợp lệ.
+        """
+        require_permission(ctx, "catalog.update")
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            drug = await repo.get(drug_id)
+            if drug is None:
+                raise NotFoundError(f"Không tìm thấy thuốc {drug_id}")
+            so_luong_truoc = len(drug.ingredients)
+
+            ingredient_repo = self._ingredient_repo_factory(uow)
+            try:
+                moi = [
+                    DrugIngredient(ingredient_id=i.ingredient_id, amount=i.amount, unit=i.unit)
+                    for i in ingredients
+                ]
+            except InvalidIngredientError as exc:
+                raise ValidationError(str(exc)) from exc
+            # Kiểm hoạt chất tồn tại trước khi đổi aggregate. Đảo thứ tự này KHÔNG làm
+            # hỏng dữ liệu — đã đo bằng đột biến 30/07, bộ test vẫn xanh — vì aggregate bị
+            # vứt đi khi exception ném ra, chưa kịp tới `save_ingredients`. Giữ thứ tự này
+            # là để tính đúng đắn không phụ thuộc vào việc "không có gì ghi ở giữa", một
+            # tính chất mà lần sửa sau có thể phá mà không ai nhận ra.
+            for i in moi:
+                if await ingredient_repo.get(i.ingredient_id) is None:
+                    raise NotFoundError(f"Không tìm thấy hoạt chất {i.ingredient_id}")
+            try:
+                drug.replace_ingredients(moi)
+            except DuplicateIngredientError as exc:
+                raise ValidationError(str(exc)) from exc
+
+            await repo.save_ingredients(drug)
+            await uow.commit()
+
+        await self._record(
+            ctx,
+            AuditAction.CATALOG_DRUG_INGREDIENTS_REPLACED,
+            drug.id,
+            count_before=str(so_luong_truoc),
+            count_after=str(len(drug.ingredients)),
+        )
         return DrugOutput.of(drug)
 
     async def get_drug(self, drug_id: UUID, ctx: RequestContext) -> DrugOutput:
@@ -197,8 +259,15 @@ class CatalogService:
             drugs = await repo.list(search=search, ids=ids, limit=limit, offset=offset)
         return [DrugOutput.of(d) for d in drugs]
 
-    async def _record(self, ctx: RequestContext, action: AuditAction, drug_id: UUID) -> None:
-        """Append one audit row — metadata only, never drug/pricing content."""
+    async def _record(
+        self, ctx: RequestContext, action: AuditAction, drug_id: UUID, **extra: str
+    ) -> None:
+        """Append one audit row — metadata only, never drug/pricing content.
+
+        ``extra`` chỉ nhận **số đếm/cờ**, không nhận nội dung: xem ghi chú ở
+        :attr:`AuditAction.CATALOG_DRUG_INGREDIENTS_REPLACED` về lý do chép danh sách hoạt
+        chất vào sổ audit là sai (NĐ 356/2025 Điều 4.2).
+        """
         await self._audit.record(
             AuditEntry(
                 actor_user_id=ctx.user_id,
@@ -206,5 +275,5 @@ class CatalogService:
                 action=action,
                 target_type="drug",
                 target_id=str(drug_id),
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id), **extra)
         )

@@ -30,7 +30,16 @@ from pharmacy_os.modules.sales.application import (
 )
 from pharmacy_os.modules.sales.domain import PaymentMethod
 
+#: 🔴 Biên trên phải là NGÀY MAI, không phải hôm nay.
+#:
+#: Hai mốc này tính lúc **import module**, còn ``created_at`` của đơn do CSDL đặt lúc
+#: **chạy test**. Một lượt `pytest` đủ dài chạy qua nửa đêm thì đơn mang ngày hôm sau,
+#: bộ lọc mang ngày hôm trước, và 4 test cùng đỏ với `assert 0 == 3` — trông y hệt lỗi
+#: phân trang. Đã xảy ra thật lúc 00:02 ngày 31/07/2026: chạy riêng thì xanh, chạy cả bộ
+#: thì đỏ. Nới biên trên một ngày là đủ, và không làm yếu phép kiểm nào ở đây: không test
+#: nào trong file này canh việc loại bỏ đơn ở tương lai.
 _TODAY = date.today()
+_DEN = _TODAY + timedelta(days=1)
 _FROM = _TODAY - timedelta(days=7)
 
 
@@ -56,7 +65,7 @@ async def test_multi_tender_order_is_not_inflated(
         _sale("mt1", ("2", "30000"), ("1", "60000"), tenders=["50000", "70000"]), ctx
     )
 
-    rows = await sales_service.list_sales(ctx, date_from=_FROM, date_to=_TODAY)
+    rows = await sales_service.list_sales(ctx, date_from=_FROM, date_to=_DEN)
 
     assert len(rows) == 1
     row = rows[0]
@@ -80,7 +89,7 @@ async def test_newest_first(sales_service: SalesService, ctx: RequestContext) ->
     for i in range(3):
         await sales_service.complete_sale(_sale(f"n{i}", ("1", "10000")), ctx)
 
-    rows = await sales_service.list_sales(ctx, date_from=_FROM, date_to=_TODAY)
+    rows = await sales_service.list_sales(ctx, date_from=_FROM, date_to=_DEN)
     keys = [(r.created_at, r.order_id) for r in rows]
 
     assert len(keys) == 3
@@ -94,7 +103,7 @@ async def test_row_carries_status_and_owner(
 
     row = next(
         r
-        for r in await sales_service.list_sales(ctx, date_from=_FROM, date_to=_TODAY)
+        for r in await sales_service.list_sales(ctx, date_from=_FROM, date_to=_DEN)
         if r.order_id == out.id
     )
 
@@ -108,10 +117,10 @@ async def test_paging_and_branch_filter(sales_service: SalesService, ctx: Reques
     for i in range(3):
         await sales_service.complete_sale(_sale(f"p{i}", ("1", "10000")), ctx)
 
-    page = await sales_service.list_sales(ctx, date_from=_FROM, date_to=_TODAY, limit=2)
-    rest = await sales_service.list_sales(ctx, date_from=_FROM, date_to=_TODAY, limit=2, offset=2)
+    page = await sales_service.list_sales(ctx, date_from=_FROM, date_to=_DEN, limit=2)
+    rest = await sales_service.list_sales(ctx, date_from=_FROM, date_to=_DEN, limit=2, offset=2)
     other_branch = await sales_service.list_sales(
-        ctx, date_from=_FROM, date_to=_TODAY, branch_id=uuid4()
+        ctx, date_from=_FROM, date_to=_DEN, branch_id=uuid4()
     )
 
     assert len(page) == 2
@@ -129,7 +138,7 @@ async def test_requires_sales_read(sales_service: SalesService, ctx: RequestCont
     )
 
     with pytest.raises(PermissionDeniedError):
-        await sales_service.list_sales(blind, date_from=_FROM, date_to=_TODAY)
+        await sales_service.list_sales(blind, date_from=_FROM, date_to=_DEN)
 
 
 async def test_reversed_range_is_rejected(sales_service: SalesService, ctx: RequestContext) -> None:

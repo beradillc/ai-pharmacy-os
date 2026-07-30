@@ -224,8 +224,20 @@ class AuditAction(StrEnum):
     ``rx_class`` (OTC/ETC/CONTROLLED) is the authoritative classification every
     downstream rule (sales Rx gate, compliance ledger) trusts; a wrong
     classification here is a compliance risk traced back to "ai đã thêm/phân
-    loại thuốc này". No update-drug use-case exists yet, so creation is the
-    only mutating action in this module worth auditing."""
+    loại thuốc này"."""
+
+    CATALOG_DRUG_INGREDIENTS_REPLACED = "CATALOG_DRUG_INGREDIENTS_REPLACED"
+    """Danh sách hoạt chất của một thuốc bị đặt lại (2026-07-30).
+
+    Đáng ghi vết vì đây là **đường duy nhất làm cảnh báo dị ứng ngừng kêu**: bỏ hoạt chất
+    ra khỏi một thuốc thì khách dị ứng chất đó mua thuốc đó sẽ đi qua quầy trong im lặng,
+    và không có gì khác trong hệ thống ghi lại rằng điều đó đã xảy ra. Sổ audit là nơi duy
+    nhất trả lời được "ai đã bỏ hoạt chất khỏi thuốc này, lúc nào".
+
+    ``context`` chỉ mang **số lượng trước/sau** (``count_before``/``count_after``), không
+    mang id hoạt chất: một dòng ``2 → 0`` đã đủ để cảnh báo người soát sổ, còn chép danh
+    sách vào đây là biến sổ audit thành bản sao thứ hai của dữ liệu nó canh (NĐ 356/2025
+    Điều 4.2 — cùng lý do đã ghi ở :class:`AuditEntry`)."""
 
     # --- analytics (đề xuất nhập hàng → PO nháp: ai bấm gì, PROJECT_STATE §7am) ---
     ANALYTICS_REORDER_RUN = "ANALYTICS_REORDER_RUN"

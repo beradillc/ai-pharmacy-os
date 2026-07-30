@@ -109,6 +109,7 @@ def ctx() -> RequestContext:
             {
                 "catalog.read",
                 "catalog.create",
+                "catalog.update",
                 "inventory.read",
                 "inventory.receive",
                 "inventory.dispense",

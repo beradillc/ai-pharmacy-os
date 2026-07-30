@@ -43,6 +43,19 @@ class DrugRepository(Protocol):
         because a drug deleted after a report was computed is not an error."""
         ...
 
+    async def save_ingredients(self, drug: Drug) -> None:
+        """Ghi lại danh sách hoạt chất của *drug* cho khớp với aggregate đang giữ.
+
+        Hẹp có chủ ý — **không** phải một `update()` ghi mọi trường. Đây là đường sửa duy
+        nhất mà catalog cần lúc này, và một cổng hẹp không thể vô tình ghi đè tên/giá/mã
+        vạch khi bên gọi chỉ muốn sửa hoạt chất.
+
+        Trả về im lặng nếu thuốc không thuộc tenant của người gọi — bên gọi đã đọc thuốc
+        qua :meth:`get` (cũng tenant-scoped) nên tình huống này chỉ xảy ra khi thuốc bị xoá
+        giữa hai lượt, và đó không phải lỗi cần dựng riêng một exception.
+        """
+        ...
+
 
 class ActiveIngredientRepository(Protocol):
     """Read/seed access to the global ``active_ingredients`` reference table (not tenant-scoped)."""
