@@ -9,6 +9,7 @@ from pharmacy_os.modules.sales.domain.entities import (
 )
 from pharmacy_os.modules.sales.domain.events import SaleCompleted, SaleReturned, SoldItem
 from pharmacy_os.modules.sales.domain.exceptions import (
+    AllergyAcknowledgementRequiredError,
     EmptyOrderError,
     InvalidOrderStateError,
     InvalidPrescriptionRefError,
@@ -18,6 +19,9 @@ from pharmacy_os.modules.sales.domain.exceptions import (
     UnderpaidError,
 )
 from pharmacy_os.modules.sales.domain.ports import (
+    CustomerAllergy,
+    CustomerAllergyProfile,
+    CustomerAllergyProvider,
     DrugInfo,
     DrugInfoProvider,
     DrugSalesAggRow,
@@ -28,8 +32,11 @@ from pharmacy_os.modules.sales.domain.ports import (
     SalesRepository,
 )
 from pharmacy_os.modules.sales.domain.rules import (
+    AllergyConflict,
+    ensure_allergy_acknowledged,
     ensure_prescription_valid_for_sale,
     ensure_rx_for_etc,
+    find_allergy_conflicts,
 )
 
 __all__ = [
@@ -41,6 +48,7 @@ __all__ = [
     "SaleCompleted",
     "SaleReturned",
     "SoldItem",
+    "AllergyAcknowledgementRequiredError",
     "EmptyOrderError",
     "InvalidOrderStateError",
     "InvalidPrescriptionRefError",
@@ -52,10 +60,16 @@ __all__ = [
     "OrderRevenueRow",
     "SalesOrderListRow",
     "DrugSalesAggRow",
+    "CustomerAllergy",
+    "CustomerAllergyProfile",
+    "CustomerAllergyProvider",
     "DrugInfo",
     "DrugInfoProvider",
     "PrescriptionInfo",
     "PrescriptionInfoProvider",
+    "AllergyConflict",
+    "ensure_allergy_acknowledged",
     "ensure_prescription_valid_for_sale",
     "ensure_rx_for_etc",
+    "find_allergy_conflicts",
 ]

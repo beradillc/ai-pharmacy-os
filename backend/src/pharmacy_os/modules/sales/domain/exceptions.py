@@ -34,3 +34,14 @@ class UnderpaidError(SalesError):
 
 class InvalidReturnError(SalesError):
     """Raised when a return references an unknown line or an impossible quantity."""
+
+
+class AllergyAcknowledgementRequiredError(SalesError):
+    """Raised when completing a sale that collides with a declared allergy without
+    the seller recording a reason for dispensing anyway.
+
+    Not a prohibition — quyết định Đ-6 chose *warn plus acknowledgement* over a hard
+    block, so supplying a reason clears this. See
+    :func:`~pharmacy_os.modules.sales.domain.rules.ensure_allergy_acknowledged` for
+    why the gate sits at completion time rather than where the warning is shown.
+    """
