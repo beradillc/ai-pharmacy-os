@@ -6285,3 +6285,61 @@ lỗi ⇒ hiện "chưa đối chiếu được" ⇒ không đòi lý do ⇒ đ�
 
 Cổng: TSC=0 · ESLINT=0 · VITEST=0 (51) · RUFF=0 · MYPY=0 · IMPORTLINTER=0 (18 kept) ·
 PYTEST=0 (**1283 passed**) · cổng trình duyệt EXIT=0 cả desktop lẫn mobile.
+
+## 7cj. ✅ `make ui-gates` — gom 6 cổng trình duyệt, và nó bắt lỗi ngay lần chạy đầu (2026-07-31)
+
+Chain duyệt việc GĐ xếp ưu tiên #4. Lý do xếp trên món nợ đơn-offline: nợ đó hỏng **ồn ào**
+(422, có người kêu); cổng không chạy thì hỏng **im lặng**.
+
+### 🔴 Ngay lần chạy đầu đã lộ ra: TÔI làm hỏng 2 cổng trong ngày mà không biết
+
+| Cổng | Vì sao đỏ |
+|---|---|
+| `check-customers` | bám vào nút **"Đồng ý"** đã bỏ (gộp vào Hồ sơ) **và** cạo số điện thoại từ bảng — số nay đã che, cạo ra `*099xem` |
+| `check-receive-flow` | không đỏ vì sản phẩm; hai quy ước tên biến cùng tồn tại (`BERAS_EMAIL` vs `EMAIL`) |
+
+Chạy tay từng cái thì không ai thấy. Đây là toàn bộ luận điểm của việc này.
+
+### Sửa cổng mà KHÔNG làm yếu nó
+
+`check-customers` nay lấy số thật **qua đúng đường người dùng đi** — bấm nút "xem" — nên
+nó canh thêm **hai** tính chất trước đây không có: danh sách **không lộ** số đầy đủ, và
+đường mở lộ có chạy. Cổng mạnh hơn trước, không phải nới ra cho xanh.
+
+### Hai nhóm, cố ý tách
+
+| Nhóm | Cổng | Chạy khi nào |
+|---|---|---|
+| **đọc-thuần** | `check-browsers` · `check-customers` · `check-receive-flow` · `check-pos-allergy` · `measure-mobile` · `shot-desktop-mobile` | mặc định — an toàn cả trên `nt650v2` |
+| **ghi** | `check-pos-customer` · `check-sale-appears` | `--all`, **đòi gõ xác nhận** — chúng BÁN ĐƠN THẬT |
+
+Chạy nhầm nhóm ghi lên CSDL demo là mỗi lần thêm một hoá đơn rác, và không ai nhận ra cho
+tới lúc đối chiếu doanh thu.
+
+### Kỷ luật #14 — cổng có răng, chứng minh bằng 3 đột biến
+
+| Đột biến | Kết quả |
+|---|---|
+| M1 — trỏ vào cổng không có app | EXIT=2, *"Chưa chạy. Bật bằng: make lan"* — **không báo xanh giả** |
+| M2 — hook có nhắc khi commit động `frontend/(src\|scripts)/` | ✓ khớp |
+| M3 — nhóm ghi, trả lời "khong" | EXIT=2, *"Đã dừng. Không có gì được ghi."* |
+
+Cộng với **hai lần đỏ thật** ở trên — cổng này không cần mô phỏng để chứng minh nó biết đổi màu.
+
+### 🔴 Nói thẳng về mức cưỡng chế đạt được
+
+Đây **chưa phải** cưỡng chế tự động. `.github/workflows/ci.yml` vẫn **chưa chạy lần nào**
+trong hơn 200 commit (không remote, kiểm toán C-03); tôi có thêm job `ui-gates` vào đó
+nhưng nó ngủ cùng phần còn lại. Cưỡng chế thật hôm nay gồm đúng hai thứ:
+
+1. **một lệnh** thay cho 6 lệnh phải nhớ — `make ui-gates`;
+2. **một lời nhắc trong pre-commit hook** khi commit động tới `frontend/`.
+
+Hook **nhắc chứ không chặn**, có cân nhắc: cổng cần app đang chạy và mất ~2 phút; chặn
+commit vào điều kiện đó thì người ta dùng `--no-verify` theo phản xạ và mất luôn 4 cổng
+nhanh. Một cổng bị đi vòng thường xuyên tệ hơn một lời nhắc được đọc.
+
+Đã thể chế hoá thành **kỷ luật #19**.
+
+Cổng: `make ui-gates` EXIT=0 (**6/6**) · RUFF=0 · MYPY=0 · IMPORTLINTER=0 · TSC=0 ·
+ESLINT=0 · VITEST=0 (51).

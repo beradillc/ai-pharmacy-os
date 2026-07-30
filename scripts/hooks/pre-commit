@@ -87,5 +87,23 @@ MSG
     exit 1
 fi
 
-printf '── 4 cổng nhanh XANH (pytest chưa chạy — dùng `make check` trước khi đóng mục) ──\n\n'
+printf '── 4 cổng nhanh XANH (pytest chưa chạy — dùng `make check` trước khi đóng mục) ──\n'
+
+# ── Nhắc cổng TRÌNH DUYỆT khi commit có động tới giao diện ────────────────────
+#
+# 🔴 KHÔNG chặn, và đó là quyết định có cân nhắc. Cổng trình duyệt cần app đang chạy và
+# mất ~2 phút — chặn commit vào một điều kiện như vậy thì người ta sẽ dùng `--no-verify`
+# theo phản xạ, và mất luôn cả 4 cổng nhanh ở trên. Một cổng bị đi vòng thường xuyên tệ
+# hơn một lời nhắc được đọc.
+#
+# Vì sao vẫn phải có: tuần 29–31/07 có BA lỗi mà chỉ cổng trình duyệt bắt được, và cả ba
+# lần đều do người viết mã tự nhớ gõ lệnh. Ngày 31/07 chính tôi làm hỏng HAI cổng
+# (`check-customers` bám vào nút đã bỏ và số điện thoại nay đã che) và không hề biết cho
+# tới khi gom chúng lại chạy một lượt.
+if git diff --cached --name-only | grep -qE '^frontend/(src|scripts)/'; then
+    printf '\n\033[33m⚠  Commit này động tới GIAO DIỆN.\033[0m 4 cổng trên KHÔNG mở trình duyệt nào —\n'
+    printf '   chúng xanh trọn vẹn trong lúc app trắng tinh trên điện thoại (29/07).\n'
+    printf '   Trước khi đóng mục:  \033[1mmake lan\033[0m  rồi  \033[1mmake ui-gates\033[0m\n'
+fi
+printf '\n'
 exit 0

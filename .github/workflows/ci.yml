@@ -35,3 +35,67 @@ jobs:
 
       - name: Tests
         run: pytest
+
+  # ── Cổng TRÌNH DUYỆT THẬT (kỷ luật #15) ────────────────────────────────────
+  #
+  # 🔴 ĐỌC TRƯỚC KHI TIN: tệp workflow này nằm trong repo từ commit ĐẦU TIÊN và
+  # **chưa chạy lần nào** trong hơn 200 commit, vì repo không có remote (kiểm toán
+  # 26/07, phát hiện C-03). Thêm một job vào đây KHÔNG làm nó chạy.
+  #
+  # Cổng thật sự đang bảo vệ giao diện hôm nay là `make ui-gates`, chạy tay, cộng với
+  # lời nhắc trong `scripts/hooks/pre-commit` khi commit động tới `frontend/src/`.
+  # Job dưới đây là để **sẵn sàng cho ngày có remote** — không phải bằng chứng đã có
+  # cưỡng chế tự động. Đừng ghi vào báo cáo là "CI đã canh giao diện".
+  ui-gates:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: pharma
+          POSTGRES_PASSWORD: pharma
+          POSTGRES_DB: pharmacy_os
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+        ports: ["5432:5432"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+
+      - name: Cài backend
+        working-directory: backend
+        run: pip install -e ".[dev]"
+
+      - name: Cài frontend + trình duyệt
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps firefox webkit
+
+      - name: Dựng CSDL dùng-một-lần
+        working-directory: backend
+        env:
+          DB__URL: postgresql+asyncpg://pharma:pharma@localhost:5432/pharmacy_os
+          DEMO_ADMIN_PASSWORD: CiOnly2026!
+        run: |
+          alembic upgrade head
+          python -m seeds.run
+          python -m seeds.demo_pharmacy --days 3
+
+      - name: Bật app rồi chạy cổng trình duyệt
+        env:
+          BASE_URL: http://localhost:3000
+          API_URL: http://localhost:8000/api/v1
+          DB__URL: postgresql+asyncpg://pharma:pharma@localhost:5432/pharmacy_os
+          SECURITY__ALLOW_DEV_AUTH: "false"
+        run: |
+          (cd backend && uvicorn pharmacy_os.main:app --host 0.0.0.0 --port 8000 &)
+          (cd frontend && npm run build && npm run start -- -p 3000 &)
+          npx wait-on http://localhost:3000/login http://localhost:8000/api/v1/health -t 120000
+          # CSDL của CI là dùng-một-lần ⇒ chạy CẢ nhóm GHI. Đây là chỗ duy nhất
+          # `--all` chạy được mà không đụng dữ liệu thật của ai.
+          yes co | ./scripts/ui-gates.sh --all

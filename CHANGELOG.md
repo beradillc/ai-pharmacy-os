@@ -19,6 +19,11 @@ mục đã phát hành**, sai thì ghi một mục mới đính chính.
 
 ### Đã thêm
 
+- **`make ui-gates`** — chạy cả 6 cổng trình duyệt bằng một lệnh, in mã thoát tường minh
+  của từng cổng. Tách hai nhóm: **đọc-thuần** (an toàn trên mọi CSDL, mặc định) và **ghi**
+  (bán đơn thật — phải xác nhận, chỉ dùng CSDL dùng-một-lần). Kèm `make check-ui` cho lúc
+  đóng một mục có động tới giao diện.
+
 - **Cảnh báo dị ứng hiện ở quầy (POS)** — trước đây cổng chỉ có ở máy chủ nên quầy là
   *"bấm hoàn tất rồi mới biết"*. Nay hiện ngay khi gắn khách + thêm thuốc, **trên** tổng
   tiền; có xung đột thì nút đổi thành "Ghi lý do để bán" cho tới khi thu ngân ghi lý do.

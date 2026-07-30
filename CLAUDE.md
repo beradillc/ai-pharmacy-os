@@ -23,6 +23,7 @@
 | Kỷ luật bắt buộc **15** (cổng chạy trình duyệt thật, qua đúng địa chỉ thật) | **2026-07-29** — GĐ đề nghị sau khi app trắng trên iPhone trong lúc 3 lớp phòng thủ cùng xanh; ghi trước theo kỷ luật #13. **Chain DUYỆT 2026-07-30** |
 | Kỷ luật bắt buộc **16** (kiểm composition root trước khi code tính năng "chưa có") | **2026-07-30** — GĐ ghi sau khi viết trùng một bộ luật khớp dị ứng đã tồn tại và nối dây sẵn, phải xoá 262 dòng; ghi ngay theo kỷ luật #13. **Chain DUYỆT cùng ngày** |
 | Kỷ luật bắt buộc **17** (giai đoạn phát triển tính năng) + **18** (trí nhớ ghi vào chỗ đã có) | **2026-07-31** — Chain ban hành chính sách phát triển; ánh xạ vào cấu trúc tài liệu sẵn có thay vì dựng song song |
+| Kỷ luật bắt buộc **19** (đóng mục giao diện phải chạy cổng trình duyệt) | **2026-07-31** — gom 6 cổng vào `make ui-gates` thì lộ ra 2 cổng đã hỏng cùng ngày mà không ai biết |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -354,6 +355,29 @@ máy này, khác với văn bản ủy quyền (file này) nay đã có lịch s
       chỉ làm quầy hứa với khách một con số hệ thống không công nhận.
     - **Test đỏ ⇒ dừng triển khai.** Không nới lỏng phép kiểm để nó xanh. Hành vi đổi có
       chủ ý thì sửa kỳ vọng **kèm chú thích vì sao**, không xoá assert.
+
+19. **Đóng một mục có động tới GIAO DIỆN thì `make check` KHÔNG đủ.** (2026-07-31)
+
+    `make check` chạy ruff · import-linter · mypy · pytest — **không mở trình duyệt nào**.
+    Nó xanh trọn vẹn trong lúc app trắng tinh trên điện thoại (29/07). Dùng
+    **`make check-ui`** (= `check` + `check-fe` + `ui-gates`), hoặc tối thiểu `make lan`
+    rồi `make ui-gates`.
+
+    - *Vì sao thành kỷ luật riêng:* tuần 29–31/07 có **ba** lỗi mà chỉ cổng trình duyệt
+      bắt được, và cả ba lần đều do tôi tự nhớ gõ lệnh. Ngày 31/07 gom 6 cổng lại chạy
+      một lượt thì lộ ra **chính tôi đã làm hỏng hai cổng cùng ngày mà không biết** —
+      `check-customers` còn bám vào nút "Đồng ý" đã bỏ và cạo số điện thoại từ bảng, mà
+      số nay đã che. Chạy tay từng cái thì không ai thấy.
+    - **Cổng ghi (bán đơn thật) mặc định KHÔNG chạy.** `--all` đòi xác nhận, vì chạy nhầm
+      lên CSDL demo là mỗi lần thêm một hoá đơn rác và không ai nhận ra cho tới lúc đối
+      chiếu doanh thu.
+    - 🔴 **`.github/workflows/ci.yml` vẫn CHƯA CHẠY LẦN NÀO** (repo không remote, kiểm
+      toán C-03). Có thêm job `ui-gates` ở đó nhưng **đừng báo cáo là "CI đã canh giao
+      diện"** — cưỡng chế thật hôm nay là một lệnh chạy tay cộng một lời nhắc trong
+      pre-commit hook. Hạ tầng viết sẵn mà không nối dây thì bằng không.
+    - Hook **nhắc, không chặn**: cổng trình duyệt cần app đang chạy và mất ~2 phút; chặn
+      commit vào điều kiện đó thì người ta dùng `--no-verify` theo phản xạ và mất luôn cả
+      4 cổng nhanh. Một cổng bị đi vòng thường xuyên tệ hơn một lời nhắc được đọc.
 
 18. **Trí nhớ dự án ghi vào chỗ ĐÃ CÓ, không dựng cấu trúc song song.** (2026-07-31)
 

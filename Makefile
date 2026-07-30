@@ -93,3 +93,20 @@ lan:
 # trong tài liệu (bản frontend của import-linter bên backend).
 check-fe:
 	cd frontend && npm run lint && npx tsc --noEmit && npm run test && npm run build
+
+# Cổng TRÌNH DUYỆT THẬT (kỷ luật #15). Khác `check-fe` ở đúng một điểm quyết định:
+# `check-fe` không mở trình duyệt nào — nó xanh trọn vẹn trong lúc app trắng tinh trên
+# điện thoại (29/07). Cổng này chạy Firefox/WebKit thật qua đúng địa chỉ người dùng gõ.
+#
+# Cần app đang chạy: `make lan` trước.
+# Mặc định chỉ nhóm ĐỌC-THUẦN — an toàn cả trên CSDL demo của Chain.
+ui-gates:
+	./scripts/ui-gates.sh
+
+# Thêm nhóm GHI (bán đơn thật). Hỏi xác nhận trước khi ghi bất cứ gì.
+ui-gates-all:
+	./scripts/ui-gates.sh --all
+
+# Đóng một mục có ĐỘNG TỚI GIAO DIỆN: bốn cổng + pytest + cổng trình duyệt.
+# `make check` một mình KHÔNG đủ cho thay đổi giao diện — nó không mở trình duyệt nào.
+check-ui: check check-fe ui-gates
