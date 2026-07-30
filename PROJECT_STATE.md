@@ -6064,3 +6064,73 @@ Sửa seeder chỉ có tác dụng cho lần seed **mới**. Hai đường:
 
 Khuyến nghị **backfill** — `nt650v2` là CSDL Chain đã giữ lại có chủ đích (§7cb mục H-4),
 và nó có 2 dị ứng thật đã khai, tức đúng dữ liệu để thử cảnh báo.
+
+## 7cg. ✅ ĐÓNG NỢ §7cf — backfill `nt650v2`: cảnh báo dị ứng nay nổ trên CSDL Chain đang dùng (2026-07-30)
+
+Chain duyệt phương án **backfill** (không seed lại). Lệnh mới `seeds/backfill_drug_ingredients.py`.
+
+### Trước / sau, trên `nt650v2` — CSDL thật Chain đang bấm
+
+| | Trước | Sau |
+|---|---|---|
+| `drug_ingredients` | **0 dòng** | **29 dòng** |
+| Thuốc có hoạt chất | 0 / 36 | **26 / 36** |
+| Hoá đơn | 595 | **595** — không đụng |
+| Khách · dị ứng đã khai | 12 · 2 | **12 · 2** — không đụng |
+
+`pg_dump` trước khi ghi: `~/backup_nt650v2_pre_ingredient_backfill_20260730_1806.sql`
+(PGDUMP_EXIT=0, 1,66 MB).
+
+### 🔴 Cảnh báo nay NỔ THẬT, đo bằng truy vấn chứ không suy luận
+
+| Khách | Dị ứng đã khai | Thuốc bị cảnh báo |
+|---|---|---|
+| `feaedcb0…14a0` | Acid clavulanic (MODERATE) | **Augmentin 625mg** |
+| `10dbf611…6435` | Acid clavulanic (MODERATE) | **Augmentin 625mg** |
+
+**Tên "Augmentin 625mg" không chứa chữ nào của "Acid clavulanic".** Không cách khớp theo
+tên nào bắt được ca này — chỉ ánh xạ theo hoạt chất bắt được. Trước backfill: **im lặng
+hoàn toàn** với đúng hai khách duy nhất trong CSDL có khai dị ứng.
+
+### Cổng `--verify` — đỏ trước, xanh sau (kỷ luật #14, không phải mô phỏng)
+
+| Lượt | Mã thoát | Kết quả |
+|---|---|---|
+| `--verify` trước khi vá | **1** | *"🔴 CÒN THUỐC CHƯA NỐI"* — 26 thuốc, liệt kê đủ tên |
+| `--dry-run` | 0 | *"sẽ chèn 29 dòng"* · truy vấn lại: **vẫn 0 dòng** ⇒ `--dry-run` thật sự không ghi |
+| chạy thật | 0 | đã chèn 29 |
+| `--verify` sau khi vá | **0** | *"✅ Mọi thuốc trong bảng ánh xạ đều đã có hoạt chất"* |
+| **chạy lại lần hai** | 0 | **đã chèn 0** · đã có sẵn 29 ⇒ an toàn khi chạy lại |
+
+Con số **29** trùng khít với lần đo trên seed mới (§7cf) — hai đường độc lập tới cùng kết quả.
+
+### Hai tính chất nguy hiểm nhất, đã đột biến để xem cổng có răng
+
+| Đột biến | Mã thoát | Test đỏ |
+|---|---|---|
+| M1 — bỏ phép khử trùng `(drug_id, ingredient_id)` | **1** | 3 test: `dong_da_co_thi_BO_QUA` · `chay_lai_lan_hai` · `noi_mot_phan` |
+| M2 — hoạt chất thiếu bị bỏ qua **im lặng** | **1** | `hoat_chat_khong_co_trong_danh_muc_thi_BAO_chu_khong_tu_tao` |
+| khôi phục | 0 | 11 passed |
+
+M1 quan trọng vì **`drug_ingredients` KHÔNG có ràng buộc unique** trên `(drug_id,
+ingredient_id)` — CSDL sẽ nhận dòng trùng mà không kêu một tiếng. Việc khử trùng nằm hoàn
+toàn ở tầng ứng dụng, nên nó phải có test.
+
+### Quyết định thiết kế đã tự chốt
+
+| Quyết định | Vì sao |
+|---|---|
+| Bảng ánh xạ tách ra `seeds/drug_ingredient_map.py` | Seeder và backfill cần **cùng một** bảng; để hai bản là bảo đảm chúng lệch, mà lệch ở đây **không kêu** — chỉ làm cảnh báo im lặng ở đúng mã bị sót |
+| Lệnh, **không phải** migration | Ánh xạ khớp theo **tên thuốc** = dữ liệu, không phải cấu trúc. Migration sẽ chạy trên mọi deployment kể cả nơi dược sĩ đã nhập tay |
+| **Chỉ thêm, không bao giờ xoá/sửa** | Dòng đã có có thể do dược sĩ nhập với hàm lượng thật; đè bằng `1` là làm dữ liệu tệ đi |
+| **Không tự tạo** hoạt chất còn thiếu, chỉ báo | `active_ingredients` không có `tenant_id` ⇒ thêm một dòng là thêm dữ liệu tham chiếu cho **mọi** nhà thuốc. Đó là quyết định, không phải hệ quả của một lệnh vá |
+| Hàm lượng ghi `1` | Bảng ánh xạ chỉ ghi *có hoạt chất nào*, không ghi mg. Khớp dị ứng theo `ingredient_id`, không cần liều — nhưng đã ghi rõ trong mã đó là **chỗ giữ chỗ** |
+
+### 🟡 Còn treo (không đổi)
+
+7 mã chờ Chain quyết — lệnh in ra đủ 10 mã "ngoài bảng ánh xạ" mỗi lần chạy, nên chúng
+**không thể im lặng trôi qua**: 3 vật tư (đúng) + Vitamin 3B · Oresol · Bổ phế Nam Hà ·
+Prospan · Enterogermina · Canxi D3 · Dầu gió xanh.
+
+4 cổng + pytest: RUFF_CHECK=0 · RUFF_FORMAT=0 · MYPY=0 (266 file) · IMPORTLINTER=0 (18 kept) ·
+PYTEST=0 (**1221 passed**, 211,62s — thêm 11 test so với 1210).
