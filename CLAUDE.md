@@ -21,6 +21,7 @@
 | Kỷ luật bắt buộc **8–13** + bổ sung kỷ luật **7** (nền test Postgres) | **2026-07-26** — sinh từ kiểm toán độc lập 3 phiên (`docs/audit/2026-07-26_BAO_CAO_KIEM_TOAN.md`, quy tắc R-1→R-7). Chain duyệt cùng ngày, xếp ngay sau F-1 vì *"rẻ, đòn bẩy cao nhất trong cả lộ trình"* |
 | Kỷ luật bắt buộc **14** (cổng phải thấy đỏ một lần vì lý do đúng) | **2026-07-28** — GĐ đề nghị sau khi cơ chế này bắt được 2 ca thật trong 2 phiên (test e2e xanh vì lý do sai · test đua xanh với bản cài đặt sai). Chain duyệt cùng ngày |
 | Kỷ luật bắt buộc **15** (cổng chạy trình duyệt thật, qua đúng địa chỉ thật) | **2026-07-29** — GĐ đề nghị sau khi app trắng trên iPhone trong lúc 3 lớp phòng thủ cùng xanh. **CHƯA được Chain duyệt** — ghi trước theo kỷ luật #13 |
+| Kỷ luật bắt buộc **16** (kiểm composition root trước khi code tính năng "chưa có") | **2026-07-30** — GĐ ghi sau khi viết trùng một bộ luật khớp dị ứng đã tồn tại và nối dây sẵn, phải xoá 262 dòng. Ghi ngay theo kỷ luật #13 |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -292,3 +293,33 @@ luật hành vi ở trên. Lưu ý: `.claude/` bị `.gitignore` bỏ qua nên
 `settings.local.json` **không** vào git — allowlist công cụ chỉ tồn tại trên
 máy này, khác với văn bản ủy quyền (file này) nay đã có lịch sử phiên bản.
 
+16. **Trước khi code một tính năng "chưa có", KIỂM COMPOSITION ROOT xem nó đã được nối
+    dây chưa.** (2026-07-30, GĐ ghi ngay theo kỷ luật #13)
+
+    Ba lệnh, trước khi viết dòng domain đầu tiên:
+
+    ```
+    grep -rn "<danh từ của tính năng>" src/pharmacy_os/api/v1/cross_module.py src/pharmacy_os/api/v1/__init__.py
+    grep -rn "<tên quy tắc dự định viết>" --include=*.py src/pharmacy_os/modules/
+    grep -rn "<động từ nghiệp vụ>" src/pharmacy_os/modules/*/domain/rules.py
+    ```
+
+    - *Vì sao:* ngày 30/07 sổ nợ (§7cb mục H-6) ghi *"cảnh báo dị ứng — nay ghi được
+      nhưng **chưa ai đọc**"*. Tôi tin sổ và viết một bộ khớp dị ứng mới trong `sales`.
+      Sự thật: **cả ba mảnh đã tồn tại và đã nối dây** —
+      `clinical.find_allergy_alerts` (khớp), `crm.allergy_severities_for_safety_check`
+      (đọc có gác đồng ý + audit), `cross_module.run_allergy_check` (đã subscribe
+      `SaleCompleted` *và* `PrescriptionDispensed`). Thiếu duy nhất **điểm vào trước khi
+      bán** và **cổng cưỡng chế**. Giá phải trả: một commit viết rồi một commit xoá,
+      **262 dòng**.
+    - **Trạng thái "nối dây rồi nhưng chỉ ghi log" đọc y hệt trạng thái "chưa làm"** từ
+      phía sổ nợ, và **tệ hơn "chưa làm"** ở thực tế: nó làm người ta tin là đã có.
+      Sổ nợ không phân biệt được hai thứ đó; chỉ `grep` phân biệt được.
+    - Mở rộng kỷ luật **#5** sang **phạm vi tính năng**: #5 nói *đừng tin tài liệu về
+      trạng thái hạ tầng, xác nhận bằng lệnh thật*. #16 nói *đừng tin sổ nợ về việc một
+      tính năng đã có tới đâu — grep composition root*. Cùng một hình dạng lỗi, khác
+      đối tượng.
+    - Khi phát hiện lệch: **sửa dòng sổ nợ cho đúng sự thật ngay trong phiên đó**, không
+      để nó tiếp tục sai cho phiên sau. Nếu chỉ có một phần được nối, ghi rõ **phần nào
+      nối rồi và nó làm gì** — *"đã subscribe, warn-only, chỉ ghi log sau khi hoàn tất"*
+      là một dòng sổ hữu ích; *"chưa ai đọc"* là một dòng sổ gây hại.

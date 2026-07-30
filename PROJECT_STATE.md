@@ -5803,5 +5803,111 @@ Kỷ luật #14 trong phiên: **13 lượt đột biến, cả 13 đỏ vì đú
 | 3 | **Duyệt kỷ luật #15** (cổng chạy trình duyệt thật) | **Chain** |
 | 4 | Xoá 7 CSDL thử, **giữ `nt650v2`** | **Chain** |
 | 5 | B2 (bảng + migration + quyền) · B3 (cross-module `sales`→`crm`, **Opus phiên riêng**) · B4 (giao diện) | Trợ lý Code |
-| 6 | **Cảnh báo dị ứng lúc bán** — nay ghi được nhưng **chưa ai đọc**; đó là lý do khách chịu khai bệnh | GĐ đề nghị làm trước B |
+| 6 | ~~**Cảnh báo dị ứng lúc bán** — nay ghi được nhưng **chưa ai đọc**~~ 🔴 **DÒNG NÀY SAI — đính chính 30/07 (§7cc):** CÓ người đọc. `clinical.find_allergy_alerts` + `crm.allergy_severities_for_safety_check` + `cross_module.run_allergy_check` đã nối dây sẵn cho cả `SaleCompleted` lẫn `PrescriptionDispensed`. Nhưng chạy **SAU KHI đơn hoàn tất** và **chỉ ghi log** — ở quầy không ai thấy gì. Thiếu thật: điểm vào trước khi bán + cổng cưỡng chế | GĐ đề nghị làm trước B |
 | 7 | Nâng phép đo màn Sức khoẻ thành cổng thường trực (cần tự tạo + dọn khách thử) | Trợ lý Code |
+
+## 7cc. ⏸️ ĐÓNG PHIÊN 2026-07-30 — dị ứng bước 1 + Đ-8/Đ-9 + gỡ trùng, 4 commit
+
+**4 commit** (`7dd4686` → `1dd4105`). Chain uỷ quyền GĐ duyệt và chạy tiếp; cuối phiên
+giới hạn 20 % hạn mức nên GĐ **cố ý không mở** mục adapter cross-module — bắt đầu một
+liên kết rồi bỏ dở là lặp lại đúng lỗi vừa phê ở mục C.
+
+### A. Việc đã xong
+
+| Commit | Nội dung |
+|---|---|
+| `7dd4686` | Dị ứng **bước 1/4** — domain thuần trong `sales` (sau đó bị chính phiên này gỡ một phần, xem C) |
+| `27abeff` | **Đ-8** — quà khuyến mại chọn từ kho, bán 0 đ, ghi chú tặng |
+| `aff9526` | **Đ-9 + Đ-9b** — bậc thưởng lặp lại mỗi 2 triệu, thay cấu trúc mốc của Đ-5 |
+| `1dd4105` | **Gỡ trùng lặp** — `clinical` đã khớp dị ứng từ trước, `sales` chỉ giữ cổng xác nhận |
+
+### B. Quyết định Chain chốt trong phiên
+
+| | Nội dung |
+|---|---|
+| **Đ-6** | Dị ứng lúc bán: **cảnh báo + buộc xác nhận có ghi vết**, KHÔNG chặn cứng. Chặn cứng đẩy nhân viên tới chỗ không ghi dị ứng nữa hoặc không gắn khách vào đơn — phá luôn bản ghi mà cảnh báo dựa vào |
+| **Đ-7** | Cảnh báo hiện **ngay khi thêm thuốc** vào đơn. ⚠️ GĐ đặt **điểm cưỡng chế ở lúc hoàn tất**, lệch có chủ ý: kiểm khi dựng giỏ mà thôi thì chỉ có tính khuyên — client bỏ qua được, giỏ đổi sau khi kiểm thì kết quả cũ vô nghĩa |
+| **Đ-8** | Quà khuyến mại **chọn từ kho**, tính vào đơn **0 đ**, **ghi chú tặng**. Kiểm mã: chạy được, không cần đổi domain (`Money` không ràng buộc `> 0`) |
+| **Đ-9** | **Cứ mỗi 2 triệu → 1 hộp, lặp lại, trong năm dương lịch.** THAY cấu trúc mốc của Đ-5 |
+| **Đ-9b** | Trả hàng sau khi nhận quà: **không thu hồi, không ghi nợ**, khoá ở mức đã trao |
+
+**Đ-9 là đảo ngược Đ-5, không phải làm rõ Đ-5.** Đo trên `nt650v2` (59 ngày, 12 khách
+gắn tên / 199 trong 595 hoá đơn): TB 1.938.533 đ/khách ⇒ ước 11.992.621 đ/khách/năm ⇒
+**5,5 hộp/khách/năm = 192.500 đ = 1,61 % doanh thu**; với 500 khách quen là **96,25
+triệu/năm**, **gấp 2,75 lần** Đ-5 tính theo mã hàng thật. GĐ nêu rõ trước khi Chain
+xác nhận; ở mức 1,61 % vẫn trong khoảng thường của chương trình khách quen (1–2 %) nên
+GĐ **không có cơ sở phản đối** — chỉ có nghĩa vụ để Chain đổi ý *có biết*.
+
+Ba giới hạn phép đo đã ghi vào hồ sơ: ước cả năm là **nhân số học** không có yếu tố
+mùa; mẫu **12 khách**; **Đ-2 (loại ETC) không có tác dụng** trên dữ liệu này vì khách
+gắn tên chỉ mua OTC ⇒ số thật có thể **thấp hơn**.
+
+### C. 🔴 SAI SÓT CỦA TÔI — viết trùng một tính năng đã tồn tại
+
+Sổ nợ §7cb H-6 ghi *"cảnh báo dị ứng — nay ghi được nhưng **chưa ai đọc**"*. Tôi tin
+sổ và viết một bộ khớp dị ứng mới trong `sales`. Sự thật, đo được bằng `grep`:
+
+| Đã tồn tại | Ở đâu |
+|---|---|
+| Khớp giỏ hàng theo `ingredient_id`, khử trùng, trả kèm tên hoạt chất | `clinical/domain/rules.py::find_allergy_alerts` |
+| Đọc dị ứng cho phép kiểm máy — cố ý không gác `crm.sensitive.read` (duyệt Q3), đòi đồng ý, audit `CUSTOMER_SENSITIVE_AUTO_CHECK` | `crm::allergy_severities_for_safety_check` |
+| Đã subscribe **cả** `SaleCompleted` **và** `PrescriptionDispensed` | `cross_module.py::run_allergy_check` |
+
+Nó chạy **sau khi đơn đã hoàn tất** và **chỉ ghi một dòng log**. Ở quầy không ai thấy
+gì. **Trạng thái đó đọc y hệt "chưa làm" từ phía sổ nợ, nhưng tệ hơn "chưa làm" ở thực
+tế: nó làm người ta tin là đã có.**
+
+Giá phải trả: một commit viết rồi một commit xoá, **262 dòng**.
+⇒ Ghi **kỷ luật #16** vào `CLAUDE.md` (không chỉ vào đây, theo kỷ luật #13): *grep
+composition root trước khi code tính năng "chưa có"*. Mở rộng #5 sang phạm vi tính năng.
+⇒ Đã **sửa dòng §7cb H-6** cho đúng sự thật thay vì để nó sai cho phiên sau.
+
+### D. Phân chia lại quyền sở hữu sau khi gỡ trùng
+
+| Module | Sở hữu |
+|---|---|
+| `clinical` | **"có xung đột gì"** — `find_allergy_alerts`, đã có, không sửa |
+| `sales` | **"đơn này có được hoàn tất không"** — `ensure_allergy_acknowledged` |
+
+`AllergyRisk(consent_granted, conflict_count, worst_severity)` + `AllergyRiskProvider`:
+sales nhận **phán quyết**, không nhận dữ liệu thô để tự khớp.
+
+### E. Quyết định GĐ tự chốt dưới uỷ quyền (full-auto #3)
+
+| | Nội dung |
+|---|---|
+| **Đ-10** | Chưa đồng ý dữ liệu sức khoẻ (`consent_granted=False`) thì **vẫn bán được**. Từ chối bán là phạt khách vì họ thực hiện quyền của mình (Luật 91/2025 Điều 9), mà lại không có xung đột nào được biết là tồn tại. Quầy được cho biết *phép kiểm không chạy*, không bị chặn |
+| **Đ-11** | **Không** đưa ghi chú dị ứng (`note`) tới quầy. Docstring của `allergy_severities_for_safety_check` nói rõ *"never the record, the names, or the conditions (data minimisation)"* — thêm ghi chú vào là làm yếu chủ ý đó. Dược sĩ cần đọc thì mở hồ sơ khách bằng quyền riêng |
+| **Ưu tiên** | Hoàn tất mục dị ứng trước B2/B3/B4 — mục duy nhất đang dở, và là an toàn bệnh nhân |
+| **Không mở** | Adapter cross-module + cổng ở `complete_sale` — còn 20 % hạn mức, mở rồi bỏ dở là lặp lại lỗi mục C |
+
+### F. Cổng đóng phiên (đo tường minh, kỷ luật #8)
+
+| Cổng | Kết quả |
+|---|---|
+| ruff check · ruff format | 0 · 0 (419 file) |
+| mypy --strict | 0 (264 file) |
+| import-linter | 0 (18 kept, 0 broken) |
+| pytest | **0 — 1184 passed** (203,48s) tại `1dd4105` |
+| pytest `payment_vnpay` | 0 (16 passed) |
+
+Kỷ luật #14 trong phiên: **12 lượt đột biến, cả 12 đỏ vì đúng lý do** (4 ở bước 1
+dị ứng · 5 ở Đ-9 · 3 ở cổng xác nhận sau khi gỡ trùng).
+
+Một lần tôi tự bắt được lỗi phép đo: đọc `PSQL_EXIT=0` từ một lệnh có `| tail` khi
+truy vấn `nt650v2` — đúng lỗi kỷ luật #8 cấm. Sửa cách đo trước khi dùng số.
+
+### G. Còn nợ
+
+| | Việc | Ai |
+|---|---|---|
+| 1 | **Dị ứng bước 2–4**: adapter `AllergyRiskProvider` (dùng lại `resolve_basket` + `crm` + `clinical`, **không viết luật mới**) · nối cổng vào `complete_sale` + audit `SALES_ALLERGY_WARNING_OVERRIDDEN` · endpoint kiểm trước khi bán (Đ-7) · cổng trình duyệt #15 + thử CSDL có dữ liệu #7 | Trợ lý Code |
+| 2 | **B2** (bảng + migration + quyền cho sổ tích luỹ) · **B3** (cross-module `sales`→`crm`, Opus phiên riêng) · **B4** (giao diện, nhớ nêu hệ quả Đ-9b ở quầy) | Trợ lý Code |
+| 3 | **Q-1..Q-3 pháp lý** + bổ sung Luật Thương mại 2005 & NĐ 81/2018 — chặn giai đoạn C. **Nay thêm câu hỏi hoá đơn/thuế GTGT hàng cho tặng** (Đ-8 mục c) | Trợ lý Pháp Lý + **Trợ lý Kế toán** |
+| 4 | **Duyệt kỷ luật #15** (cổng trình duyệt thật) và **#16** (grep composition root) | **Chain** |
+| 5 | Xoá 7 CSDL thử, **giữ `nt650v2`** | **Chain** |
+| 6 | **F-9 rate limit 8/12** — vẫn dở từ 28/07 | Trợ lý Code |
+| 7 | Nâng phép đo màn Sức khoẻ thành cổng thường trực | Trợ lý Code |
+
+**Đóng:** L-1, L-2, L-2b hết mở — Đ-9 chỉ cần **một** mã hàng, hộp khẩu trang y tế
+4 lớp 35.000 đ đã có trong danh mục (`demo_pharmacy.py:211`).
