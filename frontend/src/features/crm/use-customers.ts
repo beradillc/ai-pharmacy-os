@@ -190,3 +190,22 @@ export function useRecordConsent(customerId: string) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["crm"] }),
   });
 }
+
+/**
+ * Xin số điện thoại ĐẦY ĐỦ của một khách — chỉ cấp chuỗi (`crm.pii.reveal`).
+ *
+ * 🔴 Là một lượt gọi riêng, không phải một trường đi kèm danh sách. Nhờ vậy số đầy đủ
+ * chỉ đi qua dây khi có người **chủ động bấm**, và mỗi lần bấm là một dòng audit
+ * `CUSTOMER_PHONE_REVEALED` ở backend. Nếu nó là một trường của `GET /customers` thì
+ * mọi lượt tải danh sách đều mang theo số đầy đủ, và việc "che" chỉ còn là trang trí.
+ */
+export function useRevealPhone() {
+  return useMutation({
+    mutationFn: async (customerId: string) => {
+      const r = await apiFetch<{ customer_id: string; phone: string | null }>(
+        `/customers/${customerId}/phone`,
+      );
+      return r;
+    },
+  });
+}

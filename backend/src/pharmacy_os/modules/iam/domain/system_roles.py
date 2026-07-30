@@ -48,6 +48,11 @@ CRM_PERMISSIONS = frozenset(
         "crm.sensitive.write",
         # Erasure is destructive and irreversible; kept away from branch staff.
         "crm.erase",
+        # Xem ĐẦY ĐỦ số điện thoại khách (Chain chốt 2026-07-31). Danh sách khách chỉ
+        # trả ba số cuối; quyền này mở nốt phần còn lại, và chỉ cấp chuỗi mới có.
+        # Tách khỏi ``crm.sensitive.read``: quyền đó là dữ liệu SỨC KHOẺ và cả dược sĩ
+        # chi nhánh đều giữ — gộp vào thì "chỉ Chủ chuỗi xem được" thành sai ngay.
+        "crm.pii.reveal",
     }
 )
 COMPLIANCE_PERMISSIONS = frozenset(
@@ -180,7 +185,7 @@ _BRANCH_PHARMACIST_PERMISSIONS = (
     | (CLINICAL_PERMISSIONS - {"clinical.settings.write"})
     # Erasure is irreversible and answers a legal request, not a clinical need:
     # it stays with the chain, like the other business-level switches.
-    | (CRM_PERMISSIONS - {"crm.erase"})
+    | (CRM_PERMISSIONS - {"crm.erase", "crm.pii.reveal"})
     | (COMPLIANCE_PERMISSIONS - {"compliance.config.write"})
     | (PROCUREMENT_PERMISSIONS - {"procurement.supplier.create"})
     # The audit **dashboard** (not the raw ``audit.read`` query): a branch manager

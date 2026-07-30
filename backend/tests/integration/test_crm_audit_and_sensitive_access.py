@@ -174,7 +174,9 @@ async def test_a_caller_without_sensitive_read_gets_the_basics_not_a_403(
     out = await crm_service.get_customer(customer_id, cashier)
 
     assert out.full_name == "Nguyễn Văn A"
-    assert out.phone == "0900000000"
+    # Thu ngân thấy TÊN và ba số cuối — đủ để đối chiếu đúng người ở quầy, không đủ để
+    # chép số ra ngoài. Số đầy đủ đi qua `reveal_phone()` và để lại vết (31/07).
+    assert out.phone == "*000"
     assert out.allergies == []
     assert out.conditions == []
     assert out.history == []

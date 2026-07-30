@@ -10,6 +10,7 @@ import {
   useCreateCustomer,
   useCustomerByPhone,
   useCustomers,
+  useRevealPhone,
 } from "@/features/crm/use-customers";
 import { useAuthStore } from "@/features/auth/auth-store";
 import { ApiError } from "@/shared/api/errors";
@@ -49,7 +50,11 @@ export default function CustomersPage() {
   const [healthFor, setHealthFor] = useState<Customer | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const canCreate = new Set(useAuthStore((s) => s.session)?.permissions ?? []).has("crm.create");
+  const quyen = new Set(useAuthStore((s) => s.session)?.permissions ?? []);
+  const canCreate = quyen.has("crm.create");
+  /** Chỉ cấp chuỗi mới xem được số đầy đủ (Chain chốt 31/07). Người khác không thấy nút —
+   *  hiện nút rồi báo lỗi khi bấm là bày ra một lối đi không có thật. */
+  const coQuyenXem = quyen.has("crm.pii.reveal");
 
   const { data, isLoading, error, refetch } = useCustomers(page);
   const byPhone = useCustomerByPhone(term);
@@ -125,7 +130,7 @@ export default function CustomersPage() {
                   <th>Họ tên</th>
                   <th>Điện thoại</th>
                   <th>Giới tính</th>
-                  <th className={local.healthCol}>Dữ liệu sức khoẻ</th>
+                  <th className={local.healthCol}>Dữ liệu</th>
                   <th />
                 </tr>
               </thead>
@@ -138,18 +143,30 @@ export default function CustomersPage() {
                         <span className={`${styles.chip} ${styles.chipMuted}`}> đã ẩn danh</span>
                       )}
                     </td>
-                    <td className={styles.mono}>{customer.phone ?? "—"}</td>
+                    <td className={styles.mono}>
+                      <PhoneCell customer={customer} coQuyenXem={coQuyenXem} />
+                    </td>
                     <td>{customer.gender ? (GENDER_LABEL[customer.gender] ?? customer.gender) : "—"}</td>
                     <td>
-                      {/* Đồng ý xử lý dữ liệu sức khoẻ là một trạng thái PHÁP LÝ
-                          (Luật 91/2025), nên nó hiện thành chữ, không thành icon
-                          mờ ai đoán cũng được. */}
+                      {/* Chain chốt 31/07: ký hiệu thay cho chữ, để bảng vừa màn hẹp.
+                          Đồng ý xử lý dữ liệu sức khoẻ vẫn là một trạng thái PHÁP LÝ
+                          (Luật 91/2025), nên KHÔNG mã hoá bằng riêng màu: ✓ và ✗ là hai
+                          HÌNH khác nhau (đọc được cả khi mù màu, cả khi in đen trắng), và
+                          chữ đầy đủ vẫn còn ở `aria-label` + `title` cho trình đọc màn
+                          hình và cho người rê chuột. */}
                       <span
-                        className={`${styles.chip} ${
-                          customer.health_data_allowed ? styles.chipOk : styles.chipMuted
-                        }`}
+                        className={
+                          customer.health_data_allowed ? local.dauCo : local.dauKhong
+                        }
+                        title={customer.health_data_allowed ? "Đã đồng ý" : "Chưa đồng ý"}
+                        aria-label={
+                          customer.health_data_allowed
+                            ? "Đã đồng ý cho lưu dữ liệu sức khoẻ"
+                            : "Chưa đồng ý cho lưu dữ liệu sức khoẻ"
+                        }
+                        role="img"
                       >
-                        {customer.health_data_allowed ? "Đã đồng ý" : "Chưa đồng ý"}
+                        {customer.health_data_allowed ? "✓" : "✗"}
                       </span>
                     </td>
                     <td className={styles.num}>
@@ -252,6 +269,43 @@ export default function CustomersPage() {
 }
 
 /** Hộp thoại thêm khách — ba trường, và KHÔNG có ô đồng ý nào ở đây. */
+/**
+ * Ô số điện thoại: mặc định `*494`, bấm mới ra số đầy đủ — và chỉ cấp chuỗi bấm được.
+ *
+ * 🔴 Số đã che đến từ **server**, không phải cắt ở đây. Cắt ở đây thì số đầy đủ vẫn nằm
+ * trong phản hồi HTTP, mở tab Network là đọc được — che kiểu đó không chặn được ai.
+ *
+ * Số hiện ra rồi thì **không tự ẩn lại**: nó chỉ sống trong state của một dòng, mất khi
+ * rời trang. Ẩn lại sau vài giây nghe có vẻ an toàn hơn nhưng chỉ khiến người ta bấm
+ * nhiều lần — mà mỗi lần bấm là một dòng audit, nên làm vậy là làm bẩn chính sổ audit.
+ */
+function PhoneCell({ customer, coQuyenXem }: { customer: Customer; coQuyenXem: boolean }) {
+  const [soDayDu, setSoDayDu] = useState<string | null>(null);
+  const reveal = useRevealPhone();
+
+  if (!customer.phone) return <>—</>;
+  if (soDayDu) return <>{soDayDu}</>;
+
+  return (
+    <>
+      {customer.phone}
+      {coQuyenXem && (
+        <button
+          type="button"
+          className={local.xemSo}
+          onClick={() =>
+            reveal.mutate(customer.id, { onSuccess: (r) => setSoDayDu(r.phone) })
+          }
+          disabled={reveal.isPending}
+          title="Xem số đầy đủ — lượt xem này được ghi vào sổ audit"
+        >
+          {reveal.isPending ? "…" : "xem"}
+        </button>
+      )}
+    </>
+  );
+}
+
 function CreateCustomerDialog({
   open,
   pending,

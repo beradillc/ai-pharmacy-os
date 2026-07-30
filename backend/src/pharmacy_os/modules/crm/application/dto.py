@@ -123,6 +123,33 @@ class MedicationHistoryOutput:
     occurred_at: datetime
 
 
+#: Số chữ số cuối còn hiện. Chain chốt 2026-07-31: "hiện ba số cuối".
+PHONE_TAIL = 3
+
+
+def mask_phone(phone: str | None) -> str | None:
+    """Che số điện thoại, chừa ``PHONE_TAIL`` chữ số cuối: ``0357205494`` → ``*494``.
+
+    🔴 Che ở **đây**, trong DTO, chứ không ở giao diện. Che ở giao diện là trang trí:
+    số đầy đủ vẫn nằm trong phản hồi HTTP, mở tab Network là đọc được — nên nó không
+    chặn được ai, chỉ làm người viết mã tưởng là đã chặn.
+
+    **Một dấu sao, không phải một sao mỗi chữ số** (Chain chốt 2026-07-31). Ngắn gọn hơn
+    trong bảng hẹp, và tình cờ lộ ít hơn: dãy sao dài đúng bằng phần bị che sẽ nói luôn
+    số dài bao nhiêu.
+
+    Chuỗi ngắn hơn hoặc bằng ``PHONE_TAIL`` che **toàn bộ** thành một dấu sao: chừa ba
+    số cuối của một chuỗi ba ký tự là không che gì cả.
+    """
+    if phone is None:
+        return None
+    if not phone:
+        return ""
+    if len(phone) <= PHONE_TAIL:
+        return "*"
+    return "*" + phone[-PHONE_TAIL:]
+
+
 @dataclass(slots=True)
 class CustomerOutput:
     id: UUID
@@ -142,7 +169,9 @@ class CustomerOutput:
     uses this (together with the caller's permissions) to decide what to return."""
 
     @classmethod
-    def of(cls, customer: Customer, *, include_sensitive: bool = True) -> CustomerOutput:
+    def of(
+        cls, customer: Customer, *, include_sensitive: bool = True, reveal_phone: bool = False
+    ) -> CustomerOutput:
         """Build the DTO, optionally withholding the health data.
 
         ``include_sensitive=False`` returns empty allergy/condition/history lists
@@ -153,11 +182,15 @@ class CustomerOutput:
 
         ``consents`` is **not** withheld: knowing whether consent exists is what lets
         counter staff ask for it, and the record itself carries no health data.
+
+        ``reveal_phone=False`` (mặc định) trả về số đã che — xem :func:`mask_phone`.
+        **Mặc định là che**, không phải mở: một đường đọc mới quên truyền cờ này thì hỏng
+        về phía an toàn, chứ không lặng lẽ rò số ra.
         """
         return cls(
             id=customer.id,
             full_name=customer.full_name,
-            phone=customer.phone,
+            phone=customer.phone if reveal_phone else mask_phone(customer.phone),
             dob=customer.dob,
             gender=customer.gender,
             weight_kg=customer.weight_kg,

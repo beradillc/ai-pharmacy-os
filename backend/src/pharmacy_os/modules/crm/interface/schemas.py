@@ -158,6 +158,18 @@ class MedicationHistoryResponse(BaseModel):
     occurred_at: datetime
 
 
+class PhoneRevealResponse(BaseModel):
+    """Số điện thoại đầy đủ, trả riêng khi người dùng bấm xem.
+
+    Là một tài nguyên riêng chứ không phải một trường của ``CustomerResponse``: nhờ vậy
+    số đầy đủ chỉ đi qua dây khi có người **chủ động hỏi**, và mỗi lần hỏi là một dòng
+    audit — không phải một trường lặng lẽ đi kèm mọi lượt tải danh sách.
+    """
+
+    customer_id: UUID
+    phone: str | None
+
+
 class CustomerResponse(BaseModel):
     id: UUID
     full_name: str

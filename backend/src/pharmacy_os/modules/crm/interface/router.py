@@ -15,6 +15,7 @@ from pharmacy_os.modules.crm.interface.schemas import (
     CreateCustomerRequest,
     CustomerExportResponse,
     CustomerResponse,
+    PhoneRevealResponse,
     RecordConsentRequest,
 )
 
@@ -104,6 +105,21 @@ def build_router(get_context: ContextDep) -> APIRouter:
             return [] if found is None else [CustomerResponse.of(found)]
         items = await service.list_customers(ctx, limit=limit, offset=offset)
         return [CustomerResponse.of(o) for o in items]
+
+    @router.get("/{customer_id}/phone", response_model=PhoneRevealResponse)
+    async def reveal_phone(
+        customer_id: UUID,
+        service: CrmService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> PhoneRevealResponse:
+        """Số điện thoại đầy đủ của một khách — quyền ``crm.pii.reveal`` (chỉ cấp chuỗi).
+
+        Mọi đường đọc khách khác trả về ``*******494``. Đường này ghi một dòng
+        ``CUSTOMER_PHONE_REVEALED`` mỗi lần được gọi.
+        """
+        return PhoneRevealResponse(
+            customer_id=customer_id, phone=await service.reveal_phone(customer_id, ctx)
+        )
 
     @router.get("/{customer_id}", response_model=CustomerResponse)
     async def get_customer(

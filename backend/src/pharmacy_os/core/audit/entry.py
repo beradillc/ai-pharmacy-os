@@ -73,6 +73,13 @@ class AuditAction(StrEnum):
     """A person opened a customer's allergies / conditions / medication history."""
 
     CUSTOMER_SENSITIVE_AUTO_CHECK = "CUSTOMER_SENSITIVE_AUTO_CHECK"
+    """The system read the same data on its own (clinical safety check during a sale).
+
+    Deliberately distinct from :attr:`CUSTOMER_SENSITIVE_READ` (duyệt Q3): machine
+    reads outnumber human ones by orders of magnitude, and a report answering "who
+    looked at this patient's file" is useless if it is buried in them.
+    """
+
     SALES_ALLERGY_WARNING_OVERRIDDEN = "SALES_ALLERGY_WARNING_OVERRIDDEN"
     """Bán một đơn dù đã cảnh báo dị ứng — người bán ghi lý do và chịu trách nhiệm (Đ-6).
 
@@ -80,12 +87,16 @@ class AuditAction(StrEnum):
     **chính là** cái làm cho lựa chọn đó chịu trách nhiệm được: nó ghi ai bán, đơn nào,
     bao nhiêu cảnh báo và mức nặng nhất. Không có nó thì "buộc xác nhận" chỉ là một ô
     nhập chữ rồi trôi mất."""
-    """The system read the same data on its own (clinical safety check during a sale).
 
-    Deliberately distinct from :attr:`CUSTOMER_SENSITIVE_READ` (duyệt Q3): machine
-    reads outnumber human ones by orders of magnitude, and a report answering "who
-    looked at this patient's file" is useless if it is buried in them.
-    """
+    CUSTOMER_PHONE_REVEALED = "CUSTOMER_PHONE_REVEALED"
+    """Một người bấm xem **số điện thoại đầy đủ** của khách (Chain chốt 2026-07-31).
+
+    Danh sách khách nay chỉ trả về ``*******494`` — ba số cuối, che ở **server**. Xem đủ
+    số là một hành động riêng, cần quyền ``crm.pii.reveal`` (chỉ cấp chuỗi), và phải để
+    lại vết: che mà không ghi vết thì không trả lời được câu *"ai đã lấy số của khách
+    này"* — mà đó mới là câu hỏi khi số điện thoại rò ra ngoài.
+
+    ``context`` không mang số. Ghi lại chính thứ mình vừa hạn chế là vô nghĩa."""
 
     CUSTOMER_SENSITIVE_WRITE = "CUSTOMER_SENSITIVE_WRITE"
     CUSTOMER_MEDICATION_HISTORY_RECORDED = "CUSTOMER_MEDICATION_HISTORY_RECORDED"

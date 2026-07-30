@@ -53,6 +53,8 @@ UowFactory = Callable[[], UnitOfWork]
 RepoFactory = Callable[[UnitOfWork, RequestContext], CustomerRepository]
 
 
+#: Xem ĐẦY ĐỦ số điện thoại khách. Chỉ cấp chuỗi (Chain chốt 2026-07-31).
+PII_REVEAL = "crm.pii.reveal"
 SENSITIVE_READ = "crm.sensitive.read"
 SENSITIVE_WRITE = "crm.sensitive.write"
 
@@ -198,6 +200,24 @@ class CrmService:
         if include:
             await self._record(ctx, AuditAction.CUSTOMER_SENSITIVE_READ, customer.id)
         return CustomerOutput.of(customer, include_sensitive=include)
+
+    async def reveal_phone(self, customer_id: UUID, ctx: RequestContext) -> str | None:
+        """Trả về số điện thoại **đầy đủ** của một khách. Chỉ cấp chuỗi, và có ghi vết.
+
+        Mọi đường đọc khác trả về số đã che (:func:`mask_phone`). Đây là đường duy nhất
+        mở nốt phần còn lại, nên nó là đường duy nhất cần canh — và cũng là đường duy
+        nhất cần ghi vết: che mà không ghi vết thì khi số khách rò ra ngoài, hệ thống
+        không trả lời được *"ai đã lấy số này"*.
+
+        Khác :meth:`get_customer` ở chỗ **403 chứ không im lặng bỏ trường**: ở kia thu
+        ngân không hỏi dữ liệu sức khoẻ nên không cần bị báo lỗi; ở đây người dùng bấm
+        đúng nút "xem số" và xứng đáng biết là mình không được phép, thay vì thấy một
+        ô trống không giải thích.
+        """
+        require_permission(ctx, PII_REVEAL)
+        customer = await self._get_or_404(customer_id, ctx)
+        await self._record(ctx, AuditAction.CUSTOMER_PHONE_REVEALED, customer.id)
+        return customer.phone
 
     async def list_customers(
         self, ctx: RequestContext, *, limit: int = 50, offset: int = 0

@@ -55,7 +55,9 @@ async def test_create_and_get_customer(crm_service: CrmService, ctx: RequestCont
 
     fetched = await crm_service.get_customer(created.id, ctx)
     assert fetched.full_name == "Nguyễn Văn A"
-    assert fetched.phone == "0900000000"
+    # Đổi có chủ ý 31/07: mọi đường đọc trả số ĐÃ CHE. Số đầy đủ chỉ ra qua
+    # `reveal_phone()` (quyền `crm.pii.reveal`, cấp chuỗi, có ghi vết).
+    assert fetched.phone == "*000"
 
 
 async def test_tenant_isolation(crm_service: CrmService, ctx: RequestContext) -> None:

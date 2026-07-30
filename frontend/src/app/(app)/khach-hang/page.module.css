@@ -194,14 +194,24 @@
     min-width: 7.5rem;
   }
 
-  /* Tiêu đề dài nhất bảng, và ở khổ này nó chỉ cần nói đủ nghĩa. */
-  .healthCol {
-    font-size: 0;
+  /* Tiêu đề đã ngắn lại thành "Dữ liệu" (31/07) nên không cần đổi chữ ở khổ hẹp nữa;
+     giữ quy tắc cũ sẽ khiến nó hiện "Sức khoẻ" trên điện thoại và "Dữ liệu" trên
+     desktop — hai tên cho một cột, đúng thứ làm người dùng nghi ngờ mình đọc nhầm. */
+
+  /* Cỡ chữ bảng giảm nhẹ ở khổ điện thoại (Chain chốt 31/07): 15px → 13px.
+     Giảm NHẸ, không giảm sâu — 13px vẫn đọc được ở khoảng cách cầm tay, còn 12px là
+     cỡ dành cho nhãn phụ, không dành cho dữ liệu người ta phải đối chiếu đúng/sai. */
+  .customerTable {
+    font-size: 13px;
   }
 
-  .healthCol::after {
-    content: "Sức khoẻ";
+  .customerTable th {
     font-size: var(--text-xs);
+  }
+
+  /* Ba số cuối + nút "xem" phải nằm cùng một dòng, không xuống dòng giữa chừng. */
+  .customerTable td:nth-child(2) {
+    white-space: nowrap;
   }
 }
 
@@ -219,4 +229,46 @@
 .field > input,
 .field > select {
   flex: 0 0 auto;
+}
+
+/* --- Cột "Dữ liệu": ký hiệu thay cho chữ (Chain chốt 2026-07-31) ---------------
+   KHÔNG mã hoá bằng riêng màu: ✓ và ✗ là hai HÌNH khác nhau, đọc được cả khi mù màu
+   lẫn khi in đen trắng. Màu chỉ là lớp thứ hai. Chữ đầy đủ vẫn ở `aria-label`/`title`
+   trong TSX — trạng thái này là một dữ kiện PHÁP LÝ (Luật 91/2025), không được để nó
+   chỉ tồn tại dưới dạng một ký hiệu ai đoán cũng được. */
+.dauCo,
+.dauKhong {
+  font-size: var(--text-base);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dauCo {
+  color: var(--beras-success-ink);
+}
+
+.dauKhong {
+  color: var(--beras-danger);
+}
+
+/* Nút "xem" số đầy đủ — chỉ hiện với cấp chuỗi. Nhỏ và mờ: nó là ngoại lệ, không
+   phải thao tác thường ngày, và mỗi lần bấm để lại một dòng audit. */
+.xemSo {
+  margin-left: var(--space-2, 0.5rem);
+  padding: 0 var(--space-2, 0.5rem);
+  border: 1px solid var(--beras-border, #d8d8d0);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--beras-ink-muted, #6b6b60);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.xemSo:hover:not(:disabled) {
+  color: var(--beras-ink, #22221c);
+}
+
+.xemSo:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
