@@ -44,11 +44,15 @@ export function useCheckout() {
       lines,
       amountPaid,
       customerId = null,
+      allergyAcknowledgement = null,
     }: {
       lines: CartLine[];
       amountPaid: string;
       /** `null` = khách vãng lai. Bán hàng KHÔNG cần khách hàng — xem `CustomerCapture`. */
       customerId?: string | null;
+      /** Lý do vẫn bán dù có cảnh báo dị ứng (Đ-6). Máy chủ trả 422 nếu đơn CÓ xung đột
+       *  mà thiếu nó. Mặc định `null` để mọi bên gọi cũ giữ nguyên hành vi. */
+      allergyAcknowledgement?: string | null;
     }): Promise<CheckoutResult> => {
       const body: CreateSaleRequest = {
         client_uuid: randomUuid(),
@@ -60,6 +64,7 @@ export function useCheckout() {
         })),
         payments: [{ method: "CASH", amount: amountPaid }],
         customer_id: customerId,
+        allergy_acknowledgement: allergyAcknowledgement,
       };
       try {
         const sale = await apiFetch<Sale>("/sales", { method: "POST", body });

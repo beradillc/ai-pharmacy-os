@@ -298,3 +298,64 @@
   color: var(--beras-danger);
   margin: 0;
 }
+
+/* ═══ Cảnh báo dị ứng ở quầy — Đ-7 (2026-07-31) ══════════════════════════════
+   Đặt ngay trên tổng tiền và nút Thanh toán, không giấu trong một biểu tượng nhỏ:
+   thứ này phải chặn được mắt người bán trên đường tay họ đi tới nút bấm. */
+.allergyBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.allergyBox p {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+/* Đã kiểm và sạch. Mờ có chủ ý: đây là ca chạy nhiều nhất ngoài đời, tô đậm nó thì
+   người bán quen mắt với một khối màu và thôi nhìn kỹ khi nó đổi. */
+.allergyClear {
+  background: var(--beras-success-bg);
+  color: var(--beras-success-ink);
+}
+
+/* 🔴 "Chưa kiểm được" — KHÔNG dùng màu xanh. Ba ca rơi vào đây (chưa đồng ý · không
+   còn hồ sơ · lỗi mạng) đều trả `conflict_count = 0` y như ca sạch, nên nếu để chung
+   một màu thì giao diện đang nói "không sao" trong khi sự thật là "không biết". */
+.allergyUnknown {
+  background: var(--beras-warning-bg);
+  /* `--beras-warning-ink`, KHÔNG phải `--beras-warning`: kiểm tương phản trong
+     `tokens.css` đo được cặp màu gốc trên nền vàng nhạt chỉ đạt **2,82** — trượt AA.
+     Bậc `-ink` là bậc tối hơn cùng tông, đạt 4,55. Đây là một cảnh báo an toàn thuốc
+     đọc dưới đèn huỳnh quang ở quầy, không phải một nhãn trang trí. */
+  color: var(--beras-warning-ink);
+  border-left: 3px solid var(--beras-warning-ink);
+}
+
+.allergyAlert {
+  background: var(--beras-danger-bg);
+  color: var(--beras-danger);
+  border-left: 3px solid var(--beras-danger);
+  font-size: var(--text-base);
+}
+
+.allergyReason {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--beras-text-muted);
+}
+
+/* `.qtyInput` dùng lại cho ô lý do vốn hẹp (đủ cho 3 chữ số). Ô này là một câu, nên
+   phải nở hết chiều ngang — nếu không thu ngân gõ lý do trong một ô rộng 4rem. */
+.allergyReason input {
+  width: 100%;
+  min-height: var(--touch-min);
+  font-size: var(--text-sm);
+  text-align: left;
+}

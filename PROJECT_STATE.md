@@ -6230,3 +6230,58 @@ PYTEST=0 (**1254 passed**, 221,20s — thêm 33 test qua 3 bước).
   #15 chưa đo được gì cho tới khi màn đó tồn tại. Đây là việc kế tiếp.
 - **Giao diện sửa hoạt chất** chưa có — API đã xong, dược sĩ vẫn chưa tự sửa được.
 - 7 mã thuốc chờ Chain quyết (không đổi).
+
+## 7ci. ✅ Cảnh báo dị ứng ra tới QUẦY — đóng khoảng cách "đã code" ↔ "bấm được" (2026-07-31)
+
+Chain uỷ quyền GĐ chỉ đạo tiếp; chọn việc này vì nó là thứ duy nhất biến cả chuỗi việc
+30–31/07 thành dùng được. Cổng cưỡng chế có ở máy chủ từ `dec31fe`, nhưng đo được: màn POS
+**0 lần** xuất hiện chữ "dị ứng" trong DOM ở cả hai khổ.
+
+### Kiến trúc
+
+| Mảnh | Ở đâu | Ghi chú |
+|---|---|---|
+| `useAllergyCheck` | `features/sales/use-allergy-check.ts` | khoá cache **sắp xếp + khử trùng** id thuốc ⇒ thêm A rồi B hay B rồi A vẫn là một giỏ |
+| Khối cảnh báo | `app/(pos)/page.tsx` | đặt **trên** tổng tiền và nút — phải chặn được mắt trên đường tay đi tới nút bấm |
+| `allergyAcknowledgement` | `use-checkout.ts` | mặc định `null` ⇒ **mọi bên gọi cũ giữ nguyên hành vi** |
+
+`staleTime: 30s` — hồ sơ dị ứng đổi rất hiếm trong một ca bán, nhưng dược sĩ vừa khai thêm
+một dị ứng thì quầy phải thấy trong vòng nửa phút, không phải sau khi F5.
+
+### 🔴 Bốn trạng thái, và cái thứ ba là cái dễ làm sai nhất
+
+| Tình huống | Hiện | |
+|---|---|---|
+| chưa gắn khách | không gì | bán vãng lai là ca thường |
+| đã kiểm, sạch | ✓ xanh **mờ** | ca chạy nhiều nhất — tô đậm thì người bán quen mắt rồi thôi nhìn kỹ lúc nó đổi |
+| **chưa được phép kiểm** | ⚠️ vàng | 🔴 trả `conflict_count = 0` **y hệt** ca sạch. Gộp lại là hệ thống **nói dối người bán** |
+| có xung đột | 🔴 đỏ + ô ghi lý do | |
+
+### Kỷ luật #14 — hai đột biến, cổng có răng
+
+| Đột biến | Kết quả |
+|---|---|
+| M1 — POS không truyền `customer.id` (mô phỏng "quên nối dây", đúng lỗi 30/07) | 🔴 EXIT=1, *"cảnh báo KHÔNG HIỆN · nút vẫn bấm được"* |
+| M2 — gộp "chưa đồng ý" vào nhánh sạch | 🔴 EXIT=1, cảnh báo không hiện |
+| khôi phục | ✅ EXIT=0, cả hai khổ |
+
+M1 đáng giá nhất: đó chính là hình dạng lỗi mà **ba lớp test dưới không bắt được** — unit,
+integration và e2e đều gọi thẳng HTTP nên đều xanh dù màn POS không gọi endpoint.
+
+### Tự rà soát bắt thêm hai chỗ
+
+- Mức độ hiện **`MODERATE`** nguyên tiếng Anh ⇒ dùng lại `severityLabel` sẵn có ⇒ *"nặng
+  nhất: **Vừa**"*. Thu ngân không phải tự dịch đúng lúc cần quyết nhanh nhất.
+- Màu vàng cảnh báo: `tokens.css` đã đo `--beras-warning` trên nền vàng nhạt chỉ **2,82**
+  (trượt AA). Đổi sang bậc `--beras-warning-ink` (4,55).
+
+### 🟡 Còn nợ, ghi để không trôi
+
+**Đơn xếp hàng offline không qua được cổng dị ứng lúc xếp hàng.** Mất mạng ⇒ `useAllergyCheck`
+lỗi ⇒ hiện "chưa đối chiếu được" ⇒ không đòi lý do ⇒ đơn vào hàng chờ **không có**
+`allergy_acknowledgement`. Khi đồng bộ lại, nếu đơn đó CÓ xung đột thì máy chủ trả 422 và
+đơn hỏng. Đúng về an toàn (không cho lọt), nhưng trải nghiệm xấu: thu ngân biết mình mất
+đơn sau nhiều giờ. Cần một đường xử lý đơn-chờ-bị-từ-chối — việc riêng, không gộp vào đây.
+
+Cổng: TSC=0 · ESLINT=0 · VITEST=0 (51) · RUFF=0 · MYPY=0 · IMPORTLINTER=0 (18 kept) ·
+PYTEST=0 (**1283 passed**) · cổng trình duyệt EXIT=0 cả desktop lẫn mobile.

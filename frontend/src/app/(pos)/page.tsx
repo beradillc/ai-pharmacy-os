@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/overlay/ConfirmDialog";
 
+import { severityLabel } from "@/features/crm/use-health";
+import { useAllergyCheck } from "@/features/sales/use-allergy-check";
 import { cartTotal, useCartStore } from "@/features/sales/cart-store";
 import { useCheckout } from "@/features/sales/use-checkout";
 import { useDrugs } from "@/features/sales/use-drugs";
@@ -37,6 +39,15 @@ export default function PosPage() {
 
   const total = cartTotal(lines);
 
+  // Đ-7: hỏi ngay khi giỏ hoặc khách đổi, để còn kịp đổi thuốc TRƯỚC khi thu tiền.
+  const diUng = useAllergyCheck(
+    customer?.id ?? null,
+    lines.map((l) => l.drugId),
+  );
+  const soCanhBao = diUng.data?.conflict_count ?? 0;
+  const canGhiLyDo = soCanhBao > 0;
+  const [lyDoDiUng, setLyDoDiUng] = useState("");
+
   function handleAdd(drug: Drug) {
     // Giá lấy từ `drug.sale_price` (cột catalog, Sprint 10 D10). Chỉ hỏi khi mặt
     // hàng CHƯA được định giá — trước đây hỏi MỌI dòng, kể cả hộp Paracetamol
@@ -65,10 +76,15 @@ export default function PosPage() {
         lines,
         amountPaid: String(total),
         customerId: customer?.id ?? null,
+        // Máy chủ QUYẾT LẠI từ chính đơn đang lưu — gửi lý do lên không phải để xin
+        // phép, mà để lượt quyết đó có cái mà chấp nhận. Không có cảnh báo thì gửi
+        // `null`: một lý do trơ trọi trên đơn sạch chỉ làm bẩn sổ audit.
+        allergyAcknowledgement: canGhiLyDo ? lyDoDiUng.trim() : null,
       });
       setLastResult({ id: result.sale?.id ?? result.clientUuid, queued: result.queued });
       if (result.queued) refreshCount();
       clearCart();
+      setLyDoDiUng("");
       // Bỏ gắn khách sau khi bán xong: người tiếp theo ở quầy là một người KHÁC.
       // Giữ lại là cách gắn nhầm hoá đơn cho khách trước — và không ai nhận ra.
       setCustomer(null);
@@ -169,6 +185,62 @@ export default function PosPage() {
             </ul>
           )}
 
+          {/* 🔴 Cảnh báo dị ứng — Đ-7. Đặt NGAY TRÊN tổng tiền và nút thanh toán, không
+              giấu trong một biểu tượng nhỏ: thứ này phải chặn được mắt người bán trên
+              đường tay họ đi tới nút Thanh toán.
+
+              Phân biệt đủ BỐN trạng thái. Gộp "chưa được phép kiểm" với "đã kiểm và
+              sạch" là hệ thống nói dối người bán — cả hai đều trả `conflict_count = 0`. */}
+          {customer && lines.length > 0 && (
+            <div className={styles.allergyBox}>
+              {diUng.isLoading ? (
+                <p className={styles.hint}>Đang đối chiếu dị ứng…</p>
+              ) : diUng.isError ? (
+                <p className={styles.allergyUnknown}>
+                  ⚠️ <strong>Chưa đối chiếu được dị ứng.</strong> Không có nghĩa là khách
+                  không dị ứng — hỏi lại khách trước khi bán.
+                </p>
+              ) : diUng.data?.checked === false ? (
+                <p className={styles.allergyUnknown}>
+                  ⚠️ Khách này không còn hồ sơ — không đối chiếu được.
+                </p>
+              ) : diUng.data?.consent_granted === false ? (
+                <p className={styles.allergyUnknown}>
+                  ⚠️ <strong>Chưa kiểm được.</strong> Khách chưa đồng ý cho lưu dữ liệu sức
+                  khoẻ, nên hệ thống không được phép đọc dị ứng. Vẫn bán bình thường — nhưng
+                  đây <em>không phải</em> “đã kiểm và không sao”.
+                </p>
+              ) : soCanhBao === 0 ? (
+                <p className={styles.allergyClear}>✓ Đã đối chiếu — không có dị ứng nào.</p>
+              ) : (
+                <>
+                  <p className={styles.allergyAlert}>
+                    🔴 <strong>{soCanhBao} cảnh báo dị ứng</strong>
+                    {diUng.data?.worst_severity
+                      ? // Dùng lại nhãn tiếng Việt của màn Sức khoẻ (`severityLabel`) thay
+                        // vì in mã thô: thu ngân đọc "MODERATE" phải tự dịch, mà đây là
+                        // lúc họ cần quyết nhanh nhất.
+                        ` — nặng nhất: ${severityLabel(diUng.data.worst_severity)}`
+                      : ""}
+                    .
+                    Đổi thuốc, hoặc ghi lý do vẫn bán.
+                  </p>
+                  <label className={styles.allergyReason}>
+                    <span>Lý do vẫn bán (bắt buộc, sẽ lưu vào sổ)</span>
+                    <input
+                      className={styles.qtyInput}
+                      value={lyDoDiUng}
+                      onChange={(e) => setLyDoDiUng(e.target.value)}
+                      placeholder="VD: bác sĩ đã chỉ định, khách dùng nhiều lần không sao"
+                      maxLength={500}
+                      aria-label="Lý do vẫn bán dù có cảnh báo dị ứng"
+                    />
+                  </label>
+                </>
+              )}
+            </div>
+          )}
+
           <div className={styles.total}>
             <span>Tổng cộng</span>
             <strong>{total.toLocaleString("vi-VN")} đ</strong>
@@ -187,10 +259,20 @@ export default function PosPage() {
 
           <button
             className={styles.checkoutButton}
-            disabled={lines.length === 0 || checkout.isPending}
+            disabled={
+              lines.length === 0 ||
+              checkout.isPending ||
+              // Chặn ở đây chỉ để đỡ một lượt đi mạng chắc chắn bị từ chối. Cưỡng chế
+              // THẬT vẫn ở máy chủ (422) — nút này không phải cổng.
+              (canGhiLyDo && lyDoDiUng.trim() === "")
+            }
             onClick={handleCheckout}
           >
-            {checkout.isPending ? "Đang xử lý..." : "Thanh toán"}
+            {checkout.isPending
+              ? "Đang xử lý..."
+              : canGhiLyDo && lyDoDiUng.trim() === ""
+                ? "Ghi lý do để bán"
+                : "Thanh toán"}
           </button>
         </section>
       </div>

@@ -81,6 +81,18 @@ export interface CreateSaleRequest {
   currency?: string;
   /** Khách gắn vào đơn. `null` = khách vãng lai — bán hàng KHÔNG cần khách hàng. */
   customer_id?: string | null;
+  /** Lý do vẫn bán dù có cảnh báo dị ứng (Đ-6). Thiếu nó khi đơn CÓ xung đột ⇒ 422. */
+  allergy_acknowledgement?: string | null;
+}
+
+/** Phán quyết dị ứng cho một giỏ hàng — `POST /sales/allergy-check`. */
+export interface AllergyCheck {
+  /** `false` = khách không còn hồ sơ. Khác hẳn "đã kiểm và sạch". */
+  checked: boolean;
+  /** `false` = khách CHƯA đồng ý cho xử lý dữ liệu sức khoẻ ⇒ phép kiểm KHÔNG chạy. */
+  consent_granted: boolean;
+  conflict_count: number;
+  worst_severity: string | null;
 }
 
 export interface SaleLine {

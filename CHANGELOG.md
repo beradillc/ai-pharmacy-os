@@ -19,6 +19,12 @@ mục đã phát hành**, sai thì ghi một mục mới đính chính.
 
 ### Đã thêm
 
+- **Cảnh báo dị ứng hiện ở quầy (POS)** — trước đây cổng chỉ có ở máy chủ nên quầy là
+  *"bấm hoàn tất rồi mới biết"*. Nay hiện ngay khi gắn khách + thêm thuốc, **trên** tổng
+  tiền; có xung đột thì nút đổi thành "Ghi lý do để bán" cho tới khi thu ngân ghi lý do.
+  Phân biệt rõ **"chưa được phép kiểm"** với **"đã kiểm và sạch"** — hai thứ này cùng trả
+  `conflict_count = 0`. → `docs/ui-history/2026-07-31-pos-canh-bao-di-ung/`
+
 - **Sửa được hoạt chất của thuốc đã tạo**: `PUT /drugs/{id}/ingredients` (quyền
   `catalog.update`, cấp chuỗi). Trước đó không có đường nào sửa — nhập sai một hoạt chất
   là cảnh báo dị ứng sai người **vĩnh viễn**.
