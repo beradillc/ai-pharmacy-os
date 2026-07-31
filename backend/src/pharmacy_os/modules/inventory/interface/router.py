@@ -9,18 +9,22 @@ from fastapi import APIRouter, Depends, Query, Request, status
 
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.inventory.application import InventoryService
+from pharmacy_os.modules.inventory.domain.counting import CountStatus
 from pharmacy_os.modules.inventory.interface.schemas import (
+    CountLineRequest,
     DispenseRequest,
     DispenseResponse,
     LocationStockResponse,
     NearExpiryResponse,
     OnHandResponse,
+    OpenCountRequest,
     PickCandidateResponse,
     PutAwayRequest,
     PutAwayResponse,
     ReceiptResponse,
     ReceiveStockRequest,
     ReconciliationResponse,
+    StockCountResponse,
     StockRowResponse,
 )
 
@@ -173,6 +177,74 @@ def build_router(get_context: ContextDep) -> APIRouter:
         Quyền ``inventory.read``.
         """
         return [PickCandidateResponse.of(c) for c in await service.where_is(drug_id, ctx)]
+
+    # ── BERAS V2 Phase 11: kiểm kê theo ô ────────────────────────────────────────
+
+    @router.post("/counts", response_model=StockCountResponse, status_code=status.HTTP_201_CREATED)
+    async def open_count(
+        body: OpenCountRequest,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> StockCountResponse:
+        """Mở phiên kiểm kê cho một ô. Quyền ``inventory.receive``."""
+        return StockCountResponse.of(await service.open_count(body.location_id, ctx))
+
+    @router.get("/counts", response_model=list[StockCountResponse])
+    async def list_counts(
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+        count_status: CountStatus | None = Query(default=None, alias="status"),
+        limit: int = Query(50, ge=1, le=200),
+        offset: int = Query(0, ge=0),
+    ) -> list[StockCountResponse]:
+        rows = await service.list_counts(ctx, status=count_status, limit=limit, offset=offset)
+        return [StockCountResponse.of(p) for p in rows]
+
+    @router.get("/counts/{count_id}", response_model=StockCountResponse)
+    async def get_count(
+        count_id: UUID,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> StockCountResponse:
+        return StockCountResponse.of(await service.get_count(count_id, ctx))
+
+    @router.post("/counts/{count_id}/lines", response_model=StockCountResponse)
+    async def count_line(
+        count_id: UUID,
+        body: CountLineRequest,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> StockCountResponse:
+        """Ghi số đếm được của một lô. 409 nếu phiên đã nộp."""
+        out = await service.count_line(count_id, body.batch_id, body.counted_qty, ctx)
+        return StockCountResponse.of(out)
+
+    @router.post("/counts/{count_id}/submit", response_model=StockCountResponse)
+    async def submit_count(
+        count_id: UUID,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> StockCountResponse:
+        """Nộp phiên — chốt số sổ tại đúng thời điểm này. Chưa đụng tồn kho."""
+        return StockCountResponse.of(await service.submit_count(count_id, ctx))
+
+    @router.post("/counts/{count_id}/approve", response_model=StockCountResponse)
+    async def approve_count(
+        count_id: UUID,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> StockCountResponse:
+        """Duyệt — **đây** là lúc tồn kho đổi. Quyền ``inventory.reconcile``."""
+        return StockCountResponse.of(await service.approve_count(count_id, ctx))
+
+    @router.post("/counts/{count_id}/reject", response_model=StockCountResponse)
+    async def reject_count(
+        count_id: UUID,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> StockCountResponse:
+        """Từ chối — phiên ở lại trong sổ như một vết đã đếm, tồn kho không đổi."""
+        return StockCountResponse.of(await service.reject_count(count_id, ctx))
 
     @router.get("/locations/{location_id}/stock", response_model=list[LocationStockResponse])
     async def stock_at_location(

@@ -149,3 +149,47 @@ class StockReconciliationNeededORM(PkUuidMixin, TenantScopedMixin, TimestampMixi
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     resolved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class StockCountORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
+    """Phiên kiểm kê một vị trí (BERAS V2 Phase 11).
+
+    🔴 Bảng RIÊNG, không mở rộng ``stock_reconciliation_needed``: bảng đó mang ``grn_id``
+    **NOT NULL** — nó là cờ cho một phiếu nhập không trọn vẹn. Nới nó thành nullable là sửa
+    lược đồ của một thứ đang chạy và đang có test, đúng thứ kỷ luật #17 bảo phải hỏi Chain.
+
+    ``location_id`` là UUID trần, không FK — giữ ``inventory`` độc lập với module
+    ``location``, cùng lý do đã ghi ở :class:`StockAtLocationORM`.
+    """
+
+    __tablename__ = "stock_counts"
+    __table_args__ = (Index("ix_stock_counts_branch_status", "branch_id", "status"),)
+
+    location_id: Mapped[UUID] = mapped_column(nullable=False)
+    #: Giá trị của :class:`CountStatus`. Lưu chuỗi chứ không enum CSDL: thêm trạng thái sau
+    #: này sẽ cần một migration ``ALTER TYPE`` trên Postgres mà SQLite không có — và bộ test
+    #: chạy cả hai (kỷ luật #7 bổ sung).
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    counted_by: Mapped[UUID] = mapped_column(nullable=False)
+    decided_by: Mapped[UUID | None] = mapped_column()
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class StockCountLineORM(PkUuidMixin, TenantScopedMixin, Base):
+    """Một lô trong một phiên kiểm kê.
+
+    ``system_qty`` **nullable có chủ ý**: nó chỉ có nghĩa sau khi nộp. Để ``0`` khi chưa
+    chốt sẽ đọc y hệt "đã chốt và khớp".
+    """
+
+    __tablename__ = "stock_count_lines"
+    __table_args__ = (
+        UniqueConstraint("count_id", "batch_id", name="uq_count_line_batch"),
+        Index("ix_stock_count_lines_count", "count_id"),
+    )
+
+    count_id: Mapped[UUID] = mapped_column(nullable=False)
+    batch_id: Mapped[UUID] = mapped_column(nullable=False)
+    counted_qty: Mapped[Decimal] = mapped_column(_QTY, nullable=False)
+    system_qty: Mapped[Decimal | None] = mapped_column(_QTY)

@@ -236,6 +236,12 @@ class AuditAction(StrEnum):
     is already covered by :attr:`SALE_COMPLETED`, not audited a second time here."""
 
     INVENTORY_PUT_AWAY = "INVENTORY_PUT_AWAY"
+    #: Kiểm kê theo ô (BERAS V2 Phase 11). Chỉ ghi ở mốc QUYẾT ĐỊNH, không ghi từng lần
+    #: đếm: đếm là thao tác nháp, còn duyệt là lúc tồn kho thật sự đổi. 24 ký tự — cột
+    #: `audit_logs.action` là varchar(64), dư (bài học: bản varchar(32) cũ từng cho lọt
+    #: một tên dài tới deployment trong lúc 734 test xanh).
+    INVENTORY_COUNT_APPROVED = "INVENTORY_COUNT_APPROVED"
+    INVENTORY_COUNT_REJECTED = "INVENTORY_COUNT_REJECTED"
     """Hàng của một lô được cất vào một ô (BERAS V2 Phase 2, 2026-07-31).
 
     KHÔNG đổi tổng tồn — hàng đã có từ lúc nhận; việc này chỉ **nói ra nó đang nằm đâu**.

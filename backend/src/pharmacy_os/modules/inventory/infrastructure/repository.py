@@ -8,12 +8,13 @@ from decimal import Decimal
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
+from pharmacy_os.modules.inventory.domain.counting import CountLine, CountStatus, StockCount
 from pharmacy_os.modules.inventory.domain.entities import (
     ProductBatch,
     StockMovement,
@@ -33,6 +34,8 @@ from pharmacy_os.modules.inventory.infrastructure.models import (
     ProductBatchORM,
     StockAtLocationORM,
     StockBalanceORM,
+    StockCountLineORM,
+    StockCountORM,
     StockMovementORM,
     StockReconciliationNeededORM,
 )
@@ -515,3 +518,151 @@ class SqlAlchemyStockAtLocationRepository:
 
     async def rows_at_location(self, location_id: UUID) -> Sequence[LocationStockRow]:
         return await self._rows(StockAtLocationORM.location_id == location_id)
+
+
+class SqlAlchemyStockCountRepository:
+    """Phiên kiểm kê + dòng của nó, lưu như **một cụm**.
+
+    Không có repo riêng cho dòng: một dòng kiểm kê ngoài phiên của nó là vô nghĩa, và mở
+    một cửa để sửa dòng lẻ là mở một đường đi vòng qua các quy tắc trạng thái trong
+    :class:`StockCount`.
+    """
+
+    def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
+        self._session = session
+        self._ctx = ctx
+
+    async def add(self, count: StockCount) -> None:
+        self._session.add(
+            StockCountORM(
+                id=count.id,
+                tenant_id=count.tenant_id,
+                branch_id=count.branch_id,
+                location_id=count.location_id,
+                status=str(count.status),
+                counted_by=count.counted_by,
+                decided_by=count.decided_by,
+                submitted_at=count.submitted_at,
+                decided_at=count.decided_at,
+            )
+        )
+        for dong in count.lines:
+            self._session.add(self._dong_orm(count, dong))
+        await self._session.flush()
+
+    def _dong_orm(self, count: StockCount, dong: CountLine) -> StockCountLineORM:
+        return StockCountLineORM(
+            id=dong.id,
+            tenant_id=count.tenant_id,
+            branch_id=count.branch_id,
+            count_id=count.id,
+            batch_id=dong.batch_id,
+            counted_qty=dong.counted_qty,
+            system_qty=dong.system_qty,
+        )
+
+    async def get(self, count_id: UUID) -> StockCount | None:
+        row = (
+            await self._session.execute(
+                select(StockCountORM).where(
+                    StockCountORM.id == count_id,
+                    StockCountORM.tenant_id == self._ctx.tenant_id,
+                    StockCountORM.branch_id == self._ctx.branch_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            return None
+        return await self._voi_dong([row])
+
+    async def _voi_dong(self, rows: list[StockCountORM]) -> StockCount:
+        cum = await self._nap_dong(rows)
+        return cum[0]
+
+    async def _nap_dong(self, rows: Sequence[StockCountORM]) -> list[StockCount]:
+        """Nạp dòng cho NHIỀU phiên trong MỘT lượt truy vấn.
+
+        Một vòng lặp gọi `get` cho từng phiên là bài toán N+1 kinh điển; màn danh sách hiện
+        50 phiên sẽ thành 51 lượt đi-về.
+        """
+        if not rows:
+            return []
+        dong_rows = (
+            (
+                await self._session.execute(
+                    select(StockCountLineORM)
+                    .where(StockCountLineORM.count_id.in_([r.id for r in rows]))
+                    .order_by(StockCountLineORM.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        theo_phien: dict[UUID, list[CountLine]] = {}
+        for d in dong_rows:
+            theo_phien.setdefault(d.count_id, []).append(
+                CountLine(
+                    id=d.id,
+                    batch_id=d.batch_id,
+                    counted_qty=d.counted_qty,
+                    system_qty=d.system_qty,
+                )
+            )
+        return [
+            StockCount(
+                id=r.id,
+                tenant_id=r.tenant_id,
+                branch_id=r.branch_id,
+                location_id=r.location_id,
+                counted_by=r.counted_by,
+                status=CountStatus(r.status),
+                lines=theo_phien.get(r.id, []),
+                decided_by=r.decided_by,
+                created_at=r.created_at,
+                submitted_at=r.submitted_at,
+                decided_at=r.decided_at,
+            )
+            for r in rows
+        ]
+
+    async def update(self, count: StockCount) -> None:
+        await self._session.execute(
+            update(StockCountORM)
+            .where(
+                StockCountORM.id == count.id,
+                StockCountORM.tenant_id == self._ctx.tenant_id,
+            )
+            .values(
+                status=str(count.status),
+                decided_by=count.decided_by,
+                submitted_at=count.submitted_at,
+                decided_at=count.decided_at,
+            )
+        )
+        # Dòng: xoá rồi ghi lại. Cụm này nhỏ (một ô, vài chục lô) và luôn được ghi trọn vẹn
+        # trong một giao dịch — so từng dòng để ra UPDATE/INSERT/DELETE riêng là thêm ba
+        # nhánh có thể sai để đổi lấy một khoản tiết kiệm không đo được.
+        await self._session.execute(
+            delete(StockCountLineORM).where(StockCountLineORM.count_id == count.id)
+        )
+        for dong in count.lines:
+            self._session.add(self._dong_orm(count, dong))
+        await self._session.flush()
+
+    async def list(self, *, status: str | None, limit: int, offset: int) -> Sequence[StockCount]:
+        stmt = select(StockCountORM).where(
+            StockCountORM.tenant_id == self._ctx.tenant_id,
+            StockCountORM.branch_id == self._ctx.branch_id,
+        )
+        if status is not None:
+            stmt = stmt.where(StockCountORM.status == status)
+        rows = (
+            (
+                await self._session.execute(
+                    stmt.order_by(StockCountORM.created_at.desc()).limit(limit).offset(offset)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return await self._nap_dong(list(rows))

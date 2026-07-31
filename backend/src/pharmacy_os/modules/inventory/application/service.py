@@ -45,6 +45,7 @@ from pharmacy_os.modules.inventory.domain import (
     PutAwayError,
     ReconciliationAlreadyResolvedError,
     StockAtLocationRepository,
+    StockCountRepository,
     StockMovedIn,
     StockMovedOut,
     StockMovement,
@@ -54,6 +55,11 @@ from pharmacy_os.modules.inventory.domain import (
     chua_xep_o,
     ensure_can_put_away,
     sort_pick_candidates,
+)
+from pharmacy_os.modules.inventory.domain.counting import (
+    CountError,
+    CountStatus,
+    StockCount,
 )
 from pharmacy_os.modules.inventory.domain.ports import (
     BalanceRepository,
@@ -83,6 +89,7 @@ BatchRepoFactory = Callable[[UnitOfWork, RequestContext], BatchRepository]
 MovementRepoFactory = Callable[[UnitOfWork, RequestContext], MovementRepository]
 BalanceRepoFactory = Callable[[UnitOfWork, RequestContext], BalanceRepository]
 ReconciliationRepoFactory = Callable[[UnitOfWork, RequestContext], StockReconciliationRepository]
+CountRepoFactory = Callable[[UnitOfWork, RequestContext], StockCountRepository]
 AtLocationRepoFactory = Callable[[UnitOfWork, RequestContext], StockAtLocationRepository]
 
 
@@ -97,6 +104,7 @@ class InventoryService:
         audit: AuditLogger,
         *,
         reorder_point: Decimal = Decimal("0"),
+        count_repo_factory: CountRepoFactory | None = None,
         at_location_repo_factory: AtLocationRepoFactory | None = None,
         locations: LocationInfoProvider | None = None,
     ) -> None:
@@ -110,6 +118,7 @@ class InventoryService:
         # 🔴 Tuỳ chọn, mặc định `None`: mọi bên gọi đang có — kể cả hàng chục test dựng
         # service bằng tay — chạy nguyên vẹn mà không sửa một dòng. Chưa cấu hình thì các
         # use-case vị trí trả rỗng hoặc từ chối tường minh, KHÔNG ném AttributeError.
+        self._counts = count_repo_factory
         self._at_location = at_location_repo_factory
         self._locations = locations
 
@@ -894,3 +903,195 @@ class InventoryService:
                 quantity=str(quantity),
             )
         )
+
+    # ── BERAS V2 Phase 11: kiểm kê theo ô ────────────────────────────────────────
+
+    def _count_repo(self, uow: UnitOfWork, ctx: RequestContext) -> StockCountRepository:
+        """Cổng vào duy nhất tới sổ kiểm kê — ném lỗi rõ nếu tính năng chưa nối dây.
+
+        Cùng khuôn với ``put_away``: bộ test cũ dựng ``InventoryService`` không có kho lẫn
+        kiểm kê, và một ``AttributeError`` ở giữa giao dịch khó đọc hơn nhiều một câu tiếng
+        Việt nói thẳng.
+        """
+        if self._counts is None:
+            raise ValidationError("Chưa bật tính năng kiểm kê")
+        return self._counts(uow, ctx)
+
+    async def open_count(self, location_id: UUID, ctx: RequestContext) -> StockCount:
+        """Mở một phiên kiểm kê cho một ô. Quyền ``inventory.receive``.
+
+        Không chặn hai phiên cùng mở trên một ô. Hai người đếm song song cùng một ô là dấu
+        hiệu tổ chức công việc lộn xộn, không phải một lỗi dữ liệu — và cả hai phiên đều
+        phải qua duyệt trước khi đụng tồn kho, nên hậu quả xấu nhất là người duyệt thấy hai
+        phiếu và từ chối một. Chặn ở đây sẽ đổi lấy một trạng thái kẹt: một phiên bỏ dở
+        khoá vĩnh viễn cái ô.
+        """
+        require_permission(ctx, "inventory.receive")
+        if self._locations is None:
+            raise ValidationError("Chưa bật tính năng vị trí lưu trữ")
+        o = await self._locations.get(location_id, ctx.tenant_id, ctx.branch_id)
+        if o is None:
+            raise NotFoundError(f"Không tìm thấy vị trí {location_id}")
+
+        phien = StockCount(
+            tenant_id=ctx.tenant_id,
+            branch_id=ctx.branch_id,
+            location_id=location_id,
+            counted_by=ctx.user_id,
+        )
+        async with self._uow_factory() as uow:
+            await self._count_repo(uow, ctx).add(phien)
+            await uow.commit()
+        return phien
+
+    async def count_line(
+        self, count_id: UUID, batch_id: UUID, counted_qty: Decimal, ctx: RequestContext
+    ) -> StockCount:
+        """Ghi số đếm được của một lô. Quyền ``inventory.receive``."""
+        require_permission(ctx, "inventory.receive")
+        async with self._uow_factory() as uow:
+            repo = self._count_repo(uow, ctx)
+            phien = await repo.get(count_id)
+            if phien is None:
+                raise NotFoundError(f"Không tìm thấy phiên kiểm kê {count_id}")
+            try:
+                phien.dem(batch_id, counted_qty)
+            except CountError as exc:
+                raise ConflictError(str(exc)) from exc
+            await repo.update(phien)
+            await uow.commit()
+        return phien
+
+    async def submit_count(self, count_id: UUID, ctx: RequestContext) -> StockCount:
+        """Nộp phiên: đọc sổ vị trí **tại đúng lúc này** rồi chốt vào từng dòng.
+
+        🔴 Đọc ``stock_at_location`` chứ không ``stock_balances``: phiên kiểm kê một ô, và
+        câu hỏi là *"ô này đang ghi bao nhiêu"*, không phải *"cả chi nhánh có bao nhiêu"*.
+        Lấy nhầm sổ sẽ khiến mọi lô nằm ở nhiều ô đều báo thiếu.
+        """
+        require_permission(ctx, "inventory.receive")
+        async with self._uow_factory() as uow:
+            repo = self._count_repo(uow, ctx)
+            phien = await repo.get(count_id)
+            if phien is None:
+                raise NotFoundError(f"Không tìm thấy phiên kiểm kê {count_id}")
+            if self._at_location is None:
+                raise ValidationError("Chưa bật tính năng vị trí lưu trữ")
+
+            dong_o = await self._at_location(uow, ctx).rows_at_location(phien.location_id)
+            so_ghi = {r.batch_id: r.quantity for r in dong_o}
+            try:
+                phien.submit(so_ghi=so_ghi)
+            except CountError as exc:
+                raise ConflictError(str(exc)) from exc
+            await repo.update(phien)
+            await uow.commit()
+        return phien
+
+    async def approve_count(self, count_id: UUID, ctx: RequestContext) -> StockCount:
+        """Duyệt phiên và **áp chênh lệch vào cả hai sổ**. Quyền ``inventory.reconcile``.
+
+        Ba thứ phải đi cùng một giao dịch, nếu không sổ sẽ lệch nhau:
+          1. ``stock_balances``    — tồn tổng của lô
+          2. ``stock_at_location`` — tồn tại ô đang kiểm
+          3. một ``StockMovement`` loại ``ADJUST`` cho mỗi dòng chênh
+
+        Mục 3 là chỗ ``MovementType.ADJUST`` được dùng **lần đầu** kể từ commit đầu tiên của
+        dự án. ``ref_type='COUNT'`` để phân biệt với mọi nguồn điều chỉnh về sau.
+        """
+        require_permission(ctx, "inventory.reconcile")
+        async with self._uow_factory() as uow:
+            repo = self._count_repo(uow, ctx)
+            phien = await repo.get(count_id)
+            if phien is None:
+                raise NotFoundError(f"Không tìm thấy phiên kiểm kê {count_id}")
+            if self._at_location is None:
+                raise ValidationError("Chưa bật tính năng vị trí lưu trữ")
+
+            try:
+                lech = phien.approve(by=ctx.user_id)
+            except CountError as exc:
+                raise ConflictError(str(exc)) from exc
+
+            batches = self._batches(uow, ctx)
+            balances = self._balances(uow, ctx)
+            at_loc = self._at_location(uow, ctx)
+            movements = self._movements(uow, ctx)
+
+            for dong in lech:
+                delta = dong.lech
+                if delta is None:  # pragma: no cover - approve() đã lọc dòng chưa chốt
+                    continue
+                lo = await batches.get(dong.batch_id)
+                if lo is None:
+                    raise NotFoundError(f"Không tìm thấy lô {dong.batch_id}")
+                await balances.adjust(
+                    lo.drug_id, dong.batch_id, ctx.branch_id, ctx.tenant_id, delta
+                )
+                await at_loc.put_away(
+                    drug_id=lo.drug_id,
+                    batch_id=dong.batch_id,
+                    location_id=phien.location_id,
+                    delta=delta,
+                )
+                await movements.add(
+                    StockMovement(
+                        drug_id=lo.drug_id,
+                        batch_id=dong.batch_id,
+                        branch_id=ctx.branch_id,
+                        tenant_id=ctx.tenant_id,
+                        type=MovementType.ADJUST,
+                        quantity=delta,
+                        ref_type="COUNT",
+                        ref_id=phien.id,
+                        to_location_id=phien.location_id,
+                    )
+                )
+            await repo.update(phien)
+            await uow.commit()
+
+        await self._record(ctx, AuditAction.INVENTORY_COUNT_APPROVED, "stock_count", phien.id)
+        return phien
+
+    async def reject_count(self, count_id: UUID, ctx: RequestContext) -> StockCount:
+        """Từ chối phiên. **Không** đụng tồn kho. Quyền ``inventory.reconcile``."""
+        require_permission(ctx, "inventory.reconcile")
+        async with self._uow_factory() as uow:
+            repo = self._count_repo(uow, ctx)
+            phien = await repo.get(count_id)
+            if phien is None:
+                raise NotFoundError(f"Không tìm thấy phiên kiểm kê {count_id}")
+            try:
+                phien.reject(by=ctx.user_id)
+            except CountError as exc:
+                raise ConflictError(str(exc)) from exc
+            await repo.update(phien)
+            await uow.commit()
+
+        await self._record(ctx, AuditAction.INVENTORY_COUNT_REJECTED, "stock_count", phien.id)
+        return phien
+
+    async def get_count(self, count_id: UUID, ctx: RequestContext) -> StockCount:
+        """Một phiên kèm dòng. Quyền ``inventory.read``."""
+        require_permission(ctx, "inventory.read")
+        async with self._uow_factory() as uow:
+            phien = await self._count_repo(uow, ctx).get(count_id)
+        if phien is None:
+            raise NotFoundError(f"Không tìm thấy phiên kiểm kê {count_id}")
+        return phien
+
+    async def list_counts(
+        self,
+        ctx: RequestContext,
+        *,
+        status: CountStatus | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[StockCount]:
+        """Danh sách phiên của chi nhánh, mới nhất trước. Quyền ``inventory.read``."""
+        require_permission(ctx, "inventory.read")
+        async with self._uow_factory() as uow:
+            rows = await self._count_repo(uow, ctx).list(
+                status=str(status) if status is not None else None, limit=limit, offset=offset
+            )
+        return list(rows)

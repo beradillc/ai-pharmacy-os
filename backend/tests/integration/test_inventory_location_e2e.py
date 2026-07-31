@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import date, timedelta
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -340,3 +341,158 @@ def test_nhap_mua_van_ghi_GRN(client: TestClient, db_path: Path) -> None:
         )
     engine.dispose()
     assert loai == ["GRN"], f"nhập mua phải là GRN, nhận {loai}"
+
+
+# ─── Phase 11: kiểm kê theo ô ────────────────────────────────────────────────────
+
+
+def _o_co_hang(client: TestClient, *, qty: str, lot: str) -> tuple[str, str, str]:
+    """Dựng: một thuốc, một lô đã nhận, một ô đã cất hàng vào. Trả (drug, batch, ô)."""
+    d = _drug(client)
+    kho = _o(client, code=f"K{uuid4().hex[:4]}", pick=0)
+    o = _o(client, code=f"O{uuid4().hex[:4]}", pick=1, parent=kho)
+    r = client.post(
+        "/api/v1/inventory/receive",
+        json={
+            "drug_id": d,
+            "lot_no": lot,
+            "expiry_date": (date.today() + timedelta(days=300)).isoformat(),
+            "quantity": qty,
+            "cost_price": "1000",
+            "location_id": o,
+        },
+    )
+    assert r.status_code == 201, r.text
+    return d, r.json()["batch_id"], o
+
+
+def test_kiem_ke_tron_vong_duyet_thi_ton_kho_MOI_doi(client: TestClient) -> None:
+    """🔴 Mệnh đề trung tâm của Phase 11.
+
+    Nộp phiên **không** đụng tồn kho — chỉ duyệt mới đụng. Con số đếm được là một lời khai
+    cho tới lúc có người chịu trách nhiệm ký vào nó.
+    """
+    d, lo, o = _o_co_hang(client, qty="10", lot=f"KK{uuid4().hex[:4]}")
+
+    phien = client.post("/api/v1/inventory/counts", json={"location_id": o})
+    assert phien.status_code == 201, phien.text
+    pid = phien.json()["id"]
+    assert phien.json()["status"] == "DANG_DEM"
+
+    # Đếm được 7, sổ ghi 10 → thiếu 3.
+    r = client.post(
+        f"/api/v1/inventory/counts/{pid}/lines", json={"batch_id": lo, "counted_qty": "7"}
+    )
+    assert r.status_code == 200, r.text
+    # Chưa nộp ⇒ system_qty và lech phải là None, KHÔNG phải 0.
+    assert r.json()["lines"][0]["system_qty"] is None
+    assert r.json()["lines"][0]["lech"] is None
+
+    r = client.post(f"/api/v1/inventory/counts/{pid}/submit")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "CHO_DUYET"
+    assert r.json()["lines"][0]["system_qty"] == "10.000"
+    assert r.json()["lines"][0]["lech"] == "-3.000"
+
+    # 🔴 Nộp rồi mà tồn kho VẪN chưa đổi — đây là chỗ dễ code sai nhất.
+    assert client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"] == "10.000"
+
+    r = client.post(f"/api/v1/inventory/counts/{pid}/approve")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "DA_DUYET"
+    assert client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"] == "7.000"
+
+    # Sổ vị trí đi theo, không lệch với sổ tổng.
+    trong_o = client.get(f"/api/v1/inventory/locations/{o}/stock").json()
+    assert [x["quantity"] for x in trong_o] == ["7.000"]
+
+
+def test_duyet_ghi_chuyen_dong_ADJUST_ref_COUNT(client: TestClient, db_path: Path) -> None:
+    """MovementType.ADJUST tồn tại từ commit đầu và chưa từng được dùng — đây là lần đầu."""
+    _, lo, o = _o_co_hang(client, qty="5", lot=f"AJ{uuid4().hex[:4]}")
+    pid = client.post("/api/v1/inventory/counts", json={"location_id": o}).json()["id"]
+    client.post(f"/api/v1/inventory/counts/{pid}/lines", json={"batch_id": lo, "counted_qty": "8"})
+    client.post(f"/api/v1/inventory/counts/{pid}/submit")
+    client.post(f"/api/v1/inventory/counts/{pid}/approve")
+
+    engine = create_engine(f"sqlite:///{db_path}")
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT type, ref_type, quantity FROM stock_movements WHERE type='ADJUST'")
+        ).all()
+    engine.dispose()
+    assert len(rows) == 1
+    assert rows[0][0] == "ADJUST"
+    assert rows[0][1] == "COUNT"
+    # So bằng SỐ, không bằng chuỗi: SQLite trả `3`, Postgres trả `3.000` cho cùng một
+    # Numeric(18,3). Khẳng định trên chuỗi ở đây sẽ đỏ khi đổi nền mà sản phẩm không sai —
+    # đúng lớp chênh lệch dialect mà kỷ luật #7 (bổ sung) canh.
+    assert Decimal(str(rows[0][2])) == Decimal("3")  # đếm 8, sổ 5 → thừa 3
+
+
+def test_tu_choi_thi_ton_kho_KHONG_doi(client: TestClient) -> None:
+    d, lo, o = _o_co_hang(client, qty="10", lot=f"TC{uuid4().hex[:4]}")
+    pid = client.post("/api/v1/inventory/counts", json={"location_id": o}).json()["id"]
+    client.post(f"/api/v1/inventory/counts/{pid}/lines", json={"batch_id": lo, "counted_qty": "1"})
+    client.post(f"/api/v1/inventory/counts/{pid}/submit")
+
+    r = client.post(f"/api/v1/inventory/counts/{pid}/reject")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "TU_CHOI"
+    assert client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"] == "10.000"
+
+
+def test_dong_KHOP_khong_sinh_chuyen_dong_nao(client: TestClient, db_path: Path) -> None:
+    """Ghi một ADJUST bằng 0 vào sổ chỉ-ghi-thêm là rác vĩnh viễn."""
+    _, lo, o = _o_co_hang(client, qty="6", lot=f"KH{uuid4().hex[:4]}")
+    pid = client.post("/api/v1/inventory/counts", json={"location_id": o}).json()["id"]
+    client.post(f"/api/v1/inventory/counts/{pid}/lines", json={"batch_id": lo, "counted_qty": "6"})
+    client.post(f"/api/v1/inventory/counts/{pid}/submit")
+    client.post(f"/api/v1/inventory/counts/{pid}/approve")
+
+    engine = create_engine(f"sqlite:///{db_path}")
+    with engine.connect() as conn:
+        n = conn.execute(text("SELECT count(*) FROM stock_movements WHERE type='ADJUST'")).scalar()
+    engine.dispose()
+    assert n == 0
+
+
+def test_da_nop_thi_khong_dem_them_duoc_409(client: TestClient) -> None:
+    _, lo, o = _o_co_hang(client, qty="4", lot=f"NP{uuid4().hex[:4]}")
+    pid = client.post("/api/v1/inventory/counts", json={"location_id": o}).json()["id"]
+    client.post(f"/api/v1/inventory/counts/{pid}/lines", json={"batch_id": lo, "counted_qty": "4"})
+    client.post(f"/api/v1/inventory/counts/{pid}/submit")
+
+    r = client.post(
+        f"/api/v1/inventory/counts/{pid}/lines", json={"batch_id": lo, "counted_qty": "9"}
+    )
+    assert r.status_code == 409, r.text
+
+
+def test_khong_duyet_hai_lan_409(client: TestClient) -> None:
+    _, lo, o = _o_co_hang(client, qty="4", lot=f"D2{uuid4().hex[:4]}")
+    pid = client.post("/api/v1/inventory/counts", json={"location_id": o}).json()["id"]
+    client.post(f"/api/v1/inventory/counts/{pid}/lines", json={"batch_id": lo, "counted_qty": "3"})
+    client.post(f"/api/v1/inventory/counts/{pid}/submit")
+    assert client.post(f"/api/v1/inventory/counts/{pid}/approve").status_code == 200
+    assert client.post(f"/api/v1/inventory/counts/{pid}/approve").status_code == 409
+
+
+def test_o_khong_ton_tai_thi_404(client: TestClient) -> None:
+    r = client.post("/api/v1/inventory/counts", json={"location_id": str(uuid4())})
+    assert r.status_code == 404, r.text
+
+
+def test_danh_sach_loc_theo_trang_thai(client: TestClient) -> None:
+    _, lo, o = _o_co_hang(client, qty="4", lot=f"DS{uuid4().hex[:4]}")
+    pid = client.post("/api/v1/inventory/counts", json={"location_id": o}).json()["id"]
+
+    dang_dem = client.get("/api/v1/inventory/counts?status=DANG_DEM").json()
+    assert [p["id"] for p in dang_dem] == [pid]
+    assert client.get("/api/v1/inventory/counts?status=CHO_DUYET").json() == []
+
+    client.post(f"/api/v1/inventory/counts/{pid}/lines", json={"batch_id": lo, "counted_qty": "4"})
+    client.post(f"/api/v1/inventory/counts/{pid}/submit")
+    assert [p["id"] for p in client.get("/api/v1/inventory/counts?status=CHO_DUYET").json()] == [
+        pid
+    ]

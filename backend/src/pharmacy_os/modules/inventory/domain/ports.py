@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
 
+from pharmacy_os.modules.inventory.domain.counting import StockCount
 from pharmacy_os.modules.inventory.domain.entities import (
     ProductBatch,
     StockMovement,
@@ -236,3 +237,23 @@ class LocationStockRow:
     lot_no: str
     expiry_date: date
     quantity: Decimal
+
+
+class StockCountRepository(Protocol):
+    """Phiên kiểm kê. Lưu **cả cụm** (phiên + dòng) — dòng không có đời sống riêng."""
+
+    async def add(self, count: StockCount) -> None:
+        """Lưu một phiên mới cùng toàn bộ dòng của nó."""
+        ...
+
+    async def get(self, count_id: UUID) -> StockCount | None:
+        """Đọc một phiên kèm dòng. ``None`` nếu không thuộc chi nhánh đang gọi."""
+        ...
+
+    async def update(self, count: StockCount) -> None:
+        """Ghi lại phiên sau khi đổi trạng thái hoặc thêm dòng."""
+        ...
+
+    async def list(self, *, status: str | None, limit: int, offset: int) -> Sequence[StockCount]:
+        """Danh sách phiên của chi nhánh, mới nhất trước."""
+        ...

@@ -29,6 +29,7 @@ from pharmacy_os.modules.inventory.domain.ports import (
     LocationStockRow,
     MovementRepository,
     StockAtLocationRepository,
+    StockCountRepository,
     StockReconciliationRepository,
 )
 from pharmacy_os.modules.inventory.domain.putaway import (
@@ -48,6 +49,7 @@ __all__ = [
     "LocationInfoProvider",
     "LocationStockRow",
     "StockAtLocationRepository",
+    "StockCountRepository",
     "ExceedsBatchOnHandError",
     "LocationNotUsableError",
     "LocationStock",

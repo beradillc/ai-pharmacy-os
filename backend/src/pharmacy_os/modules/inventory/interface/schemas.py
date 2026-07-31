@@ -19,6 +19,7 @@ from pharmacy_os.modules.inventory.application.dto import (
     StockReportItem,
 )
 from pharmacy_os.modules.inventory.domain import LocationStockRow, PickCandidate
+from pharmacy_os.modules.inventory.domain.counting import CountLine, StockCount
 
 
 class ReceiveStockRequest(BaseModel):
@@ -244,4 +245,76 @@ class LocationStockResponse(BaseModel):
             lot_no=r.lot_no,
             expiry_date=r.expiry_date,
             quantity=r.quantity,
+        )
+
+
+# ── BERAS V2 Phase 11: kiểm kê theo ô ────────────────────────────────────────────
+
+
+class OpenCountRequest(BaseModel):
+    """Mở phiên kiểm kê một ô."""
+
+    location_id: UUID
+
+
+class CountLineRequest(BaseModel):
+    """Ghi số đếm được của một lô. Đếm lại cùng lô thì **đè**, không cộng dồn."""
+
+    batch_id: UUID
+    counted_qty: Decimal = Field(ge=0)
+
+
+class CountLineResponse(BaseModel):
+    """Một dòng đếm.
+
+    ``system_qty``/``lech`` là ``None`` khi phiên **chưa nộp** — cố ý không thay bằng 0, vì
+    0 đọc y hệt "đã chốt và khớp".
+    """
+
+    id: UUID
+    batch_id: UUID
+    counted_qty: Decimal
+    system_qty: Decimal | None
+    lech: Decimal | None
+
+    @classmethod
+    def of(cls, d: CountLine) -> CountLineResponse:
+        return cls(
+            id=d.id,
+            batch_id=d.batch_id,
+            counted_qty=d.counted_qty,
+            system_qty=d.system_qty,
+            lech=d.lech,
+        )
+
+
+class StockCountResponse(BaseModel):
+    """Một phiên kiểm kê kèm dòng.
+
+    Trả **cả hai** ``counted_by`` và ``decided_by``: người đếm được phép tự duyệt phiếu
+    mình, nên phải nhìn ra được khi hai tên trùng nhau.
+    """
+
+    id: UUID
+    location_id: UUID
+    status: str
+    counted_by: UUID
+    decided_by: UUID | None
+    created_at: datetime
+    submitted_at: datetime | None
+    decided_at: datetime | None
+    lines: list[CountLineResponse]
+
+    @classmethod
+    def of(cls, p: StockCount) -> StockCountResponse:
+        return cls(
+            id=p.id,
+            location_id=p.location_id,
+            status=str(p.status),
+            counted_by=p.counted_by,
+            decided_by=p.decided_by,
+            created_at=p.created_at,
+            submitted_at=p.submitted_at,
+            decided_at=p.decided_at,
+            lines=[CountLineResponse.of(d) for d in p.lines],
         )

@@ -20,6 +20,7 @@ from pharmacy_os.modules.inventory.infrastructure import (
     SqlAlchemyBatchRepository,
     SqlAlchemyMovementRepository,
     SqlAlchemyStockAtLocationRepository,
+    SqlAlchemyStockCountRepository,
     SqlAlchemyStockReconciliationRepository,
 )
 from pharmacy_os.modules.inventory.interface import handlers
@@ -46,6 +47,7 @@ def register(
         lambda uow, ctx: SqlAlchemyBalanceRepository(uow.session, ctx),
         lambda uow, ctx: SqlAlchemyStockReconciliationRepository(uow.session, ctx),
         container.resolve(AuditLogger),
+        count_repo_factory=lambda uow, ctx: SqlAlchemyStockCountRepository(uow.session, ctx),
         at_location_repo_factory=lambda uow, ctx: SqlAlchemyStockAtLocationRepository(
             uow.session, ctx
         ),

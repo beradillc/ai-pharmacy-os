@@ -104,6 +104,10 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "INVENTORY_STOCK_DISPENSED",
         # 2026-07-31 (V2 Phase 2): cất hàng vào ô — quyết định người đi lấy được chỉ tới đâu.
         "INVENTORY_PUT_AWAY",
+        # 2026-07-31 (V2 Phase 11): kiểm kê theo ô. Chỉ ghi ở mốc QUYẾT ĐỊNH — đếm là thao
+        # tác nháp, duyệt/từ chối mới là lúc có người chịu trách nhiệm và tồn kho đổi.
+        "INVENTORY_COUNT_APPROVED",
+        "INVENTORY_COUNT_REJECTED",
         "PROCUREMENT_PO_ORDERED",
         "PROCUREMENT_GRN_CONFIRMED",
         "CLINICAL_INTERACTION_CHECKED",
