@@ -21,6 +21,17 @@ class ReceiveStockInput:
     #: Cất thẳng vào ô ngay khi nhận (BERAS V2 Phase 5). ``None`` = nhận xong để đó, xếp
     #: sau — vẫn là đường hợp lệ, vì hàng vừa dỡ khỏi xe chưa chắc đã biết cất đâu.
     location_id: UUID | None = None
+    #: ``True`` = **khởi tạo tồn kho**, không phải nhập mua (BERAS V2 Phase 9).
+    #:
+    #: 🔴 Vì sao phải phân biệt, dù hiệu ứng lên tồn kho giống hệt nhau (GĐ chốt
+    #: 2026-07-31): khởi tạo là kiểm đếm hàng **đã có trên kệ**, thường không biết giá vốn
+    #: thật. Nếu đi chung đường nhập mua, giá vốn 0 sẽ bị `merge_receipt` kéo vào **bình
+    #: quân gia quyền** và làm tụt giá vốn của lô — một con số sai lặng lẽ, chỉ lộ ra ở
+    #: báo cáo lãi gộp nhiều tháng sau.
+    #:
+    #: Ghi vào ``ref_type='INIT'`` thay vì ``'GRN'`` để sổ chuyển động phân biệt được, và
+    #: báo cáo nào cần loại trừ thì lọc được.
+    is_initial: bool = False
 
 
 @dataclass(slots=True)

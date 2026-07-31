@@ -162,7 +162,11 @@ class InventoryService:
                     tenant_id=ctx.tenant_id,
                     type=MovementType.IN,
                     quantity=data.quantity,
-                    ref_type="GRN",
+                    # `IN` chứ không phải một loại chuyển động mới: hiệu ứng lên tồn kho
+                    # giống hệt nhau, và thêm một loại vào enum sẽ buộc mọi chỗ đang phân
+                    # nhánh theo `type` phải biết về nó. Cái khác nhau là Ý NGHĨA, và ý
+                    # nghĩa thuộc về `ref_type`.
+                    ref_type="INIT" if data.is_initial else "GRN",
                 )
             )
             await balances.adjust(

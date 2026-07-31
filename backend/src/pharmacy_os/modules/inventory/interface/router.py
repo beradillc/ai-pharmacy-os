@@ -45,6 +45,25 @@ def build_router(get_context: ContextDep) -> APIRouter:
     ) -> ReceiptResponse:
         return ReceiptResponse.of(await service.receive_stock(body.to_input(), ctx))
 
+    @router.post("/initialize", response_model=ReceiptResponse, status_code=status.HTTP_201_CREATED)
+    async def initialize_stock(
+        body: ReceiveStockRequest,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> ReceiptResponse:
+        """**Khởi tạo tồn kho** — nhà thuốc mới, chuyển phần mềm, hoặc kiểm kê tổng.
+
+        KHÔNG phải nhập mua: không đơn mua hàng, không hoá đơn, không nhà cung cấp. Ghi
+        ``ref_type='INIT'`` để sổ chuyển động phân biệt được với hàng mua vào — xem
+        ``ReceiveStockInput.is_initial`` về cái giá của việc trộn hai thứ.
+
+        Thân yêu cầu giống hệt ``/receive``; đường riêng để **ý định** nằm ở URL chứ không
+        nằm trong một cờ boolean mà bên gọi dễ quên. Quyền ``inventory.receive``.
+        """
+        data = body.to_input()
+        data.is_initial = True
+        return ReceiptResponse.of(await service.receive_stock(data, ctx))
+
     @router.post("/dispense", response_model=DispenseResponse)
     async def dispense(
         body: DispenseRequest,

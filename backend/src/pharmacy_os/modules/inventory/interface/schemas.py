@@ -32,6 +32,8 @@ class ReceiveStockRequest(BaseModel):
     mfg_date: date | None = None
     #: Cất thẳng vào ô ngay khi nhận. Bỏ trống = nhận xong xếp sau.
     location_id: UUID | None = None
+    #: ``true`` = khởi tạo tồn kho, không phải nhập mua — xem ``ReceiveStockInput``.
+    is_initial: bool = False
 
     def to_input(self) -> ReceiveStockInput:
         return ReceiveStockInput(
@@ -42,6 +44,7 @@ class ReceiveStockRequest(BaseModel):
             cost_price=self.cost_price,
             mfg_date=self.mfg_date,
             location_id=self.location_id,
+            is_initial=self.is_initial,
         )
 
 

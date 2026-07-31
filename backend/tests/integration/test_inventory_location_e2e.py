@@ -22,7 +22,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from pharmacy_os.core.config import AppSettings, DatabaseSettings, SecuritySettings, Settings
 from pharmacy_os.main import create_app
@@ -30,8 +30,12 @@ from pharmacy_os.models_registry import Base
 
 
 @pytest.fixture
-def client(tmp_path: Path) -> Iterator[TestClient]:
-    db_path = tmp_path / "inv_loc_e2e.db"
+def db_path(tmp_path: Path) -> Path:
+    return tmp_path / "inv_loc_e2e.db"
+
+
+@pytest.fixture
+def client(db_path: Path) -> Iterator[TestClient]:
     sync_engine = create_engine(f"sqlite:///{db_path}")
     Base.metadata.create_all(sync_engine)
     sync_engine.dispose()
@@ -260,3 +264,79 @@ def test_nhan_vao_o_DA_NGUNG_tra_422(client: TestClient) -> None:
     client.patch(f"/api/v1/locations/{o}", json={"is_active": False})
 
     assert _nhan_vao_o(client, d, qty="50", lot="L1", loc=o).status_code == 422
+
+
+# ─── Phase 9: khởi tạo tồn kho — KHÔNG phải nhập mua ─────────────────────────────
+
+
+def test_khoi_tao_ton_ghi_ref_type_INIT_khong_phai_GRN(client: TestClient, db_path: Path) -> None:
+    """🔴 Điểm của cả Phase 9.
+
+    Hiệu ứng lên tồn kho giống hệt nhập mua, nhưng Ý NGHĨA khác: khởi tạo là kiểm đếm
+    hàng đã có trên kệ, thường không biết giá vốn thật. Trộn hai thứ thì giá vốn 0 sẽ bị
+    `merge_receipt` kéo vào bình quân gia quyền — một con số sai lặng lẽ, chỉ lộ ra ở báo
+    cáo lãi gộp nhiều tháng sau.
+    """
+    d = _drug(client)
+    r = client.post(
+        "/api/v1/inventory/initialize",
+        json={
+            "drug_id": d,
+            "lot_no": "INIT-1",
+            "expiry_date": (date.today() + timedelta(days=300)).isoformat(),
+            "quantity": "80",
+            "cost_price": "0",
+        },
+    )
+    assert r.status_code == 201, r.text
+    assert client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"] == "80.000"
+
+    # 🔴 Đọc THẲNG sổ chuyển động. Chỉ khẳng định tồn kho thì test này xanh kể cả khi
+    # `ref_type` không hề được đặt — đúng loại "xanh vì lý do sai" mà kỷ luật #14 canh.
+    engine = create_engine(f"sqlite:///{db_path}")
+    with engine.connect() as conn:
+        loai = (
+            conn.execute(text("SELECT ref_type FROM stock_movements WHERE type='IN'"))
+            .scalars()
+            .all()
+        )
+    engine.dispose()
+    assert loai == ["INIT"], f"ref_type phải là INIT, nhận {loai}"
+
+
+def test_khoi_tao_ton_gan_o_ngay_duoc(client: TestClient) -> None:
+    """Kiểm kê tổng thì vừa đếm vừa biết hàng nằm đâu — đó là cả điểm của việc đi kiểm."""
+    d = _drug(client)
+    kho = _o(client, code="KHO", pick=0)
+    o = _o(client, code="A01", pick=1, parent=kho)
+
+    r = client.post(
+        "/api/v1/inventory/initialize",
+        json={
+            "drug_id": d,
+            "lot_no": "INIT-2",
+            "expiry_date": (date.today() + timedelta(days=300)).isoformat(),
+            "quantity": "12",
+            "cost_price": "0",
+            "location_id": o,
+        },
+    )
+    assert r.status_code == 201, r.text
+    cho = client.get(f"/api/v1/inventory/where?drug_id={d}").json()
+    assert [(c["location_path"], c["quantity"]) for c in cho] == [("KHO/A01", "12.000")]
+
+
+def test_nhap_mua_van_ghi_GRN(client: TestClient, db_path: Path) -> None:
+    """🔴 Nới cho khởi tạo KHÔNG được đổi ý nghĩa của đường nhập mua."""
+    d = _drug(client)
+    assert _nhan_vao_o(client, d, qty="5", lot="MUA-1", loc=None).status_code == 201
+
+    engine = create_engine(f"sqlite:///{db_path}")
+    with engine.connect() as conn:
+        loai = (
+            conn.execute(text("SELECT ref_type FROM stock_movements WHERE type='IN'"))
+            .scalars()
+            .all()
+        )
+    engine.dispose()
+    assert loai == ["GRN"], f"nhập mua phải là GRN, nhận {loai}"
