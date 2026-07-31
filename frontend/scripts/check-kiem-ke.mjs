@@ -14,6 +14,8 @@
  * `approve` ngay sau `submit` sẽ xanh cả ①, ③ và ④.
  */
 import { firefox } from "playwright-core";
+
+import { inDong, trongKhungNhin } from "./lib/nhin-thay.mjs";
 import { mkdirSync } from "node:fs";
 
 const BASE = process.env.BASE_URL ?? "http://192.168.1.10:3000";
@@ -94,6 +96,15 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   // Mệnh đề ①: màn hình nói ra con số lệch (−3), không im lặng.
   const noiRaLech = /-3/.test(bangSauNop);
 
+  // 🔴 Mệnh đề ①b — KỶ LUẬT #21 (Chain duyệt 01/08). Mệnh đề ① ở trên đọc `innerText`, mà
+  // `innerText` đọc được **cả phần tràn ngoài khung nhìn**: ngày 01/08 cổng này báo ✓ trong
+  // lúc cột "Chênh" — đúng cột là lý do màn kiểm kê tồn tại — bị cắt khỏi màn 390px. Ảnh
+  // chụp bắt được, phép đo thì không. Từ nay phép đo cũng phải biết cái mà ảnh biết.
+  const cotChenh = await trongKhungNhin(
+    p,
+    p.locator('[data-testid="bang-dem"] thead th', { hasText: /^Chênh$/ }),
+  );
+
   await p.screenshot({ path: `${OUT}/${ten}-1-da-nop.png`, fullPage: true });
 
   // Mệnh đề ②: NỘP RỒI mà tồn ở ô VẪN là 10 — kiểm qua Sơ đồ kho, một đường khác hẳn.
@@ -117,11 +128,18 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   const tonSauDuyet = await donSoTrongO(p, BASE, khoMa, oMa, loMa);
   const duyetMoiDoiTon = tonSauDuyet === 7;
 
-  const dat = noiRaLech && nopChuaDungTon && duyetMoiDoiTon && noiCungMotNguoi && loi.length === 0;
+  const dat =
+    noiRaLech &&
+    cotChenh.dat &&
+    nopChuaDungTon &&
+    duyetMoiDoiTon &&
+    noiCungMotNguoi &&
+    loi.length === 0;
   if (!dat) hong++;
 
   console.log(`\n──${ten}──`);
   console.log(`  ① nói ra con số lệch (−3): ${noiRaLech ? "✓" : "🔴"}`);
+  inDong('①b cột "Chênh" NHÌN THẤY ĐƯỢC trong khung nhìn (kỷ luật #21)', cotChenh);
   console.log(`  ② NỘP chưa đụng tồn kho: ${nopChuaDungTon ? "✓" : "🔴"} · ô đang giữ ${tonSauNop} (phải là 10)`);
   console.log(`  ③ DUYỆT mới đổi tồn kho: ${duyetMoiDoiTon ? "✓" : "🔴"} · ô đang giữ ${tonSauDuyet} (phải là 7)`);
   console.log(`  ④ nói ra "cùng một người": ${noiCungMotNguoi ? "✓" : "🔴"}`);
