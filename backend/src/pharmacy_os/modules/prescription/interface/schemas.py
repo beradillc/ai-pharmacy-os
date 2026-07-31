@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from pharmacy_os.modules.prescription.application.dto import (
     CreatePrescriptionInput,
+    PrescriptionImageOutput,
     PrescriptionItemInput,
     PrescriptionOutput,
 )
@@ -77,6 +78,7 @@ class PrescriptionResponse(BaseModel):
     doctor_license: str | None
     diagnosis: str | None
     image_url: str | None
+    has_image: bool
     status: str
     validated_by: UUID | None
     rejection_reason: str | None
@@ -92,6 +94,7 @@ class PrescriptionResponse(BaseModel):
             doctor_license=out.doctor_license,
             diagnosis=out.diagnosis,
             image_url=out.image_url,
+            has_image=out.has_image,
             status=out.status,
             validated_by=out.validated_by,
             rejection_reason=out.rejection_reason,
@@ -107,4 +110,34 @@ class PrescriptionResponse(BaseModel):
                 )
                 for it in out.items
             ],
+        )
+
+
+class AttachPrescriptionImageRequest(BaseModel):
+    """Ảnh đơn thuốc đã chụp, gửi dưới dạng base64.
+
+    JSON base64 chứ không phải ``multipart/form-data``: máy khách là một trang web đã nén
+    ảnh trong ``canvas`` và cầm sẵn chuỗi base64, còn hàng đợi offline của quầy lưu
+    **JSON** — một tải trọng multipart không xếp hàng lại được khi mất mạng.
+
+    ``max_length`` là 2,8 triệu ký tự: base64 phình ~4/3, nên đây là trần 2 MB của miền
+    cộng biên. Cưỡng chế thật nằm ở ``Prescription.attach_image`` (đo byte SAU giải mã);
+    giới hạn ở đây chỉ để một tải trọng khổng lồ bị chặn trước khi kịp giải mã.
+    """
+
+    image_data: str = Field(min_length=1, max_length=2_800_000)
+    content_type: str = Field(max_length=32)
+
+
+class PrescriptionImageResponse(BaseModel):
+    prescription_id: UUID
+    image_data: str
+    content_type: str
+
+    @classmethod
+    def of(cls, out: PrescriptionImageOutput) -> PrescriptionImageResponse:
+        return cls(
+            prescription_id=out.prescription_id,
+            image_data=out.image_data,
+            content_type=out.content_type,
         )

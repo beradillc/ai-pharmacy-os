@@ -10,7 +10,9 @@ from fastapi import APIRouter, Depends, Request, status
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.interface.schemas import (
+    AttachPrescriptionImageRequest,
     CreatePrescriptionRequest,
+    PrescriptionImageResponse,
     PrescriptionResponse,
     RejectPrescriptionRequest,
 )
@@ -70,5 +72,42 @@ def build_router(get_context: ContextDep) -> APIRouter:
         ctx: RequestContext = Depends(get_context),
     ) -> PrescriptionResponse:
         return PrescriptionResponse.of(await service.dispense_prescription(prescription_id, ctx))
+
+    @root.put("/{prescription_id}/image", response_model=PrescriptionResponse)
+    async def attach_image(
+        prescription_id: UUID,
+        body: AttachPrescriptionImageRequest,
+        service: PrescriptionService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> PrescriptionResponse:
+        """Gắn ảnh đơn thuốc gốc đã chụp ở quầy. Ghi đè ảnh cũ nếu có.
+
+        ``PUT`` chứ không ``POST``: thân yêu cầu **là** ảnh của đơn này, đầy đủ, nên gọi
+        hai lần cùng một thân cho cùng một kết quả — chụp lại vì trượt nét là ca dùng thật.
+
+        Quyền ``rx.create``: chụp và nộp một tờ giấy khác hẳn việc đọc chẩn đoán trong đó.
+        Trả 404 nếu đơn không thuộc nhà thuốc; **422** nếu ảnh sai định dạng, rỗng, base64
+        hỏng, hoặc quá 2 MB sau giải mã.
+        """
+        return PrescriptionResponse.of(
+            await service.attach_image(prescription_id, body.image_data, body.content_type, ctx)
+        )
+
+    @root.get("/{prescription_id}/image", response_model=PrescriptionImageResponse)
+    async def get_image(
+        prescription_id: UUID,
+        service: PrescriptionService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> PrescriptionImageResponse:
+        """Đọc nội dung ảnh đơn thuốc. **Mỗi lượt đọc ghi một dòng `RX_IMAGE_VIEWED`.**
+
+        Đường riêng, không gộp vào ``GET /prescriptions/{id}``: gộp thì mọi lượt xem đơn
+        đều kéo theo dữ liệu nhạy cảm, và dòng audit *"ai đã xem ảnh"* mất hết nghĩa vì ai
+        mở đơn cũng thành người đã xem ảnh.
+
+        Quyền ``rx.image.read`` (cấp Dược sĩ và cấp chuỗi, **không** cho Thu ngân — ảnh
+        mang chẩn đoán). Trả 404 nếu đơn không tồn tại **hoặc chưa có ảnh**.
+        """
+        return PrescriptionImageResponse.of(await service.get_image(prescription_id, ctx))
 
     return root

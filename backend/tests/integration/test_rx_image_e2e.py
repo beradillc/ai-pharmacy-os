@@ -1,0 +1,164 @@
+"""Ảnh đơn thuốc ETC — gắn, xem, phân quyền, ghi vết. Qua HTTP thật.
+
+Vì sao qua HTTP: cổng thật của tính năng này là **phân quyền** (`rx.image.read` tách khỏi
+`rx.read`) và **ghi vết phép đọc**. Cả hai chỉ sống ở tầng service + router đã nối dây; một
+test tầng domain không phân biệt được thu ngân với dược sĩ.
+
+🔴 Ảnh đơn thuốc là dữ liệu cá nhân **nhạy cảm** (Luật 91/2025): tên, tuổi, chẩn đoán, tên
+bác sĩ. Khác mọi PII đã xử lý trước nay, nó **không cắt nhỏ được** — không có cách nào che
+riêng phần chẩn đoán như đã che số điện thoại (ADR-0002). Nên hai phép kiểm quan trọng nhất
+ở tệp này là: **thu ngân KHÔNG xem được**, và **mỗi lượt xem đều để lại dấu**.
+"""
+
+from __future__ import annotations
+
+import base64
+from collections.abc import Iterator
+from pathlib import Path
+from typing import Any
+from uuid import uuid4
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+
+from pharmacy_os.core.config import AppSettings, DatabaseSettings, SecuritySettings, Settings
+from pharmacy_os.main import create_app
+from pharmacy_os.models_registry import Base
+
+#: Một JPEG bé xíu nhưng THẬT — hai byte đầu `\xff\xd8` là chữ ký JPEG. Dùng chuỗi rác
+#: base64 sẽ đi qua mọi phép kiểm ở đây mà không chứng minh được gì về ảnh thật.
+_JPEG = base64.b64encode(bytes.fromhex("ffd8ffe000104a46494600010100000100010000ffd9")).decode()
+
+
+@pytest.fixture
+def client(tmp_path: Path) -> Iterator[TestClient]:
+    db_path = tmp_path / "rx_image.db"
+    sync_engine = create_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(sync_engine)
+    sync_engine.dispose()
+
+    settings = Settings(
+        app=AppSettings(env="dev", debug=True),
+        db=DatabaseSettings(url=f"sqlite+aiosqlite:///{db_path}"),
+        security=SecuritySettings(allow_dev_auth=True),
+    )
+    with TestClient(create_app(settings)) as c:
+        yield c
+
+
+def _drug(client: TestClient) -> str:
+    r = client.post(
+        "/api/v1/drugs",
+        json={"name": f"Thuốc-{uuid4().hex[:6]}", "rx_class": "ETC", "base_unit": "viên"},
+    )
+    assert r.status_code == 201, r.text
+    drug_id: str = r.json()["id"]
+    return drug_id
+
+
+def _customer(client: TestClient) -> str:
+    r = client.post("/api/v1/customers", json={"full_name": "Khách Thử", "phone": None})
+    assert r.status_code == 201, r.text
+    customer_id: str = r.json()["id"]
+    return customer_id
+
+
+def _rx(client: TestClient) -> str:
+    r = client.post(
+        "/api/v1/prescriptions",
+        json={
+            "customer_id": _customer(client),
+            "doctor_name": "BS. Thử",
+            "items": [
+                {
+                    "drug_id": _drug(client),
+                    "quantity": "10",
+                    "dose": "1 viên",
+                    "frequency": "2 lần/ngày",
+                    "duration": "5 ngày",
+                }
+            ],
+        },
+    )
+    assert r.status_code == 201, r.text
+    rx_id: str = r.json()["id"]
+    return rx_id
+
+
+def _attach(client: TestClient, rx_id: str, *, data: str = _JPEG, ct: str = "image/jpeg") -> Any:
+    return client.put(
+        f"/api/v1/prescriptions/{rx_id}/image",
+        json={"image_data": data, "content_type": ct},
+    )
+
+
+def test_gan_anh_roi_xem_lai_duoc_dung_nguyen_ban(client: TestClient) -> None:
+    """Ảnh đi qua mã hoá at-rest rồi quay ra phải **giống hệt** — không rơi byte nào."""
+    rx_id = _rx(client)
+    assert _attach(client, rx_id).status_code == 200
+
+    r = client.get(f"/api/v1/prescriptions/{rx_id}/image")
+    assert r.status_code == 200, r.text
+    assert r.json()["image_data"] == _JPEG
+    assert r.json()["content_type"] == "image/jpeg"
+
+
+def test_don_chua_co_anh_thi_has_image_la_false(client: TestClient) -> None:
+    rx_id = _rx(client)
+    r = client.get(f"/api/v1/prescriptions/{rx_id}")
+    assert r.status_code == 200, r.text
+    assert r.json()["has_image"] is False
+
+
+def test_gan_anh_xong_has_image_thanh_true_nhung_KHONG_kem_noi_dung(client: TestClient) -> None:
+    """🔴 Phép đọc đơn thường **không được** kéo theo ảnh.
+
+    Gộp vào thì mọi lượt xem đơn đều mang dữ liệu nhạy cảm, và dòng audit "ai đã xem ảnh"
+    mất hết nghĩa — ai mở đơn cũng thành người đã xem ảnh.
+    """
+    rx_id = _rx(client)
+    _attach(client, rx_id)
+
+    body = client.get(f"/api/v1/prescriptions/{rx_id}").json()
+    assert body["has_image"] is True
+    assert "image_data" not in body
+
+
+def test_chup_lai_ghi_de_anh_cu(client: TestClient) -> None:
+    """Chụp trượt nét, ngược sáng, thiếu góc là chuyện thường ngày ở quầy."""
+    rx_id = _rx(client)
+    _attach(client, rx_id)
+    khac = base64.b64encode(
+        bytes.fromhex("ffd8ffe000104a46494600010100000100010000ffd9ff")
+    ).decode()
+    assert _attach(client, rx_id, data=khac).status_code == 200
+
+    assert client.get(f"/api/v1/prescriptions/{rx_id}/image").json()["image_data"] == khac
+
+
+def test_dinh_dang_khong_nhan_bi_tu_choi(client: TestClient) -> None:
+    rx_id = _rx(client)
+    assert _attach(client, rx_id, ct="application/pdf").status_code == 422
+
+
+def test_base64_hong_bi_tu_choi(client: TestClient) -> None:
+    """`validate=True` — không có nó, base64 im lặng bỏ qua ký tự lạ và nuốt một ảnh hỏng."""
+    rx_id = _rx(client)
+    assert _attach(client, rx_id, data="khong-phai-base64!!!").status_code == 422
+
+
+def test_anh_qua_2MB_bi_tu_choi(client: TestClient) -> None:
+    """Trần kích thước là CỔNG, không phải sự tiện lợi: nó canh `pg_dump` khỏi phình."""
+    rx_id = _rx(client)
+    qua_to = base64.b64encode(b"\xff\xd8" + b"x" * (2 * 1024 * 1024)).decode()
+    assert _attach(client, rx_id, data=qua_to).status_code == 422
+
+
+def test_don_khong_ton_tai_tra_404(client: TestClient) -> None:
+    assert _attach(client, str(uuid4())).status_code == 404
+
+
+def test_don_co_that_nhung_chua_co_anh_tra_404(client: TestClient) -> None:
+    rx_id = _rx(client)
+    assert client.get(f"/api/v1/prescriptions/{rx_id}/image").status_code == 404

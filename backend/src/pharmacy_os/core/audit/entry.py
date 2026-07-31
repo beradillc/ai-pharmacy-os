@@ -143,6 +143,26 @@ class AuditAction(StrEnum):
     """Handover of a prescription-only medicine — the act an inspection asks about
     first: "ai đã cấp phát đơn thuốc này"."""
 
+    RX_IMAGE_ATTACHED = "RX_IMAGE_ATTACHED"
+    """Ảnh đơn thuốc gốc được gắn vào một đơn (2026-07-31, Chain giao).
+
+    Điều 74 Luật Dược: *"Đơn thuốc là căn cứ để bán thuốc, cấp phát thuốc"*. Ảnh chính là
+    căn cứ ấy, nên việc nó xuất hiện — và **bị thay** — phải trả lời được.
+
+    ``context`` **không** mang ảnh và không mang chẩn đoán; chỉ số byte và định dạng."""
+
+    RX_IMAGE_VIEWED = "RX_IMAGE_VIEWED"
+    """Một người **mở xem** ảnh đơn thuốc.
+
+    🔴 Đây là action hiếm hoi ghi vết một phép **ĐỌC**, cùng lý do
+    :attr:`CUSTOMER_SENSITIVE_READ` tồn tại: ảnh đơn mang chẩn đoán của một người thật, và
+    câu hỏi *"ai đã xem bệnh án của khách này"* chỉ trả lời được nếu mỗi lần mở đều để lại
+    dấu. Che thì không che được — ảnh là một khối, không cắt nhỏ như số điện thoại
+    (ADR-0002) — nên **ghi vết là lớp bảo vệ duy nhất còn lại** sau phân quyền.
+
+    Quyền đi kèm là ``rx.image.read``, **không** phải ``rx.read``: thu ngân cần biết đơn có
+    hợp lệ để bán hay không, không cần đọc chẩn đoán của khách."""
+
     # --- compliance (sổ thuốc kiểm soát đặc biệt — TT20/2017, QĐ540) ---
     CONTROLLED_LEDGER_ENTRY_RECORDED = "CONTROLLED_LEDGER_ENTRY_RECORDED"
     """A line written to the sổ thuốc kiểm soát — the second thing an inspection asks

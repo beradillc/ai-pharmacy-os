@@ -272,6 +272,9 @@ _COVERED_ELSEWHERE = {
     AuditAction.CATALOG_DRUG_PRICE_CHANGED,
     # Có test riêng: tests/integration/test_sales_price_override.py
     AuditAction.SALE_PRICE_OVERRIDE,
+    # Có test riêng: tests/integration/test_rx_image_e2e.py
+    AuditAction.RX_IMAGE_ATTACHED,
+    AuditAction.RX_IMAGE_VIEWED,
     # Có test riêng: tests/integration/test_crm_phone_masking.py (đường mở lộ số).
     AuditAction.CUSTOMER_PHONE_REVEALED,
     AuditAction.SALE_RETURN_REGISTERED,

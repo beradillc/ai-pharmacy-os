@@ -1,7 +1,8 @@
 # Ảnh đơn thuốc ETC — Bước 0-3 của `docs/14_FEATURE_PROCESS.md`
 
-> **Trạng thái: BƯỚC 0-3 ✅ VIẾT XONG — CHỜ CHAIN DUYỆT. CHƯA CODE MỘT DÒNG NÀO.**
-> `docs/14` cấm code khi Bước 0-3 chưa xong và chưa được duyệt.
+> **Trạng thái: BƯỚC 0-3 ✅ CHAIN DUYỆT 2026-07-31.** Kèm theo, Chain duyệt luôn khuyến
+> nghị của GĐ cho câu hỏi quyền: **phương án B — thêm `rx.image.read`**, chỉ cấp Dược sĩ và
+> cấp chuỗi. *Gắn ảnh là việc của quầy; đọc chẩn đoán thì không.*
 >
 > Chain giao 2026-07-31: *"ETC demo chỉ cần có nút chụp, chụp lại đơn, có file ảnh lưu hệ
 > thống là xong, các tính năng kia tạm đóng."*
@@ -95,14 +96,14 @@ chạy" — nếu proxy cắt ở 1 MB thì lỗi sẽ hiện ra dưới dạng 
 | B | Thêm `rx.image.read`, chỉ cấp Dược sĩ + cấp chuỗi | Khớp cách đã tách `crm.pii.reveal`; thêm một quyền |
 | C | Dùng lại `crm.sensitive.read` | Không thêm quyền, nhưng trộn hai khái niệm: hồ sơ khách ≠ đơn thuốc |
 
-**GĐ nghiêng về B** — cùng hình dạng với `crm.pii.reveal` (Chain đã duyệt khuôn đó ngày
+**Chain chốt B** (2026-07-31, duyệt khuyến nghị của GĐ) — cùng hình dạng với `crm.pii.reveal` (Chain đã duyệt khuôn đó ngày
 31/07), và nó giữ được nguyên tắc: *gắn ảnh* là việc của quầy, *đọc chẩn đoán* thì không.
 
 ## 5 bước triển khai (chốt, kỷ luật #12)
 
 | # | Việc | Cổng |
 |---|---|---|
-| 1 | Tệp này + Chain duyệt Bước 0-3 và câu hỏi quyền | — |
+| 1 | ✅ Tệp này + Chain duyệt Bước 0-3 và câu hỏi quyền | — |
 | 2 | `prescription` domain + migration: cột ảnh mã hoá, giới hạn kích thước | 4 cổng + pg_dump trước migration |
 | 3 | `prescription` app + interface: gắn ảnh · xem ảnh · 2 audit action | 4 cổng |
 | 4 | Quầy: nút **Chụp đơn** khi đơn có ETC, nén trong trình duyệt | 4 cổng + `check-fe` |

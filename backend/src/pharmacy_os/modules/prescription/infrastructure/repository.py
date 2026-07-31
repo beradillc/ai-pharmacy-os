@@ -33,6 +33,16 @@ class SqlAlchemyPrescriptionRepository:
         row.rejection_reason = prescription.rejection_reason
         await self._session.flush()
 
+    async def save_image(self, prescription: Prescription) -> None:
+        stmt = select(PrescriptionORM).where(
+            PrescriptionORM.id == prescription.id,
+            PrescriptionORM.tenant_id == self._ctx.tenant_id,
+        )
+        row = (await self._session.execute(stmt)).scalar_one()
+        row.image_data = prescription.image_data
+        row.image_content_type = prescription.image_content_type
+        await self._session.flush()
+
     async def get(self, prescription_id: UUID) -> Prescription | None:
         stmt = select(PrescriptionORM).where(
             PrescriptionORM.id == prescription_id,

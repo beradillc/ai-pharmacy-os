@@ -88,6 +88,9 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "PRESCRIPTION_APPROVED",
         "PRESCRIPTION_REJECTED",
         "PRESCRIPTION_DISPENSED",
+        # 2026-07-31: ảnh đơn thuốc — gắn, và MỞ XEM (đọc dữ liệu nhạy cảm cũng ghi vết).
+        "RX_IMAGE_ATTACHED",
+        "RX_IMAGE_VIEWED",
         "CONTROLLED_LEDGER_ENTRY_RECORDED",
         "TENANT_COMPLIANCE_CONFIG_SET",
         "PERIODIC_REPORT_EXPORTED",

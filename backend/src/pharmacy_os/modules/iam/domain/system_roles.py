@@ -29,7 +29,12 @@ INVENTORY_PERMISSIONS = frozenset(
     {"inventory.read", "inventory.receive", "inventory.dispense", "inventory.reconcile"}
 )
 SALES_PERMISSIONS = frozenset({"sales.read", "sales.create", "sales.return"})
-RX_PERMISSIONS = frozenset({"rx.read", "rx.create", "rx.approve", "rx.dispense"})
+#: ``rx.image.read`` (2026-07-31, Chain duyệt khuyến nghị GĐ) tách khỏi ``rx.read`` vì ảnh
+#: đơn thuốc mang **chẩn đoán** — đúng thứ ``crm.sensitive.read`` cố ý không cấp cho thu
+#: ngân. Để chung sẽ mở một đường vòng qua ranh giới quyền đó: thu ngân không đọc được hồ
+#: sơ sức khoẻ của khách, nhưng lại xem được ảnh ghi rõ bệnh của họ.
+#: Gắn ảnh là việc của quầy (``rx.create``); đọc chẩn đoán thì không.
+RX_PERMISSIONS = frozenset({"rx.read", "rx.create", "rx.approve", "rx.dispense", "rx.image.read"})
 CLINICAL_PERMISSIONS = frozenset(
     {"clinical.check", "clinical.accept", "clinical.settings.read", "clinical.settings.write"}
 )
@@ -207,6 +212,8 @@ _BRANCH_PHARMACIST_PERMISSIONS = (
 _CASHIER_PERMISSIONS = (
     {"catalog.read", "inventory.read", "inventory.dispense"}
     | SALES_PERMISSIONS
+    # ``rx.read`` nhưng KHÔNG ``rx.image.read``: thu ngân cần biết đơn có hợp lệ để bán
+    # hay không, không cần đọc chẩn đoán của khách. Xem ghi chú ở ``RX_PERMISSIONS``.
     | {"rx.read"}
     | {"crm.read", "crm.create", "crm.consent.manage"}
 )
