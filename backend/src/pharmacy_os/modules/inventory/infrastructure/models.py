@@ -75,6 +75,20 @@ class StockMovementORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
     ref_id: Mapped[UUID | None] = mapped_column()
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
+    #: 🔴 HAI CỘT DUY NHẤT của Phase 2 đụng vào một bảng đã có (Chain duyệt 2026-07-31 qua
+    #: GĐ). Nullable: mọi dòng có từ trước để ``NULL``, đọc đúng nghĩa *"không rõ vị trí"* —
+    #: không cần backfill, không có dòng nào phải đoán.
+    #:
+    #: Vì sao là CỘT chứ không phải bảng phụ nối 1-1: bảng phụ bắt mọi truy vấn theo vị trí
+    #: phải nối bảng, và tạo ra khả năng một chuyển động tồn tại **mà không có dòng vị trí
+    #: đi kèm** — đúng loại lệch im lặng dự án này đã phải đi vá nhiều lần. Trên Postgres,
+    #: ``ADD COLUMN ... NULL`` là thao tác tức thì, không viết lại bảng.
+    #:
+    #: Không đặt khoá ngoại tới ``locations``: giữ ``inventory`` độc lập với module
+    #: ``location``, cùng lý do ``grn_id`` ở ``stock_reconciliation_needed`` là UUID trần.
+    from_location_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    to_location_id: Mapped[UUID | None] = mapped_column(nullable=True)
+
 
 class StockBalanceORM(PkUuidMixin, TenantScopedMixin, Base):
     """Projection of movements: on-hand per (drug, batch, branch)."""
@@ -86,6 +100,37 @@ class StockBalanceORM(PkUuidMixin, TenantScopedMixin, Base):
 
     drug_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
     batch_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(_QTY, nullable=False, default=Decimal("0"))
+
+
+class StockAtLocationORM(PkUuidMixin, TenantScopedMixin, Base):
+    """Projection THỨ HAI: hàng của một lô đang nằm ở ô nào, bao nhiêu.
+
+    🔴 Cố ý **không** đụng vào ``stock_balances``. Thêm ``location_id`` vào đó sẽ vỡ khoá
+    ``uq_balance_batch (drug_id, batch_id, branch_id)`` — vì tồn theo vị trí nghĩa là một lô
+    nằm ở nhiều chỗ, tức đổi **hạt** của projection đang chạy. FEFO, báo cáo tồn và đề xuất
+    nhập hàng đều đọc bảng cũ; đổi hạt của nó là phá cả ba cùng lúc.
+
+    Hai sổ trả lời hai câu hỏi khác nhau:
+      · ``stock_balances``     — *có bao nhiêu*  (nguồn sự thật, đã có từ trước)
+      · ``stock_at_location``  — *nằm ở đâu*     (mới, ≤ sổ trên)
+
+    Bất biến: tổng theo lô của bảng này **≤** tồn của lô trong ``stock_balances``. Phần chênh
+    là hàng **chưa xếp ô** — hợp lệ và bình thường (hàng vừa nhận, còn trên xe đẩy), và phải
+    hiện ra màn hình chứ không giấu đi.
+    """
+
+    __tablename__ = "stock_at_location"
+    __table_args__ = (
+        UniqueConstraint("branch_id", "batch_id", "location_id", name="uq_stock_at_location"),
+        Index("ix_stock_at_location_drug", "branch_id", "drug_id"),
+        Index("ix_stock_at_location_loc", "branch_id", "location_id"),
+    )
+
+    drug_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
+    batch_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
+    #: UUID trần, không FK — giữ `inventory` độc lập với module `location`.
+    location_id: Mapped[UUID] = mapped_column(nullable=False)
     quantity: Mapped[Decimal] = mapped_column(_QTY, nullable=False, default=Decimal("0"))
 
 

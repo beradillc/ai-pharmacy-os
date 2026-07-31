@@ -27,8 +27,28 @@ from pharmacy_os.modules.inventory.domain.ports import (
     MovementRepository,
     StockReconciliationRepository,
 )
+from pharmacy_os.modules.inventory.domain.putaway import (
+    ExceedsBatchOnHandError,
+    LocationNotUsableError,
+    LocationStock,
+    PickCandidate,
+    PutAwayError,
+    allocate_from_locations,
+    chua_xep_o,
+    ensure_can_put_away,
+    sort_pick_candidates,
+)
 
 __all__ = [
+    "ExceedsBatchOnHandError",
+    "LocationNotUsableError",
+    "LocationStock",
+    "PickCandidate",
+    "PutAwayError",
+    "allocate_from_locations",
+    "chua_xep_o",
+    "ensure_can_put_away",
+    "sort_pick_candidates",
     "MovementType",
     "ProductBatch",
     "StockMovement",
