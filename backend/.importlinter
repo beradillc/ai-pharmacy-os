@@ -55,6 +55,18 @@ forbidden_modules =
     fastapi
     sqlalchemy
 
+[importlinter:contract:location-domain-innermost]
+name = Location domain must not import outer layers or frameworks
+type = forbidden
+source_modules =
+    pharmacy_os.modules.location.domain
+forbidden_modules =
+    pharmacy_os.modules.location.application
+    pharmacy_os.modules.location.infrastructure
+    pharmacy_os.modules.location.interface
+    fastapi
+    sqlalchemy
+
 [importlinter:contract:sales-domain-innermost]
 name = Sales domain must not import outer layers or frameworks
 type = forbidden
