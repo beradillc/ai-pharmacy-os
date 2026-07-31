@@ -7084,3 +7084,77 @@ Cả ba triệu chứng **đọc y hệt lỗi giao diện**. Lần sau: chạy 
 Trước khi code: soạn đề xuất kỷ luật #21 thành **cổng thật** (đo `boundingBox` nằm trong
 khung nhìn, không chỉ `innerText`) — nếu không nó sẽ thành một thói quen phải nhớ, và kỷ
 luật #10 nói cưỡng chế bằng máy chứ không bằng trí nhớ.
+
+---
+
+## 7cv. 📋 KẾ HOẠCH 6 PHIÊN — BERAS V2 phần còn lại + 9 lệnh mới của Chain (2026-08-01)
+
+**Chain uỷ quyền cao nhất cho GĐ**, ràng buộc mới: *"sắp xếp lại trình tự, tổng hợp thành
+nhiều phiên, mỗi phiên khoảng 70% hạn mức, Chain chỉ duyệt mỗi phiên 1 lần"*.
+
+Nghĩa là: mọi quyết định nghiệp vụ/pháp lý của một phiên phải được **gom vào đúng một lượt
+hỏi ở ĐẦU phiên đó**. Giữa phiên GĐ chạy full-auto tới hết, kết thúc bằng ảnh chụp (kỷ luật
+#20). Không hỏi rải rác.
+
+### Chín lệnh Chain giao 01/08 — đã truy nguyên nhân trước khi xếp phiên
+
+| # | Lệnh của Chain | Nguyên nhân đã truy được (không phải suy đoán) | Xếp vào |
+|---|---|---|---|
+| 1 | Đã chụp ảnh nhưng vẫn báo *cần đơn thuốc ETC hợp lệ* | `use-rx-photo.ts` trả `rx.id` nhưng POS **vứt đi**; `handleCheckout` không gửi `prescriptionRef` ⇒ `ensure_rx_for_etc` chặn. Kèm lỗi thứ hai: đơn tạo ra ở trạng thái `DRAFT`, mà `_SALE_AUTHORISING_RX_STATES` chỉ nhận `VALIDATED`/`DISPENSED` ⇒ **nối dây thôi vẫn chưa bán được** | P1 |
+| 2 | Mọi phím xem/nhập/sửa chi tiết trên mobile → **cửa sổ có dấu ✕** | Chỉ có `ConfirmDialog` (hộp xác nhận), **chưa có** khung cửa sổ chi tiết dùng chung. `hoa-don` mở chi tiết bằng `<section class=drawer>` nằm **dưới bảng** ⇒ mobile phải cuộn | P3 (nền) + P4 (rollout) |
+| 3 | Kho: *"Cất vào ô"* → ghi là **"Sắp xếp"** | 5 chỗ: `nhap-nhanh:142,147` · `ton-kho:158,292` · `so-do-kho:316` | P2 |
+| 4 | Kiểm kê + Sơ đồ kho: xem hàng phải là **tên thuốc**, không phải số lô | `kiem-ke:345` và `so-do-kho:331` in `lot_no`. Cả hai dòng dữ liệu **đã có `drug_id`**, và hook `use-drug-names.ts#nameOf` đã tồn tại (màn Hoá đơn đang dùng) ⇒ rẻ | P2 |
+| 5 | Gộp **Nhập hàng nhanh + Khởi tạo tồn kho** thành 1 mục menu | `nav.ts` khai hai dòng riêng, cùng `permission: inventory.receive`, cùng icon `receive` | P2 |
+| 6 | Gộp **Kiểm kê + Sơ đồ kho** thành 1 mục menu | `nav.ts` khai hai dòng riêng, cùng icon `warehouse-map` | P2 |
+| 7 | Hoá đơn: xem = cửa sổ · in ra **mẫu chuyên nghiệp** · in **đúng một đơn** | `hoa-don:188` gọi `window.print()` trần ⇒ in cả trang. 🔴 **Kỷ luật #16 — mẫu in CHUYÊN NGHIỆP ĐÃ CÓ SẴN**: `GET /sales/{id}/receipt` với `render_thermal_k80` + `render_pdf(A5/A4)`, đã in tên nhà thuốc/địa chỉ/MST/mã đơn/ngày giờ/từng dòng/tổng/khách đưa/**tiền thối**/ô ký. Thiếu **đúng một thứ**: tên người bán (`sold_by_user_id` có trong domain, không có trong `ReceiptSummaryDTO`). Không được viết mẫu in mới | P3 |
+| 8 | Danh mục thuốc mobile chưa cân xứng; **mọi cửa sổ phải vừa ngang, cỡ chữ tương đồng** | Đúng hình dạng kỷ luật #21 — cổng hiện đo `innerText`, không đo `boundingBox` | P1 (dựng cổng) + P5 (sửa) |
+| 9 | Rà soát thêm giao diện webkit **laptop** | `scripts/capture-screens.mjs` đang chụp 1440×900 + 390×844; chưa có lượt rà laptop có hệ thống | P5 |
+
+### Nợ cũ của BERAS V2 (§7cu) — xếp sau, có lý do
+
+Phase 4 (pick list) · Phase 8 (multi-supplier) · Phase 12 (sơ đồ trực quan) · Phase 15
+(`ARCHITECTURE_REVIEW.md`) + 6 tệp spec.
+
+**[GĐ] Vì sao đẩy nợ V2 xuống sau chín lệnh mới:** chín lệnh trên sinh từ Chain **dùng thật**,
+trong đó lệnh #1 là **mất doanh thu ngay** (không bán được thuốc kê đơn) và có mặt pháp lý
+(Điều 74 Luật Dược). Phase 4/8/12 là mở rộng năng lực cho một nhà kho chưa tồn tại ở quy mô
+đó. Sửa cái đang gãy trước cái chưa có — trừ khi Chain thấy ngược lại.
+
+### Sáu phiên — mỗi phiên một lượt duyệt duy nhất ở đầu phiên
+
+| Phiên | Tên | Phạm vi | Chain quyết đúng 1 lượt | Bằng chứng đóng phiên |
+|---|---|---|---|---|
+| **P1** | Bán được đơn ETC + dựng cổng #21 | Nối `rx.id` → `prescription_ref`; xử trạng thái `DRAFT`; biến kỷ luật #21 thành cổng máy (`boundingBox` trong khung nhìn + `scrollWidth <= clientWidth`) áp cho mọi cổng UI đang có | (a) đơn thuốc chụp ở quầy **tự có hiệu lực bán** hay phải **dược sĩ bấm duyệt**; (b) duyệt kỷ luật #21 | Ảnh: bán trọn một đơn ETC trên iPhone. Cổng #21 đỏ ít nhất 1 lần vì lý do đúng (kỷ luật #14) |
+| **P2** | Kho: nhãn · tên thuốc · gộp menu | Lệnh #3, #4, #5, #6. Gộp menu = **thêm trang gộp có tab, giữ nguyên URL cũ** (kỷ luật #17: không đổi route cũ) | Tên hai mục gộp trên menu | Ảnh menu trước/sau; ảnh `/kiem-ke` + `/so-do-kho` hiện tên thuốc |
+| **P3** | Hoá đơn: cửa sổ + in đúng một đơn | Dựng `DetailDialog` dùng chung (✕, ESC, khoá cuộn nền); hoá đơn dùng nó; nút **In** gọi `/sales/{id}/receipt` thay `window.print()`; thêm **người bán** vào `ReceiptSummaryDTO` + 2 bộ render | Khổ in mặc định: **K80 máy in nhiệt** / **PDF A5** / **PDF A4** | Ảnh cửa sổ hoá đơn trên mobile + **tệp in thật của đúng một đơn** |
+| **P4** | Rollout cửa sổ toàn mobile | Áp `DetailDialog` cho danh mục thuốc · khách hàng · nhân viên · tồn kho · đơn mua hàng · đề xuất · kiểm kê · sơ đồ kho · quầy | Không có (thuần kỹ thuật) — trừ khi phát sinh | Ảnh từng màn ở 390×844; cổng #21 xanh trên từng màn |
+| **P5** | Cân xứng mobile + rà laptop | Thang chữ/khoảng cách dùng chung; sửa danh mục thuốc mobile (lệnh #8); rà toàn bộ màn ở 1440×900 (lệnh #9) | Không có | Bảng trước/sau + ảnh vào `docs/ui-history/2026-08-xx-*` |
+| **P6** | Trả nợ V2 | Phase 4 (pick list) · Phase 12 (sơ đồ trực quan) · các tệp spec còn thiếu | Phạm vi Phase 8 (multi-supplier) có làm hay hoãn | Theo chuẩn V2 các phase trước |
+
+### Vì sao đúng thứ tự này, không phải thứ tự Chain đọc ra
+
+| Ràng buộc | Hệ quả |
+|---|---|
+| P2 gộp trang **trước** P4 áp cửa sổ | Không thì 4 màn bị sửa hai lượt — gộp xong lại phải làm lại cửa sổ |
+| P3 dựng nền cửa sổ **trước** P4 rollout | Một khung cửa sổ, không phải chín bản sao chép tay |
+| Cổng #21 dựng ở **P1**, không phải P5 | P2→P5 đều là phiên giao diện; cổng có sớm thì bốn phiên sau được canh, dựng muộn thì chỉ canh được chính nó |
+| Lệnh #1 đứng đầu | Là lệnh duy nhất làm **mất doanh thu ngay** và có mặt pháp lý |
+
+### 🔴 Điểm GĐ phải nói trước, không giấu tới lúc code
+
+**Lệnh #1 có một quyết định pháp lý ẩn trong đó.** Nối dây `prescription_ref` là 5 dòng. Nhưng
+đơn tạo từ ảnh nằm ở `DRAFT`, còn luật bán hàng chỉ chấp nhận `VALIDATED`/`DISPENSED`. Vậy
+phải chọn:
+
+| Phương án | Được | Mất |
+|---|---|---|
+| **(a)** Ảnh chụp ở quầy tự đặt đơn sang `VALIDATED` | Bán được ngay, đúng tinh thần Chain chốt 31/07 *"chỉ cần có hình chụp bất kỳ"* | Bước "dược sĩ duyệt đơn" thành hình thức — hệ thống ghi *đã duyệt* mà không ai thật sự đọc tờ đơn |
+| **(b)** Thêm nút *"Dược sĩ duyệt"* ngay trên quầy, một chạm | Giữ đúng nghĩa chữ ký dược sĩ; vết audit trung thực | Thêm một chạm cho người đứng quầy; nhà thuốc một người thì chính họ vừa chụp vừa duyệt |
+
+**[GĐ] đề xuất (b)**, vì `validated_by` là trường **ghi tên một con người vào một hành vi
+chuyên môn**. Đặt nó tự động nghĩa là hệ thống khai một dược sĩ đã duyệt trong khi không ai
+duyệt — đó là loại sai lệch không hiện ra cho tới lúc thanh tra hỏi. Một chạm rẻ hơn nhiều
+so với một dòng khai sai trong sổ. Nhưng đây là **quyết định của Chain**, không phải của GĐ.
+
+**Kỷ luật #21 chưa được duyệt mà bốn phiên tới đều là phiên giao diện.** Xin duyệt cùng lượt
+với P1 — nếu Chain không duyệt thì GĐ vẫn dựng cổng, chỉ là không nâng thành kỷ luật.

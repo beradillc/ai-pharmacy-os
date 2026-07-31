@@ -25,7 +25,7 @@
 | Kỷ luật bắt buộc **17** (giai đoạn phát triển tính năng) + **18** (trí nhớ ghi vào chỗ đã có) | **2026-07-31** — Chain ban hành chính sách phát triển; ánh xạ vào cấu trúc tài liệu sẵn có thay vì dựng song song |
 | Kỷ luật bắt buộc **19** (đóng mục giao diện phải chạy cổng trình duyệt) | **2026-07-31** — gom 6 cổng vào `make ui-gates` thì lộ ra 2 cổng đã hỏng cùng ngày mà không ai biết |
 | Kỷ luật bắt buộc **20** (Chain nghiệm thu bằng ảnh chụp) | **2026-07-31** — Chain chốt: *"mở trình duyệt test, chụp màn hình lại là coi như xong; xem trên ảnh là đủ"* |
-| Kỷ luật bắt buộc **21** (cổng đo *nhìn thấy được*, không chỉ *có trên trang*) | **2026-08-01** — GĐ đề nghị sau lần thứ **ba** cùng một hình dạng: cổng xanh vì `innerText` đọc được cả phần tràn ngoài khung nhìn. **CHỜ CHAIN DUYỆT** |
+| Kỷ luật bắt buộc **21** (cổng đo *nhìn thấy được*, không chỉ *có trên trang*) | **2026-08-01** — GĐ đề nghị sau lần thứ **ba** cùng một hình dạng: cổng xanh vì `innerText` đọc được cả phần tràn ngoài khung nhìn. **Chain DUYỆT cùng ngày** |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -402,8 +402,7 @@ máy này, khác với văn bản ủy quyền (file này) nay đã có lịch s
       4 cổng nhanh. Một cổng bị đi vòng thường xuyên tệ hơn một lời nhắc được đọc.
 
 21. **Cổng giao diện phải đo NHÌN THẤY ĐƯỢC, không chỉ CÓ TRÊN TRANG.** (2026-08-01, GĐ đề
-    nghị — **CHỜ CHAIN DUYỆT**; ghi ở đây ngay từ lúc đề nghị vì kỷ luật #13 đòi bài học
-    phương pháp vào FILE NÀY chứ không vào nhật ký)
+    nghị — **Chain DUYỆT cùng ngày**, cùng lượt duyệt phiên P1 của kế hoạch §7cv)
 
     `innerText` và `textContent` đọc được **cả phần tràn ra ngoài khung nhìn**. Một cổng
     khẳng định *"màn hình hiện con số lệch"* bằng `innerText` sẽ **xanh trọn vẹn** trong lúc
