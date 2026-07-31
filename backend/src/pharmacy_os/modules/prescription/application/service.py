@@ -212,6 +212,33 @@ class PrescriptionService:
             content_type=rx.image_content_type,
         )
 
+    async def list_archive(
+        self, ctx: RequestContext, *, limit: int = 50, offset: int = 0
+    ) -> list[PrescriptionOutput]:
+        """Danh sách đơn thuốc **đã có ảnh** cho màn Cài đặt → Lưu trữ.
+
+        Hai quyền, hai câu hỏi khác nhau (Chain giao 2026-07-31):
+
+        * ``rx.image.read`` — *được xem loại dữ liệu này không*. Bắt buộc.
+        * ``archive.read.chain`` — *được xem của mấy chi nhánh*. Có thì thấy **toàn bộ
+          chi nhánh** của nhà thuốc; không có thì chỉ chi nhánh đang đăng nhập.
+
+        Phạm vi được nới bằng cách **bỏ bộ lọc chi nhánh**, không phải bằng một truy vấn
+        thứ hai — bộ lọc ``tenant_id`` nằm trong repository và không có nhánh nào bỏ qua nó.
+
+        **Không** ghi ``RX_IMAGE_VIEWED`` ở đây: danh sách không mang nội dung ảnh, và ghi
+        vết cho mỗi lần mở màn sẽ chôn vùi đúng những dòng đáng đọc — cùng lý do
+        ``CUSTOMER_SENSITIVE_AUTO_CHECK`` được tách khỏi ``CUSTOMER_SENSITIVE_READ``.
+        """
+        require_permission(ctx, "rx.image.read")
+        toan_chuoi = ctx.has("archive.read.chain")
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            rows = await repo.list_archive(
+                branch_id=None if toan_chuoi else ctx.branch_id, limit=limit, offset=offset
+            )
+        return [PrescriptionOutput.of(rx) for rx in rows]
+
     async def _get_or_404(self, prescription_id: UUID, ctx: RequestContext) -> Prescription:
         async with self._uow_factory() as uow:
             repo = self._repo_factory(uow, ctx)

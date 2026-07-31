@@ -229,3 +229,62 @@ def test_don_tu_anh_de_trong_lieu_VAN_duyet_duoc(client: TestClient) -> None:
     r = client.post(f"/api/v1/prescriptions/{rx_id}/validate")
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "VALIDATED"
+
+
+# ─── Khách không để lại số điện thoại (Chain chốt 2026-07-31, lượt hai) ──────────
+
+
+def _don_tu_anh(client: TestClient, *, co_khach: bool, source: str = "IMAGE") -> Any:
+    body: dict[str, object] = {
+        "doctor_name": "BS. Thử",
+        "source": source,
+        "items": [
+            {
+                "drug_id": _drug(client),
+                "quantity": "10",
+                "dose": "" if source == "IMAGE" else "1 viên",
+                "frequency": "" if source == "IMAGE" else "2 lần/ngày",
+                "duration": "" if source == "IMAGE" else "5 ngày",
+            }
+        ],
+    }
+    if co_khach:
+        body["customer_id"] = _customer(client)
+    return client.post("/api/v1/prescriptions", json=body)
+
+
+def test_don_tu_ANH_khong_can_khach(client: TestClient) -> None:
+    """Chain: *"không cung cấp sdt, chỉ cần chụp đơn thuốc là xong"*.
+
+    Cái mất đã ghi ở `Prescription.customer_id`: không tra lại được theo khách, không xoá
+    theo yêu cầu chủ thể được. Chain nghe và quyết ưu tiên việc bán hàng chạy được ở quầy.
+    """
+    r = _don_tu_anh(client, co_khach=False)
+    assert r.status_code == 201, r.text
+    assert r.json()["customer_id"] is None
+
+
+def test_don_nhap_TAY_van_bat_buoc_co_khach(client: TestClient) -> None:
+    """🔴 Nới cho ảnh KHÔNG được nới cho đường nhập tay."""
+    assert _don_tu_anh(client, co_khach=False, source="MANUAL").status_code == 422
+
+
+def test_luu_tru_chi_liet_ke_don_DA_CO_ANH(client: TestClient) -> None:
+    """Lưu trữ là nơi tra chứng từ — đơn chưa chụp thì không có gì để lưu trữ."""
+    _rx(client)  # đơn không ảnh
+    co_anh = _rx(client)
+    _attach(client, co_anh)
+
+    r = client.get("/api/v1/prescriptions/archive")
+    assert r.status_code == 200, r.text
+    assert [x["id"] for x in r.json()] == [co_anh]
+
+
+def test_luu_tru_KHONG_kem_noi_dung_anh(client: TestClient) -> None:
+    """Danh sách không mang ảnh — xem ảnh phải hỏi đích danh, và lượt đó mới ghi vết."""
+    rx_id = _rx(client)
+    _attach(client, rx_id)
+
+    dong = client.get("/api/v1/prescriptions/archive").json()[0]
+    assert dong["has_image"] is True
+    assert "image_data" not in dong

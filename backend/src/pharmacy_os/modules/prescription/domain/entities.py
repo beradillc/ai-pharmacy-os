@@ -76,7 +76,17 @@ class Prescription:
 
     tenant_id: UUID
     branch_id: UUID
-    customer_id: UUID
+    customer_id: UUID | None
+    """``None`` = đơn chụp từ ảnh cho khách **không để lại số điện thoại** (Chain chốt
+    2026-07-31: *"không cung cấp sdt, chỉ cần chụp đơn thuốc là xong"*).
+
+    🔴 Cái mất, ghi ở đây vì đây là chỗ người ta đọc khi thắc mắc: một ảnh đơn không gắn
+    với ai thì **không tra cứu lại được theo khách**, và **không xoá theo yêu cầu của chủ
+    thể dữ liệu được** (Luật 91/2025) — không có cách nào biết ảnh nào là của ai. Vẫn tra
+    được theo chi nhánh + thời gian trong màn Lưu trữ, nên không phải dữ liệu mồ côi hoàn
+    toàn. Đơn **nhập tay** vẫn bắt buộc có khách; nới chỉ áp cho ``PrescriptionSource.IMAGE``,
+    và cưỡng chế nằm ở tầng lược đồ (``CreatePrescriptionRequest``)."""
+
     doctor_name: str
     source: PrescriptionSource = PrescriptionSource.MANUAL
     doctor_license: str | None = None

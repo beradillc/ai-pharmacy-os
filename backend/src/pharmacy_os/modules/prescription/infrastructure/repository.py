@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy import select
@@ -42,6 +43,25 @@ class SqlAlchemyPrescriptionRepository:
         row.image_data = prescription.image_data
         row.image_content_type = prescription.image_content_type
         await self._session.flush()
+
+    async def list_archive(
+        self, *, branch_id: UUID | None, limit: int = 50, offset: int = 0
+    ) -> Sequence[Prescription]:
+        stmt = select(PrescriptionORM).where(
+            PrescriptionORM.tenant_id == self._ctx.tenant_id,
+            PrescriptionORM.image_data.is_not(None),
+        )
+        if branch_id is not None:
+            stmt = stmt.where(PrescriptionORM.branch_id == branch_id)
+        stmt = (
+            # `id` làm khoá phụ để hai lượt gọi liên tiếp không cho hai thứ tự khác nhau
+            # khi nhiều đơn trùng dấu thời gian.
+            stmt.order_by(PrescriptionORM.created_at.desc(), PrescriptionORM.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [to_domain(r) for r in rows]
 
     async def get(self, prescription_id: UUID) -> Prescription | None:
         stmt = select(PrescriptionORM).where(

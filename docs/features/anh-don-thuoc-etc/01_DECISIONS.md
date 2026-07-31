@@ -39,14 +39,14 @@ có chỗ nào để bấm. Nửa nối dây — từ phía sổ nợ đọc y h
 | "Đơn ETC ngày ấy có đơn thuốc gốc không?" | Ảnh gắn trên bản ghi `prescriptions` |
 | "Ai đã xem ảnh đơn của bệnh nhân này?" | Audit `RX_IMAGE_VIEWED` — xem Bước 1 mục 4 |
 | "Ảnh có bị lộ khi ai đó lấy được bản `pg_dump` không?" | Không — mã hoá at-rest bằng đúng key ring đã có |
-| **"Lưu ảnh đơn bao lâu thì được xoá?"** | 🔴 **CHƯA TRẢ LỜI ĐƯỢC** — xem Bước 1 mục 1 |
+| **"Lưu ảnh đơn bao lâu thì được xoá?"** | ⏸️ **VĨNH VIỄN, tạm thời** — Chain chốt 2026-07-31: *"đến khi lập CSDL chính thức thì hỏi lại"*. Không tự đặt lịch xoá, và **không** coi đây là câu trả lời cuối |
 
 ## Bước 1 — Checklist Compliance / Privacy by Design
 
 | # | Mục | Trả lời |
 |---|---|---|
-| 1 | **Căn cứ pháp lý** | 🟠 **Có cho việc LƯU, chưa kết luận được cho THỜI HẠN lưu.** Luật Dược **Điều 74**: *"Đơn thuốc là căn cứ để bán thuốc, cấp phát thuốc"*; GPP TT02/2018 **I-1a.II.4.b** đòi sổ sách ghi *"số hiệu đơn thuốc + người kê đơn + cơ sở hành nghề đối với thuốc kê đơn"*. Lưu chính ảnh đơn là cách chứng minh mạnh hơn mức tối thiểu ấy. **Thời hạn lưu thì chưa**: `Thông-tư-18-2026.SUMMARY.md` mục 8 ghi **TT 26/2025/TT-BYT** (*thời hạn lưu đơn thuốc GN/HT*) là văn bản **còn thiếu, chặn kết luận**. Theo R-10: ghi **"chưa kết luận được"**, KHÔNG tự đặt một thời hạn |
-| 2 | **Đồng ý** | **Không dựa trên đồng ý.** Cơ sở là **nghĩa vụ pháp lý** của cơ sở bán lẻ khi bán thuốc kê đơn (Điều 74), không phải sự tự nguyện của khách — hỏi đồng ý rồi khách từ chối thì nhà thuốc vẫn phải có căn cứ để bán. 🟠 Nhưng phải **thông báo** cho khách rằng ảnh được lưu; chưa có chỗ hiển thị thông báo đó ⇒ ghi là nợ, không tự bịa câu chữ |
+| 1 | **Căn cứ pháp lý** | 🟠 **Có cho việc LƯU. Thời hạn: Chain chốt VĨNH VIỄN tạm thời** (2026-07-31), hỏi lại khi lập CSDL chính thức — nên đây là **quyết định vận hành, không phải kết luận pháp lý**; văn bản vẫn còn thiếu. Luật Dược **Điều 74**: *"Đơn thuốc là căn cứ để bán thuốc, cấp phát thuốc"*; GPP TT02/2018 **I-1a.II.4.b** đòi sổ sách ghi *"số hiệu đơn thuốc + người kê đơn + cơ sở hành nghề đối với thuốc kê đơn"*. Lưu chính ảnh đơn là cách chứng minh mạnh hơn mức tối thiểu ấy. **Thời hạn lưu thì chưa**: `Thông-tư-18-2026.SUMMARY.md` mục 8 ghi **TT 26/2025/TT-BYT** (*thời hạn lưu đơn thuốc GN/HT*) là văn bản **còn thiếu, chặn kết luận**. Theo R-10: ghi **"chưa kết luận được"**, KHÔNG tự đặt một thời hạn |
+| 2 | **Đồng ý** | **Không dựa trên đồng ý.** Cơ sở là **nghĩa vụ pháp lý** của cơ sở bán lẻ khi bán thuốc kê đơn (Điều 74), không phải sự tự nguyện của khách. ✅ **Thông báo bằng MIỆNG là đủ** — Chain chốt 2026-07-31. Không dựng ô đánh dấu đồng ý, không lưu bằng chứng thông báo: bịa ra một dấu tick *"đã thông báo"* mà không ai thật sự bấm còn tệ hơn không có gì |
 | 3 | **Phân loại dữ liệu** | 🔴 **DỮ LIỆU CÁ NHÂN NHẠY CẢM (sức khoẻ).** Ảnh mang tên, tuổi, **chẩn đoán**, tên bác sĩ. Đây là lần đầu hệ thống lưu một khối nhạy cảm **không cấu trúc** — không cắt nhỏ được, không che từng trường như đã làm với số điện thoại (ADR-0002). Áp toàn bộ các bước còn lại ở mức nghiêm ngặt, không có ngoại lệ "làm tạm cho demo" |
 | 4 | **Audit log bất biến** | Bắt buộc, và **phép ĐỌC cũng phải ghi vết**, không chỉ phép ghi — cùng lý do `CUSTOMER_SENSITIVE_READ` tồn tại. Hai `AuditAction` mới: `RX_IMAGE_ATTACHED` (18 ký tự), `RX_IMAGE_VIEWED` (16). Cột `audit_logs.action` là `varchar(64)` (đã đo bằng SQL trên `nt650v2`) ⇒ vừa. `context` **không** mang ảnh và không mang chẩn đoán — chỉ id đơn |
 | 5 | **RBAC** | ✅ Nền đã đủ (JWT thật). **Không thêm quyền mới cho việc gắn ảnh**: dùng `rx.create` (ai tạo được đơn thì gắn được ảnh của chính đơn đó). 🟠 **Nhưng việc XEM lại ảnh cần Chain quyết** — xem "Câu hỏi còn treo" |
@@ -120,3 +120,57 @@ Không xoá khỏi sổ, đánh dấu để phiên sau biết vì sao im lặng 
 | Luân chuyển tồn kho giữa chi nhánh (Luật 44/2024 Đ47a.1.d) | ⏸️ **Tạm đóng** — Chain 2026-07-31 |
 | `docs/13` dòng 14 ghi "KHÔNG TÌM THẤY" cho nguồn đã tìm thấy | 🟠 **Còn treo** — sửa tài liệu, rẻ nhất trong nhóm |
 | TT 26/2025/TT-BYT thiếu tệp | 🔴 **Còn treo, và nay CHẶN mục này** — nó là văn bản quyết định thời hạn lưu đơn |
+
+---
+
+## Bổ sung 2026-07-31 (lượt hai) — Chain chốt bốn điều
+
+| # | Quyết định | Hệ quả |
+|---|---|---|
+| 1 | **Màn xem lại nằm ở Cài đặt → Lưu trữ.** Dữ liệu hiển thị **theo phân quyền**; cao nhất là Chủ chuỗi xem toàn bộ các chi nhánh | Cần màn mới + endpoint danh sách + **một quyền phạm vi mới** |
+| 2 | **Thời hạn lưu: vĩnh viễn, tạm thời.** Hỏi lại khi lập CSDL chính thức | Không viết lịch xoá. Vẫn giữ cờ pháp lý — đây là quyết định vận hành, không phải kết luận |
+| 3 | **Thông báo cho khách bằng miệng là đủ**, có số điện thoại là được | Không dựng ô đánh dấu đồng ý |
+| 4 | **Không có SĐT thì chỉ cần chụp đơn là xong** | 🔴 Đổi mã: `customer_id` đang **bắt buộc** |
+
+### 🔴 Quyền phạm vi tách khỏi quyền nội dung
+
+`RequestContext` chỉ mang **một** `branch_id` lấy từ JWT; không có cờ nào nói người này
+thuộc cấp chuỗi. Và `SystemRoleSpec.chain_level` tự khai trong docstring rằng nó *"là ghi
+chú cho người gán vai, không phải ràng buộc được cưỡng chế"*. Nên phạm vi chi nhánh **không
+biểu đạt được** nếu không thêm gì.
+
+Thêm **`archive.read.chain`** — và cố ý tách làm hai câu hỏi độc lập:
+
+| Quyền | Trả lời câu hỏi |
+|---|---|
+| `rx.image.read` | *Được xem **loại dữ liệu** gì* |
+| `archive.read.chain` | *Được xem của **mấy chi nhánh*** |
+
+Không mượn tạm một quyền cấp chuỗi sẵn có (`catalog.update`, `crm.pii.reveal`) làm dấu hiệu
+phạm vi: đó là ghép ngầm hai khái niệm không liên quan, và người sửa sau sẽ không đoán ra vì
+sao sửa quyền danh mục lại làm lộ ảnh đơn thuốc của chi nhánh khác.
+
+Cách ghép: Lưu trữ **luôn** lọc theo `ctx.branch_id`, **trừ khi** người gọi có
+`archive.read.chain` thì bỏ bộ lọc. Mỗi loại dữ liệu trong Lưu trữ vẫn giữ quyền đọc riêng
+của nó — quyền phạm vi chỉ **nới chiều chi nhánh**, không mở thêm loại dữ liệu nào.
+
+### 🔴 Đơn không có khách — đánh đổi Chain đã nghe và đã quyết
+
+`customer_id` chuyển sang **nullable, chỉ cho `source=IMAGE`**. Đơn nhập tay vẫn bắt buộc.
+
+Cái mất, ghi nguyên văn để phiên sau không phải đoán: một ảnh đơn không gắn với ai thì
+**không tra cứu lại được theo khách**, và **không xoá theo yêu cầu của chủ thể dữ liệu
+được** (Luật 91/2025) — vì không có cách nào biết ảnh nào là của ai. GĐ đã nêu; Chain quyết
+ưu tiên việc bán hàng chạy được ở quầy.
+
+Vẫn tra được theo **chi nhánh + thời gian** trong màn Lưu trữ, nên nó không phải dữ liệu
+mồ côi hoàn toàn.
+
+## 4 bước cho lượt hai (chốt, kỷ luật #12)
+
+| # | Việc | Cổng |
+|---|---|---|
+| 1 | ✅ Mục này | — |
+| 2 | Backend: `customer_id` nullable cho ảnh + migration · `GET /prescriptions` lọc theo chi nhánh · quyền `archive.read.chain` | 4 cổng + pg_dump |
+| 3 | Frontend: bỏ ràng buộc khách ở nút chụp · màn **Cài đặt → Lưu trữ** xem lại ảnh | `check-fe` |
+| 4 | Cổng trình duyệt + ảnh nghiệm thu cả 2 khổ | `make ui-gates` + ảnh |

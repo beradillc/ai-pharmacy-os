@@ -15,7 +15,8 @@ from pharmacy_os.core.db.encrypted_types import EncryptedText
 class PrescriptionORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
     __tablename__ = "prescriptions"
 
-    customer_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
+    #: NULL = đơn chụp từ ảnh, khách không để lại số. Xem `Prescription.customer_id`.
+    customer_id: Mapped[UUID | None] = mapped_column(index=True, nullable=True)
     source: Mapped[str] = mapped_column(String(16), nullable=False)
     doctor_name: Mapped[str] = mapped_column(String(200), nullable=False)
     doctor_license: Mapped[str | None] = mapped_column(String(64), nullable=True)

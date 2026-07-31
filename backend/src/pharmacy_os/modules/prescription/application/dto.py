@@ -21,7 +21,7 @@ class PrescriptionItemInput:
 
 @dataclass(slots=True)
 class CreatePrescriptionInput:
-    customer_id: UUID
+    customer_id: UUID | None
     doctor_name: str
     items: list[PrescriptionItemInput] = field(default_factory=list)
     source: PrescriptionSource = PrescriptionSource.MANUAL
@@ -44,7 +44,7 @@ class PrescriptionItemOutput:
 @dataclass(slots=True)
 class PrescriptionOutput:
     id: UUID
-    customer_id: UUID
+    customer_id: UUID | None
     doctor_name: str
     source: str
     doctor_license: str | None

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.prescription.application import PrescriptionService
@@ -37,6 +37,26 @@ def build_router(get_context: ContextDep) -> APIRouter:
         ctx: RequestContext = Depends(get_context),
     ) -> PrescriptionResponse:
         return PrescriptionResponse.of(await service.create_prescription(body.to_input(), ctx))
+
+    @root.get("/archive", response_model=list[PrescriptionResponse])
+    async def list_archive(
+        service: PrescriptionService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+        limit: int = Query(50, ge=1, le=200),
+        offset: int = Query(0, ge=0),
+    ) -> list[PrescriptionResponse]:
+        """Đơn thuốc **đã có ảnh**, mới nhất trước — nguồn của màn Cài đặt → Lưu trữ.
+
+        Đặt TRƯỚC ``/{prescription_id}``: FastAPI khớp route theo thứ tự khai báo, nên nếu
+        đặt sau thì ``archive`` sẽ bị nuốt thành một ``prescription_id`` và trả 422 vì
+        không phải UUID.
+
+        Quyền ``rx.image.read``; thêm ``archive.read.chain`` thì thấy **toàn bộ chi nhánh**.
+        """
+        return [
+            PrescriptionResponse.of(o)
+            for o in await service.list_archive(ctx, limit=limit, offset=offset)
+        ]
 
     @root.get("/{prescription_id}", response_model=PrescriptionResponse)
     async def get_prescription(

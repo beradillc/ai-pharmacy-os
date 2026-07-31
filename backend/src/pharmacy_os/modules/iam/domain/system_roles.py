@@ -35,6 +35,24 @@ SALES_PERMISSIONS = frozenset({"sales.read", "sales.create", "sales.return"})
 #: sơ sức khoẻ của khách, nhưng lại xem được ảnh ghi rõ bệnh của họ.
 #: Gắn ảnh là việc của quầy (``rx.create``); đọc chẩn đoán thì không.
 RX_PERMISSIONS = frozenset({"rx.read", "rx.create", "rx.approve", "rx.dispense", "rx.image.read"})
+
+#: Quyền **PHẠM VI**, không phải quyền nội dung (2026-07-31, Chain giao mục Lưu trữ).
+#:
+#: Hai câu hỏi độc lập, cố ý tách:
+#:   · ``rx.image.read``      — *được xem LOẠI dữ liệu gì*
+#:   · ``archive.read.chain`` — *được xem của MẤY chi nhánh*
+#:
+#: Vì sao phải thêm chứ không mượn tạm một quyền cấp chuỗi sẵn có làm dấu hiệu:
+#: ``RequestContext`` chỉ mang MỘT ``branch_id`` lấy từ JWT, không có cờ nào nói người này
+#: thuộc cấp chuỗi — và ``SystemRoleSpec.chain_level`` tự khai trong docstring rằng nó là
+#: ghi chú cho người gán vai, **không phải ràng buộc được cưỡng chế**. Mượn ``catalog.update``
+#: hay ``crm.pii.reveal`` làm dấu hiệu phạm vi là ghép ngầm hai khái niệm không liên quan:
+#: người sửa sau sẽ không đoán ra vì sao sửa quyền danh mục lại làm lộ ảnh đơn thuốc của
+#: chi nhánh khác.
+#:
+#: Quyền này KHÔNG mở thêm loại dữ liệu nào — nó chỉ nới chiều chi nhánh cho những loại mà
+#: người gọi vốn đã có quyền đọc.
+ARCHIVE_PERMISSIONS = frozenset({"archive.read.chain"})
 CLINICAL_PERMISSIONS = frozenset(
     {"clinical.check", "clinical.accept", "clinical.settings.read", "clinical.settings.write"}
 )
@@ -132,6 +150,7 @@ ALL_PERMISSIONS: frozenset[str] = (
     | IAM_PERMISSIONS
     | AUDIT_PERMISSIONS
     | AUDIT_DASHBOARD_PERMISSIONS
+    | ARCHIVE_PERMISSIONS
     | PRIVACY_PERMISSIONS
     | ANALYTICS_PERMISSIONS
 )
@@ -172,6 +191,10 @@ _CHAIN_PHARMACIST_PERMISSIONS = (
     | PROCUREMENT_PERMISSIONS
     | AUDIT_PERMISSIONS
     | AUDIT_DASHBOARD_PERMISSIONS
+    # Chủ chuỗi xem Lưu trữ của TOÀN BỘ chi nhánh (Chain chốt 2026-07-31) — đây là vai duy
+    # nhất ngoài quản trị hệ thống có quyền phạm vi này. Dược sĩ chi nhánh chỉ thấy chi
+    # nhánh mình: xem ghi chú ở `ARCHIVE_PERMISSIONS`.
+    | ARCHIVE_PERMISSIONS
     | PRIVACY_PERMISSIONS
     | ANALYTICS_PERMISSIONS
     | {"iam.user.read", "iam.role.read"}

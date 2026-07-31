@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Protocol
 from uuid import UUID
 
@@ -33,3 +34,20 @@ class PrescriptionRepository(Protocol):
         ...
 
     async def get(self, prescription_id: UUID) -> Prescription | None: ...
+
+    async def list_archive(
+        self, *, branch_id: UUID | None, limit: int = 50, offset: int = 0
+    ) -> Sequence[Prescription]:
+        """Đơn thuốc **có ảnh**, mới nhất trước — nguồn của màn Lưu trữ.
+
+        ``branch_id is None`` nghĩa là **mọi chi nhánh của tenant**; tầng ứng dụng chỉ
+        truyền ``None`` khi người gọi có ``archive.read.chain``. Đây là chỗ duy nhất phạm
+        vi chi nhánh được nới, và nó nới bằng cách **bỏ một bộ lọc** — không phải bằng cách
+        thêm một truy vấn thứ hai, để không có đường nào trả về dữ liệu của tenant khác.
+
+        Chỉ trả đơn **đã có ảnh**: Lưu trữ là nơi tra chứng từ, còn một đơn chưa chụp thì
+        không có gì để lưu trữ cả.
+
+        **Không** kèm nội dung ảnh — xem `PrescriptionImageOutput` về lý do.
+        """
+        ...

@@ -16,11 +16,11 @@ import base64
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from pharmacy_os.core.audit import AuditAction, AuditLogger
@@ -31,7 +31,7 @@ from pharmacy_os.core.events import InMemoryEventBus
 from pharmacy_os.main import create_app
 from pharmacy_os.models_registry import Base
 from pharmacy_os.modules.iam.application import BootstrapTenantInput, IamService
-from pharmacy_os.modules.iam.domain import CASHIER
+from pharmacy_os.modules.iam.domain import BRANCH_PHARMACIST, CASHIER
 from pharmacy_os.modules.iam.interface import build_repositories
 
 ADMIN_EMAIL = "admin@bera.vn"
@@ -218,3 +218,69 @@ def test_moi_luot_XEM_anh_ghi_mot_dong_audit(client: TestClient, db_path: Path) 
         ).fetchall()
     engine.dispose()
     assert len(rows) == 3  # ba lượt xem, ba dòng — không gộp
+
+
+# ─── Phạm vi chi nhánh trong Lưu trữ (Chain giao 2026-07-31, lượt hai) ───────────
+
+
+def _doi_chi_nhanh(db_path: Path, rx_id: str) -> None:
+    """Chuyển một đơn sang chi nhánh KHÁC, ghi thẳng CSDL.
+
+    🔴 Vì sao phải làm thủ công: hệ thống **chưa có endpoint tạo chi nhánh**, nên một bộ
+    test dựng qua API luôn chỉ có đúng một chi nhánh — và khi đó "lọc theo chi nhánh" với
+    "không lọc gì" cho **cùng một kết quả**. Phiên bản đầu của phép kiểm này vì thế đã
+    **sống sót một đột biến**: tôi cho `toan_chuoi = True` (ai cũng thấy toàn chuỗi) mà
+    24/24 test vẫn xanh. Đúng thứ kỷ luật #14 sinh ra để bắt.
+    """
+    engine = create_engine(f"sqlite:///{db_path}")
+    with engine.begin() as conn:
+        kq = conn.execute(
+            text("UPDATE prescriptions SET branch_id = :b WHERE id = :i"),
+            # 🔴 `.hex` — SQLite lưu UUID **không có dấu gạch**. Truyền dạng có gạch thì
+            # `WHERE` khớp 0 dòng và **im lặng**: phiên bản đầu của helper này làm đúng
+            # vậy, và phép kiểm đỏ như thể sản phẩm hỏng.
+            {"b": uuid4().hex, "i": UUID(rx_id).hex},
+        )
+        # Đo cả phép đo: một lượt UPDATE không sửa được dòng nào phải làm test đỏ NGAY ở
+        # đây, chứ không phải mười dòng sau dưới dạng một khẳng định khó đọc.
+        assert kq.rowcount == 1, f"UPDATE khớp {kq.rowcount} dòng, phải là 1"
+    engine.dispose()
+
+
+def test_duoc_si_CHI_NHANH_khong_thay_don_cua_chi_nhanh_khac(
+    client: TestClient, db_path: Path
+) -> None:
+    """🔴 Phép kiểm quan trọng nhất của lượt này, và nó cần HAI chi nhánh mới có nghĩa.
+
+    `archive.read.chain` là quyền **phạm vi**, tách khỏi quyền nội dung `rx.image.read`.
+    Dược sĩ chi nhánh có cái thứ hai nhưng không có cái thứ nhất.
+    """
+    admin = _login(client)
+    cua_minh = _rx_co_anh(client, admin)
+    cua_chi_nhanh_khac = _rx_co_anh(client, admin)
+    _doi_chi_nhanh(db_path, cua_chi_nhanh_khac)
+
+    _make_staff(client, admin, "ds@bera.vn", BRANCH_PHARMACIST)
+    ds = _login(client, "ds@bera.vn", STAFF_PASSWORD)
+
+    # Dược sĩ chi nhánh: thấy ĐÚNG đơn của chi nhánh mình, không thấy đơn kia.
+    r = client.get("/api/v1/prescriptions/archive", headers=_auth(ds))
+    assert r.status_code == 200, r.text
+    assert [x["id"] for x in r.json()] == [cua_minh]
+
+    # Chủ chuỗi: thấy CẢ HAI. Không có khẳng định này thì "trả rỗng cho mọi người" cũng
+    # qua được cửa.
+    r = client.get("/api/v1/prescriptions/archive", headers=_auth(admin))
+    assert r.status_code == 200, r.text
+    assert {x["id"] for x in r.json()} == {cua_minh, cua_chi_nhanh_khac}
+
+
+def test_thu_ngan_khong_mo_duoc_luu_tru(client: TestClient) -> None:
+    """Lưu trữ hiện ảnh đơn ⇒ cần `rx.image.read`, thứ thu ngân không có."""
+    admin = _login(client)
+    _rx_co_anh(client, admin)
+    _make_staff(client, admin, "tn3@bera.vn", CASHIER)
+    thu_ngan = _login(client, "tn3@bera.vn", STAFF_PASSWORD)
+
+    r = client.get("/api/v1/prescriptions/archive", headers=_auth(thu_ngan))
+    assert r.status_code == 403, r.text

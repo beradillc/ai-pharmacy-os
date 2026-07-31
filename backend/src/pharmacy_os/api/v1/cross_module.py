@@ -283,7 +283,12 @@ def wire_safety_checks(container: Container) -> None:
             return
         basket = await resolve_basket({it.drug_id for it in rx.items}, ctx)
         await run_interaction_check(basket, AiContextType.RX, event.prescription_id, ctx)
-        await run_allergy_check(basket, rx.customer_id, event.prescription_id, ctx)
+        # 🔴 Không có khách thì KHÔNG có gì để đối chiếu dị ứng: dị ứng là thuộc tính của
+        # một người, và `customer_id is None` nghĩa là đơn chụp từ ảnh cho khách không để
+        # lại số (Chain chốt 2026-07-31). Kiểm tra tương tác thuốc-thuốc ở dòng trên VẪN
+        # chạy — nó chỉ cần giỏ thuốc, không cần biết ai mua.
+        if rx.customer_id is not None:
+            await run_allergy_check(basket, rx.customer_id, event.prescription_id, ctx)
 
     event_bus.subscribe(SaleCompleted, on_sale_completed)
     event_bus.subscribe(PrescriptionDispensed, on_prescription_dispensed)
@@ -359,6 +364,10 @@ def wire_medication_history(container: Container) -> None:
         try:
             rx = await prescription.get_prescription(event.prescription_id, ctx)
         except NotFoundError:
+            return
+        # Lịch sử dùng thuốc là hồ sơ CỦA MỘT NGƯỜI — không có khách thì không có hồ sơ
+        # nào để ghi vào. Bỏ qua im lặng là đúng ở đây, không phải nuốt lỗi.
+        if rx.customer_id is None:
             return
         items = [
             MedicationHistoryItemInput(drug_id=it.drug_id, quantity=it.quantity) for it in rx.items
