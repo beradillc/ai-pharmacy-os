@@ -212,6 +212,13 @@ class DrugInfo:
     requires_prescription: bool
     name: str = ""
     unit: str = ""
+    sale_price: Decimal | None = None
+    """Giá bán **niêm yết** của một đơn vị lẻ, hoặc ``None`` khi mã chưa đặt giá.
+
+    Sales cần nó để trả lời đúng một câu: *đơn này có bán lệch giá niêm yết không*
+    (Điều 6.5.i Luật Dược cấm bán cao hơn giá niêm yết; Điều 107.4 buộc niêm yết).
+    ``None`` **không** phải "lệch" — không có giá niêm yết thì không có gì để lệch,
+    và đòi thu ngân giải thích một phép so không tồn tại là vô nghĩa."""
 
 
 @dataclass(frozen=True, slots=True)

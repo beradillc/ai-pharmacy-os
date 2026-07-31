@@ -15,6 +15,7 @@ from pharmacy_os.modules.sales.domain.exceptions import (
     InvalidPrescriptionRefError,
     InvalidReturnError,
     PrescriptionRequiredError,
+    PriceOverrideReasonRequiredError,
     SalesError,
     UnderpaidError,
 )
@@ -33,6 +34,7 @@ from pharmacy_os.modules.sales.domain.ports import (
 from pharmacy_os.modules.sales.domain.rules import (
     ensure_allergy_acknowledged,
     ensure_prescription_valid_for_sale,
+    ensure_price_override_acknowledged,
     ensure_rx_for_etc,
 )
 
@@ -46,6 +48,7 @@ __all__ = [
     "SaleReturned",
     "SoldItem",
     "AllergyAcknowledgementRequiredError",
+    "PriceOverrideReasonRequiredError",
     "EmptyOrderError",
     "InvalidOrderStateError",
     "InvalidPrescriptionRefError",
@@ -64,6 +67,7 @@ __all__ = [
     "PrescriptionInfo",
     "PrescriptionInfoProvider",
     "ensure_allergy_acknowledged",
+    "ensure_price_override_acknowledged",
     "ensure_prescription_valid_for_sale",
     "ensure_rx_for_etc",
 ]

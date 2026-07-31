@@ -49,11 +49,13 @@ from pharmacy_os.modules.sales.domain import (
     SoldItem,
     ensure_allergy_acknowledged,
     ensure_prescription_valid_for_sale,
+    ensure_price_override_acknowledged,
 )
 from pharmacy_os.modules.sales.domain.exceptions import EmptyOrderError
 from pharmacy_os.modules.sales.domain.ports import (
     AllergyRisk,
     AllergyRiskProvider,
+    DrugInfo,
     DrugInfoProvider,
     DrugSalesAggRow,
     OrderRevenueRow,
@@ -132,9 +134,22 @@ class SalesService:
             customer_id=data.customer_id,
             sold_by_user_id=ctx.user_id,
         )
+        so_dong_lech_gia = 0
         try:
             for line in data.lines:
-                requires_rx = await self._resolve_requires_rx(line, ctx)
+                info = await self._drug_info_or_none(line, ctx)
+                requires_rx = (
+                    info.requires_prescription if info is not None else line.requires_prescription
+                )
+                # Mã CHƯA đặt giá niêm yết (`sale_price is None`) không tính là lệch:
+                # không có giá niêm yết thì không có gì để lệch, và đòi thu ngân giải
+                # thích một phép so không tồn tại là vô nghĩa.
+                if (
+                    info is not None
+                    and info.sale_price is not None
+                    and line.unit_price != info.sale_price
+                ):
+                    so_dong_lech_gia += 1
                 order.add_line(
                     SaleLine(
                         drug_id=line.drug_id,
@@ -150,6 +165,7 @@ class SalesService:
             await self._verify_prescription_ref(order, ctx)
             risk = await self._resolve_allergy_risk(order, ctx)
             ensure_allergy_acknowledged(risk, data.allergy_acknowledgement)
+            ensure_price_override_acknowledged(so_dong_lech_gia, data.price_override_reason)
             order.complete()
         except SalesError as exc:
             raise ValidationError(str(exc)) from exc
@@ -185,6 +201,8 @@ class SalesService:
         await self._record_sale_completed(ctx, order.id)
         if risk is not None and risk.conflict_count > 0:
             await self._record_allergy_override(ctx, order.id, risk)
+        if so_dong_lech_gia > 0:
+            await self._record_price_override(ctx, order.id, so_dong_lech_gia)
         return SaleOutput.of(order)
 
     async def accrued_by_customer(
@@ -279,6 +297,31 @@ class SalesService:
                 branch_id=str(ctx.branch_id),
                 conflict_count=str(risk.conflict_count),
                 worst_severity=risk.worst_severity or "",
+            )
+        )
+
+    async def _record_price_override(
+        self, ctx: RequestContext, order_id: UUID, so_dong: int
+    ) -> None:
+        """Ghi vết một đơn bán lệch giá niêm yết (Chain chốt 2026-07-31).
+
+        Chỉ gọi sau khi ``ensure_price_override_acknowledged`` đã cho qua — tới đây nghĩa
+        là người bán ĐÃ ghi lý do. Ghi **số dòng lệch**, không ghi giá từng dòng: chép giá
+        vào đây là biến sổ audit thành bản sao thứ hai của ``sale_lines``, thứ nó đang canh.
+        """
+        if self._audit is None:
+            return
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=AuditAction.SALE_PRICE_OVERRIDE,
+                target_type="sale",
+                target_id=str(order_id),
+            ).with_context(
+                client_ip=ctx.client_ip,
+                branch_id=str(ctx.branch_id),
+                deviation_lines=str(so_dong),
             )
         )
 
@@ -551,11 +594,24 @@ class SalesService:
         info = await self._prescription_info.get(order.prescription_ref, ctx.tenant_id)
         ensure_prescription_valid_for_sale(info.status if info is not None else None)
 
+    async def _drug_info_or_none(self, line: SaleLineInput, ctx: RequestContext) -> DrugInfo | None:
+        """Sự thật catalog cho một dòng, hoặc ``None`` khi không tra được.
+
+        MỘT lượt tra cho cả cờ Rx lẫn giá niêm yết. Tra hai lượt sẽ mở ra khả năng hai
+        câu trả lời đến từ hai trạng thái khác nhau của danh mục — hiếm, nhưng lúc đó
+        đơn sẽ mang cờ Rx của giá cũ hoặc ngược lại, và không có gì báo.
+
+        ``None`` nghĩa là *không biết*, không phải *không có*: bên gọi tự chọn cách xử.
+        Với cờ Rx thì tin bên gọi (hành vi cũ, giữ nguyên); với giá thì **không coi là
+        lệch** — không có giá niêm yết thì không có gì để lệch.
+        """
+        if self._drug_info is None:
+            return None
+        return await self._drug_info.get(line.drug_id, ctx.tenant_id)
+
     async def _resolve_requires_rx(self, line: SaleLineInput, ctx: RequestContext) -> bool:
         """Authoritative Rx status from catalog when known; else the client's flag."""
-        if self._drug_info is None:
-            return line.requires_prescription
-        info = await self._drug_info.get(line.drug_id, ctx.tenant_id)
+        info = await self._drug_info_or_none(line, ctx)
         if info is None:
             return line.requires_prescription  # unknown drug — trust the caller
         return info.requires_prescription

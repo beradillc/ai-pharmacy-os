@@ -494,6 +494,7 @@ class CatalogDrugInfoProvider:
             requires_prescription=drug.prescription_required,
             name=drug.name,
             unit=drug.base_unit,
+            sale_price=drug.sale_price,
         )
 
 

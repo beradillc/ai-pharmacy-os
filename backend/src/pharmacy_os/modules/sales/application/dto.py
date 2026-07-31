@@ -92,6 +92,10 @@ class CreateSaleInput:
     customer_id: UUID | None = None
     currency: str = "VND"
     allergy_acknowledgement: str | None = None
+    #: Lý do bán lệch giá niêm yết (Chain chốt 2026-07-31). ``None`` là bình thường —
+    #: đơn bán đúng giá niêm yết không cần gì. Máy chủ trả 422 nếu đơn CÓ dòng lệch giá
+    #: mà thiếu nó, cùng khuôn ``allergy_acknowledgement``.
+    price_override_reason: str | None = None
     """Lý do người bán vẫn bán dù có cảnh báo dị ứng (Đ-6).
 
     Chỉ cần khi đơn có xung đột dị ứng; mọi đơn khác để ``None``. Có mặc định nên mọi

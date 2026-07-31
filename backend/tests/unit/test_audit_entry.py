@@ -109,6 +109,8 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "CATALOG_DRUG_PRICE_CHANGED",
         "SALE_RETURN_REGISTERED",
         "SALES_ALLERGY_WARNING_OVERRIDDEN",
+        # 2026-07-31: đơn bán lệch giá niêm yết (Đ6.5.i) — Chain chốt cho lệch, đòi lý do.
+        "SALE_PRICE_OVERRIDE",
         "INVENTORY_RECONCILIATION_RESOLVED",
         "ANALYTICS_REORDER_RUN",
         "ANALYTICS_SUGGESTION_MATERIALIZED",

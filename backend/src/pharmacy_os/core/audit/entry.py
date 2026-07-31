@@ -88,6 +88,21 @@ class AuditAction(StrEnum):
     bao nhiêu cảnh báo và mức nặng nhất. Không có nó thì "buộc xác nhận" chỉ là một ô
     nhập chữ rồi trôi mất."""
 
+    SALE_PRICE_OVERRIDE = "SALE_PRICE_OVERRIDE"
+    """Một đơn được bán với giá **khác giá niêm yết** (2026-07-31, Chain chốt).
+
+    Điều 6.5.i Luật Dược cấm bán cao hơn giá niêm yết; Điều 107.4 buộc niêm yết giá.
+    Quyết định của Chain là **cho lệch cả hai chiều, đòi lý do, ghi audit** — nên dòng
+    này chính là thứ duy nhất còn lại để trả lời *"vì sao đơn ấy bán khác giá niêm yết"*.
+
+    Cùng khuôn với :attr:`SALES_ALLERGY_WARNING_OVERRIDDEN`, và cùng lý do: khi cổng là
+    một lời xác nhận chứ không phải lệnh cấm, dòng audit **chính là** cái làm cho lựa
+    chọn đó chịu trách nhiệm được.
+
+    ``context`` mang **số dòng lệch**, không mang giá từng dòng: một đơn `3 dòng lệch` đã
+    đủ để người soát sổ kéo đơn đó ra đọc, còn chép giá từng dòng vào đây là biến sổ audit
+    thành bản sao thứ hai của bảng ``sale_lines`` — thứ nó đang canh."""
+
     CUSTOMER_PHONE_REVEALED = "CUSTOMER_PHONE_REVEALED"
     """Một người bấm xem **số điện thoại đầy đủ** của khách (Chain chốt 2026-07-31).
 

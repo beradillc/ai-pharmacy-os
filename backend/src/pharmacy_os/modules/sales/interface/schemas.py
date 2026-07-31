@@ -43,6 +43,7 @@ class CreateSaleRequest(BaseModel):
     #: Lý do người bán vẫn bán dù có cảnh báo dị ứng (Đ-6). Chỉ cần khi đơn có xung đột.
     #: Chuỗi toàn khoảng trắng KHÔNG tính là đã xác nhận — domain chặn, không phải Field.
     allergy_acknowledgement: str | None = Field(default=None, max_length=500)
+    price_override_reason: str | None = Field(default=None, max_length=255)
 
     def to_input(self) -> CreateSaleInput:
         return CreateSaleInput(
@@ -61,6 +62,7 @@ class CreateSaleRequest(BaseModel):
             customer_id=self.customer_id,
             currency=self.currency,
             allergy_acknowledgement=self.allergy_acknowledgement,
+            price_override_reason=self.price_override_reason,
         )
 
 

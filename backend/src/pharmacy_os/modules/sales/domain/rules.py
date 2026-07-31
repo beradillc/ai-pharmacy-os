@@ -9,6 +9,7 @@ from pharmacy_os.modules.sales.domain.exceptions import (
     AllergyAcknowledgementRequiredError,
     InvalidPrescriptionRefError,
     PrescriptionRequiredError,
+    PriceOverrideReasonRequiredError,
 )
 
 if TYPE_CHECKING:  # pragma: no cover — types only, see note below
@@ -93,4 +94,30 @@ def ensure_allergy_acknowledged(risk: AllergyRisk | None, acknowledgement: str |
         raise AllergyAcknowledgementRequiredError(
             f"Đơn có {risk.conflict_count} cảnh báo dị ứng (nặng nhất: {nang_nhat}). "
             "Phải ghi lý do xác nhận vẫn bán mới hoàn tất được."
+        )
+
+
+def ensure_price_override_acknowledged(deviation_count: int, acknowledgement: str | None) -> None:
+    """Chặn hoàn tất một đơn bán lệch giá niêm yết khi chưa ghi lý do.
+
+    Cùng khuôn với :func:`ensure_allergy_acknowledged`, và cùng lý do: cổng là một lời
+    **xác nhận có chữ**, không phải một lệnh cấm. Thu ngân có lý do chính đáng để bán
+    lệch — khuyến mãi, làm tròn tiền lẻ, giá thoả thuận với khách quen, mã vừa đổi giá
+    mà kệ chưa kịp dán lại. Cấm cứng sẽ đẩy quầy sang chỗ tệ hơn: bán bằng một mã khác,
+    hoặc không cập giá niêm yết nữa để khỏi bị chặn — và khi đó chính giá niêm yết,
+    thứ Điều 107.4 đòi, mới là cái hỏng.
+
+    **Điểm cưỡng chế đặt ở lúc hoàn tất đơn, trên máy chủ**, giống Đ-6: một phép kiểm
+    chỉ chạy lúc thêm hàng vào giỏ là lời khuyên, không phải cổng — máy khách bỏ qua
+    được, và giỏ hàng đổi sau khi nó đã cho qua.
+
+    ``deviation_count == 0`` đi thẳng: không có gì để giải thích. Mã **chưa đặt giá
+    niêm yết** không tính là lệch — xem ``DrugInfo.sale_price``.
+    """
+    if deviation_count == 0:
+        return
+    if acknowledgement is None or not acknowledgement.strip():
+        raise PriceOverrideReasonRequiredError(
+            f"Đơn có {deviation_count} dòng bán lệch giá niêm yết. "
+            "Phải ghi lý do mới hoàn tất được."
         )

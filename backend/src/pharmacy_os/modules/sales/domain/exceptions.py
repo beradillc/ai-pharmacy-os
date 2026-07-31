@@ -45,3 +45,15 @@ class AllergyAcknowledgementRequiredError(SalesError):
     :func:`~pharmacy_os.modules.sales.domain.rules.ensure_allergy_acknowledged` for
     why the gate sits at completion time rather than where the warning is shown.
     """
+
+
+class PriceOverrideReasonRequiredError(SalesError):
+    """Đơn bán lệch giá niêm yết mà chưa ghi lý do.
+
+    Quyết định của Chain (2026-07-31): **cho lệch cả hai chiều, đòi lý do, ghi audit.**
+
+    GĐ đã nêu tại phiên đó rằng Điều 6.5.i Luật Dược cấm bán **cao hơn** giá niêm yết
+    nên đề nghị làm bất đối xứng (cao hơn ⇒ chặn hẳn); Chain giữ nguyên phương án đối
+    xứng. Ghi lại ở đây vì lớp mã này là nơi quyết định đó có hiệu lực — xem
+    ``docs/features/gia-ban-va-thu-tien-quay/01_DECISIONS.md`` mục cờ pháp lý.
+    """
