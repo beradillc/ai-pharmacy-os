@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal
+from typing import Any, cast
 from uuid import UUID
 
 from sqlalchemy import func, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,9 +24,14 @@ from pharmacy_os.modules.inventory.domain.exceptions import (
     InsufficientStockError,
 )
 from pharmacy_os.modules.inventory.domain.fefo import BatchAvailability
-from pharmacy_os.modules.inventory.domain.ports import BatchStockRow, DrugOnHandRow
+from pharmacy_os.modules.inventory.domain.ports import (
+    BatchStockRow,
+    DrugOnHandRow,
+    LocationStockRow,
+)
 from pharmacy_os.modules.inventory.infrastructure.models import (
     ProductBatchORM,
+    StockAtLocationORM,
     StockBalanceORM,
     StockMovementORM,
     StockReconciliationNeededORM,
@@ -199,6 +207,8 @@ class SqlAlchemyMovementRepository:
                 ref_type=movement.ref_type,
                 ref_id=movement.ref_id,
                 occurred_at=movement.occurred_at,
+                from_location_id=movement.from_location_id,
+                to_location_id=movement.to_location_id,
             )
         )
         try:
@@ -286,6 +296,14 @@ class SqlAlchemyBalanceRepository:
         self._session.add(row)
         await self._session.flush()
         return row.quantity
+
+    async def for_batch(self, batch_id: UUID) -> Decimal:
+        stmt = select(func.coalesce(func.sum(StockBalanceORM.quantity), 0)).where(
+            StockBalanceORM.tenant_id == self._ctx.tenant_id,
+            StockBalanceORM.branch_id == self._ctx.branch_id,
+            StockBalanceORM.batch_id == batch_id,
+        )
+        return Decimal(str((await self._session.execute(stmt)).scalar_one()))
 
     async def on_hand(self, drug_id: UUID, branch_id: UUID) -> Decimal:
         stmt = select(func.coalesce(func.sum(StockBalanceORM.quantity), 0)).where(
@@ -401,3 +419,99 @@ def _batch_to_domain(row: ProductBatchORM) -> ProductBatch:
         cost_price=row.cost_price,
         quantity_received=row.quantity_received,
     )
+
+
+class SqlAlchemyStockAtLocationRepository:
+    """Sổ **nằm ở đâu**. Luôn ≤ ``stock_balances`` — bất biến kiểm ở tầng ứng dụng."""
+
+    def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
+        self._session = session
+        self._ctx = ctx
+
+    async def put_away(
+        self, *, drug_id: UUID, batch_id: UUID, location_id: UUID, delta: Decimal
+    ) -> None:
+        """Cộng dồn *delta* vào một (lô, ô), tạo dòng nếu chưa có.
+
+        🔴 Số học nằm **trong** câu ``UPDATE``, không phải đọc-rồi-ghi ở Python — cùng lý do
+        đã ghi ở :meth:`SqlAlchemyBalanceRepository.adjust`: đọc rồi ghi là lost update kinh
+        điển, và hai người cất hàng cùng lúc sẽ nuốt mất một lượt mà không để lại dấu.
+        """
+        stmt = (
+            update(StockAtLocationORM)
+            .where(
+                StockAtLocationORM.tenant_id == self._ctx.tenant_id,
+                StockAtLocationORM.branch_id == self._ctx.branch_id,
+                StockAtLocationORM.batch_id == batch_id,
+                StockAtLocationORM.location_id == location_id,
+            )
+            .values(quantity=StockAtLocationORM.quantity + delta)
+        )
+        kq = await self._session.execute(stmt)
+        # `CursorResult` mới có `rowcount`; `Result` chung thì không, nên mypy --strict
+        # từ chối. Ép kiểu ở đây thay vì bỏ qua bằng `type: ignore`: một câu UPDATE luôn
+        # trả về CursorResult, và nói ra điều đó rõ hơn là im lặng tắt phép kiểm.
+        if cast("CursorResult[Any]", kq).rowcount == 0:
+            self._session.add(
+                StockAtLocationORM(
+                    tenant_id=self._ctx.tenant_id,
+                    branch_id=self._ctx.branch_id,
+                    drug_id=drug_id,
+                    batch_id=batch_id,
+                    location_id=location_id,
+                    quantity=delta,
+                )
+            )
+        await self._session.flush()
+
+    async def total_for_batch(self, batch_id: UUID) -> Decimal:
+        stmt = select(func.coalesce(func.sum(StockAtLocationORM.quantity), 0)).where(
+            StockAtLocationORM.tenant_id == self._ctx.tenant_id,
+            StockAtLocationORM.branch_id == self._ctx.branch_id,
+            StockAtLocationORM.batch_id == batch_id,
+        )
+        return Decimal(str((await self._session.execute(stmt)).scalar_one()))
+
+    async def _rows(self, *conds: object) -> list[LocationStockRow]:
+        """Ghép sẵn lô + hạn dùng ngay trong truy vấn.
+
+        Nối bảng ở đây thay vì tra lần hai ở tầng ứng dụng: người đứng quầy cần **ô, lô,
+        HSD, số lượng** cùng một lúc, và trả về một nửa rồi bắt bên gọi đi tìm nốt là cách
+        đẻ ra N+1 lượt gọi cho một màn hình đang có người đứng chờ.
+        """
+        stmt = (
+            select(
+                StockAtLocationORM.drug_id,
+                StockAtLocationORM.batch_id,
+                StockAtLocationORM.location_id,
+                ProductBatchORM.lot_no,
+                ProductBatchORM.expiry_date,
+                StockAtLocationORM.quantity,
+            )
+            .join(ProductBatchORM, ProductBatchORM.id == StockAtLocationORM.batch_id)
+            .where(
+                StockAtLocationORM.tenant_id == self._ctx.tenant_id,
+                StockAtLocationORM.branch_id == self._ctx.branch_id,
+                StockAtLocationORM.quantity > 0,
+                *conds,  # type: ignore[arg-type]
+            )
+            .order_by(ProductBatchORM.expiry_date, ProductBatchORM.lot_no)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return [
+            LocationStockRow(
+                drug_id=r[0],
+                batch_id=r[1],
+                location_id=r[2],
+                lot_no=r[3],
+                expiry_date=r[4],
+                quantity=r[5],
+            )
+            for r in rows
+        ]
+
+    async def rows_for_drug(self, drug_id: UUID) -> Sequence[LocationStockRow]:
+        return await self._rows(StockAtLocationORM.drug_id == drug_id)
+
+    async def rows_at_location(self, location_id: UUID) -> Sequence[LocationStockRow]:
+        return await self._rows(StockAtLocationORM.location_id == location_id)

@@ -102,6 +102,8 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "SALE_VNPAY_CANCELLED",
         "INVENTORY_STOCK_RECEIVED",
         "INVENTORY_STOCK_DISPENSED",
+        # 2026-07-31 (V2 Phase 2): cất hàng vào ô — quyết định người đi lấy được chỉ tới đâu.
+        "INVENTORY_PUT_AWAY",
         "PROCUREMENT_PO_ORDERED",
         "PROCUREMENT_GRN_CONFIRMED",
         "CLINICAL_INTERACTION_CHECKED",

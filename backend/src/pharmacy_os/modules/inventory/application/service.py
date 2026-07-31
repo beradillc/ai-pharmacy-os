@@ -25,6 +25,7 @@ from pharmacy_os.modules.inventory.application.dto import (
     DispenseOutput,
     GoodsReceiptLine,
     NearExpiryItem,
+    PutAwayOutput,
     ReceiptOutput,
     ReceiveStockInput,
     ReconciliationOutput,
@@ -34,17 +35,25 @@ from pharmacy_os.modules.inventory.application.dto import (
 from pharmacy_os.modules.inventory.domain import (
     DuplicateMovementError,
     InsufficientStockError,
+    LocationInfoProvider,
+    LocationStockRow,
     LotExpiryMismatchError,
     LowStockDetected,
     MovementType,
+    PickCandidate,
     ProductBatch,
+    PutAwayError,
     ReconciliationAlreadyResolvedError,
+    StockAtLocationRepository,
     StockMovedIn,
     StockMovedOut,
     StockMovement,
     StockReconciliationNeeded,
     StockShortfallDetected,
     allocate_fefo,
+    chua_xep_o,
+    ensure_can_put_away,
+    sort_pick_candidates,
 )
 from pharmacy_os.modules.inventory.domain.ports import (
     BalanceRepository,
@@ -74,6 +83,7 @@ BatchRepoFactory = Callable[[UnitOfWork, RequestContext], BatchRepository]
 MovementRepoFactory = Callable[[UnitOfWork, RequestContext], MovementRepository]
 BalanceRepoFactory = Callable[[UnitOfWork, RequestContext], BalanceRepository]
 ReconciliationRepoFactory = Callable[[UnitOfWork, RequestContext], StockReconciliationRepository]
+AtLocationRepoFactory = Callable[[UnitOfWork, RequestContext], StockAtLocationRepository]
 
 
 class InventoryService:
@@ -87,6 +97,8 @@ class InventoryService:
         audit: AuditLogger,
         *,
         reorder_point: Decimal = Decimal("0"),
+        at_location_repo_factory: AtLocationRepoFactory | None = None,
+        locations: LocationInfoProvider | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._batches = batch_repo_factory
@@ -95,6 +107,11 @@ class InventoryService:
         self._reconciliations = reconciliation_repo_factory
         self._audit = audit
         self._reorder_point = reorder_point
+        # 🔴 Tuỳ chọn, mặc định `None`: mọi bên gọi đang có — kể cả hàng chục test dựng
+        # service bằng tay — chạy nguyên vẹn mà không sửa một dòng. Chưa cấu hình thì các
+        # use-case vị trí trả rỗng hoặc từ chối tường minh, KHÔNG ném AttributeError.
+        self._at_location = at_location_repo_factory
+        self._locations = locations
 
     async def receive_stock(self, data: ReceiveStockInput, ctx: RequestContext) -> ReceiptOutput:
         """Receive a batch: create it (or fold into an existing same-lot batch — PA B),
@@ -688,3 +705,145 @@ class InventoryService:
                 if len(page) < _STOCK_REPORT_BATCH:
                     return
                 offset += _STOCK_REPORT_BATCH
+
+    # ── BERAS V2 Phase 2: tồn theo vị trí ─────────────────────────────────────────
+
+    async def put_away(
+        self,
+        *,
+        batch_id: UUID,
+        location_id: UUID,
+        quantity: Decimal,
+        ctx: RequestContext,
+    ) -> PutAwayOutput:
+        """Cất hàng của một lô vào một ô.
+
+        Không tạo hàng mới: hàng đã tồn tại trong ``stock_balances`` từ lúc nhận. Việc này
+        chỉ **nói ra nó đang nằm đâu** — nên nó ghi một ``StockMovement`` loại ``TRANSFER``
+        với ``to_location_id``, và ``TRANSFER`` cố ý **không đổi tổng tồn** (xem
+        ``StockMovement.signed_quantity``: chỉ ``OUT`` mới âm).
+
+        Quyền ``inventory.receive`` — cất hàng lên kệ là việc của người nhận hàng, cùng một
+        đôi tay. Không tạo quyền mới cho một thao tác thuộc cùng một công việc.
+
+        Raises :class:`NotFoundError` nếu lô hoặc ô không thuộc chi nhánh;
+        :class:`ValidationError` nếu ô đã ngừng hoạt động hoặc xếp vượt tồn của lô.
+        """
+        require_permission(ctx, "inventory.receive")
+        if self._locations is None or self._at_location is None:
+            raise ValidationError("Chưa bật tính năng vị trí lưu trữ")
+
+        o = await self._locations.get(location_id, ctx.tenant_id, ctx.branch_id)
+        if o is None:
+            raise NotFoundError(f"Không tìm thấy vị trí {location_id}")
+
+        async with self._uow_factory() as uow:
+            batches = self._batches(uow, ctx)
+            lo = await batches.get(batch_id)
+            if lo is None:
+                raise NotFoundError(f"Không tìm thấy lô {batch_id}")
+
+            balances = self._balances(uow, ctx)
+            ton_cua_lo = await balances.for_batch(batch_id)
+            at_loc = self._at_location(uow, ctx)
+            dang_xep = await at_loc.total_for_batch(batch_id)
+
+            try:
+                ensure_can_put_away(
+                    dang_xep=dang_xep,
+                    ton_cua_lo=ton_cua_lo,
+                    them=quantity,
+                    o_dang_hoat_dong=o.is_active,
+                )
+            except PutAwayError as exc:
+                raise ValidationError(str(exc)) from exc
+
+            await at_loc.put_away(
+                drug_id=lo.drug_id, batch_id=batch_id, location_id=location_id, delta=quantity
+            )
+            movements = self._movements(uow, ctx)
+            await movements.add(
+                StockMovement(
+                    drug_id=lo.drug_id,
+                    batch_id=batch_id,
+                    branch_id=ctx.branch_id,
+                    tenant_id=ctx.tenant_id,
+                    type=MovementType.TRANSFER,
+                    quantity=quantity,
+                    ref_type="PUTAWAY",
+                    to_location_id=location_id,
+                )
+            )
+            await uow.commit()
+
+        await self._record_putaway(ctx, batch_id, o.path, quantity)
+        return PutAwayOutput(
+            batch_id=batch_id,
+            location_id=location_id,
+            location_path=o.path,
+            quantity=quantity,
+            chua_xep_o=chua_xep_o(ton_cua_lo=ton_cua_lo, dang_xep=dang_xep + quantity),
+        )
+
+    async def where_is(self, drug_id: UUID, ctx: RequestContext) -> list[PickCandidate]:
+        """Thuốc này đang nằm ở những ô nào — **đã sắp theo thứ tự lấy hàng**.
+
+        Sắp ngay ở đây chứ không để màn hình tự sắp: FEFO là quy tắc **nghiệp vụ**, và mỗi
+        màn hình tự sắp lấy là mỗi màn hình có cơ hội sắp sai một kiểu khác nhau.
+
+        Quyền ``inventory.read`` — ai đứng quầy cũng cần biết đi lấy ở đâu.
+        """
+        require_permission(ctx, "inventory.read")
+        if self._locations is None or self._at_location is None:
+            return []
+
+        async with self._uow_factory() as uow:
+            rows = await self._at_location(uow, ctx).rows_for_drug(drug_id)
+        if not rows:
+            return []
+
+        info = await self._locations.many(
+            frozenset(r.location_id for r in rows), ctx.tenant_id, ctx.branch_id
+        )
+        ung_vien = [
+            PickCandidate(
+                location_id=r.location_id,
+                location_path=info[r.location_id].path,
+                pick_order=info[r.location_id].pick_order,
+                batch_id=r.batch_id,
+                lot_no=r.lot_no,
+                expiry_date=r.expiry_date,
+                quantity=r.quantity,
+            )
+            for r in rows
+            if r.location_id in info
+        ]
+        return sort_pick_candidates(ung_vien)
+
+    async def stock_at_location(
+        self, location_id: UUID, ctx: RequestContext
+    ) -> list[LocationStockRow]:
+        """Ô này đang giữ những lô nào — nguồn của câu *"ô A01 có thuốc gì"*."""
+        require_permission(ctx, "inventory.read")
+        if self._at_location is None:
+            return []
+        async with self._uow_factory() as uow:
+            return list(await self._at_location(uow, ctx).rows_at_location(location_id))
+
+    async def _record_putaway(
+        self, ctx: RequestContext, batch_id: UUID, path: str, quantity: Decimal
+    ) -> None:
+        await self._audit.record(
+            AuditEntry(
+                actor_user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id,
+                action=AuditAction.INVENTORY_PUT_AWAY,
+                target_type="batch",
+                target_id=str(batch_id),
+            ).with_context(
+                client_ip=ctx.client_ip,
+                branch_id=str(ctx.branch_id),
+                location_path=path,
+                quantity=str(quantity),
+            )
+        )

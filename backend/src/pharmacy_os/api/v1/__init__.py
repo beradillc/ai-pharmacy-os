@@ -19,6 +19,7 @@ from pharmacy_os.api.v1.cross_module import (
     CatalogDrugMasterProvider,
     CrmClinicalAllergyRiskProvider,
     IamAuthReauthProvider,
+    LocationServiceInfoProvider,
     PrescriptionInfoAdapter,
     SalesLoyaltyAccrualReader,
     wire_goods_receipt_stock_in,
@@ -43,6 +44,7 @@ from pharmacy_os.modules.crm.interface import register as register_crm
 from pharmacy_os.modules.iam.application import AuthService
 from pharmacy_os.modules.iam.interface import register as register_iam
 from pharmacy_os.modules.inventory.interface import register as register_inventory
+from pharmacy_os.modules.location.application import LocationService
 from pharmacy_os.modules.location.interface import register as register_location
 from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.interface import register as register_prescription
@@ -65,8 +67,18 @@ def build_api_router(container: Container) -> APIRouter:
     api.include_router(audit_dashboard_router)
     api.include_router(privacy_router)
     api.include_router(register_catalog(container, get_context))
-    api.include_router(register_inventory(container, get_context))
-    api.include_router(register_location(container, get_context))
+    # 🔴 Thứ tự có ý nghĩa: `location` phải đăng ký TRƯỚC để `LocationService` có mặt
+    # trong container khi `inventory` dựng adapter đọc sơ đồ. Đây là điểm nối duy nhất
+    # giữa hai module, và nó chảy một chiều: kho hỏi sơ đồ, sơ đồ không hỏi kho.
+    location_router = register_location(container, get_context)
+    api.include_router(
+        register_inventory(
+            container,
+            get_context,
+            locations=LocationServiceInfoProvider(container.resolve(LocationService)),
+        )
+    )
+    api.include_router(location_router)
     api.include_router(register_prescription(container, get_context))
     # Clinical: deterministic interaction check + AI-explanation audit (mock LLM).
     api.include_router(register_clinical(container, get_context))

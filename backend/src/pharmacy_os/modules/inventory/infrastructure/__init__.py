@@ -10,10 +10,12 @@ from pharmacy_os.modules.inventory.infrastructure.repository import (
     SqlAlchemyBalanceRepository,
     SqlAlchemyBatchRepository,
     SqlAlchemyMovementRepository,
+    SqlAlchemyStockAtLocationRepository,
     SqlAlchemyStockReconciliationRepository,
 )
 
 __all__ = [
+    "SqlAlchemyStockAtLocationRepository",
     "ProductBatchORM",
     "StockMovementORM",
     "StockBalanceORM",

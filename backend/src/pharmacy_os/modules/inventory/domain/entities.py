@@ -81,6 +81,11 @@ class StockMovement:
     quantity: Decimal  # always positive; direction implied by ``type``
     ref_type: str | None = None
     ref_id: UUID | None = None
+    #: Vị trí xuất phát / vị trí đích (BERAS V2 Phase 2). ``None`` ở cả hai nghĩa là **không
+    #: rõ vị trí** — trạng thái của mọi dòng có từ trước Phase 2, và của mọi lượt nhập/xuất
+    #: chưa gắn ô. Không phải lỗi, không cần backfill.
+    from_location_id: UUID | None = None
+    to_location_id: UUID | None = None
     id: UUID = field(default_factory=uuid4)
     occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 

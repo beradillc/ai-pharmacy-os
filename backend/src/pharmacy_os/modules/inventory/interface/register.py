@@ -9,18 +9,32 @@ from pharmacy_os.core.db import UnitOfWorkFactory
 from pharmacy_os.core.di import Container
 from pharmacy_os.core.events import EventBus
 from pharmacy_os.modules.inventory.application import InventoryService
-from pharmacy_os.modules.inventory.domain import LowStockDetected, StockMovedIn, StockMovedOut
+from pharmacy_os.modules.inventory.domain import (
+    LocationInfoProvider,
+    LowStockDetected,
+    StockMovedIn,
+    StockMovedOut,
+)
 from pharmacy_os.modules.inventory.infrastructure import (
     SqlAlchemyBalanceRepository,
     SqlAlchemyBatchRepository,
     SqlAlchemyMovementRepository,
+    SqlAlchemyStockAtLocationRepository,
     SqlAlchemyStockReconciliationRepository,
 )
 from pharmacy_os.modules.inventory.interface import handlers
 from pharmacy_os.modules.inventory.interface.router import ContextDep, build_router
 
 
-def register(container: Container, get_context: ContextDep) -> APIRouter:
+def register(
+    container: Container,
+    get_context: ContextDep,
+    *,
+    locations: LocationInfoProvider | None = None,
+) -> APIRouter:
+    """``locations`` tuỳ chọn: chưa truyền thì các use-case vị trí trả rỗng hoặc từ chối
+    tường minh. Giữ tham số ở dạng tuỳ chọn để mọi bên gọi cũ — kể cả test dựng app bằng
+    tay — chạy nguyên vẹn mà không phải sửa."""
     event_bus = container.resolve(EventBus)  # type: ignore[type-abstract]
 
     uow_factory = container.resolve(UnitOfWorkFactory)
@@ -32,6 +46,10 @@ def register(container: Container, get_context: ContextDep) -> APIRouter:
         lambda uow, ctx: SqlAlchemyBalanceRepository(uow.session, ctx),
         lambda uow, ctx: SqlAlchemyStockReconciliationRepository(uow.session, ctx),
         container.resolve(AuditLogger),
+        at_location_repo_factory=lambda uow, ctx: SqlAlchemyStockAtLocationRepository(
+            uow.session, ctx
+        ),
+        locations=locations,
     )
     container.register_instance(InventoryService, service)
 

@@ -12,11 +12,13 @@ from pharmacy_os.modules.inventory.application.dto import (
     DispenseInput,
     DispenseOutput,
     NearExpiryItem,
+    PutAwayOutput,
     ReceiptOutput,
     ReceiveStockInput,
     ReconciliationOutput,
     StockReportItem,
 )
+from pharmacy_os.modules.inventory.domain import LocationStockRow, PickCandidate
 
 
 class ReceiveStockRequest(BaseModel):
@@ -163,4 +165,77 @@ class ReconciliationResponse(BaseModel):
             reason=out.reason,
             resolved=out.resolved,
             occurred_at=out.occurred_at,
+        )
+
+
+class PutAwayRequest(BaseModel):
+    """Cất hàng của một lô vào một ô."""
+
+    batch_id: UUID
+    location_id: UUID
+    quantity: Decimal = Field(gt=0)
+
+
+class PutAwayResponse(BaseModel):
+    batch_id: UUID
+    location_id: UUID
+    location_path: str
+    quantity: Decimal
+    #: Số hàng của lô **vẫn chưa có chỗ**. Hiện ra chứ không giấu — xem `PutAwayOutput`.
+    chua_xep_o: Decimal
+
+    @classmethod
+    def of(cls, out: PutAwayOutput) -> PutAwayResponse:
+        return cls(
+            batch_id=out.batch_id,
+            location_id=out.location_id,
+            location_path=out.location_path,
+            quantity=out.quantity,
+            chua_xep_o=out.chua_xep_o,
+        )
+
+
+class PickCandidateResponse(BaseModel):
+    """Một chỗ lấy được hàng — **đã sắp theo thứ tự lấy**, đừng sắp lại ở màn hình."""
+
+    location_id: UUID
+    location_path: str
+    pick_order: int
+    batch_id: UUID
+    lot_no: str
+    expiry_date: date
+    quantity: Decimal
+
+    @classmethod
+    def of(cls, c: PickCandidate) -> PickCandidateResponse:
+        return cls(
+            location_id=c.location_id,
+            location_path=c.location_path,
+            pick_order=c.pick_order,
+            batch_id=c.batch_id,
+            lot_no=c.lot_no,
+            expiry_date=c.expiry_date,
+            quantity=c.quantity,
+        )
+
+
+class LocationStockResponse(BaseModel):
+    """Một lô đang nằm trong một ô — nguồn của câu *"ô A01 có thuốc gì"*."""
+
+    drug_id: UUID
+    batch_id: UUID
+    location_id: UUID
+    lot_no: str
+    expiry_date: date
+    quantity: Decimal
+
+    @classmethod
+    def of(cls, r: LocationStockRow) -> LocationStockResponse:
+        return cls(
+            drug_id=r.drug_id,
+            batch_id=r.batch_id,
+            location_id=r.location_id,
+            lot_no=r.lot_no,
+            expiry_date=r.expiry_date,
+            quantity=r.quantity,
         )

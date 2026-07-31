@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -123,6 +124,15 @@ class BalanceRepository(Protocol):
     async def on_hand(self, drug_id: UUID, branch_id: UUID) -> Decimal:
         """Total on-hand across all batches of a drug at a branch."""
 
+    async def for_batch(self, batch_id: UUID) -> Decimal:
+        """Tồn hiện tại của MỘT lô — vế phải của bất biến hai sổ (Phase 2).
+
+        Đọc thẳng ``stock_balances``, cùng nguồn với :meth:`on_hand`. Trả ``0`` khi lô chưa
+        có dòng số dư nào, không ném lỗi: một lô vừa tạo mà chưa có chuyển động nào là
+        trạng thái hợp lệ.
+        """
+        ...
+
     async def on_hand_by_drug(self, branch_id: UUID) -> list[DrugOnHandRow]:
         """On-hand per drug at a branch (all drugs with positive stock), summed in
         SQL. Bulk read for the analytics reorder run — see :class:`DrugOnHandRow`."""
@@ -151,3 +161,78 @@ class StockReconciliationRepository(Protocol):
     ) -> list[StockReconciliationNeeded]:
         """List a branch's discrepancies, newest first; ``resolved=None`` returns both."""
         ...
+
+
+@dataclass(frozen=True, slots=True)
+class LocationInfo:
+    """Sự thật về một ô mà ``inventory`` cần — đúng ba thứ, không hơn.
+
+    ``path`` để hiện cho người đứng quầy, ``pick_order`` để sắp đường đi, ``is_active`` để
+    từ chối cất hàng vào chỗ đã khai tử. Không mang ``name``, không mang cây con: lấy thừa
+    là buộc ``inventory`` biết về hình dạng sơ đồ kho, thứ nó không có việc gì phải biết.
+    """
+
+    location_id: UUID
+    path: str
+    pick_order: int
+    is_active: bool
+
+
+class LocationInfoProvider(Protocol):
+    """Read-port cho sơ đồ kho, để ``inventory`` không import module ``location``.
+
+    Cài ở composition root (adapter trên ``LocationService``) — cùng khuôn
+    ``DrugInfoProvider`` của ``sales``. Trả ``None`` khi ô không tồn tại trong chi nhánh.
+    """
+
+    async def get(
+        self, location_id: UUID, tenant_id: UUID, branch_id: UUID
+    ) -> LocationInfo | None: ...
+
+    async def many(
+        self, location_ids: frozenset[UUID], tenant_id: UUID, branch_id: UUID
+    ) -> dict[UUID, LocationInfo]:
+        """Nhiều ô trong MỘT lượt.
+
+        Bắt buộc phải có bên cạnh :meth:`get`: một thuốc nằm ở năm ô thì hỏi năm lượt là
+        năm vòng đi-về cho một màn hình mà thu ngân đang đứng chờ.
+        """
+        ...
+
+
+class StockAtLocationRepository(Protocol):
+    """Sổ **nằm ở đâu** — projection thứ hai, luôn ≤ ``stock_balances``."""
+
+    async def put_away(
+        self, *, drug_id: UUID, batch_id: UUID, location_id: UUID, delta: Decimal
+    ) -> None:
+        """Cộng dồn *delta* vào một (lô, ô). Tạo dòng nếu chưa có.
+
+        Cộng dồn chứ không gán đè: hai lượt cất cùng một lô vào cùng một ô là chuyện bình
+        thường (nhận hàng hai đợt), và gán đè sẽ **nuốt mất đợt trước** trong im lặng.
+        """
+        ...
+
+    async def total_for_batch(self, batch_id: UUID) -> Decimal:
+        """Tổng đã xếp ô của một lô — vế trái của bất biến hai sổ."""
+        ...
+
+    async def rows_for_drug(self, drug_id: UUID) -> Sequence[LocationStockRow]:
+        """Mọi (lô, ô) đang giữ hàng của một thuốc. Chỉ trả dòng có ``quantity > 0``."""
+        ...
+
+    async def rows_at_location(self, location_id: UUID) -> Sequence[LocationStockRow]:
+        """Ô này đang giữ những lô nào — nguồn của câu hỏi *"ô A01 có thuốc gì"*."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class LocationStockRow:
+    """Một dòng của sổ vị trí, đã ghép sẵn thông tin lô để khỏi phải tra lần hai."""
+
+    drug_id: UUID
+    batch_id: UUID
+    location_id: UUID
+    lot_no: str
+    expiry_date: date
+    quantity: Decimal

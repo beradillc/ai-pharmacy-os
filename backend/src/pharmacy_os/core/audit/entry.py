@@ -235,6 +235,16 @@ class AuditAction(StrEnum):
     above: ``dispense_for_sale`` (the cross-module reaction to ``SaleCompleted``)
     is already covered by :attr:`SALE_COMPLETED`, not audited a second time here."""
 
+    INVENTORY_PUT_AWAY = "INVENTORY_PUT_AWAY"
+    """Hàng của một lô được cất vào một ô (BERAS V2 Phase 2, 2026-07-31).
+
+    KHÔNG đổi tổng tồn — hàng đã có từ lúc nhận; việc này chỉ **nói ra nó đang nằm đâu**.
+    Đáng ghi vết vì nó là thứ quyết định người đi lấy hàng được chỉ tới đâu, và một lượt cất
+    nhầm ô sẽ chỉ lộ ra khi ai đó đứng trước một ô rỗng.
+
+    ``context`` mang đường dẫn ô và số lượng — không mang tên thuốc: sổ audit không phải bản
+    sao thứ hai của sổ kho."""
+
     INVENTORY_RECONCILIATION_RESOLVED = "INVENTORY_RECONCILIATION_RESOLVED"
     """A ``stock_reconciliation_needed`` flag (GRN lot collision/failure) was marked
     handled — "ai đã xử lý chênh lệch tồn kho này". The record itself carries no

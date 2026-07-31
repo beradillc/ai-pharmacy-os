@@ -119,3 +119,18 @@ class ReconciliationOutput:
             resolved=record.resolved,
             occurred_at=record.occurred_at,
         )
+
+
+@dataclass(slots=True)
+class PutAwayOutput:
+    """Kết quả một lượt cất hàng vào ô.
+
+    Trả kèm ``chua_xep_o`` — số hàng của lô **vẫn chưa có chỗ**. Đây là thứ người vừa cất
+    hàng cần biết ngay ("còn 30 hộp nữa chưa xếp"), và giấu nó đi là để họ tưởng đã xong.
+    """
+
+    batch_id: UUID
+    location_id: UUID
+    location_path: str
+    quantity: Decimal
+    chua_xep_o: Decimal

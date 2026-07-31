@@ -12,8 +12,12 @@ from pharmacy_os.modules.inventory.application import InventoryService
 from pharmacy_os.modules.inventory.interface.schemas import (
     DispenseRequest,
     DispenseResponse,
+    LocationStockResponse,
     NearExpiryResponse,
     OnHandResponse,
+    PickCandidateResponse,
+    PutAwayRequest,
+    PutAwayResponse,
     ReceiptResponse,
     ReceiveStockRequest,
     ReconciliationResponse,
@@ -103,5 +107,66 @@ def build_router(get_context: ContextDep) -> APIRouter:
     ) -> ReconciliationResponse:
         out = await service.resolve_reconciliation(reconciliation_id, ctx)
         return ReconciliationResponse.of(out)
+
+    # ── BERAS V2 Phase 2: tồn theo vị trí ────────────────────────────────────────
+
+    @router.post("/put-away", response_model=PutAwayResponse, status_code=status.HTTP_201_CREATED)
+    async def put_away(
+        body: PutAwayRequest,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> PutAwayResponse:
+        """Cất hàng của một lô vào một ô.
+
+        **Không tạo hàng mới** — hàng đã tồn tại từ lúc nhận; việc này chỉ nói ra nó đang
+        nằm đâu. Ghi một ``StockMovement`` loại ``TRANSFER``, và ``TRANSFER`` cố ý không đổi
+        tổng tồn.
+
+        Quyền ``inventory.receive`` (cất hàng lên kệ là cùng một đôi tay với người nhận
+        hàng). Trả **404** nếu lô/ô không thuộc chi nhánh; **422** nếu ô đã ngừng hoạt động
+        hoặc xếp vượt tồn của lô.
+
+        Phản hồi kèm ``chua_xep_o`` — số hàng của lô vẫn chưa có chỗ.
+        """
+        return PutAwayResponse.of(
+            await service.put_away(
+                batch_id=body.batch_id,
+                location_id=body.location_id,
+                quantity=body.quantity,
+                ctx=ctx,
+            )
+        )
+
+    @router.get("/where", response_model=list[PickCandidateResponse])
+    async def where_is(
+        drug_id: UUID,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> list[PickCandidateResponse]:
+        """Thuốc này đang nằm ở ô nào — **đã sắp theo thứ tự lấy hàng**.
+
+        FEFO trước, đường đi sau (GĐ chốt 2026-07-31). Màn hình **không được sắp lại**: mỗi
+        chỗ tự sắp là mỗi chỗ có cơ hội sắp sai một kiểu khác nhau.
+
+        Trả rỗng khi thuốc chưa được xếp vào ô nào — khác hẳn "kho hết hàng", và màn hình
+        phải nói ra sự khác biệt đó.
+
+        Quyền ``inventory.read``.
+        """
+        return [PickCandidateResponse.of(c) for c in await service.where_is(drug_id, ctx)]
+
+    @router.get("/locations/{location_id}/stock", response_model=list[LocationStockResponse])
+    async def stock_at_location(
+        location_id: UUID,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> list[LocationStockResponse]:
+        """Ô này đang giữ những lô nào, hạn dùng nào, bao nhiêu.
+
+        Quyền ``inventory.read``.
+        """
+        return [
+            LocationStockResponse.of(r) for r in await service.stock_at_location(location_id, ctx)
+        ]
 
     return router

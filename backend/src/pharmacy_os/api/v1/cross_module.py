@@ -37,6 +37,8 @@ from pharmacy_os.modules.inventory.application import (
     InventoryService,
     SaleDispenseItem,
 )
+from pharmacy_os.modules.inventory.domain import LocationInfo as InventoryLocationInfo
+from pharmacy_os.modules.location.application import LocationService
 from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.domain import PrescriptionDispensed
 from pharmacy_os.modules.procurement.domain import GoodsReceived
@@ -641,3 +643,50 @@ class SalesLoyaltyAccrualReader:
         return await self._sales.accrued_by_customer(
             customer_ids, ctx, created_from=dau_nam, created_to=het_nam
         )
+
+
+class LocationServiceInfoProvider:
+    """Cài ``inventory.LocationInfoProvider`` trên ``LocationService``.
+
+    Đây là điểm nối DUY NHẤT giữa ``inventory`` và ``location``, và nó chảy đúng một chiều:
+    kho hỏi sơ đồ, sơ đồ không bao giờ hỏi kho. Sơ đồ là dữ liệu cấu hình — nó không có lý
+    do gì phải biết hàng đang nằm đâu.
+    """
+
+    def __init__(self, locations: LocationService) -> None:
+        self._locations = locations
+
+    def _ctx(self, tenant_id: UUID, branch_id: UUID) -> RequestContext:
+        return RequestContext(
+            tenant_id=tenant_id,
+            branch_id=branch_id,
+            user_id=UUID(int=0),
+            permissions=frozenset({"location.read"}),
+        )
+
+    async def get(
+        self, location_id: UUID, tenant_id: UUID, branch_id: UUID
+    ) -> InventoryLocationInfo | None:
+        for o in await self._locations.list_locations(
+            self._ctx(tenant_id, branch_id), include_inactive=True
+        ):
+            if o.id == location_id:
+                return InventoryLocationInfo(
+                    location_id=o.id, path=o.path, pick_order=o.pick_order, is_active=o.is_active
+                )
+        return None
+
+    async def many(
+        self, location_ids: frozenset[UUID], tenant_id: UUID, branch_id: UUID
+    ) -> dict[UUID, InventoryLocationInfo]:
+        """MỘT lượt cho nhiều ô — sơ đồ một chi nhánh là vài trăm dòng, nạp cả rẻ hơn nhiều
+        so với N lượt đi-về cho một màn hình đang có người đứng chờ."""
+        return {
+            o.id: InventoryLocationInfo(
+                location_id=o.id, path=o.path, pick_order=o.pick_order, is_active=o.is_active
+            )
+            for o in await self._locations.list_locations(
+                self._ctx(tenant_id, branch_id), include_inactive=True
+            )
+            if o.id in location_ids
+        }
