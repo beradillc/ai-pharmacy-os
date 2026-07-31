@@ -6720,3 +6720,49 @@ thêm `rx.image.read`, cùng khuôn `crm.pii.reveal` Chain đã duyệt sáng na
 
 ADR reporting (Đ77.4) · hồ sơ khiếu nại/thu hồi (TT02 I-1a.III.4.c) · luân chuyển tồn kho
 giữa chi nhánh (Luật 44/2024 Đ47a.1.d). Còn treo: `docs/13` dòng 14 và tệp TT 26/2025.
+
+## 7cq. ⏸️ Ảnh đơn thuốc ETC — backend XONG (3/5 bước), giao diện DỪNG chờ Chain quyết (2026-07-31)
+
+Chain duyệt Bước 0-3 (`docs/features/anh-don-thuoc-etc/01_DECISIONS.md`) kèm phương án B
+cho câu hỏi quyền. Bước 2-3/5 đã làm và commit (`db00607`). **Bước 4-5 dừng.**
+
+### Đã xong và đã đo
+
+| Thứ | Trạng thái |
+|---|---|
+| Cột `prescriptions.image_data` mã hoá at-rest + `image_content_type` | ✅ migration `0040` chạy thật lên `nt650v2`, kiểm bằng SQL |
+| `PUT /prescriptions/{id}/image` · `GET /prescriptions/{id}/image` | ✅ |
+| Quyền `rx.image.read` tách khỏi `rx.read`, **không** cấp Thu ngân | ✅ đo bằng JWT thật, không dev-auth |
+| Ghi vết cả phép **ĐỌC** (`RX_IMAGE_VIEWED`) | ✅ 3 lượt xem = 3 dòng |
+| Trần 2 MB + kiểm định dạng + base64 `validate=True` | ✅ |
+
+### 🔴 Vì sao bước 4 dừng: `POST /prescriptions` đòi thứ quầy không có
+
+| Ràng buộc | Ở quầy |
+|---|---|
+| `customer_id` bắt buộc | ❌ khách vãng lai không có |
+| `items` ≥ 1 dòng | ✅ lấy được từ giỏ — thuốc và số lượng là **thật** |
+| `dose` · `frequency` · `duration`, mỗi cái `min_length=1` | ❌ thu ngân **không biết**, chỉ có trên tờ giấy |
+
+Điền `"1 viên"` / `"2 lần/ngày"` / `"5 ngày"` cho qua cổng là **bịa dữ liệu lâm sàng** vào
+hồ sơ của một bệnh nhân thật — cùng họ với lỗi dự án đã từ chối khi quyết định *"hàm lượng
+để trống khi thêm mới, không điền sẵn 1"*. Không làm, và không tự nới quy tắc đã có test
+(kỷ luật #17).
+
+**Phát hiện đáng chú ý:** `PrescriptionSource.IMAGE` **đã có sẵn trong enum** từ trước và
+**chưa ai dùng** — nó được đặt ra đúng cho tình huống này, nhưng quy tắc validate chưa bao
+giờ được nới để nó dùng được. Một mảnh nữa thuộc họ "nửa nối dây".
+
+### Ba phương án đã trình, Chain CHƯA chọn
+
+| | Phương án | Đánh đổi |
+|---|---|---|
+| A | Nới quy tắc cho `source=IMAGE` — ảnh là bản gốc, dược sĩ phiên sau | Dùng đúng thứ enum đã có. Đổi một quy tắc đã có test ⇒ cần duyệt |
+| B | Nút chụp chỉ bật khi đã có khách + dược sĩ nhập đủ liều | Không đổi quy tắc nào, nhưng không còn là "chụp là xong" |
+| C | Gắn ảnh vào **đơn bán** thay vì đơn thuốc | Không đụng `prescription`, nhưng **toàn bộ backend vừa làm phải làm lại ở `sales`** |
+
+Câu hỏi thứ hai cũng chưa chốt: khách vãng lai mua ETC thì có bắt gắn khách mới chụp được
+không. GĐ nghiêng về **có** — một ảnh đơn không gắn với ai thì không tra cứu lại được và
+cũng không xoá theo yêu cầu được (Luật 91/2025).
+
+**Backend đã làm KHÔNG lãng phí ở phương án A và B.** Chỉ phương án C mới phải làm lại.
