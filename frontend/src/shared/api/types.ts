@@ -389,6 +389,8 @@ export interface PrescriptionArchiveRow {
   /** `null` = khách không để lại số điện thoại — xem `Prescription.customer_id` ở backend. */
   customer_id: string | null;
   doctor_name: string;
+  /** Người **chốt đơn hàng** — chịu trách nhiệm lưu đơn thuốc (Chain chốt 2026-07-31). */
+  created_by: string | null;
   status: string;
   source: string;
   has_image: boolean;

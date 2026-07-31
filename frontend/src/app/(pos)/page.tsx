@@ -303,7 +303,8 @@ export default function PosPage() {
             <div className={styles.lechGia}>
               <span>
                 💊 <strong>{dongETC.length} thuốc kê đơn trong giỏ.</strong> Chụp lại tờ
-                đơn để lưu vào hồ sơ.{" "}
+                đơn — <strong>người chốt đơn chịu trách nhiệm lưu</strong>, hệ thống ghi
+                lại tên bạn.{" "}
                 {customer === null && (
                   <em>
                     Khách chưa để lại số — ảnh vẫn lưu được, nhưng sẽ không tra lại được
@@ -318,7 +319,7 @@ export default function PosPage() {
                     style={{ width: "100%", textAlign: "left" }}
                     value={tenBacSi}
                     onChange={(e) => setTenBacSi(e.target.value)}
-                    placeholder="Tên bác sĩ kê đơn"
+                    placeholder="Tên bác sĩ (không bắt buộc)"
                     aria-label="Tên bác sĩ kê đơn"
                   />
                   <label className={styles.menhGiaNut} style={{ textAlign: "center" }}>
@@ -336,7 +337,10 @@ export default function PosPage() {
                       capture="environment"
                       hidden
                       aria-label="Chụp đơn thuốc"
-                      disabled={chupDon.isPending || tenBacSi.trim() === ""}
+                      // Chain chốt 2026-07-31: "chỉ cần có hình chụp bất kỳ". Tên bác sĩ
+                      // không còn chặn nút — người đứng quầy không phải lúc nào cũng đọc
+                      // được chữ bác sĩ, và một cái tên đoán mò còn tệ hơn để trống.
+                      disabled={chupDon.isPending}
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         e.target.value = "";

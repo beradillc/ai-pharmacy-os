@@ -6,8 +6,9 @@
  *
  * Đo cái gì — ba mệnh đề, không phải "nút có tồn tại":
  *   1. giỏ toàn thuốc THƯỜNG  ⇒ khối chụp đơn **không hiện** (nút thừa là nhiễu);
- *   2. giỏ có thuốc KÊ ĐƠN, **chưa nhập tên bác sĩ** ⇒ ô chọn tệp có mặt nhưng **tắt**;
- *   3. nhập tên bác sĩ ⇒ ô chọn **bật**, và nó mang `capture` để mở thẳng camera sau.
+ *   2. giỏ có thuốc KÊ ĐƠN ⇒ ô chọn tệp **có mặt và BẬT NGAY** — Chain chốt 31/07 lượt ba:
+ *      *"chỉ cần có hình chụp bất kỳ"*, tên bác sĩ không còn chặn nút;
+ *   3. màn hình **nói rõ trách nhiệm** thuộc về người chốt đơn.
  *
  * ⚠️ Mệnh đề (2) ĐÃ ĐỔI 2026-07-31: bản đầu canh *"chưa gắn khách ⇒ chưa có nút"*. Chain
  * chốt sau đó *"trường hợp không cung cấp sdt, chỉ cần chụp đơn thuốc là xong"*, nên ràng
@@ -61,12 +62,16 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   await themThuoc("Amoxicillin 500mg");
   const hienKhiEtc = await khoiChup().count();
   const coOChonSom = await oChon().count();
-  const tatKhiChuaCoBacSi = coOChonSom > 0 ? await oChon().isDisabled() : false;
+  // ⚠️ ĐỔI KỲ VỌNG 2026-07-31 (lượt ba). Bản trước canh "chưa có tên bác sĩ ⇒ ô chọn TẮT".
+  // Chain chốt "chỉ cần có hình chụp bất kỳ", nên tên bác sĩ không còn chặn nút — người
+  // đứng quầy không phải lúc nào cũng đọc được chữ bác sĩ, và một cái tên đoán mò còn tệ
+  // hơn để trống. Sửa kỳ vọng kèm lý do, không xoá khẳng định (kỷ luật #17).
+  const batNgay = coOChonSom > 0 ? await oChon().isEnabled() : false;
+  const noiTrachNhiem = /người chốt đơn chịu trách nhiệm/i.test(await p.locator("body").innerText());
 
   await p.screenshot({ path: `${OUT}/${ten}-1-chua-co-bac-si.png`, fullPage: true });
 
-  // ③ Nhập tên bác sĩ — KHÔNG gắn khách, đúng ca Chain chốt 31/07.
-  await p.locator('input[aria-label="Tên bác sĩ kê đơn"]').fill("BS. Nguyễn Văn A");
+  // ③ KHÔNG nhập gì thêm — không tên bác sĩ, không khách. Ô chọn phải đã bật từ trước.
   await p.waitForTimeout(600);
 
   const coOChon = await oChon().count();
@@ -77,14 +82,14 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   await p.screenshot({ path: `${OUT}/${ten}-2-san-sang-chup.png`, fullPage: true });
 
   const dat =
-    hienKhiThuong === 0 && hienKhiEtc > 0 && coOChonSom > 0 && tatKhiChuaCoBacSi &&
+    hienKhiThuong === 0 && hienKhiEtc > 0 && coOChonSom > 0 && batNgay && noiTrachNhiem &&
     coOChon > 0 && batDuoc && coCapture === "environment" && loi.length === 0;
   if (!dat) hong++;
 
   console.log(`\n──${ten}──`);
   console.log(`  giỏ toàn thuốc thường ⇒ KHÔNG hiện khối chụp: ${hienKhiThuong === 0 ? "✓" : "🔴"}`);
-  console.log(`  có thuốc kê đơn ⇒ hiện khối: ${hienKhiEtc > 0 ? "✓" : "🔴"} · chưa có tên bác sĩ ⇒ ô chọn TẮT: ${tatKhiChuaCoBacSi ? "✓" : "🔴"}`);
-  console.log(`  nhập tên bác sĩ (KHÔNG cần khách) ⇒ ô chọn bật: ${batDuoc ? "✓" : "🔴"} · capture="${coCapture}" ${coCapture === "environment" ? "✓" : "🔴"}`);
+  console.log(`  có thuốc kê đơn ⇒ hiện khối: ${hienKhiEtc > 0 ? "✓" : "🔴"} · ô chọn BẬT NGAY (không cần tên bác sĩ): ${batNgay ? "✓" : "🔴"}`);
+  console.log(`  nói rõ TRÁCH NHIỆM người chốt đơn: ${noiTrachNhiem ? "✓" : "🔴"} · capture="${coCapture}" ${coCapture === "environment" ? "✓" : "🔴"}`);
   console.log(`  nhãn nút: "${nhanNut}" · lỗi JS: ${loi.length}${loi.length ? " · " + loi.join(" | ") : ""}`);
   await ctx.close();
 }

@@ -19,6 +19,8 @@ class PrescriptionORM(PkUuidMixin, TenantScopedMixin, TimestampMixin, Base):
     customer_id: Mapped[UUID | None] = mapped_column(index=True, nullable=True)
     source: Mapped[str] = mapped_column(String(16), nullable=False)
     doctor_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    #: Người chốt đơn hàng — chịu trách nhiệm lưu đơn thuốc. Xem `Prescription.created_by`.
+    created_by: Mapped[UUID | None] = mapped_column(nullable=True)
     doctor_license: Mapped[str | None] = mapped_column(String(64), nullable=True)
     diagnosis: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

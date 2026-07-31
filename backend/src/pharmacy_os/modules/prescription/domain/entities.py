@@ -88,6 +88,13 @@ class Prescription:
     và cưỡng chế nằm ở tầng lược đồ (``CreatePrescriptionRequest``)."""
 
     doctor_name: str
+    """Tên bác sĩ kê đơn. **Rỗng là hợp lệ khi ``source=IMAGE``** (Chain chốt 2026-07-31:
+    *"chỉ cần có hình chụp bất kỳ"*).
+
+    Người đứng quầy không phải lúc nào cũng đọc được chữ bác sĩ, và bắt gõ một cái tên
+    đoán mò vào hồ sơ còn tệ hơn để trống — một cái tên bịa trông y hệt một cái tên đã đọc.
+    Ràng buộc *"đơn nhập tay phải có tên bác sĩ"* nằm ở tầng lược đồ, không ở đây."""
+
     source: PrescriptionSource = PrescriptionSource.MANUAL
     doctor_license: str | None = None
     diagnosis: str | None = None
@@ -111,6 +118,16 @@ class Prescription:
 
     image_content_type: str | None = None
     """``image/jpeg`` … — phải khớp :data:`ALLOWED_IMAGE_TYPES`."""
+
+    created_by: UUID | None = None
+    """Người **chốt đơn hàng** — chịu trách nhiệm lưu đơn thuốc (Chain chốt 2026-07-31).
+
+    🔴 Sổ audit đã ghi ``actor_user_id`` từ trước, nhưng phải mở sổ audit mới thấy, và
+    không ai mở sổ audit để trả lời một câu hỏi thường ngày. Trường này để **màn Lưu trữ
+    hiện thẳng ra**: trách nhiệm chỉ có nghĩa khi nó nhìn thấy được mà không phải đi tra.
+
+    Nullable: đơn tạo trước 2026-07-31 không có ai để gắn, và ``NULL`` đọc đúng nghĩa
+    *"không rõ ai"* — không phải *"không có ai"*."""
 
     status: PrescriptionStatus = PrescriptionStatus.DRAFT
     validated_by: UUID | None = None

@@ -70,7 +70,8 @@ export default function ArchivePage() {
 
       <p className={local.canhBao}>
         🔒 Ảnh đơn mang <strong>chẩn đoán của khách</strong>. Mỗi lần bấm xem đều được ghi
-        vào sổ audit — ai xem, đơn nào, lúc nào.
+        vào sổ audit — ai xem, đơn nào, lúc nào. <strong>Người chốt đơn</strong> chịu trách
+        nhiệm lưu đơn thuốc; hệ thống ghi lại tên họ ở cột bên dưới.
       </p>
 
       {ds.isLoading ? (
@@ -84,6 +85,7 @@ export default function ArchivePage() {
               <tr>
                 <th>Thời điểm</th>
                 <th>Bác sĩ kê đơn</th>
+                <th>Người chốt đơn</th>
                 <th>Khách</th>
                 <th>Trạng thái</th>
                 <th />
@@ -93,7 +95,22 @@ export default function ArchivePage() {
               {(ds.data ?? []).map((d) => (
                 <tr key={d.id}>
                   <td>{new Date(d.created_at).toLocaleString("vi-VN")}</td>
-                  <td>{d.doctor_name}</td>
+                  <td>
+                    {d.doctor_name.trim() === "" ? (
+                      <span className={local.trong}>— không ghi —</span>
+                    ) : (
+                      d.doctor_name
+                    )}
+                  </td>
+                  {/* 🔴 Trách nhiệm chỉ có nghĩa khi NHÌN THẤY ĐƯỢC. Sổ audit đã ghi từ
+                      trước, nhưng không ai mở sổ audit để trả lời một câu hỏi thường ngày. */}
+                  <td>
+                    {d.created_by === null ? (
+                      <span className={local.trong}>— không rõ —</span>
+                    ) : (
+                      d.created_by.slice(0, 8)
+                    )}
+                  </td>
                   <td>
                     {d.customer_id === null ? (
                       <span className={local.trong}>— không để lại số —</span>

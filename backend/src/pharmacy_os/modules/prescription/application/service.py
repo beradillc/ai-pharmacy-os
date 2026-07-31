@@ -52,6 +52,7 @@ class PrescriptionService:
             branch_id=ctx.branch_id,
             customer_id=data.customer_id,
             doctor_name=data.doctor_name,
+            created_by=ctx.user_id,
             source=data.source,
             doctor_license=data.doctor_license,
             diagnosis=data.diagnosis,

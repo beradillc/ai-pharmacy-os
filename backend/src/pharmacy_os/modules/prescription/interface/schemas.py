@@ -35,7 +35,8 @@ class PrescriptionItemRequest(BaseModel):
 
 class CreatePrescriptionRequest(BaseModel):
     customer_id: UUID | None = None
-    doctor_name: str = Field(min_length=1, max_length=200)
+    #: Rỗng hợp lệ khi ``source=IMAGE`` — xem ``ktra_lieu_luong``.
+    doctor_name: str = Field(default="", max_length=200)
     items: list[PrescriptionItemRequest] = Field(min_length=1)
     source: PrescriptionSource = PrescriptionSource.MANUAL
     doctor_license: str | None = Field(default=None, max_length=64)
@@ -66,6 +67,8 @@ class CreatePrescriptionRequest(BaseModel):
         # khách không để lại số — xem `Prescription.customer_id` về cái mất khi làm vậy.
         if self.customer_id is None:
             raise ValueError("Đơn nhập tay phải có khách hàng")
+        if not self.doctor_name.strip():
+            raise ValueError("Đơn nhập tay phải có tên bác sĩ kê đơn")
         for i, it in enumerate(self.items, start=1):
             if not (it.dose.strip() and it.frequency.strip() and it.duration.strip()):
                 raise ValueError(
@@ -113,6 +116,7 @@ class PrescriptionResponse(BaseModel):
     id: UUID
     customer_id: UUID | None
     doctor_name: str
+    created_by: UUID | None
     source: str
     doctor_license: str | None
     diagnosis: str | None
@@ -130,6 +134,7 @@ class PrescriptionResponse(BaseModel):
             id=out.id,
             customer_id=out.customer_id,
             doctor_name=out.doctor_name,
+            created_by=out.created_by,
             source=out.source,
             doctor_license=out.doctor_license,
             diagnosis=out.diagnosis,

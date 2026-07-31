@@ -41,9 +41,10 @@ await p.locator("li").filter({ hasText: "Amoxicillin 500mg" }).first()
   .locator("button", { hasText: /^Thêm$/ }).click();
 await p.waitForTimeout(1200);
 
-// Cố ý KHÔNG gắn khách — đúng ca Chain chốt: "không cung cấp sdt, chỉ cần chụp đơn là xong".
-await p.locator('input[aria-label="Tên bác sĩ kê đơn"]').fill("BS. Nguyễn Văn A");
-await p.waitForTimeout(400);
+// Cố ý KHÔNG gắn khách VÀ KHÔNG nhập tên bác sĩ — hai điều Chain chốt 31/07:
+//   "không cung cấp sdt, chỉ cần chụp đơn thuốc là xong"
+//   "chỉ cần có hình chụp bất kỳ"
+// Nếu ai đó bắt lại một trong hai, lượt setInputFiles dưới đây sẽ ném vì ô bị vô hiệu hoá.
 await p.locator('input[aria-label="Chụp đơn thuốc"]')
   .setInputFiles({ name: "don-thuoc.png", mimeType: "image/png", buffer: PNG });
 await p.waitForTimeout(4000);

@@ -47,6 +47,8 @@ class PrescriptionOutput:
     id: UUID
     customer_id: UUID | None
     doctor_name: str
+    #: Người chốt đơn hàng — chịu trách nhiệm lưu đơn thuốc (Chain chốt 2026-07-31).
+    created_by: UUID | None
     source: str
     doctor_license: str | None
     diagnosis: str | None
@@ -66,6 +68,7 @@ class PrescriptionOutput:
             id=rx.id,
             customer_id=rx.customer_id,
             doctor_name=rx.doctor_name,
+            created_by=rx.created_by,
             source=rx.source.value,
             doctor_license=rx.doctor_license,
             diagnosis=rx.diagnosis,

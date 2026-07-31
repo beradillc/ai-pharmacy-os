@@ -42,6 +42,7 @@ export async function nenAnh(file: File): Promise<{ data: string; contentType: s
 export interface RxPhotoInput {
   /** `null` = khách không để lại số điện thoại (Chain chốt 2026-07-31). */
   customerId: string | null;
+  /** Rỗng là hợp lệ — Chain chốt 2026-07-31: *"chỉ cần có hình chụp bất kỳ"*. */
   doctorName: string;
   lines: { drugId: string; quantity: string }[];
   file: File;

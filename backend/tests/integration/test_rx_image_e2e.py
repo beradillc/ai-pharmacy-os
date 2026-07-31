@@ -288,3 +288,77 @@ def test_luu_tru_KHONG_kem_noi_dung_anh(client: TestClient) -> None:
     dong = client.get("/api/v1/prescriptions/archive").json()[0]
     assert dong["has_image"] is True
     assert "image_data" not in dong
+
+
+# ─── Chain điều chỉnh 2026-07-31 (lượt ba): ảnh bất kỳ, biết người chốt đơn ──────
+
+
+def test_don_tu_ANH_khong_can_TEN_BAC_SI(client: TestClient) -> None:
+    """Chain: *"chỉ cần có hình chụp bất kỳ"*.
+
+    Người đứng quầy không phải lúc nào cũng đọc được chữ bác sĩ, và một cái tên đoán mò
+    trong hồ sơ trông y hệt một cái tên đã đọc.
+    """
+    r = client.post(
+        "/api/v1/prescriptions",
+        json={
+            "source": "IMAGE",
+            "items": [
+                {
+                    "drug_id": _drug(client),
+                    "quantity": "10",
+                    "dose": "",
+                    "frequency": "",
+                    "duration": "",
+                }
+            ],
+        },
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["doctor_name"] == ""
+
+
+def test_don_nhap_TAY_van_bat_buoc_ten_bac_si(client: TestClient) -> None:
+    """🔴 Nới cho ảnh KHÔNG được nới cho đường nhập tay."""
+    r = client.post(
+        "/api/v1/prescriptions",
+        json={
+            "customer_id": _customer(client),
+            "source": "MANUAL",
+            "items": [
+                {
+                    "drug_id": _drug(client),
+                    "quantity": "10",
+                    "dose": "1 viên",
+                    "frequency": "2 lần/ngày",
+                    "duration": "5 ngày",
+                }
+            ],
+        },
+    )
+    assert r.status_code == 422, r.text
+
+
+def test_don_ghi_lai_NGUOI_CHOT_DON(client: TestClient) -> None:
+    """Chain: *"biết người chốt đơn hàng là trách nhiệm lưu đơn thuốc"*.
+
+    Sổ audit đã ghi từ trước, nhưng phải mở sổ audit mới thấy — và không ai mở sổ audit để
+    trả lời một câu hỏi thường ngày. Trách nhiệm chỉ có nghĩa khi nhìn thấy được.
+    """
+    r = client.post(
+        "/api/v1/prescriptions",
+        json={
+            "source": "IMAGE",
+            "items": [
+                {
+                    "drug_id": _drug(client),
+                    "quantity": "1",
+                    "dose": "",
+                    "frequency": "",
+                    "duration": "",
+                }
+            ],
+        },
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["created_by"] is not None
