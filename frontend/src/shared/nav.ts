@@ -40,6 +40,7 @@ export interface NavItem {
 }
 
 export type NavIconName =
+  | "drug"
   | "dashboard"
   | "sell"
   | "receipt"
@@ -116,6 +117,18 @@ export const NAV: readonly NavItem[] = [
     group: "ban-hang",
     primary: false,
     icon: "customer",
+  },
+  {
+    href: "/danh-muc-thuoc",
+    label: "Danh mục thuốc",
+    short: "Danh mục",
+    // `catalog.read` chứ không `catalog.update`: ai cũng xem được danh mục và hoạt chất
+    // của thuốc — đó là thông tin an toàn thuốc, không phải bí mật. Nút SỬA bên trong
+    // mới cần `catalog.update` (cấp chuỗi).
+    permission: "catalog.read",
+    group: "kho",
+    primary: false,
+    icon: "drug",
   },
   {
     href: "/don-mua-hang",

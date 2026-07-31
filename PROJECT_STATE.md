@@ -6447,3 +6447,74 @@ dung ấy **có thể là cố ý** cho đường offline — một thuốc bị
 | **C.** Giữ nguyên, thêm cảnh báo + báo cáo đối soát định kỳ | Rẻ nhất, không đổi hành vi; lỗi vẫn im lặng nhưng có chỗ nhìn ra |
 
 GĐ nghiêng về **B** — nó chặn đúng nguồn rủi ro (client sai) mà không đụng đường đã bán.
+
+## 7cm. ✅ Màn Danh mục thuốc — API sửa hoạt chất nay bấm được; ảnh bắt lỗi bốn cổng chữ đều mù (2026-07-31)
+
+`PUT /drugs/{id}/ingredients` có từ 30/07 nhưng **không ai chạm được**: dược sĩ nhập sai một
+hoạt chất thì cảnh báo dị ứng sai người vĩnh viễn, cách duy nhất sửa là gọi người viết mã.
+Nay có màn `/danh-muc-thuoc` — xem toàn bộ danh mục kèm hoạt chất, nút **Sửa** đặt lại cả
+danh sách.
+
+### 🔴 Bốn cổng chữ xanh trọn vẹn trong lúc ô tìm kiếm cao 260px
+
+| Cổng | Kết quả | Thấy lỗi không |
+|---|---|---|
+| ESLINT · TSC · VITEST · BUILD | `0 · 0 · 0 · 0` | **không** |
+| Ảnh chụp desktop | — | **thấy ngay**: một hộp trống chiếm 1/4 màn |
+
+Nguyên nhân: `.input` mang `flex: 1 1 auto` (dành cho hàng ngang `.controls`); đặt thẳng vào
+`.page` — vốn là flex **cột** — thì nó nở theo **chiều cao**. Vá bằng cách bọc lại trong
+`.controls`.
+
+**Điện thoại KHÔNG lộ lỗi này** (đo 44px): nội dung đã lấp đầy cột, không còn chỗ trống để ô
+nở. Chụp một khổ thì không thấy — đúng lý do kỷ luật #20 đòi chụp cả hai khổ.
+
+Đã đưa `caoOTim` (sàn 44 – trần 80) vào cổng và kiểm nó có răng theo kỷ luật #14:
+bỏ lớp bọc ⇒ `MUTANT_GATE_EXIT=1`, in `ô tìm cao 260px 🔴`; bọc lại ⇒ `GATE_EXIT=0`, `44px ✓`.
+
+### 🔴 Cổng đỏ OAN lần thứ hai trong hai phiên — và lần này là lỗi HẠ TẦNG ĐO
+
+`check-customers` và `check-receive-flow` đỏ. Trước khi đổ cho màn mới, đo lại trên **cây đã
+commit** (`git stash push --include-untracked` → build lại → chạy lại):
+
+| | có thay đổi của tôi | cây đã commit |
+|---|---|---|
+| Firefox | lỗiJS=0 ✓ | lỗiJS=0 ✓ |
+| WebKit | lỗiJS=4 🔴 | **lỗiJS=3 🔴** |
+
+Cây đã commit đỏ y hệt ⇒ **không phải do màn mới**. Cả 4 lỗi đều là request `_rsc=` (prefetch
+điều hướng) bị huỷ, kèm thông điệp *"due to access control checks"* — đúng cái bẫy kỷ luật #15
+đã ghi 29/07: WebKit báo request bị huỷ bằng thông điệp đọc **y hệt lỗi CORS**. Mọi khẳng định
+về sản phẩm (`dòng=3 có-tên=3/3 ô-số-lô=✓ ô-hạn-dùng=✓`) đều xanh.
+
+Vì sao mới xuất hiện: tôi đổi cách phục vụ từ `next dev` sang `next start`. **Lý do phải đổi:**
+máy này có **3,7 GB RAM**; `next dev` chiếm 1,5 GB RSS, swap chạm 3,4/3,9 GB, `next-server` ăn
+**305% CPU** và một request `/login` không trả lời nổi trong 120 giây. Đó chính là hiện tượng
+"100% CPU rồi dừng ngang" Chain gặp. Bản production chạy cùng máy còn dư 2 GB.
+
+**Còn nợ:** hai cổng này đang đỏ vì phép đo, không vì sản phẩm — phải bỏ qua tiếng ồn `_rsc`
+trong bộ đếm lỗi JS, hoặc ghi rõ chỉ chạy chúng dưới `next dev`. Chưa sửa trong lượt này.
+
+### Cổng đã chạy cho commit này
+
+| Cổng | Mã thoát |
+|---|---|
+| ESLINT · TSC · VITEST · BUILD (frontend) | `0 · 0 · 0 · 0` |
+| ruff · import-linter · mypy | `0 · 0 · 0` (266 tệp) |
+| `check-danh-muc-thuoc` | `0` (đã thấy `1` vì lý do đúng trước đó) |
+| **pytest** | **KHÔNG chạy** — commit này không đụng một dòng Python nào (chỉ frontend + docs + script). Ghi đúng như vậy theo kỷ luật #9, không viết "4 cổng xanh" |
+
+### Quyết định thiết kế
+
+- Cột **Hoạt chất đứng ngay sau tên**, không nằm trong trang con: nó quyết định cảnh báo dị ứng
+  có kêu hay không.
+- **Cảnh báo đếm số thuốc trống** ngay đầu màn — con số đó chính là số mã mà cảnh báo sẽ im lặng
+  (đo được **10/36** trên `nt650v2`: 3 vật tư cố ý rỗng + 7 mã chờ Chain quyết).
+- **Nút Sửa chỉ hiện với `catalog.update`** (cấp chuỗi) — không có quyền thì không thấy nút, thay
+  vì thấy rồi bị từ chối.
+- **Hàm lượng để trống khi thêm mới**, không điền sẵn `1`: một con số bịa nằm trong hồ sơ thuốc
+  trông y hệt một con số đã tra.
+- **PUT thay cả danh sách**, không thêm/xoá từng cái: sửa hai lượt thì tồn tại một khoảng thuốc
+  mang danh sách sai theo cách khác, và trong khoảng đó cảnh báo dị ứng vẫn đang chạy.
+
+Ảnh: `docs/ui-history/2026-07-31-danh-muc-thuoc/` (kèm ảnh **trước** khi vá để đối chiếu).

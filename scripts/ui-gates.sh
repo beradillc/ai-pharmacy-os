@@ -47,6 +47,7 @@ CONG_DOC=(
   check-receive-flow.mjs    # luồng nhận hàng
   check-pos-allergy.mjs     # cảnh báo dị ứng ở quầy (Đ-7)
   check-rejected-sales.mjs  # đơn offline bị từ chối KHÔNG được biến mất
+  check-danh-muc-thuoc.mjs  # danh mục thuốc + bảng sửa hoạt chất
   measure-mobile.mjs        # thanh điều hướng che gì · cột định danh có khuất
   shot-desktop-mobile.mjs   # 6 màn × 2 khổ: trắng · cuộn ngang · phần tử tràn
 )

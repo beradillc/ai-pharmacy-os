@@ -27,6 +27,14 @@ export function NavIcon({ name, filled = false }: { name: NavIconName; filled?: 
   };
 
   switch (name) {
+    // Viên nang nghiêng — hai nửa, một vạch chia. Hình học cơ bản, không sao chép của ai.
+    case "drug":
+      return (
+        <svg {...common}>
+          <rect x="2.5" y="8.5" width="19" height="7" rx="3.5" transform="rotate(-40 12 12)" />
+          <line x1="9.3" y1="14.7" x2="14.7" y2="9.3" />
+        </svg>
+      );
     case "dashboard":
       return (
         <svg {...common}>

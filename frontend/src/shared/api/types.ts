@@ -35,6 +35,15 @@ export interface Drug {
   sale_price: string | null;
   prescription_required: boolean;
   units: DrugUnit[];
+  /** Hoạt chất của thuốc. Rỗng là hợp lệ (vật tư: băng gạc, khẩu trang, nhiệt kế) —
+   *  nhưng cũng chính là trạng thái làm cảnh báo dị ứng im lặng cho mã hàng đó. */
+  ingredients: DrugIngredient[];
+}
+
+export interface DrugIngredient {
+  ingredient_id: string;
+  amount: string;
+  unit: string;
 }
 
 export interface LoginRequest {
