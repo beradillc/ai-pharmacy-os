@@ -25,6 +25,19 @@ mục đã phát hành**, sai thì ghi một mục mới đính chính.
 
 ### Đã thêm
 
+- **Ảnh đơn thuốc ETC**: nút **📷 Chụp đơn thuốc** ở quầy (chỉ hiện khi giỏ có thuốc kê
+  đơn và đã gắn khách), ảnh nén trong trình duyệt rồi lưu **mã hoá at-rest** trong CSDL.
+- **`PUT /prescriptions/{id}/image`** — gắn ảnh (base64, ≤ 2 MB sau giải mã; nhận
+  `image/jpeg` · `image/png` · `image/webp`). Quyền `rx.create`.
+- **`GET /prescriptions/{id}/image`** — đọc ảnh. Quyền **mới `rx.image.read`**, cấp cho
+  Dược sĩ và cấp chuỗi, **không** cho Thu ngân: ảnh mang chẩn đoán. Mỗi lượt đọc ghi một
+  dòng audit `RX_IMAGE_VIEWED`.
+- **`GET /prescriptions/{id}` nay trả thêm `has_image`** (bool). Nội dung ảnh **không** đi
+  kèm phép đọc đơn thường — phải hỏi đích danh đường `/image`.
+- Đơn tạo với `source=IMAGE` được phép để trống `dose`/`frequency`/`duration` (nghĩa là
+  *chưa phiên từ ảnh*). Đơn nhập tay **vẫn bắt buộc** ba trường này.
+- Hai `AuditAction` mới: `RX_IMAGE_ATTACHED`, `RX_IMAGE_VIEWED`.
+
 - **Màn Danh mục thuốc** (`/danh-muc-thuoc`): xem toàn bộ danh mục kèm hoạt chất và giá
   niêm yết; sửa hoạt chất; đặt/đổi giá. Nút sửa chỉ hiện với `catalog.update` (cấp chuỗi).
 - **`PUT /drugs/{id}/price`** — đặt lại giá bán niêm yết. Quyền `catalog.update`. Trả

@@ -9,6 +9,7 @@ import { useAllergyCheck } from "@/features/sales/use-allergy-check";
 import { cartTotal, countPriceDeviations, useCartStore } from "@/features/sales/cart-store";
 import { useCheckout } from "@/features/sales/use-checkout";
 import { useDrugs } from "@/features/sales/use-drugs";
+import { useRxPhoto } from "@/features/prescription/use-rx-photo";
 import { ApiError } from "@/shared/api/errors";
 import type { Customer, Drug } from "@/shared/api/types";
 import { useOfflineSync } from "@/shared/offline/use-offline-sync";
@@ -58,6 +59,15 @@ export default function PosPage() {
   // tổng đơn. `SaleOrder.complete()` chấp nhận trả THỪA mà không báo gì, nên gửi tiền
   // khách đưa vào đó sẽ thổi `paid_total` và in sai hoá đơn.
   const [tienNhan, setTienNhan] = useState("");
+
+  // Ảnh đơn thuốc (Chain giao 31/07). Chỉ hiện khi giỏ CÓ thuốc kê đơn — một nút "Chụp
+  // đơn" trên giỏ toàn thuốc thường là nhiễu, và nhiễu thì người ta học cách bỏ qua.
+  const dongETC = lines.filter((l) => l.requiresPrescription);
+  const canChupDon = dongETC.length > 0;
+  const [tenBacSi, setTenBacSi] = useState("");
+  const [rxLoi, setRxLoi] = useState<string | null>(null);
+  const [rxXong, setRxXong] = useState(false);
+  const chupDon = useRxPhoto();
   const soTienNhan = Number(tienNhan.replace(/[^\d]/g, "")) || 0;
   const thoiLai = soTienNhan - total;
 
@@ -101,6 +111,9 @@ export default function PosPage() {
       setLyDoDiUng("");
       setLyDoLechGia("");
       setTienNhan("");
+      setTenBacSi("");
+      setRxLoi(null);
+      setRxXong(false);
       // Bỏ gắn khách sau khi bán xong: người tiếp theo ở quầy là một người KHÁC.
       // Giữ lại là cách gắn nhầm hoá đơn cho khách trước — và không ai nhận ra.
       setCustomer(null);
@@ -278,6 +291,78 @@ export default function PosPage() {
                 placeholder="Vì sao bán khác giá niêm yết?"
                 aria-label="Lý do bán lệch giá niêm yết"
               />
+            </div>
+          )}
+
+          {/* 🔴 Ảnh đơn thuốc — Điều 74 Luật Dược: "Đơn thuốc là căn cứ để bán thuốc".
+              Đặt TRÊN bảng tiền: chụp tờ đơn xong mới tới chuyện thu tiền, đúng thứ tự
+              tay người đứng quầy đi. */}
+          {canChupDon && (
+            <div className={styles.lechGia}>
+              <span>
+                💊 <strong>{dongETC.length} thuốc kê đơn trong giỏ.</strong>{" "}
+                {customer === null
+                  ? "Nhập số điện thoại khách ở trên để chụp được đơn thuốc."
+                  : "Chụp lại tờ đơn để lưu vào hồ sơ."}
+              </span>
+
+              {customer !== null && (
+                <>
+                  <input
+                    className={styles.tienNhan}
+                    style={{ width: "100%", textAlign: "left" }}
+                    value={tenBacSi}
+                    onChange={(e) => setTenBacSi(e.target.value)}
+                    placeholder="Tên bác sĩ kê đơn"
+                    aria-label="Tên bác sĩ kê đơn"
+                  />
+                  <label className={styles.menhGiaNut} style={{ textAlign: "center" }}>
+                    {chupDon.isPending
+                      ? "Đang lưu ảnh…"
+                      : rxXong
+                        ? "✓ Đã lưu ảnh đơn"
+                        : "📷 Chụp đơn thuốc"}
+                    {/* `capture="environment"` mở THẲNG camera sau trên điện thoại thay vì
+                        bắt chọn tệp. Trên máy tính nó bị bỏ qua và quay về hộp chọn tệp —
+                        đúng hành vi mong muốn, không cần nhánh riêng. */}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      hidden
+                      aria-label="Chụp đơn thuốc"
+                      disabled={chupDon.isPending || tenBacSi.trim() === ""}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (!file || !customer) return;
+                        setRxLoi(null);
+                        try {
+                          await chupDon.mutateAsync({
+                            customerId: customer.id,
+                            doctorName: tenBacSi.trim(),
+                            lines: dongETC.map((l) => ({
+                              drugId: l.drugId,
+                              quantity: l.quantity,
+                            })),
+                            file,
+                          });
+                          setRxXong(true);
+                        } catch (err) {
+                          setRxLoi(
+                            err instanceof ApiError
+                              ? err.problem.detail
+                              : `Không lưu được ảnh — ${
+                                  err instanceof Error ? err.message : String(err)
+                                }`,
+                          );
+                        }
+                      }}
+                    />
+                  </label>
+                  {rxLoi && <p className={styles.error}>{rxLoi}</p>}
+                </>
+              )}
             </div>
           )}
 

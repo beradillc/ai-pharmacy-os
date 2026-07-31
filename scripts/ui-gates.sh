@@ -49,6 +49,7 @@ CONG_DOC=(
   check-rejected-sales.mjs  # đơn offline bị từ chối KHÔNG được biến mất
   check-danh-muc-thuoc.mjs  # danh mục thuốc + hoạt chất + giá niêm yết
   check-pos-tien.mjs        # quầy: thành tiền · khách đưa · thối lại (đọc thuần)
+  check-pos-rx-photo.mjs    # quầy: nút Chụp đơn thuốc hiện đúng lúc (đọc thuần)
   measure-mobile.mjs        # thanh điều hướng che gì · cột định danh có khuất
   shot-desktop-mobile.mjs   # 6 màn × 2 khổ: trắng · cuộn ngang · phần tử tràn
 )

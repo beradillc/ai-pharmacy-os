@@ -6766,3 +6766,67 @@ không. GĐ nghiêng về **có** — một ảnh đơn không gắn với ai th
 cũng không xoá theo yêu cầu được (Luật 91/2025).
 
 **Backend đã làm KHÔNG lãng phí ở phương án A và B.** Chỉ phương án C mới phải làm lại.
+
+## 7cr. ✅ Ảnh đơn thuốc ETC — đóng đủ 5/5 bước (2026-07-31)
+
+Chain: *"Làm theo backend sẵn có, GĐ lựa chọn tối ưu"* + *"demo chỉ cần có ảnh chụp, không
+kể nội dung của ảnh"*.
+
+### GĐ đổi khuyến nghị so với lúc trình — và vì sao
+
+Lúc trình ba phương án, GĐ nghiêng về **A nguyên bản** (nới `items` rỗng cho `source=IMAGE`).
+Khi Chain giới hạn *"làm theo backend sẵn có"*, tôi kiểm lại hai thứ và **đổi**:
+
+| Kiểm | Kết quả |
+|---|---|
+| `Prescription.validate()` | Ném `EmptyPrescriptionError` khi đơn không có dòng nào |
+| Đường thêm/sửa dòng sau khi tạo | **Không có** — `create_prescription` là đường ghi items duy nhất |
+
+⇒ A nguyên bản sẽ đẻ ra những đơn **kẹt vĩnh viễn ở `DRAFT`**, và gỡ thì phải viết endpoint
+mới — đúng thứ Chain vừa bảo đừng làm.
+
+**Chọn A thu hẹp:** dòng thuốc lấy từ giỏ (mã + số lượng **thật**), chỉ ba ô *liều · tần
+suất · thời gian* được để trống **khi `source=IMAGE`**. Rỗng = *"chưa phiên từ ảnh"*, không
+phải một con số bịa. Đường nhập tay giữ nguyên ràng buộc cũ. Không endpoint mới, không cột
+mới. Phương án B bị loại vì nó bắt người đứng quầy **chép tay lại chính tờ giấy vừa chụp** —
+làm mất lý do tồn tại của cái nút.
+
+### Đã đóng
+
+| Bước | Việc | Commit |
+|---|---|---|
+| 1 | Bước 0-3 `docs/14` + Chain duyệt | `bd566c7` |
+| 2-3 | Cột ảnh mã hoá, migration `0040`, 2 endpoint, `rx.image.read`, ghi vết đọc | `db00607` |
+| 4-5 | Nới hẹp cho `source=IMAGE` · nút Chụp đơn ở quầy · cổng trình duyệt · ảnh | phiên này |
+
+### 🔴 Cổng đỏ OAN lần thứ BA trong tuần — và lần thứ ba ảnh chụp là thứ phân biệt được
+
+Cổng `check-pos-rx-photo` báo *"có thuốc kê đơn ⇒ hiện khối: 🔴"*. Ảnh chụp cho thấy
+**"Chưa có thuốc trong giỏ"**: cả hai lượt bấm "Thêm" trượt vì locator sai, và
+`.catch(() => {})` **của chính tôi** nuốt mất lỗi rồi để cổng đi tiếp, đo một màn hình không
+ở trạng thái nó tưởng.
+
+Ba ca đỏ oan trong tuần, ba nguyên nhân khác nhau, **một hình dạng**: phép đo hỏng chứ không
+phải sản phẩm hỏng — và cả ba lần, thứ phân biệt được là **nhìn vào ảnh**, không phải đọc kỹ
+hơn con số. Bài học cụ thể lần này: **đừng bọc `.catch()` quanh các lượt bấm dựng bối cảnh**;
+bấm trượt phải làm cổng ném lỗi ngay tại dòng đó.
+
+### Cổng
+
+| Cổng | Kết quả |
+|---|---|
+| RUFF · IMPORTLINTER · MYPY · PYTEST | `0 · 0 · 0 · 0` — **1335 passed** ở bước 2-3; bước 4 thêm 5 test schema |
+| ESLINT · TSC · VITEST · BUILD | `0 · 0 · 0 · 0` |
+| `make ui-gates` | **8/10** — thêm `check-pos-rx-photo`. Hai cổng đỏ vẫn là lỗi phép đo `_rsc` đã chứng minh ở §7cm |
+| Kỷ luật #14 | 2 đột biến ở bước 2-3, cả hai đỏ đúng chỗ |
+
+Ảnh: `docs/ui-history/2026-07-31-anh-don-thuoc/`.
+
+### 🟠 Còn nợ
+
+1. **Chưa có màn xem lại ảnh.** `GET /prescriptions/{id}/image` chạy được và có phân quyền,
+   nhưng không màn nào gọi nó — dược sĩ chưa xem lại được ảnh đã chụp. Đúng nghĩa "nửa nối
+   dây" mà kỷ luật #16 nói; ghi ở đây để phiên sau không tưởng là đã xong.
+2. **Thời hạn lưu ảnh vẫn chưa kết luận được** — cần TT 26/2025/TT-BYT, tệp chưa có trong
+   `docs/legal/`.
+3. **Chưa thông báo cho khách** rằng ảnh đơn được lưu (Bước 1 mục 2 của hồ sơ).

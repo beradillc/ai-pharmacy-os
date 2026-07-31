@@ -162,3 +162,70 @@ def test_don_khong_ton_tai_tra_404(client: TestClient) -> None:
 def test_don_co_that_nhung_chua_co_anh_tra_404(client: TestClient) -> None:
     rx_id = _rx(client)
     assert client.get(f"/api/v1/prescriptions/{rx_id}/image").status_code == 404
+
+
+# ─── Đơn tạo TỪ ẢNH: nới liều/tần suất/thời gian, KHÔNG nới gì khác ──────────────
+
+
+def _tao_don(client: TestClient, *, source: str, dose: str = "1 viên") -> Any:
+    return client.post(
+        "/api/v1/prescriptions",
+        json={
+            "customer_id": _customer(client),
+            "doctor_name": "BS. Thử",
+            "source": source,
+            "items": [
+                {
+                    "drug_id": _drug(client),
+                    "quantity": "10",
+                    "dose": dose,
+                    "frequency": dose,
+                    "duration": dose,
+                }
+            ],
+        },
+    )
+
+
+def test_don_tu_ANH_cho_phep_lieu_luong_de_TRONG(client: TestClient) -> None:
+    """Người chụp tờ đơn không biết liều — nó chỉ có trên giấy.
+
+    Rỗng ở đây đọc là *"chưa phiên từ ảnh"*, không phải "không có liều". Bắt gõ vào là bắt
+    chép tay lại chính tờ vừa chụp; tự điền hộ là bịa dữ liệu lâm sàng.
+    """
+    assert _tao_don(client, source="IMAGE", dose="").status_code == 201
+
+
+def test_don_nhap_TAY_van_phai_co_du_lieu_luong(client: TestClient) -> None:
+    """🔴 Nới cho ảnh KHÔNG được nới cho đường nhập tay — đó là hai việc khác nhau."""
+    assert _tao_don(client, source="MANUAL", dose="").status_code == 422
+
+
+def test_don_nhap_tay_co_du_lieu_luong_van_tao_duoc(client: TestClient) -> None:
+    assert _tao_don(client, source="MANUAL").status_code == 201
+
+
+def test_don_tu_anh_VAN_phai_co_it_nhat_mot_dong_thuoc(client: TestClient) -> None:
+    """🔴 Không nới `items`, kể cả cho ảnh.
+
+    Đơn rỗng dòng sẽ **kẹt vĩnh viễn ở DRAFT**: `validate()` ném `EmptyPrescriptionError`,
+    mà module này không có đường thêm dòng sau khi tạo — phải viết endpoint mới để gỡ.
+    """
+    r = client.post(
+        "/api/v1/prescriptions",
+        json={
+            "customer_id": _customer(client),
+            "doctor_name": "BS. Thử",
+            "source": "IMAGE",
+            "items": [],
+        },
+    )
+    assert r.status_code == 422, r.text
+
+
+def test_don_tu_anh_de_trong_lieu_VAN_duyet_duoc(client: TestClient) -> None:
+    """Bằng chứng cho lập luận ở trên: đơn từ ảnh không phải ngõ cụt."""
+    rx_id = _tao_don(client, source="IMAGE", dose="").json()["id"]
+    r = client.post(f"/api/v1/prescriptions/{rx_id}/validate")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "VALIDATED"

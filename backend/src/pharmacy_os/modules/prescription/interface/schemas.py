@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from pharmacy_os.modules.prescription.application.dto import (
     CreatePrescriptionInput,
@@ -17,11 +17,18 @@ from pharmacy_os.modules.prescription.domain import PrescriptionSource
 
 
 class PrescriptionItemRequest(BaseModel):
+    """Một dòng thuốc trong đơn.
+
+    ``dose``/``frequency``/``duration`` cho phép **rỗng** ở tầng trường, nhưng chỉ hợp lệ
+    khi ``source=IMAGE`` — xem ``CreatePrescriptionRequest.ktra_lieu_luong``. Rỗng ở đây
+    đọc là *"chưa phiên từ ảnh"*, **không** phải "không có liều".
+    """
+
     drug_id: UUID
     quantity: Decimal = Field(gt=0)
-    dose: str = Field(min_length=1, max_length=200)
-    frequency: str = Field(min_length=1, max_length=200)
-    duration: str = Field(min_length=1, max_length=200)
+    dose: str = Field(max_length=200)
+    frequency: str = Field(max_length=200)
+    duration: str = Field(max_length=200)
     instructions: str | None = None
 
 
@@ -33,6 +40,33 @@ class CreatePrescriptionRequest(BaseModel):
     doctor_license: str | None = Field(default=None, max_length=64)
     diagnosis: str | None = None  # cột Text, không giới hạn
     image_url: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def ktra_lieu_luong(self) -> CreatePrescriptionRequest:
+        """Đơn nhập TAY vẫn phải có đủ liều · tần suất · thời gian; đơn từ ẢNH thì không.
+
+        🔴 Vì sao nới, và nới hẹp đúng chỗ này (Chain giao 2026-07-31, GĐ chọn):
+
+        Người đứng quầy chụp tờ đơn thì **không biết** liều/tần suất/thời gian — chúng chỉ
+        có trên giấy. Bắt gõ vào là bắt chép tay lại chính tờ vừa chụp, tức làm mất lý do
+        tồn tại của cái nút. Còn tự điền ``"1 viên"``/``"2 lần/ngày"`` cho qua cổng là
+        **bịa dữ liệu lâm sàng** vào hồ sơ một bệnh nhân thật — cùng họ với lỗi dự án đã từ
+        chối khi quyết *"hàm lượng để trống, không điền sẵn 1"*.
+
+        Không nới rộng hơn: **``items`` vẫn phải có ít nhất một dòng**, kể cả với ảnh. Dòng
+        thuốc lấy từ giỏ hàng nên mã thuốc và số lượng là **thật**. Nếu cho ``items`` rỗng,
+        đơn sẽ **kẹt vĩnh viễn ở DRAFT**: ``Prescription.validate()`` ném
+        ``EmptyPrescriptionError`` khi không có dòng nào, mà module này **không có đường
+        thêm dòng sau khi tạo** — sẽ phải viết endpoint mới để gỡ.
+        """
+        if self.source is PrescriptionSource.IMAGE:
+            return self
+        for i, it in enumerate(self.items, start=1):
+            if not (it.dose.strip() and it.frequency.strip() and it.duration.strip()):
+                raise ValueError(
+                    f"Dòng {i}: đơn nhập tay phải có đủ liều, tần suất và thời gian dùng"
+                )
+        return self
 
     def to_input(self) -> CreatePrescriptionInput:
         return CreatePrescriptionInput(
