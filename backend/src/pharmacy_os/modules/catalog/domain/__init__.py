@@ -5,10 +5,12 @@ from pharmacy_os.modules.catalog.domain.entities import (
     Drug,
     DrugIngredient,
     DrugPriceChange,
+    DrugPriceRecord,
     DrugUnit,
     RxClass,
 )
 from pharmacy_os.modules.catalog.domain.exceptions import (
+    CatalogError,
     DuplicateIngredientError,
     DuplicateUnitError,
     InvalidIngredientError,
@@ -22,8 +24,10 @@ __all__ = [
     "Drug",
     "DrugIngredient",
     "DrugPriceChange",
+    "DrugPriceRecord",
     "DrugUnit",
     "RxClass",
+    "CatalogError",
     "DuplicateIngredientError",
     "DuplicateUnitError",
     "InvalidIngredientError",

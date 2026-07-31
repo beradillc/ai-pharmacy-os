@@ -250,6 +250,21 @@ class AuditAction(StrEnum):
     sách vào đây là biến sổ audit thành bản sao thứ hai của dữ liệu nó canh (NĐ 356/2025
     Điều 4.2 — cùng lý do đã ghi ở :class:`AuditEntry`)."""
 
+    CATALOG_DRUG_PRICE_CHANGED = "CATALOG_DRUG_PRICE_CHANGED"
+    """Giá bán niêm yết của một thuốc bị đặt lại (2026-07-31, Chain giao).
+
+    Điều 107.4 Luật Dược buộc niêm yết giá bán lẻ; Điều 6.5.i cấm bán cao hơn giá niêm
+    yết. Cả hai chỉ kiểm chứng được nếu trả lời được *"giá niêm yết ngày ấy là bao nhiêu,
+    ai đặt"* — ``drugs.sale_price`` một mình không trả lời được, nó chỉ có giá **hiện tại**.
+
+    Sổ audit ở đây là **lớp thứ hai**, không phải nguồn: nguồn là bảng chỉ-ghi-thêm
+    ``drug_price_history``. Hai lớp vì chúng trả lời hai câu hỏi khác nhau — bảng lịch sử
+    trả lời *"giá đổi thế nào"*, sổ audit trả lời *"ai chạm vào cái gì trong hệ thống"*,
+    và mất một trong hai không suy ra được từ cái còn lại.
+
+    ``context`` **được** mang giá cũ/mới, khác :attr:`CATALOG_DRUG_INGREDIENTS_REPLACED`:
+    giá không phải dữ liệu cá nhân của ai, nên lý do NĐ 356/2025 Điều 4.2 không áp ở đây."""
+
     # --- analytics (đề xuất nhập hàng → PO nháp: ai bấm gì, PROJECT_STATE §7am) ---
     ANALYTICS_REORDER_RUN = "ANALYTICS_REORDER_RUN"
     """A reorder-suggestion run was executed for a branch — the act that regenerates

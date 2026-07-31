@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.modules.catalog.domain import ActiveIngredient, Drug
+from pharmacy_os.modules.catalog.domain import (
+    ActiveIngredient,
+    Drug,
+    DrugPriceChange,
+    DrugPriceRecord,
+)
 from pharmacy_os.modules.catalog.infrastructure.mappers import (
     ingredient_to_domain,
     ingredient_to_orm,
@@ -20,6 +26,7 @@ from pharmacy_os.modules.catalog.infrastructure.models import (
     ActiveIngredientORM,
     DrugIngredientORM,
     DrugORM,
+    DrugPriceHistoryORM,
 )
 
 
@@ -111,6 +118,68 @@ class SqlAlchemyDrugRepository:
             for i in drug.ingredients
         ]
         await self._session.flush()
+
+    async def save_price(
+        self,
+        drug: Drug,
+        change: DrugPriceChange,
+        changed_by: UUID | None,
+        changed_at: datetime,
+    ) -> None:
+        """Ghi giá mới lên `drugs.sale_price` VÀ thêm dòng lịch sử — một lượt, một hàm.
+
+        Chỉ gán đúng một cột. Không `to_orm()`: nó dựng một `DrugORM` mới mang mọi trường
+        nên `merge` sẽ ghi đè cả tên, mã vạch và hoạt chất — xem `save_ingredients`.
+        """
+        stmt = select(DrugORM).where(
+            DrugORM.id == drug.id, DrugORM.tenant_id == self._ctx.tenant_id
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        if row is None:
+            return
+        row.sale_price = change.new_price
+        self._session.add(
+            DrugPriceHistoryORM(
+                id=change.id,
+                tenant_id=self._ctx.tenant_id,
+                drug_id=change.drug_id,
+                old_price=change.old_price,
+                new_price=change.new_price,
+                reason=change.reason,
+                changed_by=changed_by,
+                changed_at=changed_at,
+            )
+        )
+        await self._session.flush()
+
+    async def price_history(self, drug_id: UUID, *, limit: int = 50) -> Sequence[DrugPriceRecord]:
+        stmt = (
+            select(DrugPriceHistoryORM)
+            .where(
+                DrugPriceHistoryORM.drug_id == drug_id,
+                DrugPriceHistoryORM.tenant_id == self._ctx.tenant_id,
+            )
+            # `id` là khoá phụ để hai lượt gọi liên tiếp không bao giờ cho hai thứ tự khác
+            # nhau. Nó KHÔNG cứu được trường hợp trùng dấu thời gian — UUID ngẫu nhiên thì
+            # "id giảm dần" không liên quan gì tới thứ tự thời gian. Thứ cứu được là
+            # `changed_at` có độ phân giải micro-giây do tầng ứng dụng cấp; xem ghi chú ở
+            # `DrugPriceHistoryORM.changed_at`.
+            .order_by(DrugPriceHistoryORM.changed_at.desc(), DrugPriceHistoryORM.id.desc())
+            .limit(limit)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [
+            DrugPriceRecord(
+                id=r.id,
+                drug_id=r.drug_id,
+                old_price=r.old_price,
+                new_price=r.new_price,
+                reason=r.reason,
+                changed_by=r.changed_by,
+                changed_at=r.changed_at,
+            )
+            for r in rows
+        ]
 
 
 class SqlAlchemyActiveIngredientRepository:

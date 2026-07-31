@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pharmacy_os.modules.catalog.domain import ActiveIngredient, Drug, RxClass
+from pharmacy_os.modules.catalog.domain import (
+    ActiveIngredient,
+    Drug,
+    DrugPriceRecord,
+    RxClass,
+)
 
 
 @dataclass(slots=True)
@@ -80,6 +86,33 @@ class DrugIngredientRef:
 
     ingredient_id: UUID
     name: str
+
+
+@dataclass(slots=True)
+class PriceHistoryOutput:
+    """Một dòng lịch sử giá cho tầng giao diện.
+
+    Có ``changed_by``/``changed_at`` — khác ``DrugPriceChange`` của miền, vốn cố ý không
+    biết ai và lúc nào. Xem ``DrugPriceRecord``.
+    """
+
+    id: UUID
+    old_price: Decimal | None
+    new_price: Decimal
+    reason: str | None
+    changed_by: UUID | None
+    changed_at: datetime
+
+    @classmethod
+    def of(cls, record: DrugPriceRecord) -> PriceHistoryOutput:
+        return cls(
+            id=record.id,
+            old_price=record.old_price,
+            new_price=record.new_price,
+            reason=record.reason,
+            changed_by=record.changed_by,
+            changed_at=record.changed_at,
+        )
 
 
 @dataclass(slots=True)

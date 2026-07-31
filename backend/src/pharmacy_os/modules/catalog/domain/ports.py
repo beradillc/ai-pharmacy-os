@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from pharmacy_os.modules.catalog.domain.entities import ActiveIngredient, Drug
+from pharmacy_os.modules.catalog.domain.entities import (
+    ActiveIngredient,
+    Drug,
+    DrugPriceChange,
+    DrugPriceRecord,
+)
 
 
 class DrugRepository(Protocol):
@@ -53,6 +59,39 @@ class DrugRepository(Protocol):
         Trả về im lặng nếu thuốc không thuộc tenant của người gọi — bên gọi đã đọc thuốc
         qua :meth:`get` (cũng tenant-scoped) nên tình huống này chỉ xảy ra khi thuốc bị xoá
         giữa hai lượt, và đó không phải lỗi cần dựng riêng một exception.
+        """
+        ...
+
+    async def save_price(
+        self,
+        drug: Drug,
+        change: DrugPriceChange,
+        changed_by: UUID | None,
+        changed_at: datetime,
+    ) -> None:
+        """Ghi giá mới lên thuốc **và** thêm một dòng vào lịch sử giá — cùng một lượt.
+
+        Hai việc này cố ý nằm trong **một** phương thức, không tách thành `save_price` +
+        `add_price_change`. Tách ra là mở đúng cái cửa mà `DrugPriceChange` sinh ra để
+        đóng: một bên gọi ghi giá xong rồi quên ghi lịch sử, và không có gì đỏ lên.
+
+        Hẹp như `save_ingredients`: chỉ chạm `sale_price`, không dùng `to_orm()` — bên gọi
+        chỉ muốn đổi giá thì không có đường nào ghi đè tên/mã vạch/hoạt chất.
+
+        Trả về im lặng nếu thuốc không thuộc tenant người gọi, cùng lý do `save_ingredients`.
+        """
+        ...
+
+    async def price_history(self, drug_id: UUID, *, limit: int = 50) -> Sequence[DrugPriceRecord]:
+        """Lịch sử giá của một thuốc, **mới nhất trước**. Rỗng khi mã chưa từng đổi giá.
+
+        Thuốc không thuộc tenant người gọi trả về rỗng, không phải lỗi — cùng khuôn với
+        các phép đọc khác của repo này.
+
+        Kiểu trả về là ``Sequence`` chứ không ``list`` vì một lý do rất cụ thể: lớp này
+        đã có một phương thức tên ``list``, nên trong thân lớp cái tên đó **không còn** trỏ
+        tới kiểu dựng sẵn — mypy báo *"Function ... is not valid as a type"*. Đây là lỗi
+        thật của phép chú kiểu, không phải nhiễu.
         """
         ...
 

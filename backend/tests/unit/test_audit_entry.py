@@ -105,6 +105,8 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "CLINICAL_RECOMMENDATION_ACCEPTED",
         "CATALOG_DRUG_CREATED",
         "CATALOG_DRUG_INGREDIENTS_REPLACED",
+        # 2026-07-31, Chain giao: giá niêm yết đổi được ⇒ phải truy được ai đổi (Đ107.4).
+        "CATALOG_DRUG_PRICE_CHANGED",
         "SALE_RETURN_REGISTERED",
         "SALES_ALLERGY_WARNING_OVERRIDDEN",
         "INVENTORY_RECONCILIATION_RESOLVED",

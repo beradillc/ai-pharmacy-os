@@ -7,6 +7,8 @@ are injected as factories at composition time (see the module ``register``).
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
@@ -21,9 +23,11 @@ from pharmacy_os.modules.catalog.application.dto import (
     DrugIngredientInput,
     DrugIngredientRef,
     DrugOutput,
+    PriceHistoryOutput,
 )
 from pharmacy_os.modules.catalog.domain import (
     ActiveIngredient,
+    CatalogError,
     Drug,
     DrugIngredient,
     DrugUnit,
@@ -160,6 +164,73 @@ class CatalogService:
             count_after=str(len(drug.ingredients)),
         )
         return DrugOutput.of(drug)
+
+    async def set_drug_price(
+        self,
+        drug_id: UUID,
+        new_price: Decimal,
+        reason: str | None,
+        ctx: RequestContext,
+    ) -> DrugOutput:
+        """Đặt lại giá bán niêm yết của một thuốc, ghi luôn một dòng lịch sử giá.
+
+        Cho tới 2026-07-31 **không có đường nào** đổi giá sau khi tạo thuốc: `create_drug`
+        nhận `sale_price` một lần rồi thôi, router không có `PUT`/`PATCH` nào chạm giá.
+        Đặt sai một lần là sai vĩnh viễn — cùng hình dạng với ca hoạt chất ngày 30/07.
+
+        Quyền là ``catalog.update`` — **cấp chuỗi**, không phải quyền của quầy. Giá là
+        quyết định của chủ chuỗi (Chain chốt 2026-07-31), và `catalog.update` sẵn có đúng
+        ranh giới đó: `_BRANCH_PHARMACIST_PERMISSIONS` loại trừ nó tường minh. Thêm một
+        quyền mới ở đây sẽ tạo ra tầng phân quyền thứ hai cho cùng một khái niệm.
+
+        **Đòi lý do khi đổi giá đã có, không đòi khi đặt giá lần đầu.** Một mã nhập từ nhà
+        phân phối chưa có giá thì lần đầu chốt giá không có gì để giải thích; còn đổi giá
+        của một mã **đang bán** là thay đổi thứ khách nhìn thấy trên kệ, và Điều 107.4
+        Luật Dược buộc giá đó phải niêm yết được.
+
+        Raises :class:`NotFoundError` khi thuốc không thuộc tenant; :class:`ValidationError`
+        khi giá không hợp lệ, trùng giá cũ, hoặc đổi giá mà thiếu lý do.
+        """
+        require_permission(ctx, "catalog.update")
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            drug = await repo.get(drug_id)
+            if drug is None:
+                raise NotFoundError(f"Không tìm thấy thuốc {drug_id}")
+            if drug.sale_price is not None and not (reason or "").strip():
+                raise ValidationError("Đổi giá một mã đang có giá thì phải ghi lý do")
+            try:
+                change = drug.set_sale_price(new_price, reason=(reason or None))
+            except CatalogError as exc:
+                raise ValidationError(str(exc)) from exc
+            await repo.save_price(drug, change, ctx.user_id, datetime.now(UTC))
+            await uow.commit()
+
+        await self._record(
+            ctx,
+            AuditAction.CATALOG_DRUG_PRICE_CHANGED,
+            drug.id,
+            old_price="(chưa có)" if change.old_price is None else str(change.old_price),
+            new_price=str(change.new_price),
+        )
+        return DrugOutput.of(drug)
+
+    async def drug_price_history(
+        self, drug_id: UUID, ctx: RequestContext, *, limit: int = 50
+    ) -> list[PriceHistoryOutput]:
+        """Lịch sử giá của một thuốc, mới nhất trước.
+
+        Quyền ``catalog.read`` chứ không ``catalog.update``: giá niêm yết là thứ **phải**
+        công khai tại nơi bán theo Điều 107.4, nên lịch sử của nó không phải bí mật với
+        người trong nhà thuốc. Ai được *đổi* mới là chuyện cấp chuỗi.
+        """
+        require_permission(ctx, "catalog.read")
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            if await repo.get(drug_id) is None:
+                raise NotFoundError(f"Không tìm thấy thuốc {drug_id}")
+            records = await repo.price_history(drug_id, limit=limit)
+        return [PriceHistoryOutput.of(r) for r in records]
 
     async def get_drug(self, drug_id: UUID, ctx: RequestContext) -> DrugOutput:
         """Return one drug by id, scoped to the tenant; 404 if not found."""

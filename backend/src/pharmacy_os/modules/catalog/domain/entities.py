@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID, uuid4
@@ -105,6 +106,29 @@ class DrugPriceChange:
     new_price: Decimal
     old_price: Decimal | None = None
     reason: str | None = None
+    id: UUID = field(default_factory=uuid4)
+
+
+@dataclass(frozen=True, slots=True)
+class DrugPriceRecord:
+    """Một dòng lịch sử giá **đọc lên từ kho** — đã có người thực hiện và dấu thời gian.
+
+    Khác :class:`DrugPriceChange` ở đúng một điểm, và điểm đó có chủ ý:
+    `DrugPriceChange` là thứ miền **sinh ra** (chưa biết ai, chưa biết lúc nào — miền
+    không đọc đồng hồ, không biết ai đăng nhập); `DrugPriceRecord` là thứ **đọc lại**,
+    khi hai thông tin đó đã được gắn và đã trở thành một phần của sự thật lịch sử.
+
+    Gộp hai thứ này làm một kiểu duy nhất sẽ buộc `set_sale_price` hoặc phải nhận
+    `changed_by` (miền biết chuyện đăng nhập — sai tầng), hoặc phải để hai trường luôn
+    rỗng ở đường ghi (một kiểu nói dối im lặng về cái nó bảo đảm).
+    """
+
+    drug_id: UUID
+    new_price: Decimal
+    changed_at: datetime
+    old_price: Decimal | None = None
+    reason: str | None = None
+    changed_by: UUID | None = None
     id: UUID = field(default_factory=uuid4)
 
 

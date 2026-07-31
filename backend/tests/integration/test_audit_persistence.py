@@ -267,6 +267,9 @@ _COVERED_ELSEWHERE = {
     # Có test bền vững riêng: tests/integration/test_catalog_replace_ingredients.py
     # ::test_ghi_vet_audit_kem_so_luong_TRUOC_va_SAU (đọc thẳng AuditLogORM).
     AuditAction.CATALOG_DRUG_INGREDIENTS_REPLACED,
+    # Có test bền vững riêng: tests/integration/test_catalog_set_price.py
+    # ::test_doi_gia_ghi_mot_dong_audit (đọc thẳng AuditLogORM).
+    AuditAction.CATALOG_DRUG_PRICE_CHANGED,
     # Có test riêng: tests/integration/test_crm_phone_masking.py (đường mở lộ số).
     AuditAction.CUSTOMER_PHONE_REVEALED,
     AuditAction.SALE_RETURN_REGISTERED,
