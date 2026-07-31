@@ -1,0 +1,25 @@
+.canhBao {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--beras-border);
+  background: var(--beras-surface);
+  color: var(--beras-text-muted);
+}
+
+.trong {
+  color: var(--beras-text-muted);
+  font-style: italic;
+}
+
+/* Ảnh đơn thuốc: vừa khung, không tràn ra ngoài trên điện thoại. `max-height` để một
+   tờ A4 chụp dọc không đẩy nút Đóng ra khỏi màn hình. */
+.anh {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--beras-border);
+  background: var(--beras-surface);
+}

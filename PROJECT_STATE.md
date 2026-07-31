@@ -6830,3 +6830,77 @@ bấm trượt phải làm cổng ném lỗi ngay tại dòng đó.
 2. **Thời hạn lưu ảnh vẫn chưa kết luận được** — cần TT 26/2025/TT-BYT, tệp chưa có trong
    `docs/legal/`.
 3. **Chưa thông báo cho khách** rằng ảnh đơn được lưu (Bước 1 mục 2 của hồ sơ).
+
+## 7cs. ✅ Cài đặt → Lưu trữ + chụp đơn không cần khách — 4/4 bước lượt hai (2026-07-31)
+
+Chain chốt bốn điều; hai cái đổi mã, hai cái là chính sách.
+
+| # | Quyết định | Xử |
+|---|---|---|
+| 1 | Màn xem ở **Cài đặt → Lưu trữ**, dữ liệu theo phân quyền, chủ chuỗi xem toàn chi nhánh | Màn mới + endpoint danh sách + **quyền phạm vi mới** |
+| 2 | Thời hạn lưu **vĩnh viễn, tạm thời** | Ghi vào hồ sơ. Không viết lịch xoá. Vẫn giữ cờ pháp lý |
+| 3 | Thông báo cho khách **bằng miệng** là đủ | Không dựng ô đánh dấu đồng ý — một dấu tick không ai bấm còn tệ hơn không có gì |
+| 4 | **Không SĐT vẫn chụp được** | `customer_id` nullable, chỉ cho `source=IMAGE` |
+
+### 🔴 Quyền PHẠM VI tách khỏi quyền NỘI DUNG
+
+`RequestContext` chỉ mang **một** `branch_id` từ JWT, và `SystemRoleSpec.chain_level` tự
+khai trong docstring rằng nó *"là ghi chú cho người gán vai, không phải ràng buộc được
+cưỡng chế"*. Phạm vi chi nhánh vì thế **không biểu đạt được** nếu không thêm gì.
+
+Thêm `archive.read.chain`, tách đôi hai câu hỏi: `rx.image.read` = *xem loại gì*;
+`archive.read.chain` = *xem của mấy chi nhánh*. Không mượn một quyền cấp chuỗi sẵn có làm
+dấu hiệu — người sửa sau sẽ không đoán ra vì sao sửa quyền danh mục lại làm lộ ảnh đơn
+thuốc của chi nhánh khác.
+
+Kiểm trên `nt650v2` bằng SQL (kỷ luật #7, không tin log seed):
+
+| Vai | `rx.image.read` | `archive.read.chain` |
+|---|---|---|
+| `chain_pharmacist` | ✓ | ✓ |
+| `branch_pharmacist` | ✓ | ✗ |
+| `cashier` | ✗ | ✗ |
+
+### 🔴 ĐỘT BIẾN SỐNG SÓT — phát hiện đáng giá nhất lượt này
+
+Lần kiểm #14 đầu: đặt `toan_chuoi = True` (ai cũng thấy toàn chuỗi) mà **24/24 test vẫn
+xanh**. Vì bộ test chỉ có **một** chi nhánh, nên lọc hay không lọc cho cùng kết quả — phép
+kiểm phạm vi **không có răng**.
+
+Dựng lại với hai chi nhánh (ghi thẳng CSDL, vì hệ thống chưa có endpoint tạo chi nhánh) và
+khẳng định **cả hai chiều**: dược sĩ chi nhánh thấy đúng 1, chủ chuỗi thấy 2 — không có
+chiều thứ hai thì *"trả rỗng cho mọi người"* cũng qua cửa. Chạy lại đột biến ⇒ đỏ đúng chỗ.
+
+Trong lúc sửa lộ thêm một lỗi phép đo: **SQLite lưu UUID không có dấu gạch**, nên
+`UPDATE ... WHERE id='có-gạch'` khớp **0 dòng** và im lặng. Đã thêm `assert rowcount == 1`
+ngay tại helper — đo cả phép đo.
+
+### 🔴 Cổng xanh với 0 dòng cũng là xanh vì lý do sai
+
+`check-luu-tru` xanh khi Lưu trữ rỗng — khẳng định quan trọng nhất (*ảnh mở ra và trình
+duyệt giải mã được*) chưa hề chạy. Viết `write-rx-photo.mjs` (nhóm **GHI**, không chạy mặc
+định) đi trọn luồng thật rồi đo lại: `naturalWidth = 8px`.
+
+Lượt ghi đầu **đỏ**, và hỏng là **ảnh mẫu tôi gõ tay** chứ không phải luồng — màn hình báo
+đúng, đọc được: *"Không lưu được ảnh — The image could not be decoded"*. Sinh PNG thật bằng
+`zlib` (74 byte) thì chạy trọn ngay. Lần đỏ đó chứng minh được một thứ khác: **xử lý lỗi
+của sản phẩm hoạt động**.
+
+### Cổng
+
+| Cổng | Kết quả |
+|---|---|
+| RUFF · IMPORTLINTER · MYPY · PYTEST | `0 · 0 · 0 · 0` — **1346 passed**, 260s |
+| ESLINT · TSC · VITEST · BUILD | `0 · 0 · 0 · 0` |
+| `make ui-gates` | **10/11**. `check-customers` **tự xanh trở lại** lượt này — xác nhận thêm tiếng ồn `_rsc` là nhiễu theo thời điểm, không phải lỗi sản phẩm |
+
+Ảnh: `docs/ui-history/2026-07-31-luu-tru/`.
+
+### 🟠 Còn nợ
+
+1. **Dữ liệu thật đã tạo trên `nt650v2`**: 1 đơn thuốc từ ảnh, không gắn khách, do lượt
+   chạy `write-rx-photo.mjs`. Cố ý giữ lại làm dữ liệu demo — Chain muốn thấy màn Lưu trữ
+   có thứ để xem. Xoá được bằng `delete from prescriptions where source='IMAGE'`.
+2. Lưu trữ mới chỉ có **một loại chứng từ** (ảnh đơn thuốc). Bố cục đặt sẵn theo loại để
+   loại sau có chỗ vào.
+3. `check-receive-flow` vẫn đỏ vì tiếng ồn `_rsc` — chưa lọc.

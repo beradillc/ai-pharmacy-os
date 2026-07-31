@@ -25,6 +25,14 @@ mục đã phát hành**, sai thì ghi một mục mới đính chính.
 
 ### Đã thêm
 
+- **Cài đặt → Lưu trữ** (`/cai-dat/luu-tru`): xem lại ảnh đơn thuốc đã chụp. Dữ liệu hiện
+  **theo phân quyền** — quyền mới **`archive.read.chain`** (cấp chuỗi) cho xem toàn bộ chi
+  nhánh; không có thì chỉ chi nhánh đang đăng nhập. Ảnh chỉ tải khi bấm mở, và mỗi lượt mở
+  ghi một dòng audit.
+- **`GET /prescriptions/archive`** — đơn thuốc đã có ảnh, mới nhất trước.
+- **`GET /prescriptions/{id}` nay trả thêm `created_at`.**
+- **`customer_id` của đơn thuốc nay cho phép `null`**, chỉ khi `source=IMAGE`: khách không
+  để lại số điện thoại vẫn chụp được đơn. Đơn nhập tay **vẫn bắt buộc** có khách.
 - **Ảnh đơn thuốc ETC**: nút **📷 Chụp đơn thuốc** ở quầy (chỉ hiện khi giỏ có thuốc kê
   đơn và đã gắn khách), ảnh nén trong trình duyệt rồi lưu **mã hoá at-rest** trong CSDL.
 - **`PUT /prescriptions/{id}/image`** — gắn ảnh (base64, ≤ 2 MB sau giải mã; nhận

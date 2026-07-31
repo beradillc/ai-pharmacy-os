@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -116,6 +117,7 @@ class PrescriptionResponse(BaseModel):
     doctor_license: str | None
     diagnosis: str | None
     image_url: str | None
+    created_at: datetime
     has_image: bool
     status: str
     validated_by: UUID | None
@@ -132,6 +134,7 @@ class PrescriptionResponse(BaseModel):
             doctor_license=out.doctor_license,
             diagnosis=out.diagnosis,
             image_url=out.image_url,
+            created_at=out.created_at,
             has_image=out.has_image,
             status=out.status,
             validated_by=out.validated_by,

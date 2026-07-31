@@ -382,3 +382,22 @@ export interface RoleAssignment {
   granted_by: string | null;
   granted_at: string;
 }
+
+
+export interface PrescriptionArchiveRow {
+  id: string;
+  /** `null` = khách không để lại số điện thoại — xem `Prescription.customer_id` ở backend. */
+  customer_id: string | null;
+  doctor_name: string;
+  status: string;
+  source: string;
+  has_image: boolean;
+  created_at: string;
+}
+
+export interface PrescriptionImage {
+  prescription_id: string;
+  /** base64 của byte ảnh, KHÔNG kèm tiền tố `data:` — màn hình tự ghép khi hiển thị. */
+  image_data: string;
+  content_type: string;
+}

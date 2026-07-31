@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -50,6 +51,8 @@ class PrescriptionOutput:
     doctor_license: str | None
     diagnosis: str | None
     image_url: str | None
+    #: Thời điểm tạo — màn Lưu trữ sắp xếp và hiển thị theo trường này.
+    created_at: datetime
     #: Ảnh CÓ hay KHÔNG — cố ý không mang nội dung ảnh. Xem `PrescriptionImageOutput`.
     has_image: bool
     status: str
@@ -67,6 +70,7 @@ class PrescriptionOutput:
             doctor_license=rx.doctor_license,
             diagnosis=rx.diagnosis,
             image_url=rx.image_url,
+            created_at=rx.created_at,
             has_image=rx.image_data is not None,
             status=rx.status.value,
             validated_by=rx.validated_by,

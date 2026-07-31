@@ -40,7 +40,8 @@ export async function nenAnh(file: File): Promise<{ data: string; contentType: s
 }
 
 export interface RxPhotoInput {
-  customerId: string;
+  /** `null` = khách không để lại số điện thoại (Chain chốt 2026-07-31). */
+  customerId: string | null;
   doctorName: string;
   lines: { drugId: string; quantity: string }[];
   file: File;

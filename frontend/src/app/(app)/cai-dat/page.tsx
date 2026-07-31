@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useTheme } from "@/theme/ThemeProvider";
 import { THEMES } from "@/theme/themes";
 import styles from "@/shared/ui/screen.module.css";
@@ -28,6 +30,19 @@ export default function SettingsPage() {
           <p className={styles.subtitle}>Tuỳ chọn hiển thị, lưu trên máy này</p>
         </div>
       </div>
+
+      <section className={styles.panel}>
+        <div className={local.section}>
+          <h2 className={local.sectionTitle}>Lưu trữ</h2>
+          <p className={local.sectionText}>
+            Ảnh đơn thuốc đã chụp ở quầy. Dữ liệu hiện theo phân quyền — chủ chuỗi xem
+            được toàn bộ chi nhánh, dược sĩ chi nhánh chỉ xem chi nhánh mình.
+          </p>
+          <Link href="/cai-dat/luu-tru" className={styles.button}>
+            Mở Lưu trữ
+          </Link>
+        </div>
+      </section>
 
       <section className={styles.panel}>
         <div className={local.section}>

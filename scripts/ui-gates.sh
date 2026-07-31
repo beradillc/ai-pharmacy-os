@@ -50,12 +50,14 @@ CONG_DOC=(
   check-danh-muc-thuoc.mjs  # danh mục thuốc + hoạt chất + giá niêm yết
   check-pos-tien.mjs        # quầy: thành tiền · khách đưa · thối lại (đọc thuần)
   check-pos-rx-photo.mjs    # quầy: nút Chụp đơn thuốc hiện đúng lúc (đọc thuần)
+  check-luu-tru.mjs         # Cài đặt → Lưu trữ: ảnh chỉ tải khi bấm (ghi audit khi mở)
   measure-mobile.mjs        # thanh điều hướng che gì · cột định danh có khuất
   shot-desktop-mobile.mjs   # 6 màn × 2 khổ: trắng · cuộn ngang · phần tử tràn
 )
 CONG_GHI=(
   check-pos-customer.mjs    # 🔴 BÁN một đơn
   check-sale-appears.mjs    # 🔴 BÁN một đơn
+  write-rx-photo.mjs        # 🔴 TẠO một đơn thuốc + lưu ảnh (luồng chụp đơn end-to-end)
 )
 
 say() { printf '\n\033[1m▶ %s\033[0m\n' "$1"; }

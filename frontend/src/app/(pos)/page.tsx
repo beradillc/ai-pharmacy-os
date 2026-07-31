@@ -300,14 +300,17 @@ export default function PosPage() {
           {canChupDon && (
             <div className={styles.lechGia}>
               <span>
-                💊 <strong>{dongETC.length} thuốc kê đơn trong giỏ.</strong>{" "}
-                {customer === null
-                  ? "Nhập số điện thoại khách ở trên để chụp được đơn thuốc."
-                  : "Chụp lại tờ đơn để lưu vào hồ sơ."}
+                💊 <strong>{dongETC.length} thuốc kê đơn trong giỏ.</strong> Chụp lại tờ
+                đơn để lưu vào hồ sơ.{" "}
+                {customer === null && (
+                  <em>
+                    Khách chưa để lại số — ảnh vẫn lưu được, nhưng sẽ không tra lại được
+                    theo khách.
+                  </em>
+                )}
               </span>
 
-              {customer !== null && (
-                <>
+              <>
                   <input
                     className={styles.tienNhan}
                     style={{ width: "100%", textAlign: "left" }}
@@ -335,11 +338,14 @@ export default function PosPage() {
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         e.target.value = "";
-                        if (!file || !customer) return;
+                        if (!file) return;
                         setRxLoi(null);
                         try {
                           await chupDon.mutateAsync({
-                            customerId: customer.id,
+                            // Chain chốt 31/07: không có số điện thoại thì vẫn chụp được.
+                            // Cái mất — không tra lại được theo khách, không xoá theo yêu
+                            // cầu chủ thể được — đã ghi ở `Prescription.customer_id`.
+                            customerId: customer?.id ?? null,
                             doctorName: tenBacSi.trim(),
                             lines: dongETC.map((l) => ({
                               drugId: l.drugId,
@@ -360,9 +366,8 @@ export default function PosPage() {
                       }}
                     />
                   </label>
-                  {rxLoi && <p className={styles.error}>{rxLoi}</p>}
-                </>
-              )}
+              {rxLoi && <p className={styles.error}>{rxLoi}</p>}
+              </>
             </div>
           )}
 
