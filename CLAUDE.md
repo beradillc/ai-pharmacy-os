@@ -25,6 +25,7 @@
 | Kỷ luật bắt buộc **17** (giai đoạn phát triển tính năng) + **18** (trí nhớ ghi vào chỗ đã có) | **2026-07-31** — Chain ban hành chính sách phát triển; ánh xạ vào cấu trúc tài liệu sẵn có thay vì dựng song song |
 | Kỷ luật bắt buộc **19** (đóng mục giao diện phải chạy cổng trình duyệt) | **2026-07-31** — gom 6 cổng vào `make ui-gates` thì lộ ra 2 cổng đã hỏng cùng ngày mà không ai biết |
 | Kỷ luật bắt buộc **20** (Chain nghiệm thu bằng ảnh chụp) | **2026-07-31** — Chain chốt: *"mở trình duyệt test, chụp màn hình lại là coi như xong; xem trên ảnh là đủ"* |
+| Kỷ luật bắt buộc **21** (cổng đo *nhìn thấy được*, không chỉ *có trên trang*) | **2026-08-01** — GĐ đề nghị sau lần thứ **ba** cùng một hình dạng: cổng xanh vì `innerText` đọc được cả phần tràn ngoài khung nhìn. **CHỜ CHAIN DUYỆT** |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -399,6 +400,30 @@ máy này, khác với văn bản ủy quyền (file này) nay đã có lịch s
     - Hook **nhắc, không chặn**: cổng trình duyệt cần app đang chạy và mất ~2 phút; chặn
       commit vào điều kiện đó thì người ta dùng `--no-verify` theo phản xạ và mất luôn cả
       4 cổng nhanh. Một cổng bị đi vòng thường xuyên tệ hơn một lời nhắc được đọc.
+
+21. **Cổng giao diện phải đo NHÌN THẤY ĐƯỢC, không chỉ CÓ TRÊN TRANG.** (2026-08-01, GĐ đề
+    nghị — **CHỜ CHAIN DUYỆT**; ghi ở đây ngay từ lúc đề nghị vì kỷ luật #13 đòi bài học
+    phương pháp vào FILE NÀY chứ không vào nhật ký)
+
+    `innerText` và `textContent` đọc được **cả phần tràn ra ngoài khung nhìn**. Một cổng
+    khẳng định *"màn hình hiện con số lệch"* bằng `innerText` sẽ **xanh trọn vẹn** trong lúc
+    con số đó nằm ngoài rìa màn hình điện thoại và không ngón tay nào chạm tới.
+
+    Với mọi thứ người dùng **phải nhìn thấy để làm việc được**, đo thêm:
+    - `boundingBox()` nằm **trong** `viewport` (`x + width <= viewport.width`), và
+    - `document.documentElement.scrollWidth <= clientWidth` (trang không cuộn ngang).
+
+    - *Vì sao thành kỷ luật riêng:* **ba lần cùng một hình dạng**, ba màn khác nhau —
+      (a) 29/07 cột định danh trượt khỏi màn ở **5/5 bảng**; (b) 31/07 ba ô nhập cao ~125px
+      CSS mỗi ô ở `/khoi-tao-ton` (một biểu mẫu bốn dòng thành 1,8 màn); (c) 01/08 cột
+      **Chênh** ở `/kiem-ke` — *đúng cột là lý do màn đó tồn tại* — bị cắt khỏi màn 390px
+      **trong lúc cổng Playwright báo ✓**.
+    - Cả ba lần thứ bắt được là **ảnh chụp**, không phải phép đo. Kỷ luật #20 nói *luôn phải
+      có ảnh*; #21 nói *phép đo cũng phải biết cái mà ảnh biết*, để không phụ thuộc vào việc
+      tôi có nhớ mở ảnh ra nhìn hay không — kỷ luật #10: cưỡng chế bằng máy, không bằng
+      trí nhớ.
+    - Bổ sung cho #15 và #20: #15 nói *phải có cổng đo đúng thứ người dùng chạm vào*; #20 nói
+      *ảnh là thứ Chain duyệt*; #21 nói *"có trong DOM" ≠ "nhìn thấy được"*.
 
 18. **Trí nhớ dự án ghi vào chỗ ĐÃ CÓ, không dựng cấu trúc song song.** (2026-07-31)
 

@@ -6964,3 +6964,123 @@ Và hai thứ **không** thuộc phạm vi giao diện, giữ ở đây:
 7. Ba mục pháp lý Chain **tạm đóng**: ADR reporting · hồ sơ khiếu nại/thu hồi · luân chuyển
    tồn kho giữa chi nhánh. Và `docs/13` dòng 14 vẫn ghi *"KHÔNG TÌM THẤY"* cho một nguồn
    luật **đã tìm thấy** — sửa tài liệu, rẻ nhất trong nhóm.
+
+---
+
+## 7cu. 🔒 ĐÓNG PHIÊN 2026-07-31 → 08-01 — BERAS V2 Phase 0-11 (11/15 phase)
+
+**Chain uỷ quyền GĐ chỉ đạo**, ràng buộc do Chain đặt: *"tối ưu giữ lại code cũ, chỉ thêm
+mới, hỏi lại khi sửa code cũ"*. Không lần nào phải hỏi — không mục nào buộc sửa code cũ.
+
+### Đã đóng
+
+| Phase | Cái gì | Commit |
+|---|---|---|
+| 0 | Audit kho trước khi mở rộng | `52bd82d` |
+| 1 | Module `location` — Kho→Khu→Kệ→Ô, màn Sơ đồ kho | `47ac945` `96a78b8` `3ca8d4b` |
+| 2 | Tồn theo vị trí — **sổ thứ hai**, `stock_balances` không đụng | `c6de50a` `5ef0093` `11f2498` |
+| 5-6 | Nhận hàng gắn ô ngay + màn Nhập hàng nhanh | `090332f` |
+| 9 | Khởi tạo tồn kho = loại riêng (`ref_type='INIT'`) | `de3a4bc` |
+| 10 | Nhập theo kệ — chọn ô một lần, đếm hết ô đó | `86791c5` |
+| 11 | Kiểm kê theo ô — chênh lệch **chờ duyệt** | `d5dcba1` `a19fa8f` `f75c578` |
+
+Còn nợ của V2: **Phase 4** (pick list) · **12** (sơ đồ trực quan) · **8** (multi-supplier) ·
+**15** (`ARCHITECTURE_REVIEW.md`), cùng các tệp tài liệu spec đòi mà chưa viết:
+`PICKING_ASSIST.md` · `PICK_LIST.md` · `SMART_PURCHASE.md` · `LOCATION_MAP.md` ·
+`INVENTORY_ARCHITECTURE.md` · `ARCHITECTURE_REVIEW.md`.
+
+### Quyết định tự chốt trong phiên (full-auto #3)
+
+| # | Quyết định | Vì sao | Chain có thể muốn đổi |
+|---|---|---|---|
+| 1 | FEFO **thắng**, `pick_order` chỉ phá hoà khi hạn dùng bằng nhau | hạn dùng là an toàn thuốc, quãng đường chỉ là tiện | không |
+| 2 | Tồn theo vị trí là **sổ thứ hai**, không thêm cột vào `stock_balances` | thêm `location_id` vào đó vỡ khoá `uq_balance_batch` ⇒ phá FEFO + báo cáo + đề xuất nhập cùng lúc | không |
+| 3 | Khởi tạo tồn ghi `ref_type='INIT'`, **không** thêm giá trị vào `MovementType` | thêm loại buộc mọi chỗ phân nhánh theo `type` phải biết; cái khác nhau là *ý nghĩa* | không |
+| 4 | Khởi tạo **không hỏi giá vốn** | giá đoán sẽ vào bình quân gia quyền và sống trong mọi báo cáo lãi gộp | **có thể** — nếu Chain có hoá đơn cũ và muốn nhập giá thật |
+| 5 | Kiểm kê: đếm lại cùng lô thì **đè**, không cộng dồn | người đếm lại là người vừa phát hiện mình đếm sai | **có thể** — nếu quầy quen đếm dồn theo thùng |
+| 6 | Số sổ chốt lúc **nộp**, không lúc duyệt | giữa hai mốc có thể có bán hàng | không |
+| 7 | Người đếm **được** tự duyệt phiếu mình, chỉ hiện *"(cùng một người)"* | nhà thuốc nhỏ một người; chặn ⇒ tính năng vô dụng với nhóm đông nhất | **có** — xem cảnh báo GĐ dưới |
+| 8 | Hai phiên kiểm cùng một ô **không bị chặn** | phiên bỏ dở sẽ khoá vĩnh viễn cái ô; cả hai đều phải qua duyệt | không |
+
+**⚠️ GĐ cảnh báo trước cho phiên sau (quyết định #7):** khi BeraLLC có chi nhánh thứ hai với
+nhân viên thuê ngoài, **tách người đếm khỏi người duyệt là kiểm soát chống thất thoát cơ bản
+nhất**. Lúc đó bật thành **tuỳ chọn theo chi nhánh**, không bỏ cảnh báo.
+
+**⚠️ Quyết định #3 và #4 là quyết định KẾ TOÁN, không phải kỹ thuật.** Hệ quả thật nằm ở giá
+vốn bình quân ⇒ lãi gộp. Khi lập CSDL chính thức, nên cho Trợ lý Kế toán rà một lượt.
+
+### Bốn thứ hỏng mà cổng tự động **không** bắt được
+
+| # | Hỏng gì | Ai bắt được | Cổng nào mù, và vì sao |
+|---|---|---|---|
+| 1 | Ba ô nhập cao ~125px CSS mỗi ô (`/khoi-tao-ton`) | **ảnh chụp** | eslint·tsc·build·Playwright — không cái nào đo chiều cao |
+| 2 | Cột **Chênh** bị cắt khỏi màn 390px (`/kiem-ke`) | **ảnh chụp** | Playwright xanh vì `innerText` đọc được cả phần **tràn ngoài khung nhìn** |
+| 3 | Migration 0045 thiếu `server_default=now()` | **ảnh chụp** (dòng `TypeError: NetworkError`) | **1439 test SQLite xanh hết** — `create_all` dựng bảng thẳng từ ORM nên server_default luôn có |
+| 4 | `donSoTrongO` trả `34946` = hậu tố mã lô `KK34946` | **con số vô lý** | không cổng nào; regex `/(\d+)\s*$/m` trên `innerText` |
+
+Số 3 là món nợ **F-4** tự nhắc mình: *"bộ test phải chạy được trên Postgres, không chỉ
+SQLite"*. Đây là lần thứ **tư** chênh lệch dialect cho lọt một lỗi thật.
+
+Số 4 đáng sợ hơn ba cái kia: nó **vô lý đủ để nhìn ra**. Nếu nó tình cờ trả `10` vì lý do
+sai thì cổng đã xanh mà chẳng chứng minh gì — đúng họ với 16 ca "niềm tin giả" kiểm toán
+26/07 đếm được.
+
+### Đề xuất kỷ luật #21 — CHỜ CHAIN DUYỆT
+
+Số 1, số 2 và ca *"cột định danh trượt khỏi màn ở 5/5 bảng"* (29/07) là **ba lần cùng một
+hình dạng**: cổng đo được **nội dung**, không đo được **nhìn thấy được**. Kỷ luật #18 nói
+lặp từ ba lần thì nâng thành kỷ luật chính thức. Đã ghi vào `CLAUDE.md` theo kỷ luật #13.
+
+### Kỷ luật #14 — mọi cổng mới đã thấy đỏ vì lý do đúng
+
+| Đột biến | Kết quả |
+|---|---|
+| `ref_type="INIT"` → `"GRN"` | FAILED đúng 1 test, 16 test kia xanh |
+| `dong_lech` → `list(self.lines)` | FAILED 2 test canh nó |
+| `counted_qty = x` → `+= x` | FAILED test "đè không cộng dồn" |
+| bỏ `at_loc.put_away` khi duyệt | FAILED test hai sổ đi cùng nhau |
+| `ref_type="COUNT"` → `"GRN"` | FAILED test ADJUST |
+| `location_id: o` → `null` (frontend) | GATE_EXIT=1, **đúng mệnh đề ③** đỏ, ① ② vẫn xanh |
+
+Cộng thêm: **hai cổng CÓ SẴN tự bắt được việc tôi vừa làm** — `test_audit_entry` và
+`test_audit_persistence` đỏ vì hai `AuditAction` mới chưa khai báo. Đó là cổng đúng loại.
+
+### Cổng tại điểm dừng
+
+```
+RUFF=0  FORMAT=0  IMPORTLINTER=0 (19 contracts, 0 broken)  MYPY=0  PYTEST=0 (1439 passed)
+ESLINT=0  TSC=0  VITEST=0 (70 passed)  BUILD=0
+check-khoi-tao-ton EXIT=0 · check-kiem-ke EXIT=0 — cả 1440×900 và 390×844
+```
+
+Migration 0045 đã **thử cả chiều lùi** trên `nt650v2`: upgrade → downgrade (2 bảng biến
+mất) → upgrade lại. Backup `~/backup_pre_0045_*.sql` (3,2 MB).
+
+### CSDL demo `nt650v2` sau khi dọn
+
+| | |
+|---|---|
+| Dữ liệu Chain giữ nguyên | 3 vị trí · 1415 dòng bán · 77 lô · 11 đơn thuốc · 15 khách |
+| `PUTAWAY` | 5 (4 của Chain + 1 lô `2223`) |
+| `INIT` | 1 (lô `2223` — **không** khớp mẫu lô của cổng, không phải dữ liệu tôi tạo) |
+| Phiên kiểm kê | 0 — dọn sạch |
+
+### 🔴 Bẫy hạ tầng mất ~20 phút, sẽ tái phát
+
+Khởi động lại backend/frontend **bằng tay** thì mất ba biến chỉ có trong `scripts/lan-dev.sh`:
+
+| Biến | Thiếu nó thì |
+|---|---|
+| `DB__URL=…/nt650v2` | nối vào `pharmacy_os` rỗng ⇒ đăng nhập 401 |
+| `APP__CORS_ORIGINS` | trình duyệt báo `NetworkError` khi POST |
+| `NEXT_PUBLIC_API_BASE_URL` | bundle nướng `localhost:8000` ⇒ điện thoại gọi về chính nó |
+
+Cả ba triệu chứng **đọc y hệt lỗi giao diện**. Lần sau: chạy `make lan`, đừng gõ `uvicorn`
+/`next start` trần.
+
+### Điểm dừng chính xác
+
+Đang chuẩn bị **Phase 4 (pick list) + Phase 12 (sơ đồ trực quan)**. Chưa viết dòng nào.
+Trước khi code: soạn đề xuất kỷ luật #21 thành **cổng thật** (đo `boundingBox` nằm trong
+khung nhìn, không chỉ `innerText`) — nếu không nó sẽ thành một thói quen phải nhớ, và kỷ
+luật #10 nói cưỡng chế bằng máy chứ không bằng trí nhớ.
