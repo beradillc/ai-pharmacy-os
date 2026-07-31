@@ -6666,3 +6666,57 @@ Cổng: `RUFF=0 IMPORTLINTER=0 MYPY=0 PYTEST=0` — **1323 passed**, 245s.
 Phương án B **không đóng** cái giá của nó ở đường đồng bộ: đơn mang thuốc lạ vẫn không trừ
 tồn kho nào ⇒ sổ sách lệch tồn kho, im lặng. Cần một **báo cáo đối soát định kỳ** đếm số
 dòng `sale_lines.drug_id` không khớp `drugs.id`. Chưa làm.
+
+## 7cp. 📋 Chain thu hẹp phạm vi ETC + tạm đóng 3 mục pháp lý — Bước 0-3 đã viết, CHỜ DUYỆT (2026-07-31)
+
+Chain: *"ETC demo chỉ cần có nút chụp, chụp lại đơn, có file ảnh lưu hệ thống là xong, các
+tính năng kia tạm đóng."*
+
+### Rà soát trước khi lập kế hoạch — chỗ hổng KHÔNG nằm ở nơi sổ nợ gợi ý
+
+| Mảnh | Đo bằng grep |
+|---|---|
+| `prescriptions.image_url` | ✅ **đã có**, xuyên suốt domain → DTO → ORM → schema |
+| 5 endpoint đơn thuốc + 4 quyền `rx.*` | ✅ đã có |
+| Nơi cất tệp ảnh | ❌ `UploadFile\|multipart\|StorageProvider\|S3` toàn backend = **0** |
+| Màn đơn thuốc / nút chụp ở frontend | ❌ `type="file"\|capture=\|getUserMedia` toàn frontend = **0** |
+| Ai từng đặt `image_url` | ❌ **0 test, 0 seed** |
+
+Hệ thống có **chỗ ghi địa chỉ ảnh** nhưng không gì sinh ra được địa chỉ đó, và không có chỗ
+nào để bấm — nửa nối dây, đúng hình dạng ca hoạt chất 30/07.
+
+### Hai quyết định Chain chốt, và vì sao GĐ khuyến nghị như vậy
+
+| Quyết định | Lý do |
+|---|---|
+| **Ảnh lưu trong CSDL**, không phải trên đĩa | `scripts/backup_verify.sh` chỉ chạy `pg_dump` — **không chạm tệp nào**. Ảnh trên đĩa sẽ khiến diễn tập phục hồi F-16 khôi phục CSDL đầy đủ rồi **mất sạch ảnh mà không gì đỏ lên**, vì phép kiểm phục hồi chỉ so CSDL |
+| **Nút chụp đặt ở quầy**, không dựng màn Đơn thuốc riêng | Đúng luồng demo Chain mô tả, và không phải dựng màn mới. API đã đủ 5 đường nếu sau này cần màn riêng |
+
+### 🔴 Điều đắt nhất phát hiện khi viết Bước 0-3: kích thước ảnh
+
+Ảnh điện thoại thô 2–5 MB → base64 → mã hoá → base64 lần nữa = **3,6–9 MB một dòng**. Với
+50 đơn ETC/ngày là ~15 GB/tháng; `pg_dump` sẽ chậm tới mức người ta **thôi chạy nó** — và
+mất backup còn tệ hơn mất ảnh. ⇒ Nén trong trình duyệt về 1600px/JPEG 0,7 (~200–400 KB)
+trước khi gửi; máy chủ kiểm lại và từ chối quá 2 MB.
+
+Đây là lần đầu hệ thống lưu một khối **dữ liệu nhạy cảm không cấu trúc**: không cắt nhỏ
+được, không che từng trường như đã làm với số điện thoại (ADR-0002).
+
+### 🔴 Một điều BỊ CHẶN, không tự quyết được
+
+Thời hạn lưu ảnh đơn thuốc: `Thông-tư-18-2026.SUMMARY.md` mục 8 ghi **TT 26/2025/TT-BYT**
+(*thời hạn lưu đơn thuốc GN/HT*) là **văn bản còn thiếu, chặn kết luận**. Theo R-10, ghi
+**"chưa kết luận được"**, KHÔNG tự đặt một thời hạn. Cần Chain thả tệp vào `docs/legal/`.
+
+### Trạng thái: CHƯA CODE MỘT DÒNG NÀO
+
+`docs/14` cấm code khi Bước 0-3 chưa duyệt. Hồ sơ ở
+`docs/features/anh-don-thuoc-etc/01_DECISIONS.md`, **5 bước** đã chốt (kỷ luật #12).
+Một câu hỏi quyền còn treo: ai được **xem lại** ảnh (`rx.read` gồm cả thu ngân, mà ảnh
+mang chẩn đoán — thứ `crm.sensitive.read` cố ý không cấp cho thu ngân). GĐ nghiêng về
+thêm `rx.image.read`, cùng khuôn `crm.pii.reveal` Chain đã duyệt sáng nay.
+
+### Ba mục pháp lý Chain tạm đóng — đánh dấu, không xoá (kỷ luật #18)
+
+ADR reporting (Đ77.4) · hồ sơ khiếu nại/thu hồi (TT02 I-1a.III.4.c) · luân chuyển tồn kho
+giữa chi nhánh (Luật 44/2024 Đ47a.1.d). Còn treo: `docs/13` dòng 14 và tệp TT 26/2025.
