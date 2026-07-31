@@ -57,3 +57,20 @@ class PriceOverrideReasonRequiredError(SalesError):
     xứng. Ghi lại ở đây vì lớp mã này là nơi quyết định đó có hiệu lực — xem
     ``docs/features/gia-ban-va-thu-tien-quay/01_DECISIONS.md`` mục cờ pháp lý.
     """
+
+
+class UnknownDrugError(SalesError):
+    """Đơn tham chiếu một ``drug_id`` không có trong danh mục của nhà thuốc.
+
+    **Phương án B** (GĐ chọn 2026-07-31 dưới uỷ quyền của Chain; ba phương án ở
+    PROJECT_STATE §7cl): từ chối ở **đơn mới**, giữ khoan dung cho **đường đồng bộ**.
+
+    Vì sao không chặn cả hai: một đơn đã xếp hàng offline có thể mang mã thuốc đã bị gỡ
+    khỏi danh mục **sau khi bán**. Siết ở đó là đổi một lỗi im lặng (sổ sách lệch tồn kho)
+    lấy một lỗi mất tiền (đơn đã bán không đồng bộ được nữa) — mà đơn đã bán rồi thì tiền
+    đã vào két, hàng đã ra khỏi kệ.
+
+    Vì sao không giữ nguyên cả hai: ở đơn **mới**, một `drug_id` lạ chỉ có thể là máy khách
+    sai. Đơn vẫn tạo, **doanh thu vẫn ghi nhận**, nhưng không trừ tồn kho nào ⇒ sổ sách
+    lệch tồn kho, im lặng, trong đường tiền.
+    """

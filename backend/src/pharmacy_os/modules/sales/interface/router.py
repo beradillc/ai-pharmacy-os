@@ -184,7 +184,20 @@ def build_router(get_context: ContextDep) -> APIRouter:
         service: SalesService = Depends(_service),
         ctx: RequestContext = Depends(get_context),
     ) -> SaleResponse:
-        return SaleResponse.of(await service.complete_sale(body.to_input(), ctx))
+        """Nhận một đơn đã bán offline. **Khoan dung hơn `POST /sales` đúng một điểm.**
+
+        `require_known_drugs=False`: đơn ở đây đã bán rồi — tiền đã vào két, hàng đã ra
+        khỏi kệ. Một mã thuốc bị gỡ khỏi danh mục **sau khi bán** mà làm đơn không đồng bộ
+        được nữa là đổi một lỗi im lặng lấy một lỗi mất tiền (phương án B, GĐ chọn
+        2026-07-31 dưới uỷ quyền của Chain — ba phương án ở PROJECT_STATE §7cl).
+
+        Đây **không** phải lỗ hổng bỏ ngỏ: nó là một quyết định, và cái giá của nó — đơn
+        mang thuốc lạ thì không trừ tồn kho nào ⇒ sổ sách lệch tồn kho — cần một báo cáo
+        đối soát định kỳ để nhìn ra. Còn nợ, ghi ở §7co.
+        """
+        return SaleResponse.of(
+            await service.complete_sale(body.to_input(), ctx, require_known_drugs=False)
+        )
 
     root.include_router(sales)
     root.include_router(sync)

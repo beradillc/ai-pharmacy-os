@@ -118,9 +118,19 @@ def _receive(client: TestClient, admin: Any, drug_id: str, qty: int) -> None:
     assert r.status_code == 201, r.text
 
 
-def _sell(client: TestClient, admin: Any, drug_id: str, qty: int, price: int) -> None:
+def _sell(
+    client: TestClient, admin: Any, drug_id: str, qty: int, price: int, *, offline: bool = False
+) -> None:
+    """`offline=True` gửi qua `/sync/sales`.
+
+    🔴 Cần từ 2026-07-31: `POST /sales` nay từ chối `drug_id` không có trong danh mục
+    (phương án B). Một dòng bán cho mã **catalog chưa từng biết** vẫn dựng được — nhưng
+    chỉ qua đường đồng bộ, đúng như ngoài đời: đơn đã bán offline rồi mã bị gỡ khỏi danh
+    mục. Tính chất mà test dùng nó canh (màn hình xuống cấp thành nhãn rỗng, không phải
+    500) không đổi một chút nào.
+    """
     r = client.post(
-        "/api/v1/sales",
+        "/api/v1/sync/sales" if offline else "/api/v1/sales",
         headers=_auth(admin),
         json={
             "client_uuid": str(uuid4()),
@@ -128,7 +138,7 @@ def _sell(client: TestClient, admin: Any, drug_id: str, qty: int, price: int) ->
             "payments": [{"method": "CASH", "amount": qty * price}],
         },
     )
-    assert r.status_code == 201, r.text
+    assert r.status_code == (200 if offline else 201), r.text
 
 
 def _supplier_for_drug(client: TestClient, admin: Any, drug_id: str) -> str:
@@ -156,7 +166,7 @@ _DASHBOARD = "/api/v1/analytics/dashboard"
 
 def test_reorder_run_suggests_low_stock_drug_and_materializes(client: TestClient) -> None:
     admin = _login(client)
-    drug = str(uuid4())
+    drug = _create_drug(client, admin, f"Thuốc-{uuid4().hex[:6]}")
     supplier_id = _supplier_for_drug(client, admin, drug)
     _receive(client, admin, drug, qty=100)
     _sell(client, admin, drug, qty=90, price=1000)  # velocity 1/day, on-hand → 10 (== point)
@@ -186,7 +196,7 @@ def test_reorder_run_suggests_low_stock_drug_and_materializes(client: TestClient
 
 def test_dashboard_reports_tiles(client: TestClient) -> None:
     admin = _login(client)
-    drug = str(uuid4())
+    drug = _create_drug(client, admin, f"Thuốc-{uuid4().hex[:6]}")
     _supplier_for_drug(client, admin, drug)
     _receive(client, admin, drug, qty=100)
     _sell(client, admin, drug, qty=90, price=1000)
@@ -280,7 +290,7 @@ def test_drug_with_no_catalog_row_returns_null_name_not_an_error(client: TestCli
     drug = str(uuid4())
     _supplier_for_drug(client, admin, drug)
     _receive(client, admin, drug, qty=100)
-    _sell(client, admin, drug, qty=90, price=1000)
+    _sell(client, admin, drug, qty=90, price=1000, offline=True)
     client.post(_RUN, headers=_auth(admin))
 
     suggestions = client.get(_SUGGESTIONS, headers=_auth(admin), params={"status": "PENDING"})

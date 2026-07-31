@@ -6605,3 +6605,64 @@ hợp đồng API nào** — bốn câu hỏi tương thích của kỷ luật #
    `/login` không trả lời trong 120 giây). Đường chạy cổng trình duyệt nay là
    **build + `next start`**. `scripts/lan-dev.sh` vẫn dùng `next dev` — chưa sửa.
 3. Chưa có màn nào để **đặt giá hàng loạt**; đổi 36 mã là 36 lượt bấm.
+
+## 7co. ✅ Phương án B cho `/sync/sales` + quét sổ pháp lý — GĐ chọn dưới uỷ quyền của Chain (2026-07-31)
+
+Chain: *"Duyệt, GĐ chọn phương án tối ưu."*
+
+### Phép quét sổ pháp lý — thứ đáng giá nhất của lượt này
+
+GĐ đề xuất và Chain duyệt: quét toàn bộ `docs/legal/*.SUMMARY.md` tìm các dòng **tự khai
+là gap**. Kết quả — dự án đã có sẵn một danh sách nợ tuân thủ mà **không ai rà định kỳ**:
+
+| Văn bản | Nội dung | Trạng thái thật |
+|---|---|---|
+| Luật 105 **Điều 6.5.i** | Cấm bán cao hơn giá niêm yết | ✅ **ĐÃ ĐÓNG hôm nay** — dòng cũ ghi *"không có enforcement tự động"*, nay sai, **đã sửa** theo kỷ luật #16 |
+| Luật 105 **Điều 2.27–28** | Nguồn luật cho rule "ETC cần đơn" | 🟠 `docs/13` dòng 14 vẫn ghi **"KHÔNG TÌM THẤY"** — mà nguồn **đã tìm thấy** và ghi trong SUMMARY. Chưa ai cập nhật spec |
+| Luật 105 **Điều 77.4** | Ghi nhận/báo cáo phản ứng có hại (ADR) | ❌ **Chưa có tính năng nào** |
+| TT02/2018 **I-1a.III.4.c** | Hồ sơ khiếu nại + thu hồi thuốc, báo KH đã mua | ❌ **Chưa có tính năng nào** |
+| **TT 26/2025/TT-BYT** | Thiếu văn bản, chặn kết luận | 🔴 Cần Chain thả tệp vào `docs/legal/` |
+| Luật 44/2024 Điều 47a.1.d | Luân chuyển tồn kho giữa chi nhánh trong chuỗi | 🟠 Backlog |
+
+**Bài học phương pháp:** trước khi khảo sát pháp lý cho một tính năng mới, **đọc
+`docs/legal/*.SUMMARY.md` trước** — nó đã liệt kê sẵn gap và tự đánh dấu cái nào chưa có
+enforcement. Hôm nay Chain chỉ ra một khoảng trống mà chính sổ của dự án đã ghi từ trước.
+
+### Phương án B — `POST /sales` siết, `/sync/sales` giữ khoan dung
+
+| Đường | Thuốc không có trong danh mục | Vì sao |
+|---|---|---|
+| `POST /sales` (đơn mới) | **422** | Chỉ có thể là máy khách sai. Đơn vẫn tạo, doanh thu vẫn ghi, **không trừ tồn kho nào** ⇒ sổ sách lệch, im lặng, trong đường tiền |
+| `POST /sync/sales` (đã bán offline) | **200**, giữ nguyên | Tiền đã vào két, hàng đã ra khỏi kệ. Siết ở đây là đổi một lỗi im lặng lấy một lỗi **mất tiền** |
+
+Phân biệt kỹ thuật quan trọng: `self._drug_info is None` (**không tra được** — không có
+provider, như test tầng service) khác `info is None` (**tra được, danh mục nói không có**).
+Gộp hai thứ đó lại sẽ biến một cấu hình thiếu thành một lỗi từ chối bán.
+
+### 🔴 24 test đỏ — và vì sao con số đó là tín hiệu, không phải phiền toái
+
+Bật cổng lên thì **24 test đỏ** ở 6 tệp. Chẩn đoán: chúng bán `str(uuid4())` ngẫu nhiên và
+**chưa bao giờ tạo thuốc trong danh mục** — tức chúng khai thác đúng sự khoan dung vừa bị
+bịt. Nói cách khác, một phần đáng kể bộ test e2e đang khẳng định về hành vi bán hàng cho
+**những mã thuốc không thể tồn tại**.
+
+Kỷ luật #17 nói *test đỏ ⇒ dừng triển khai, không nới lỏng phép kiểm để nó xanh*. Đã sửa
+**fixture** (một lần mỗi tệp), không sửa 24 test rời rạc, và không nới cổng. Ba ca phải xử
+riêng vì chúng khác chất:
+
+| Ca | Xử |
+|---|---|
+| `test_..._etc_...` bán thuốc ETC | Trước đây đi nhánh *"unknown drug — trust the caller"*, nay danh mục là **nguồn quyền uy** ⇒ fixture phải tạo thuốc `rx_class="ETC"`. Hành vi đúng, không phải hồi quy |
+| `test_get_receipt_unknown_drug_falls_back_to_id` | Cố ý về thuốc lạ ⇒ `require_known_drugs=False` kèm chú thích: trạng thái ấy nay **chỉ tới qua `/sync`**, tính chất canh không đổi |
+| `test_drug_with_no_catalog_row_returns_null_name` | Bán qua `/sync/sales` — đúng như ngoài đời: đơn bán offline rồi mã bị gỡ |
+| Test lọc theo người bán | Thu ngân có `sales.create` nhưng **không** có `catalog.create` (cấp chuỗi) ⇒ tách việc tạo thuốc khỏi diễn viên đang bán |
+
+Kỷ luật #14: `if False and ...` ⇒ **1 failed** đúng test thuốc-lạ; khôi phục ⇒ 10 passed.
+
+Cổng: `RUFF=0 IMPORTLINTER=0 MYPY=0 PYTEST=0` — **1323 passed**, 245s.
+
+### 🟠 Còn nợ từ chính quyết định này
+
+Phương án B **không đóng** cái giá của nó ở đường đồng bộ: đơn mang thuốc lạ vẫn không trừ
+tồn kho nào ⇒ sổ sách lệch tồn kho, im lặng. Cần một **báo cáo đối soát định kỳ** đếm số
+dòng `sale_lines.drug_id` không khớp `drugs.id`. Chưa làm.

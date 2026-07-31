@@ -31,12 +31,39 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
         yield c
 
 
-def _payload(client_uuid: str, *, rx: bool = False, rx_ref: str | None = None) -> dict[str, object]:
+# 🔴 Từ 2026-07-31 `POST /sales` từ chối `drug_id` không có trong danh mục (phương án B,
+# PROJECT_STATE §7co). Trước đó các test ở tệp này bán `uuid4()` ngẫu nhiên — chúng khai
+# thác đúng sự khoan dung vừa bị bịt. Tạo thuốc THẬT thay vì nới cổng: một test bán mã
+# thuốc không thể tồn tại thì phép khẳng định của nó cũng không nói về hệ thống thật.
+def _drug(client: TestClient, *, rx: bool = False) -> str:
+    """Tạo thuốc thật. `rx_class` phải khớp cờ `requires_prescription` của đơn.
+
+    🔴 Trước 31/07 các test ETC ở đây đi qua nhánh *"unknown drug — trust the caller"*:
+    thuốc không có trong danh mục nên máy chủ tin cờ của máy khách. Nay danh mục là nguồn
+    quyền uy, nên một thuốc OTC bán kèm cờ `requires_prescription=true` **không** còn là
+    đơn ETC — và đó là hành vi đúng, không phải hồi quy.
+    """
+    r = client.post(
+        "/api/v1/drugs",
+        json={
+            "name": f"Thuốc-{uuid4().hex[:6]}",
+            "rx_class": "ETC" if rx else "OTC",
+            "base_unit": "viên",
+        },
+    )
+    assert r.status_code == 201, r.text
+    drug_id: str = r.json()["id"]
+    return drug_id
+
+
+def _payload(
+    client: TestClient, client_uuid: str, *, rx: bool = False, rx_ref: str | None = None
+) -> dict[str, object]:
     return {
         "client_uuid": client_uuid,
         "lines": [
             {
-                "drug_id": str(uuid4()),
+                "drug_id": _drug(client, rx=rx),
                 "quantity": "2",
                 "unit_price": "10000",
                 "requires_prescription": rx,
@@ -74,7 +101,7 @@ def _validated_prescription(client: TestClient) -> str:
 
 
 def test_create_sale_then_read_back(client: TestClient) -> None:
-    resp = client.post("/api/v1/sales", json=_payload("pos-1"))
+    resp = client.post("/api/v1/sales", json=_payload(client, "pos-1"))
     assert resp.status_code == 201, resp.text
     sale = resp.json()
     assert sale["status"] == "COMPLETED"
@@ -86,28 +113,30 @@ def test_create_sale_then_read_back(client: TestClient) -> None:
 
 
 def test_sync_is_idempotent(client: TestClient) -> None:
-    first = client.post("/api/v1/sync/sales", json=_payload("offline-1"))
+    first = client.post("/api/v1/sync/sales", json=_payload(client, "offline-1"))
     assert first.status_code == 200, first.text
-    second = client.post("/api/v1/sync/sales", json=_payload("offline-1"))
+    second = client.post("/api/v1/sync/sales", json=_payload(client, "offline-1"))
     assert second.status_code == 200
     assert second.json()["id"] == first.json()["id"]  # no duplicate order
 
 
 def test_etc_without_prescription_rejected(client: TestClient) -> None:
-    resp = client.post("/api/v1/sales", json=_payload("etc-1", rx=True))
+    resp = client.post("/api/v1/sales", json=_payload(client, "etc-1", rx=True))
     assert resp.status_code == 422, resp.text
     assert resp.headers["content-type"].startswith("application/problem+json")
 
 
 def test_etc_with_validated_prescription_allowed(client: TestClient) -> None:
     rx_ref = _validated_prescription(client)
-    resp = client.post("/api/v1/sales", json=_payload("etc-2", rx=True, rx_ref=rx_ref))
+    resp = client.post("/api/v1/sales", json=_payload(client, "etc-2", rx=True, rx_ref=rx_ref))
     assert resp.status_code == 201, resp.text
 
 
 def test_etc_with_unknown_prescription_ref_rejected(client: TestClient) -> None:
     # A ref that is not a real prescription for the tenant is no longer accepted (S5.4).
-    resp = client.post("/api/v1/sales", json=_payload("etc-3", rx=True, rx_ref=str(uuid4())))
+    resp = client.post(
+        "/api/v1/sales", json=_payload(client, "etc-3", rx=True, rx_ref=str(uuid4()))
+    )
     assert resp.status_code == 422, resp.text
 
 
@@ -117,7 +146,7 @@ def test_empty_lines_rejected_by_schema(client: TestClient) -> None:
 
 
 def test_get_receipt_json_default(client: TestClient) -> None:
-    sale = client.post("/api/v1/sales", json=_payload("receipt-json-1")).json()
+    sale = client.post("/api/v1/sales", json=_payload(client, "receipt-json-1")).json()
     resp = client.get(f"/api/v1/sales/{sale['id']}/receipt")
     assert resp.status_code == 200, resp.text
     body = resp.json()
@@ -128,7 +157,7 @@ def test_get_receipt_json_default(client: TestClient) -> None:
 
 
 def test_get_receipt_thermal_k80(client: TestClient) -> None:
-    sale = client.post("/api/v1/sales", json=_payload("receipt-thermal-1")).json()
+    sale = client.post("/api/v1/sales", json=_payload(client, "receipt-thermal-1")).json()
     resp = client.get(f"/api/v1/sales/{sale['id']}/receipt", params={"format": "thermal_k80"})
     assert resp.status_code == 200, resp.text
     assert resp.headers["content-type"].startswith("text/plain")
@@ -139,7 +168,7 @@ def test_get_receipt_thermal_k80(client: TestClient) -> None:
 
 
 def test_get_receipt_pdf_a5_and_a4(client: TestClient) -> None:
-    sale = client.post("/api/v1/sales", json=_payload("receipt-pdf-1")).json()
+    sale = client.post("/api/v1/sales", json=_payload(client, "receipt-pdf-1")).json()
     for fmt in ("pdf_a5", "pdf_a4"):
         resp = client.get(f"/api/v1/sales/{sale['id']}/receipt", params={"format": fmt})
         assert resp.status_code == 200, resp.text
@@ -153,7 +182,7 @@ def test_get_receipt_unknown_order_404(client: TestClient) -> None:
 
 
 def test_register_return_partial_then_full(client: TestClient) -> None:
-    sale = client.post("/api/v1/sales", json=_payload("return-1")).json()
+    sale = client.post("/api/v1/sales", json=_payload(client, "return-1")).json()
     line_id = sale["lines"][0]["id"]
 
     partial = client.post(
@@ -171,7 +200,7 @@ def test_register_return_partial_then_full(client: TestClient) -> None:
 
 
 def test_register_return_over_quantity_rejected(client: TestClient) -> None:
-    sale = client.post("/api/v1/sales", json=_payload("return-2")).json()
+    sale = client.post("/api/v1/sales", json=_payload(client, "return-2")).json()
     line_id = sale["lines"][0]["id"]
 
     resp = client.post(
@@ -197,7 +226,9 @@ def test_list_sales_no_params_returns_todays_orders(client: TestClient) -> None:
     cần một đơn mang ``created_at`` của hôm qua, mà ``created_at`` do CSDL đặt —
     ghi ra đây thay vì để câu docstring nói quá (đúng họ lỗi A-06).
     """
-    created = [client.post("/api/v1/sales", json=_payload(f"list-{i}")).json() for i in range(3)]
+    created = [
+        client.post("/api/v1/sales", json=_payload(client, f"list-{i}")).json() for i in range(3)
+    ]
 
     resp = client.get("/api/v1/sales")
     assert resp.status_code == 200, resp.text
@@ -215,7 +246,7 @@ def test_list_sales_no_params_returns_todays_orders(client: TestClient) -> None:
 
 
 def test_list_sales_window_excludes_other_days(client: TestClient) -> None:
-    client.post("/api/v1/sales", json=_payload("win-1"))
+    client.post("/api/v1/sales", json=_payload(client, "win-1"))
 
     empty = client.get("/api/v1/sales", params={"date_from": "2020-01-01", "date_to": "2020-01-02"})
     assert empty.status_code == 200

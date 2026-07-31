@@ -18,6 +18,7 @@ from pharmacy_os.modules.sales.domain.exceptions import (
     PriceOverrideReasonRequiredError,
     SalesError,
     UnderpaidError,
+    UnknownDrugError,
 )
 from pharmacy_os.modules.sales.domain.ports import (
     AllergyRisk,
@@ -49,6 +50,7 @@ __all__ = [
     "SoldItem",
     "AllergyAcknowledgementRequiredError",
     "PriceOverrideReasonRequiredError",
+    "UnknownDrugError",
     "EmptyOrderError",
     "InvalidOrderStateError",
     "InvalidPrescriptionRefError",

@@ -116,3 +116,48 @@ def test_gia_12000_va_12000_chan_la_CUNG_mot_gia(client: TestClient) -> None:
     drug_id = _drug(client, "12000")
     r = _ban(client, drug_id, "12000.00")
     assert r.status_code == 201, r.text
+
+
+# ─── Phương án B: thuốc lạ (GĐ chọn 2026-07-31, uỷ quyền của Chain) ─────────────
+
+
+def test_don_MOI_mang_thuoc_khong_ton_tai_bi_TU_CHOI(client: TestClient) -> None:
+    """🔴 Trước 31/07 đơn này trả **200**: doanh thu ghi nhận, không trừ tồn kho nào.
+
+    Đo được ở §7cl, và chính hai lệnh dò của tôi đã tạo 2 đơn ma trong `nt650v2`.
+    """
+    r = _ban(client, str(uuid4()), "5000")
+    assert r.status_code == 422, r.text
+
+
+def test_duong_DONG_BO_van_nhan_thuoc_khong_ton_tai(client: TestClient) -> None:
+    """🔴 Cố ý khoan dung — và đây là điểm phân biệt cả phương án B.
+
+    Đơn ở đường này **đã bán rồi**: tiền vào két, hàng ra khỏi kệ. Một mã bị gỡ khỏi danh
+    mục SAU khi bán mà làm đơn không đồng bộ được nữa là đổi một lỗi im lặng lấy một lỗi
+    mất tiền. Nếu ai đó siết chỗ này, test này phải đỏ và người sửa phải đọc lại ADR.
+    """
+    lo = str(uuid4())
+    r = client.post(
+        "/api/v1/sync/sales",
+        json={
+            "client_uuid": str(uuid4()),
+            "lines": [
+                {
+                    "drug_id": lo,
+                    "quantity": "1",
+                    "unit_price": "5000",
+                    "requires_prescription": False,
+                }
+            ],
+            "payments": [{"method": "CASH", "amount": "5000"}],
+        },
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_don_moi_mang_thuoc_CO_THAT_van_ban_binh_thuong(client: TestClient) -> None:
+    """Phép kiểm mới không được chặn nhầm đường bán bình thường."""
+    drug_id = _drug(client, "10000")
+    r = _ban(client, drug_id, "10000")
+    assert r.status_code == 201, r.text

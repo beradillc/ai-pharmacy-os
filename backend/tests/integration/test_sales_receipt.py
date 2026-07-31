@@ -86,6 +86,10 @@ async def test_get_receipt_unknown_drug_falls_back_to_id(
 ) -> None:
     drug = uuid4()
     svc = _service(session_factory, event_bus, FakeDrugDisplay({}))
+    # 🔴 `require_known_drugs=False` — KHÔNG phải để né cổng mới, mà vì đây chính là trạng
+    # thái duy nhất còn dựng được: từ 2026-07-31 một đơn MỚI không thể mang thuốc lạ nữa
+    # (phương án B). Hoá đơn của một thuốc đã bị gỡ khỏi danh mục vẫn phải in được — đơn ấy
+    # tới qua `/sync/sales`, và tính chất mà test này canh không hề đổi.
     sale = await svc.complete_sale(
         CreateSaleInput(
             client_uuid="receipt-2",
@@ -93,6 +97,7 @@ async def test_get_receipt_unknown_drug_falls_back_to_id(
             payments=[PaymentInput(method=PaymentMethod.CASH, amount=Decimal("5000"))],
         ),
         ctx,
+        require_known_drugs=False,
     )
 
     receipt = await svc.get_receipt(sale.id, ctx)

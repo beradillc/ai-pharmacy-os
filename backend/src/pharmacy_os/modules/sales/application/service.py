@@ -51,7 +51,7 @@ from pharmacy_os.modules.sales.domain import (
     ensure_prescription_valid_for_sale,
     ensure_price_override_acknowledged,
 )
-from pharmacy_os.modules.sales.domain.exceptions import EmptyOrderError
+from pharmacy_os.modules.sales.domain.exceptions import EmptyOrderError, UnknownDrugError
 from pharmacy_os.modules.sales.domain.ports import (
     AllergyRisk,
     AllergyRiskProvider,
@@ -111,7 +111,13 @@ class SalesService:
         self._hook_registry = hook_registry
         self._gateway_timeout = gateway_timeout_seconds
 
-    async def complete_sale(self, data: CreateSaleInput, ctx: RequestContext) -> SaleOutput:
+    async def complete_sale(
+        self,
+        data: CreateSaleInput,
+        ctx: RequestContext,
+        *,
+        require_known_drugs: bool = True,
+    ) -> SaleOutput:
         """Record and finalise a sale for the caller's tenant/branch.
 
         Idempotent on ``data.client_uuid``: a repeated sync returns the existing
@@ -138,6 +144,15 @@ class SalesService:
         try:
             for line in data.lines:
                 info = await self._drug_info_or_none(line, ctx)
+                # Phương án B: đơn MỚI phải tham chiếu thuốc có thật; đường đồng bộ thì
+                # không. Phân biệt `self._drug_info is None` (KHÔNG TRA ĐƯỢC — không có
+                # provider, như trong test tầng service) với `info is None` (tra được,
+                # danh mục nói không có mã này). Gộp hai thứ đó lại sẽ biến một cấu hình
+                # thiếu thành một lỗi từ chối bán — hỏng nặng hơn nhiều thứ đang vá.
+                if require_known_drugs and self._drug_info is not None and info is None:
+                    raise UnknownDrugError(
+                        f"Thuốc {line.drug_id} không có trong danh mục của nhà thuốc"
+                    )
                 requires_rx = (
                     info.requires_prescription if info is not None else line.requires_prescription
                 )

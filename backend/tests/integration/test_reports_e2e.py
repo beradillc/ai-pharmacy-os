@@ -117,11 +117,40 @@ def _make_staff(client: TestClient, admin: Any, email: str, role_code: str) -> s
     return user_id
 
 
-def _create_sale(client: TestClient, admin: Any, quantity: int, unit_price: int) -> Any:
+# 🔴 Từ 2026-07-31 `POST /sales` từ chối `drug_id` không có trong danh mục (phương án B,
+# PROJECT_STATE §7co). Trước đó các test ở tệp này bán `uuid4()` ngẫu nhiên — chúng khai
+# thác đúng sự khoan dung vừa bị bịt. Tạo thuốc THẬT thay vì nới cổng: một test bán mã
+# thuốc không thể tồn tại thì phép khẳng định của nó cũng không nói về hệ thống thật.
+def _drug(client: TestClient, admin: Any) -> str:
+    r = client.post(
+        "/api/v1/drugs",
+        headers=_auth(admin),
+        json={"name": f"Thuốc-{uuid4().hex[:6]}", "rx_class": "OTC", "base_unit": "viên"},
+    )
+    assert r.status_code == 201, r.text
+    drug_id: str = r.json()["id"]
+    return drug_id
+
+
+def _create_sale(
+    client: TestClient,
+    admin: Any,
+    quantity: int,
+    unit_price: int,
+    *,
+    drug_id: str | None = None,
+) -> Any:
+    """`drug_id` tách riêng vì **người bán không nhất thiết là người tạo được thuốc**:
+    thu ngân có `sales.create` nhưng KHÔNG có `catalog.create` (quyền cấp chuỗi). Tạo
+    thuốc bằng chính diễn viên đang bán sẽ cho 403 ở đúng những test về phân quyền."""
     body = {
         "client_uuid": str(uuid4()),
         "lines": [
-            {"drug_id": str(uuid4()), "quantity": quantity, "unit_price": unit_price},
+            {
+                "drug_id": drug_id or _drug(client, admin),
+                "quantity": quantity,
+                "unit_price": unit_price,
+            },
         ],
         "payments": [{"method": "CASH", "amount": quantity * unit_price}],
     }
@@ -292,7 +321,9 @@ def test_revenue_export_salesperson_filter_narrows_to_that_user(client: TestClie
     cashier = _login(client, "tn@bera.vn", STAFF_PASSWORD)
 
     _create_sale(client, admin, quantity=1, unit_price=40_000)  # admin's sale
-    _create_sale(client, cashier, quantity=1, unit_price=25_000)  # cashier's sale
+    _create_sale(
+        client, cashier, quantity=1, unit_price=25_000, drug_id=_drug(client, admin)
+    )  # cashier's sale
 
     r = client.get(
         _REVENUE,
@@ -315,7 +346,7 @@ def test_revenue_export_without_salesperson_filter_counts_everyone(client: TestC
     cashier = _login(client, "tn2@bera.vn", STAFF_PASSWORD)
 
     _create_sale(client, admin, quantity=1, unit_price=40_000)
-    _create_sale(client, cashier, quantity=1, unit_price=25_000)
+    _create_sale(client, cashier, quantity=1, unit_price=25_000, drug_id=_drug(client, admin))
 
     r = client.get(_REVENUE, headers=_auth(admin), params=_date_range())
     body = list(csv.reader(io.StringIO(r.text)))[1:]
@@ -388,7 +419,7 @@ def test_top_drugs_reuses_sales_read_no_new_permission(client: TestClient) -> No
 
 def test_top_drugs_ranks_by_quantity_net_of_returns(client: TestClient) -> None:
     admin = _login(client)
-    drug_a, drug_b = str(uuid4()), str(uuid4())
+    drug_a, drug_b = _drug(client, admin), _drug(client, admin)
     _create_sale_for_drug(client, admin, drug_a, quantity=10, unit_price=1_000)  # 10 units
     _create_sale_for_drug(client, admin, drug_b, quantity=3, unit_price=1_000)  # 3 units
 
@@ -416,7 +447,7 @@ def test_top_drugs_sort_by_revenue_can_reorder_vs_quantity(client: TestClient) -
     when ranking by revenue instead of quantity — proves ``sort_by`` actually
     changes the order, not just the column values."""
     admin = _login(client)
-    cheap, pricey = str(uuid4()), str(uuid4())
+    cheap, pricey = _drug(client, admin), _drug(client, admin)
     _create_sale_for_drug(client, admin, cheap, quantity=10, unit_price=1_000)  # 10 units / 10_000
     _create_sale_for_drug(client, admin, pricey, quantity=1, unit_price=50_000)  # 1 unit / 50_000
 
@@ -429,7 +460,7 @@ def test_top_drugs_sort_by_revenue_can_reorder_vs_quantity(client: TestClient) -
 def test_top_drugs_limit_truncates_the_ranked_list(client: TestClient) -> None:
     admin = _login(client)
     for _ in range(3):
-        _create_sale_for_drug(client, admin, str(uuid4()), quantity=1, unit_price=1_000)
+        _create_sale_for_drug(client, admin, _drug(client, admin), quantity=1, unit_price=1_000)
 
     r = client.get(_TOP_DRUGS, headers=_auth(admin), params={**_date_range(), "limit": 2})
     body = list(csv.reader(io.StringIO(r.text)))[1:]

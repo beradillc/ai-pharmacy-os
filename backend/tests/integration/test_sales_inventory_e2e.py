@@ -51,6 +51,20 @@ def _on_hand(client: TestClient, drug_id: str) -> str:
     return str(r.json()["on_hand"])
 
 
+# 🔴 Từ 2026-07-31 `POST /sales` từ chối `drug_id` không có trong danh mục (phương án B,
+# PROJECT_STATE §7co). Trước đó các test ở tệp này bán `uuid4()` ngẫu nhiên — chúng khai
+# thác đúng sự khoan dung vừa bị bịt. Tạo thuốc THẬT thay vì nới cổng: một test bán mã
+# thuốc không thể tồn tại thì phép khẳng định của nó cũng không nói về hệ thống thật.
+def _drug(client: TestClient) -> str:
+    r = client.post(
+        "/api/v1/drugs",
+        json={"name": f"Thuốc-{uuid4().hex[:6]}", "rx_class": "OTC", "base_unit": "viên"},
+    )
+    assert r.status_code == 201, r.text
+    drug_id: str = r.json()["id"]
+    return drug_id
+
+
 def _sale_body(client_uuid: str, drug_id: str, qty: str) -> dict[str, object]:
     return {
         "client_uuid": client_uuid,
@@ -60,7 +74,7 @@ def _sale_body(client_uuid: str, drug_id: str, qty: str) -> dict[str, object]:
 
 
 def test_sale_decrements_stock_via_event(client: TestClient) -> None:
-    drug = str(uuid4())
+    drug = _drug(client)
     _receive(client, drug, "20")
 
     resp = client.post("/api/v1/sales", json=_sale_body("pos-1", drug, "12"))
@@ -69,7 +83,7 @@ def test_sale_decrements_stock_via_event(client: TestClient) -> None:
 
 
 def test_resync_does_not_double_dispense(client: TestClient) -> None:
-    drug = str(uuid4())
+    drug = _drug(client)
     _receive(client, drug, "20")
 
     client.post("/api/v1/sync/sales", json=_sale_body("offline-1", drug, "12"))
@@ -78,7 +92,7 @@ def test_resync_does_not_double_dispense(client: TestClient) -> None:
 
 
 def test_oversell_does_not_go_negative(client: TestClient) -> None:
-    drug = str(uuid4())
+    drug = _drug(client)
     _receive(client, drug, "5")
 
     resp = client.post("/api/v1/sales", json=_sale_body("pos-2", drug, "10"))

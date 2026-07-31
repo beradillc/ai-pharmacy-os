@@ -45,6 +45,20 @@ def client(db_path: Path) -> Iterator[TestClient]:
         yield c
 
 
+# 🔴 Từ 2026-07-31 `POST /sales` từ chối `drug_id` không có trong danh mục (phương án B,
+# PROJECT_STATE §7co). Trước đó các test ở tệp này bán `uuid4()` ngẫu nhiên — chúng khai
+# thác đúng sự khoan dung vừa bị bịt. Tạo thuốc THẬT thay vì nới cổng: một test bán mã
+# thuốc không thể tồn tại thì phép khẳng định của nó cũng không nói về hệ thống thật.
+def _drug(client: TestClient) -> str:
+    r = client.post(
+        "/api/v1/drugs",
+        json={"name": f"Thuốc-{uuid4().hex[:6]}", "rx_class": "OTC", "base_unit": "viên"},
+    )
+    assert r.status_code == 201, r.text
+    drug_id: str = r.json()["id"]
+    return drug_id
+
+
 def _sale_body(client_uuid: str, drug_id: str, qty: str) -> dict[str, object]:
     return {
         "client_uuid": client_uuid,
@@ -68,7 +82,7 @@ def _sync_rows(db_path: Path, client_uuid: str) -> list[tuple[str, str]]:
 
 
 def test_sale_enqueues_one_acked_sync_log(client: TestClient, db_path: Path) -> None:
-    drug = str(uuid4())
+    drug = _drug(client)
     resp = client.post("/api/v1/sales", json=_sale_body("pos-c5-e2e", drug, "3"))
     assert resp.status_code == 201, resp.text
 
@@ -79,7 +93,7 @@ def test_sale_enqueues_one_acked_sync_log(client: TestClient, db_path: Path) -> 
 def test_resync_same_client_uuid_does_not_duplicate_sync_log(
     client: TestClient, db_path: Path
 ) -> None:
-    drug = str(uuid4())
+    drug = _drug(client)
     body = _sale_body("offline-c5-e2e", drug, "3")
 
     client.post("/api/v1/sync/sales", json=body)
