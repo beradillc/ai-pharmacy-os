@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/shared/api/client";
-import type { StorageLocation } from "@/shared/api/types";
+import type {
+  LocationStockRow,
+  PickCandidate,
+  PutAwayResult,
+  StorageLocation,
+} from "@/shared/api/types";
 
 /**
  * Sơ đồ kho của chi nhánh đang đăng nhập.
@@ -69,3 +74,45 @@ export const NHAN_TANG: Record<string, string> = {
   SHELF: "Kệ",
   BIN: "Ô",
 };
+
+// ─── BERAS V2 Phase 2: tồn theo vị trí ─────────────────────────────────────────
+
+/** Ô này đang giữ những lô nào. Chỉ tải khi người dùng mở một ô. */
+export function useStockAtLocation(locationId: string | null) {
+  return useQuery({
+    queryKey: ["location-stock", locationId],
+    queryFn: () => apiFetch<LocationStockRow[]>(`/inventory/locations/${locationId}/stock`),
+    enabled: locationId !== null,
+    staleTime: 15_000,
+  });
+}
+
+/**
+ * Thuốc này lấy ở đâu — **máy chủ đã sắp theo thứ tự lấy hàng**.
+ *
+ * 🔴 Màn hình **không được sắp lại**: FEFO là quy tắc nghiệp vụ, và mỗi chỗ tự sắp lấy là
+ * mỗi chỗ có cơ hội sắp sai một kiểu khác nhau.
+ *
+ * Trả mảng rỗng nghĩa là **chưa xếp vào ô nào**, KHÔNG phải hết hàng — hai chuyện khác hẳn
+ * nhau và màn hình phải nói ra sự khác biệt đó.
+ */
+export function useWhereIs(drugId: string | null) {
+  return useQuery({
+    queryKey: ["where-is", drugId],
+    queryFn: () => apiFetch<PickCandidate[]>(`/inventory/where?drug_id=${drugId}`),
+    enabled: drugId !== null,
+    staleTime: 15_000,
+  });
+}
+
+export function usePutAway() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { batch_id: string; location_id: string; quantity: string }) =>
+      apiFetch<PutAwayResult>("/inventory/put-away", { method: "POST", body }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["location-stock"] });
+      void qc.invalidateQueries({ queryKey: ["where-is"] });
+    },
+  });
+}

@@ -416,3 +416,34 @@ export interface StorageLocation {
   /** Thứ tự đi lấy hàng. KHÔNG suy ra được từ mã — chỉ người xếp kho biết. */
   pick_order: number;
 }
+
+
+/** Một lô đang nằm trong một ô. */
+export interface LocationStockRow {
+  drug_id: string;
+  batch_id: string;
+  location_id: string;
+  lot_no: string;
+  expiry_date: string;
+  quantity: string;
+}
+
+/** Một chỗ lấy được hàng — máy chủ đã sắp FEFO, **đừng sắp lại**. */
+export interface PickCandidate {
+  location_id: string;
+  location_path: string;
+  pick_order: number;
+  batch_id: string;
+  lot_no: string;
+  expiry_date: string;
+  quantity: string;
+}
+
+export interface PutAwayResult {
+  batch_id: string;
+  location_id: string;
+  location_path: string;
+  quantity: string;
+  /** Số hàng của lô **vẫn chưa có chỗ** — hiện ra chứ không giấu. */
+  chua_xep_o: string;
+}

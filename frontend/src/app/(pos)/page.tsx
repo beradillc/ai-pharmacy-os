@@ -9,6 +9,7 @@ import { useAllergyCheck } from "@/features/sales/use-allergy-check";
 import { cartTotal, countPriceDeviations, useCartStore } from "@/features/sales/cart-store";
 import { useCheckout } from "@/features/sales/use-checkout";
 import { useDrugs } from "@/features/sales/use-drugs";
+import { useWhereIs } from "@/features/location/use-locations";
 import { useRxPhoto } from "@/features/prescription/use-rx-photo";
 import { ApiError } from "@/shared/api/errors";
 import type { Customer, Drug } from "@/shared/api/types";
@@ -194,6 +195,7 @@ export default function PosPage() {
                     <div className={styles.drugMeta}>
                       {line.unitPrice} đ × {line.unitName}
                     </div>
+                    <ViTriLay drugId={line.drugId} />
                   </div>
                   <input
                     className={styles.qtyInput}
@@ -474,6 +476,39 @@ export default function PosPage() {
         onConfirm={confirmPrice}
         onCancel={() => setPriceAsk(null)}
       />
+    </div>
+  );
+}
+
+
+/**
+ * Chỗ lấy thuốc, hiện ngay dưới dòng hàng trong giỏ (Chain giao 2026-07-31).
+ *
+ * 🔴 Ba điều cố ý:
+ *
+ * 1. **Không sắp lại** danh sách máy chủ trả về. FEFO là quy tắc nghiệp vụ và máy chủ đã
+ *    sắp; mỗi màn hình tự sắp lấy là mỗi màn hình có cơ hội sắp sai một kiểu khác nhau.
+ * 2. **Chỉ hiện chỗ đầu tiên**, kèm "+N chỗ khác" nếu còn. Người đứng quầy cần MỘT địa chỉ
+ *    để đi, không cần một bảng để đọc — liệt kê hết là biến thông tin thành nhiễu.
+ * 3. **"Chưa xếp ô" KHÁC "hết hàng".** Rỗng ở đây nghĩa là hàng có nhưng chưa ai xếp vào
+ *    chỗ nào; nói "hết hàng" là nói sai, và người ta sẽ đi từ chối một khách còn mua được.
+ */
+function ViTriLay({ drugId }: { drugId: string }) {
+  const cho = useWhereIs(drugId);
+  if (cho.isLoading) return null;
+
+  const ds = cho.data ?? [];
+  if (ds.length === 0) {
+    return <div className={styles.drugMeta}>📍 chưa xếp ô — hỏi kho</div>;
+  }
+
+  const dau = ds[0];
+  return (
+    <div className={styles.drugMeta} data-testid="vi-tri-lay">
+      📍 <strong>{dau.location_path}</strong> · lô {dau.lot_no} · HSD{" "}
+      {new Date(dau.expiry_date).toLocaleDateString("vi-VN")} · còn{" "}
+      {Number(dau.quantity).toLocaleString("vi-VN")}
+      {ds.length > 1 && ` · +${ds.length - 1} chỗ khác`}
     </div>
   );
 }

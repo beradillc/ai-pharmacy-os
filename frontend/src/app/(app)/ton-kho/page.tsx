@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { useAuthStore } from "@/features/auth/auth-store";
 import { useDrugNames } from "@/features/catalog/use-drug-names";
 import {
   daysToExpiry,
@@ -9,7 +10,12 @@ import {
   STOCK_PAGE_SIZE,
   useStock,
 } from "@/features/inventory/use-stock";
+import {
+  useLocations,
+  usePutAway,
+} from "@/features/location/use-locations";
 import { ApiError } from "@/shared/api/errors";
+import type { StockRow } from "@/shared/api/types";
 import { formatDate, formatQty } from "@/shared/format/number";
 import styles from "@/shared/ui/screen.module.css";
 
@@ -46,6 +52,9 @@ export default function StockPage() {
   const { data, isLoading, error, refetch } = useStock(page);
   const rows = useMemo(() => data ?? [], [data]);
   const names = useDrugNames(rows.map((r) => r.drug_id));
+  const quyen = new Set(useAuthStore((st) => st.session)?.permissions ?? []);
+  const coQuyenCat = quyen.has("inventory.receive") && quyen.has("location.read");
+  const [dangCat, setDangCat] = useState<StockRow | null>(null);
 
   const visible = rows.filter((row) => {
     const days = daysToExpiry(row.expiry_date);
@@ -115,6 +124,7 @@ export default function StockPage() {
                   <th>Số lô</th>
                   <th>Hạn dùng</th>
                   <th className={styles.num}>Tồn</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -138,12 +148,27 @@ export default function StockPage() {
                         </span>
                       </td>
                       <td className={styles.num}>{formatQty(row.quantity)}</td>
+                      <td className={styles.num}>
+                        {coQuyenCat && (
+                          <button
+                            type="button"
+                            className={styles.ghost}
+                            onClick={() => setDangCat(row)}
+                          >
+                            Cất vào ô
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+        )}
+
+        {dangCat !== null && (
+          <CatVaoO row={dangCat} onClose={() => setDangCat(null)} />
         )}
 
         <div className={styles.pager}>
@@ -169,5 +194,106 @@ export default function StockPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+
+/**
+ * Cất hàng của MỘT lô vào một ô (BERAS V2 Phase 2).
+ *
+ * 🔴 Chỉ liệt kê **Ô và Kệ**, không liệt kê Kho/Khu: cất hàng vào "Kho 1" là một địa chỉ
+ * vô dụng với người đi lấy. Ràng buộc này ở đây chỉ để đỡ một lượt bấm sai — máy chủ nhận
+ * mọi tầng, vì một nhà thuốc nhỏ chỉ có Kho → Kệ thì Kệ đã là chỗ cụ thể nhất họ có.
+ */
+function CatVaoO({ row, onClose }: { row: StockRow; onClose: () => void }) {
+  const ds = useLocations();
+  const cat = usePutAway();
+  const [loc, setLoc] = useState("");
+  const [qty, setQty] = useState("");
+  const [loi, setLoi] = useState<string | null>(null);
+  const [xong, setXong] = useState<string | null>(null);
+
+  const cho = (ds.data ?? []).filter((l) => l.kind === "BIN" || l.kind === "SHELF");
+
+  return (
+    <section className={styles.drawer} aria-label={`Cất lô ${row.lot_no} vào ô`}>
+      <div className={styles.drawerHead}>
+        <h2 className={styles.drawerTitle}>Cất lô {row.lot_no} vào ô</h2>
+        <button type="button" className={styles.ghost} onClick={onClose}>
+          Đóng
+        </button>
+      </div>
+
+      {loi && (
+        <div className={styles.error} role="alert">
+          <span>{loi}</span>
+        </div>
+      )}
+      {xong && <p className={styles.success}>{xong}</p>}
+
+      {cho.length === 0 ? (
+        <p className={styles.hint}>
+          Chưa có kệ hoặc ô nào. Dựng sơ đồ ở màn <strong>Sơ đồ kho</strong> trước.
+        </p>
+      ) : (
+        <>
+          <label className={styles.controls}>
+            <select
+              className={styles.select}
+              value={loc}
+              onChange={(e) => setLoc(e.target.value)}
+              aria-label="Chọn ô"
+            >
+              <option value="">— chọn ô —</option>
+              {cho.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.path}
+                  {l.name ? ` · ${l.name}` : ""}
+                </option>
+              ))}
+            </select>
+            <input
+              className={styles.input}
+              inputMode="numeric"
+              value={qty}
+              onChange={(e) => setQty(e.target.value)}
+              placeholder={`Số lượng (tồn ${formatQty(row.quantity)})`}
+              aria-label="Số lượng cất vào ô"
+            />
+            <button
+              type="button"
+              className={styles.button}
+              disabled={cat.isPending || !loc || !qty.trim()}
+              onClick={async () => {
+                setLoi(null);
+                setXong(null);
+                try {
+                  const kq = await cat.mutateAsync({
+                    batch_id: row.batch_id,
+                    location_id: loc,
+                    quantity: qty.trim(),
+                  });
+                  // Hiện số CHƯA XẾP ngay tại chỗ: người vừa cất cần biết còn bao nhiêu
+                  // nữa, và giấu con số đó là để họ tưởng đã xong.
+                  setXong(
+                    `Đã cất ${formatQty(kq.quantity)} vào ${kq.location_path}. ` +
+                      `Còn ${formatQty(kq.chua_xep_o)} chưa xếp ô.`,
+                  );
+                  setQty("");
+                } catch (err) {
+                  setLoi(
+                    err instanceof ApiError
+                      ? err.problem.detail
+                      : `Không cất được — ${err instanceof Error ? err.message : String(err)}`,
+                  );
+                }
+              }}
+            >
+              {cat.isPending ? "Đang cất…" : "Cất vào ô"}
+            </button>
+          </label>
+        </>
+      )}
+    </section>
   );
 }

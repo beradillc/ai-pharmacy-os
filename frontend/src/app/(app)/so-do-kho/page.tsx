@@ -8,6 +8,7 @@ import {
   TANG_DUOI,
   useCreateLocation,
   useLocations,
+  useStockAtLocation,
   useUpdateLocation,
 } from "@/features/location/use-locations";
 import { ApiError } from "@/shared/api/errors";
@@ -37,6 +38,7 @@ export default function WarehouseMapPage() {
 
   const [hienCaNgung, setHienCaNgung] = useState(false);
   const [dangThem, setDangThem] = useState<StorageLocation | "ROOT" | null>(null);
+  const [dangMo, setDangMo] = useState<StorageLocation | null>(null);
   const ds = useLocations(hienCaNgung);
 
   /** Cây dựng từ danh sách phẳng — máy chủ đã sắp sẵn theo thứ tự đi lấy hàng. */
@@ -96,10 +98,13 @@ export default function WarehouseMapPage() {
               theoCha={theoCha}
               coQuyenSua={coQuyenSua}
               onThem={setDangThem}
+              onMo={setDangMo}
             />
           ))}
         </ul>
       )}
+
+      {dangMo !== null && <TrongO o={dangMo} onClose={() => setDangMo(null)} />}
 
       {dangThem !== null && (
         <ThemViTri cha={dangThem === "ROOT" ? null : dangThem} onClose={() => setDangThem(null)} />
@@ -113,11 +118,13 @@ function Nhanh({
   theoCha,
   coQuyenSua,
   onThem,
+  onMo,
 }: {
   nut: StorageLocation;
   theoCha: Map<string | null, StorageLocation[]>;
   coQuyenSua: boolean;
   onThem: (l: StorageLocation) => void;
+  onMo: (l: StorageLocation) => void;
 }) {
   const con = theoCha.get(nut.id) ?? [];
   const doi = useUpdateLocation();
@@ -132,6 +139,12 @@ function Nhanh({
         <span className={local.thuTu}>đi thứ {nut.pick_order}</span>
         {!nut.is_active && <span className={local.nhanNgung}>đã ngừng</span>}
 
+        {/* Xem được ở MỌI tầng, không riêng Ô: hỏi "cả kệ A01 có gì" cũng chính đáng như
+            hỏi "ô A01/03 có gì" — nhưng máy chủ chỉ trả hàng nằm ĐÚNG nút đó, không gộp
+            cây con. Gộp cây con sẽ đếm trùng khi một lô nằm ở cả kệ lẫn ô bên dưới. */}
+        <button type="button" className={styles.ghost} onClick={() => onMo(nut)}>
+          Xem hàng
+        </button>
         {themDuoc && (
           <button type="button" className={styles.ghost} onClick={() => onThem(nut)}>
             + Thêm {NHAN_TANG[TANG_DUOI[nut.kind][0].value]}
@@ -157,6 +170,7 @@ function Nhanh({
               theoCha={theoCha}
               coQuyenSua={coQuyenSua}
               onThem={onThem}
+              onMo={onMo}
             />
           ))}
         </ul>
@@ -275,6 +289,54 @@ function ThemViTri({ cha, onClose }: { cha: StorageLocation | null; onClose: () 
           {tao.isPending ? "Đang lưu…" : "Lưu vị trí"}
         </button>
       </div>
+    </section>
+  );
+}
+
+
+/** Hàng đang nằm trong MỘT vị trí — trả lời đúng câu *"ô này có thuốc gì"*. */
+function TrongO({ o, onClose }: { o: StorageLocation; onClose: () => void }) {
+  const ds = useStockAtLocation(o.id);
+  const rows = ds.data ?? [];
+
+  return (
+    <section className={styles.drawer} aria-label={`Hàng trong ${o.path}`}>
+      <div className={styles.drawerHead}>
+        <h2 className={styles.drawerTitle}>Trong {o.path}</h2>
+        <button type="button" className={styles.ghost} onClick={onClose}>
+          Đóng
+        </button>
+      </div>
+
+      {ds.isLoading ? (
+        <p className={styles.hint}>Đang tải…</p>
+      ) : rows.length === 0 ? (
+        <p className={styles.hint}>
+          Chỗ này chưa có hàng. Cất hàng vào từ màn <strong>Kho</strong> — mỗi lô có nút
+          &ldquo;Cất vào ô&rdquo;.
+        </p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Số lô</th>
+                <th>Hạn dùng</th>
+                <th className={styles.num}>Số lượng</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.batch_id}>
+                  <td className={styles.mono}>{r.lot_no}</td>
+                  <td>{new Date(r.expiry_date).toLocaleDateString("vi-VN")}</td>
+                  <td className={styles.num}>{Number(r.quantity).toLocaleString("vi-VN")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
