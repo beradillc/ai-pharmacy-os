@@ -6904,3 +6904,63 @@ của sản phẩm hoạt động**.
 2. Lưu trữ mới chỉ có **một loại chứng từ** (ảnh đơn thuốc). Bố cục đặt sẵn theo loại để
    loại sau có chỗ vào.
 3. `check-receive-flow` vẫn đỏ vì tiếng ồn `_rsc` — chưa lọc.
+
+## 7ct. 🔒 ĐÓNG tính năng ảnh đơn thuốc ETC — và tổng kết cả phiên 2026-07-31
+
+Chain: *"Chốt ghi nhận tiến trình, hoàn tất tính năng này."*
+
+### Kiểm cuối trước khi đóng — đo, không khai
+
+| Cổng | Mã thoát |
+|---|---|
+| `ruff` · `import-linter` · `mypy --strict` | `0 · 0 · 0` (266 tệp) |
+| `pytest` | `0` — **1346 passed**, 263s |
+| `make ui-gates` | **10/11** (`check-receive-flow` đỏ vì tiếng ồn `_rsc`, đã chứng minh không phải sản phẩm) |
+
+Cây git sạch trước khi ghi mục này. Năm commit của tính năng: `bd566c7` · `db00607` ·
+`55b3337` · `daf5327` · `fd5f04f`.
+
+### Phiên này đã đóng những gì
+
+| Mục | Commit |
+|---|---|
+| Màn Danh mục thuốc (API sửa hoạt chất nay bấm được) | `78d0fec` |
+| Giá bán niêm yết: đặt · sửa · lịch sử · lệch giá phải ghi lý do | `86514b1`→`9994f1f` |
+| Phương án B: đơn mới từ chối thuốc lạ, đường đồng bộ giữ khoan dung | `36b49a8` |
+| Ảnh đơn thuốc ETC + Cài đặt → Lưu trữ | `bd566c7`→`fd5f04f` |
+
+### Bốn bài học phương pháp của phiên — đều thuộc MỘT họ
+
+Không phải bốn lỗi khác nhau. Cả bốn đều là **tín hiệu chứng minh một mệnh đề khác với
+mệnh đề người đọc tưởng nó chứng minh** — đúng họ mà kiểm toán 26/07 đếm được 16 ca.
+
+| Ca | Tín hiệu | Sự thật |
+|---|---|---|
+| Ô tìm kiếm cao 260px | 4 cổng chữ **xanh** | Không cổng nào mở trình duyệt (§7cm) |
+| Cổng `check-customers`/`check-receive-flow` | **đỏ** | Hỏng là phép đo — cây đã commit cũng đỏ y hệt; sau đó một cổng **tự xanh lại** mà không ai sửa |
+| Đột biến quyền phạm vi | 24/24 test **xanh** | Bộ test chỉ có MỘT chi nhánh ⇒ lọc hay không cho cùng kết quả (§7cs) |
+| Cổng Lưu trữ | **xanh** | 0 dòng dữ liệu ⇒ khẳng định chính chưa hề chạy (§7cs) |
+
+Thứ phân biệt được "sản phẩm hỏng" với "phép đo hỏng" trong **cả bốn ca**: nhìn vào **ảnh
+chụp**, hoặc **cố ý phá rồi xem cổng có đổi màu không**. Không lần nào là do đọc kỹ hơn
+con số.
+
+### 🟠 Nợ mang sang, đã ghi vào sổ có người đọc
+
+Chuyển vào `docs/ui/REMAINING_UI_ISSUES.md` (mục 6, 11, 12, 13) thay vì để trôi trong nhật
+ký này:
+
+1. Ba đường đơn thuốc **duyệt · từ chối · cấp phát** — chưa màn nào gọi.
+2. Lưu trữ mới có **một** loại chứng từ.
+3. Lọc tiếng ồn `_rsc` khỏi bộ đếm lỗi JS của cổng trình duyệt.
+4. `scripts/lan-dev.sh` vẫn dùng `next dev` — máy 3,7 GB không chạy nổi.
+
+Và hai thứ **không** thuộc phạm vi giao diện, giữ ở đây:
+
+5. **Thời hạn lưu ảnh** là quyết định vận hành (*vĩnh viễn, tạm thời*), **chưa phải kết
+   luận pháp lý** — cần TT 26/2025/TT-BYT, tệp chưa có trong `docs/legal/`.
+6. **Báo cáo đối soát** đếm `sale_lines.drug_id` không khớp `drugs.id` — cái giá của
+   phương án B ở đường đồng bộ (§7co).
+7. Ba mục pháp lý Chain **tạm đóng**: ADR reporting · hồ sơ khiếu nại/thu hồi · luân chuyển
+   tồn kho giữa chi nhánh. Và `docs/13` dòng 14 vẫn ghi *"KHÔNG TÌM THẤY"* cho một nguồn
+   luật **đã tìm thấy** — sửa tài liệu, rẻ nhất trong nhóm.

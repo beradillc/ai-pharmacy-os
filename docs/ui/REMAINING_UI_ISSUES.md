@@ -16,7 +16,10 @@
 | ~~**3**~~ | ~~Frontend vẫn 0 test~~ → ✅ **ĐÓNG 29/07** | **27 test** (vitest) phủ `shared/nav.ts`, `format/number.ts`, và hàm gộp doanh thu theo ngày. Ba mutant đều đỏ đúng lý do. `make check-fe` chạy lint+tsc+test+build. **Còn nợ hẹp hơn:** chưa có test render component (cần jsdom + testing-library) |
 | ~~**4**~~ | ~~Không cưỡng chế ranh giới `components/*` ⇄ `features/*`~~ → ✅ **ĐÓNG 29/07** | `no-restricted-imports` trong `eslint.config.mjs`. **Bắt được vi phạm thật ngay lần chạy đầu**: `AppShell` import `features/auth` ⇒ đã chuyển sang `app/_shell/` (nó là composition root, không phải component tái dùng). Luật KHÔNG có ngoại lệ nào |
 | ~~**5**~~ | ~~Màn **Nhân viên** chưa có~~ → ✅ **ĐÓNG 29/07** | Xem danh sách · thêm nhân viên · bật/tắt tài khoản. Đã chạy thật: `POST /users → 201`, `must_change_password: true`. **Gán vai trò cũng XONG 29/07** — cấp/thu hồi, phân biệt phạm vi chi nhánh ⇄ toàn chuỗi. Đã chạy thật: cấp 201 · thu hồi 204 · cấp lại phạm vi toàn chuỗi 201 |
-| **6** | Màn **Tuân thủ** (12 endpoint) · **AI** (5) · **Nhập hàng** (3) · **Đơn thuốc** (5) | Mỗi màn là một tính năng mới, không phải "đổi giao diện dựa trên cái đã có" |
+| **6** | Màn **Tuân thủ** (12 endpoint) · **AI** (5) · **Nhập hàng** (3) · ~~**Đơn thuốc** (5)~~ | Mỗi màn là một tính năng mới. **Đơn thuốc đóng một phần 31/07**: ảnh đơn chụp được ở quầy và xem lại được ở Cài đặt → Lưu trữ. **Còn nợ 3 đường**: duyệt · từ chối · cấp phát — chưa màn nào gọi |
+| **11** | **Lưu trữ mới có một loại chứng từ** (ảnh đơn thuốc) | Bố cục đặt sẵn theo loại để loại sau có chỗ vào. Chưa có: hoá đơn, phiếu nhập, biên bản |
+| **12** | **Tiếng ồn `_rsc` làm cổng trình duyệt đỏ oan** | WebKit huỷ request prefetch điều hướng và báo bằng thông điệp đọc y hệt lỗi CORS. Đã chứng minh không phải lỗi sản phẩm ba lần (cây đã commit cũng đỏ y hệt; `check-customers` tự xanh lại mà không ai sửa). Cần **lọc tiếng ồn đó khỏi bộ đếm lỗi JS**, hoặc ghi rõ các cổng ấy chỉ chạy dưới `next dev` |
+| **13** | **`scripts/lan-dev.sh` vẫn dùng `next dev`** | Máy dev 3,7 GB RAM không chạy nổi: 1,5 GB RSS, swap 3,4/3,9 GB, 305% CPU, `/login` không trả lời trong 120 giây. Đường đang dùng để chạy cổng là **build + `next start`**. Script chưa sửa |
 
 ## 🟡 Vừa
 

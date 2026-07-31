@@ -1,6 +1,26 @@
 # Ảnh đơn thuốc ETC — Bước 0-3 của `docs/14_FEATURE_PROCESS.md`
 
-> **Trạng thái: BƯỚC 0-3 ✅ CHAIN DUYỆT 2026-07-31.** Kèm theo, Chain duyệt luôn khuyến
+> # ✅ TÍNH NĂNG ĐÃ ĐÓNG — Chain chốt 2026-07-31
+>
+> | Lượt | Bước | Commit |
+> |---|---|---|
+> | Một | Bước 0-3 `docs/14` | `bd566c7` |
+> | Một | Cột ảnh mã hoá · migration `0040` · 2 endpoint · `rx.image.read` · ghi vết đọc | `db00607` |
+> | Một | Nới hẹp `source=IMAGE` · nút Chụp đơn ở quầy · cổng · ảnh | `55b3337` |
+> | Hai | Quyền phạm vi `archive.read.chain` · `customer_id` nullable · migration `0041` | `daf5327` |
+> | Hai | Màn Cài đặt → Lưu trữ · chụp không cần khách · cổng · ảnh | `fd5f04f` |
+>
+> Ảnh nghiệm thu: `docs/ui-history/2026-07-31-anh-don-thuoc/` · `docs/ui-history/2026-07-31-luu-tru/`.
+> Nhật ký: `PROJECT_STATE.md` §7cp · §7cr · §7cs.
+>
+> **Còn nợ, KHÔNG làm tròn thành xong** (chi tiết ở `docs/ui/REMAINING_UI_ISSUES.md` mục 6, 11):
+> ba đường đơn thuốc **duyệt · từ chối · cấp phát** chưa màn nào gọi; Lưu trữ mới có một
+> loại chứng từ. Và **thời hạn lưu vẫn là quyết định vận hành**, chưa phải kết luận pháp lý
+> — cần TT 26/2025/TT-BYT.
+>
+> ---
+>
+> **Trạng thái Bước 0-3: ✅ CHAIN DUYỆT 2026-07-31.** Kèm theo, Chain duyệt luôn khuyến
 > nghị của GĐ cho câu hỏi quyền: **phương án B — thêm `rx.image.read`**, chỉ cấp Dược sĩ và
 > cấp chuỗi. *Gắn ảnh là việc của quầy; đọc chẩn đoán thì không.*
 >
