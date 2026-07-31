@@ -44,6 +44,7 @@ export function useCheckout() {
       lines,
       amountPaid,
       customerId = null,
+      prescriptionRef = null,
       allergyAcknowledgement = null,
       priceOverrideReason = null,
     }: {
@@ -51,6 +52,12 @@ export function useCheckout() {
       amountPaid: string;
       /** `null` = khách vãng lai. Bán hàng KHÔNG cần khách hàng — xem `CustomerCapture`. */
       customerId?: string | null;
+      /** Mã đơn thuốc cho phép bán các dòng ETC trong giỏ. `null` ⇒ giỏ toàn thuốc thường,
+       *  hoặc chưa chụp đơn. Máy chủ chặn khi giỏ CÓ thuốc kê đơn mà thiếu nó
+       *  (`ensure_rx_for_etc`), và chặn lần nữa nếu đơn chưa được dược sĩ duyệt
+       *  (`ensure_prescription_valid_for_sale`). Mặc định `null` để mọi bên gọi cũ giữ
+       *  nguyên hành vi. */
+      prescriptionRef?: string | null;
       /** Lý do vẫn bán dù có cảnh báo dị ứng (Đ-6). Máy chủ trả 422 nếu đơn CÓ xung đột
        *  mà thiếu nó. Mặc định `null` để mọi bên gọi cũ giữ nguyên hành vi. */
       allergyAcknowledgement?: string | null;
@@ -67,6 +74,7 @@ export function useCheckout() {
           requires_prescription: l.requiresPrescription,
         })),
         payments: [{ method: "CASH", amount: amountPaid }],
+        prescription_ref: prescriptionRef,
         customer_id: customerId,
         allergy_acknowledgement: allergyAcknowledgement,
         price_override_reason: priceOverrideReason,

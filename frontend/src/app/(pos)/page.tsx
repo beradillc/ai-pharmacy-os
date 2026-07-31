@@ -4,12 +4,14 @@ import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/overlay/ConfirmDialog";
 
+import { useAuthStore } from "@/features/auth/auth-store";
 import { severityLabel } from "@/features/crm/use-health";
 import { useAllergyCheck } from "@/features/sales/use-allergy-check";
 import { cartTotal, countPriceDeviations, useCartStore } from "@/features/sales/cart-store";
 import { useCheckout } from "@/features/sales/use-checkout";
 import { useDrugs } from "@/features/sales/use-drugs";
 import { useWhereIs } from "@/features/location/use-locations";
+import { useRxApprove } from "@/features/prescription/use-rx-approve";
 import { useRxPhoto } from "@/features/prescription/use-rx-photo";
 import { ApiError } from "@/shared/api/errors";
 import type { Customer, Drug } from "@/shared/api/types";
@@ -78,8 +80,29 @@ export default function PosPage() {
   const canChupDon = dongETC.length > 0;
   const [tenBacSi, setTenBacSi] = useState("");
   const [rxLoi, setRxLoi] = useState<string | null>(null);
-  const [rxXong, setRxXong] = useState(false);
   const chupDon = useRxPhoto();
+  const duyetDon = useRxApprove();
+
+  /**
+   * 🔴 Đơn thuốc đã chụp cho giỏ NÀY (Chain giao 01/08 — lỗi "chụp rồi vẫn báo cần đơn").
+   *
+   * Trước bản vá, `useRxPhoto` trả về mã đơn và màn này **vứt đi**: `handleCheckout` không
+   * gửi `prescription_ref` nào ⇒ `ensure_rx_for_etc` chặn đúng theo luật, và người đứng
+   * quầy thấy một thông báo trái ngược hẳn với việc mình vừa làm.
+   *
+   * `chuKy` là chữ ký của **tập dòng ETC lúc chụp**. Giỏ đổi sau khi chụp (thêm một thuốc kê
+   * đơn khác, sửa số lượng) thì tờ đơn đã lưu **không còn phủ** giỏ hiện tại ⇒ tự hết hiệu
+   * lực, phải chụp lại. Suy ra từ trạng thái chứ không dùng `useEffect`: một hiệu ứng chạy
+   * sau khi vẽ sẽ có đúng một nhịp mà nút Thanh toán tin vào tờ đơn đã cũ.
+   */
+  const chuKyETC = dongETC.map((l) => `${l.drugId}:${l.quantity}`).join("|");
+  const [rx, setRx] = useState<{ id: string; chuKy: string; daDuyet: boolean } | null>(null);
+  const rxConHieuLuc = rx !== null && rx.chuKy === chuKyETC;
+  /** `rx.approve` KHÔNG có trong vai thu ngân — ràng buộc Luật Dược Điều 6.5.h, xem
+   *  `use-rx-approve.ts`. Hỏi quyền trước khi hiện nút, không hiện nút rồi trả 403. */
+  const coQuyenDuyet = new Set(useAuthStore((s) => s.session)?.permissions ?? []).has(
+    "rx.approve",
+  );
   const soTienNhan = Number(tienNhan.replace(/[^\d]/g, "")) || 0;
   const thoiLai = soTienNhan - total;
 
@@ -111,6 +134,10 @@ export default function PosPage() {
         lines,
         amountPaid: String(total),
         customerId: customer?.id ?? null,
+        // Tờ đơn vừa chụp cho đúng giỏ này. Gửi cả khi chưa duyệt: máy chủ trả về
+        // *"Đơn thuốc chưa cho phép bán (trạng thái DRAFT…)"* — một câu nói rõ còn thiếu
+        // gì, khác hẳn *"cần đơn thuốc hợp lệ"* của trường hợp không gửi gì cả.
+        prescriptionRef: rxConHieuLuc ? rx.id : null,
         // Máy chủ QUYẾT LẠI từ chính đơn đang lưu — gửi lý do lên không phải để xin
         // phép, mà để lượt quyết đó có cái mà chấp nhận. Không có cảnh báo thì gửi
         // `null`: một lý do trơ trọi trên đơn sạch chỉ làm bẩn sổ audit.
@@ -125,7 +152,7 @@ export default function PosPage() {
       setTienNhan("");
       setTenBacSi("");
       setRxLoi(null);
-      setRxXong(false);
+      setRx(null);
       setDangXacNhan(false);
       setGioMo(false);
       // Bỏ gắn khách sau khi bán xong: người tiếp theo ở quầy là một người KHÁC.
@@ -364,8 +391,8 @@ export default function PosPage() {
                   <label className={styles.menhGiaNut} style={{ textAlign: "center" }}>
                     {chupDon.isPending
                       ? "Đang lưu ảnh…"
-                      : rxXong
-                        ? "✓ Đã lưu ảnh đơn"
+                      : rxConHieuLuc
+                        ? "✓ Đã lưu ảnh đơn — chụp lại"
                         : "📷 Chụp đơn thuốc"}
                     {/* `capture="environment"` mở THẲNG camera sau trên điện thoại thay vì
                         bắt chọn tệp. Trên máy tính nó bị bỏ qua và quay về hộp chọn tệp —
@@ -386,7 +413,7 @@ export default function PosPage() {
                         if (!file) return;
                         setRxLoi(null);
                         try {
-                          await chupDon.mutateAsync({
+                          const rxId = await chupDon.mutateAsync({
                             // Chain chốt 31/07: không có số điện thoại thì vẫn chụp được.
                             // Cái mất — không tra lại được theo khách, không xoá theo yêu
                             // cầu chủ thể được — đã ghi ở `Prescription.customer_id`.
@@ -398,7 +425,7 @@ export default function PosPage() {
                             })),
                             file,
                           });
-                          setRxXong(true);
+                          setRx({ id: rxId, chuKy: chuKyETC, daDuyet: false });
                         } catch (err) {
                           setRxLoi(
                             err instanceof ApiError
@@ -411,6 +438,48 @@ export default function PosPage() {
                       }}
                     />
                   </label>
+
+                  {/* 🔴 Bước duyệt của dược sĩ — Chain chốt 01/08. Chỉ hiện khi ĐÃ có ảnh
+                      cho đúng giỏ này: một nút "duyệt" trên tờ đơn chưa tồn tại là một nút
+                      bấm vào để nhận lỗi. */}
+                  {rxConHieuLuc &&
+                    !rx.daDuyet &&
+                    (coQuyenDuyet ? (
+                      <button
+                        type="button"
+                        className={styles.menhGiaNut}
+                        style={{ textAlign: "center" }}
+                        disabled={duyetDon.isPending}
+                        onClick={async () => {
+                          setRxLoi(null);
+                          try {
+                            await duyetDon.mutateAsync(rx.id);
+                            setRx((r) => (r === null ? r : { ...r, daDuyet: true }));
+                          } catch (err) {
+                            setRxLoi(
+                              err instanceof ApiError
+                                ? err.problem.detail
+                                : `Không duyệt được đơn — ${
+                                    err instanceof Error ? err.message : String(err)
+                                  }`,
+                            );
+                          }
+                        }}
+                      >
+                        {duyetDon.isPending ? "Đang duyệt…" : "✍️ Dược sĩ duyệt đơn"}
+                      </button>
+                    ) : (
+                      <em>
+                        Ảnh đã lưu. Thuốc kê đơn cần <strong>dược sĩ duyệt</strong> mới bán
+                        được — tài khoản đang đăng nhập không có quyền đó (Luật Dược Điều
+                        6.5.h). Nhờ dược sĩ đăng nhập và bấm duyệt.
+                      </em>
+                    ))}
+
+                  {rxConHieuLuc && rx.daDuyet && (
+                    <strong>✓ Dược sĩ đã duyệt — bán được</strong>
+                  )}
+
               {rxLoi && <p className={styles.error}>{rxLoi}</p>}
               </>
             </div>

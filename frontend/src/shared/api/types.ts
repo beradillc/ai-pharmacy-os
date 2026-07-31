@@ -98,6 +98,10 @@ export interface CreateSaleRequest {
   lines: SaleLineRequest[];
   payments: PaymentRequest[];
   currency?: string;
+  /** Đơn thuốc cho phép bán các dòng ETC. Giỏ CÓ thuốc kê đơn mà thiếu nó ⇒ 422
+   *  (`ensure_rx_for_etc`); có nó nhưng đơn chưa được dược sĩ duyệt ⇒ cũng 422, với câu
+   *  nói rõ trạng thái đang mắc (`ensure_prescription_valid_for_sale`). */
+  prescription_ref?: string | null;
   /** Khách gắn vào đơn. `null` = khách vãng lai — bán hàng KHÔNG cần khách hàng. */
   customer_id?: string | null;
   /** Lý do vẫn bán dù có cảnh báo dị ứng (Đ-6). Thiếu nó khi đơn CÓ xung đột ⇒ 422. */
