@@ -58,6 +58,7 @@ CONG_GHI=(
   check-pos-customer.mjs    # 🔴 BÁN một đơn
   check-sale-appears.mjs    # 🔴 BÁN một đơn
   write-rx-photo.mjs        # 🔴 TẠO một đơn thuốc + lưu ảnh (luồng chụp đơn end-to-end)
+  write-pos-etc.mjs         # 🔴 BÁN một đơn ETC: chụp ⇒ dược sĩ duyệt ⇒ thanh toán (P1)
   check-so-do-kho.mjs       # 🔴 TẠO kho/kệ/ô thật — sơ đồ kho (BERAS V2 Phase 1)
   check-vi-tri-lay-hang.mjs # 🔴 CẤT hàng thật vào ô — trọn vòng tới quầy (V2 Phase 2)
   check-nhap-nhanh.mjs      # 🔴 NHẬN hàng thật, gắn ô ngay (V2 Phase 5-6)
