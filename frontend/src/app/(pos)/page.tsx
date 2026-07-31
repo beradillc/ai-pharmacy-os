@@ -6,7 +6,7 @@ import { ConfirmDialog } from "@/components/overlay/ConfirmDialog";
 
 import { severityLabel } from "@/features/crm/use-health";
 import { useAllergyCheck } from "@/features/sales/use-allergy-check";
-import { cartTotal, useCartStore } from "@/features/sales/cart-store";
+import { cartTotal, countPriceDeviations, useCartStore } from "@/features/sales/cart-store";
 import { useCheckout } from "@/features/sales/use-checkout";
 import { useDrugs } from "@/features/sales/use-drugs";
 import { ApiError } from "@/shared/api/errors";
@@ -48,6 +48,19 @@ export default function PosPage() {
   const canGhiLyDo = soCanhBao > 0;
   const [lyDoDiUng, setLyDoDiUng] = useState("");
 
+  // ADR-0003: bán lệch giá niêm yết thì máy chủ đòi lý do. Đếm ở đây chỉ để HỎI cho
+  // đúng lúc — cưỡng chế thật nằm ở máy chủ, tính lại từ đơn đang lưu.
+  const soDongLechGia = countPriceDeviations(lines);
+  const canGhiLyDoGia = soDongLechGia > 0;
+  const [lyDoLechGia, setLyDoLechGia] = useState("");
+
+  // Tiền mặt: khách đưa & thối lại. KHÔNG gửi lên máy chủ — `payments[].amount` vẫn là
+  // tổng đơn. `SaleOrder.complete()` chấp nhận trả THỪA mà không báo gì, nên gửi tiền
+  // khách đưa vào đó sẽ thổi `paid_total` và in sai hoá đơn.
+  const [tienNhan, setTienNhan] = useState("");
+  const soTienNhan = Number(tienNhan.replace(/[^\d]/g, "")) || 0;
+  const thoiLai = soTienNhan - total;
+
   function handleAdd(drug: Drug) {
     // Giá lấy từ `drug.sale_price` (cột catalog, Sprint 10 D10). Chỉ hỏi khi mặt
     // hàng CHƯA được định giá — trước đây hỏi MỌI dòng, kể cả hộp Paracetamol
@@ -80,11 +93,14 @@ export default function PosPage() {
         // phép, mà để lượt quyết đó có cái mà chấp nhận. Không có cảnh báo thì gửi
         // `null`: một lý do trơ trọi trên đơn sạch chỉ làm bẩn sổ audit.
         allergyAcknowledgement: canGhiLyDo ? lyDoDiUng.trim() : null,
+        priceOverrideReason: canGhiLyDoGia ? lyDoLechGia.trim() : null,
       });
       setLastResult({ id: result.sale?.id ?? result.clientUuid, queued: result.queued });
       if (result.queued) refreshCount();
       clearCart();
       setLyDoDiUng("");
+      setLyDoLechGia("");
+      setTienNhan("");
       // Bỏ gắn khách sau khi bán xong: người tiếp theo ở quầy là một người KHÁC.
       // Giữ lại là cách gắn nhầm hoá đơn cho khách trước — và không ai nhận ra.
       setCustomer(null);
@@ -242,9 +258,85 @@ export default function PosPage() {
           )}
 
           <div className={styles.total}>
-            <span>Tổng cộng</span>
+            <span>Thành tiền</span>
             <strong>{total.toLocaleString("vi-VN")} đ</strong>
           </div>
+
+          {/* 🔴 Lý do bán lệch giá niêm yết (ADR-0003). Đặt TRÊN nút Thanh toán, trên
+              đường tay thu ngân đi tới nút — cùng chỗ và cùng lý do với cảnh báo dị ứng. */}
+          {canGhiLyDoGia && (
+            <div className={styles.lechGia}>
+              <span>
+                ⚠️ <strong>{soDongLechGia} dòng bán lệch giá niêm yết.</strong> Ghi lý do
+                để hoàn tất — mỗi lần lệch được ghi vào sổ audit.
+              </span>
+              <input
+                className={styles.tienNhan}
+                style={{ width: "100%", textAlign: "left" }}
+                value={lyDoLechGia}
+                onChange={(e) => setLyDoLechGia(e.target.value)}
+                placeholder="Vì sao bán khác giá niêm yết?"
+                aria-label="Lý do bán lệch giá niêm yết"
+              />
+            </div>
+          )}
+
+          {lines.length > 0 && (
+            <div className={styles.tienKhoi}>
+              <div className={styles.menhGia}>
+                {[10000, 20000, 50000, 100000, 200000, 500000].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    className={styles.menhGiaNut}
+                    onClick={() => setTienNhan(String(soTienNhan + m))}
+                  >
+                    +{m.toLocaleString("vi-VN")}
+                  </button>
+                ))}
+                {/* Khách đưa đúng số tiền là ca phổ biến nhất — một nút, không phải gõ. */}
+                <button
+                  type="button"
+                  className={styles.menhGiaNut}
+                  onClick={() => setTienNhan(String(total))}
+                >
+                  Đủ tiền
+                </button>
+                <button
+                  type="button"
+                  className={styles.menhGiaNut}
+                  onClick={() => setTienNhan("")}
+                  aria-label="Xoá tiền khách đưa"
+                >
+                  Xoá
+                </button>
+              </div>
+
+              <label className={styles.tienHang}>
+                <span>Khách đưa</span>
+                <input
+                  className={styles.tienNhan}
+                  inputMode="numeric"
+                  value={soTienNhan === 0 ? "" : soTienNhan.toLocaleString("vi-VN")}
+                  onChange={(e) => setTienNhan(e.target.value)}
+                  placeholder="0"
+                  aria-label="Tiền khách đưa"
+                />
+              </label>
+
+              <div className={styles.tienHang}>
+                <span>Thối lại</span>
+                {/* Thiếu tiền hiện số ÂM chứ không hiện 0: thu ngân cần biết còn thiếu
+                    bao nhiêu, và một số 0 ở đây đọc y hệt "vừa đủ". */}
+                <strong
+                  className={thoiLai < 0 ? styles.thoiLaiThieu : styles.thoiLai}
+                  data-testid="thoi-lai"
+                >
+                  {thoiLai.toLocaleString("vi-VN")} đ
+                </strong>
+              </div>
+            </div>
+          )}
 
           {checkoutError && <p className={styles.error}>{checkoutError}</p>}
           {lastResult &&
@@ -264,7 +356,8 @@ export default function PosPage() {
               checkout.isPending ||
               // Chặn ở đây chỉ để đỡ một lượt đi mạng chắc chắn bị từ chối. Cưỡng chế
               // THẬT vẫn ở máy chủ (422) — nút này không phải cổng.
-              (canGhiLyDo && lyDoDiUng.trim() === "")
+              (canGhiLyDo && lyDoDiUng.trim() === "") ||
+              (canGhiLyDoGia && lyDoLechGia.trim() === "")
             }
             onClick={handleCheckout}
           >

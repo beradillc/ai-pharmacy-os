@@ -5,7 +5,9 @@ import { useMemo, useState } from "react";
 import { useIngredients } from "@/features/crm/use-health";
 import {
   useCatalogDrugs,
+  usePriceHistory,
   useReplaceIngredients,
+  useSetPrice,
   type IngredientRow,
 } from "@/features/catalog/use-drug-ingredients";
 import { useAuthStore } from "@/features/auth/auth-store";
@@ -35,6 +37,7 @@ export default function DrugCatalogPage() {
 
   const [tim, setTim] = useState("");
   const [dangSua, setDangSua] = useState<Drug | null>(null);
+  const [dangSuaGia, setDangSuaGia] = useState<Drug | null>(null);
   const drugs = useCatalogDrugs();
   const ingredients = useIngredients();
 
@@ -50,6 +53,7 @@ export default function DrugCatalogPage() {
   }, [drugs.data, tim]);
 
   const soTrong = (drugs.data ?? []).filter((d) => d.ingredients.length === 0).length;
+  const soChuaCoGia = (drugs.data ?? []).filter((d) => d.sale_price === null).length;
 
   return (
     <div className={styles.page}>
@@ -93,6 +97,8 @@ export default function DrugCatalogPage() {
               <tr>
                 <th>Tên thuốc</th>
                 <th>Hoạt chất</th>
+                <th className={styles.num}>Giá niêm yết</th>
+                {coQuyenSua && <th />}
                 {coQuyenSua && <th />}
               </tr>
             </thead>
@@ -114,6 +120,24 @@ export default function DrugCatalogPage() {
                         .join(" · ")
                     )}
                   </td>
+                  <td className={styles.num}>
+                    {d.sale_price === null ? (
+                      <span className={local.trong}>— chưa đặt —</span>
+                    ) : (
+                      `${Number(d.sale_price).toLocaleString("vi-VN")} đ`
+                    )}
+                  </td>
+                  {coQuyenSua && (
+                    <td className={styles.num}>
+                      <button
+                        type="button"
+                        className={styles.ghost}
+                        onClick={() => setDangSuaGia(d)}
+                      >
+                        Giá
+                      </button>
+                    </td>
+                  )}
                   {coQuyenSua && (
                     <td className={styles.num}>
                       <button
@@ -130,6 +154,18 @@ export default function DrugCatalogPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {soChuaCoGia > 0 && (
+        <p className={local.canhBao}>
+          💰 <strong>{soChuaCoGia} thuốc chưa đặt giá niêm yết.</strong> Quầy sẽ phải hỏi
+          thu ngân gõ giá tay mỗi lần bán mã đó — và Điều 107.4 Luật Dược buộc niêm yết giá
+          bán lẻ tại nơi bán.
+        </p>
+      )}
+
+      {dangSuaGia && (
+        <EditPrice drug={dangSuaGia} onClose={() => setDangSuaGia(null)} />
       )}
 
       {dangSua && (
@@ -276,6 +312,119 @@ function EditIngredients({
       <p className={local.ghiChu}>
         Lưu xong, cảnh báo dị ứng ở quầy đổi theo <strong>ngay</strong> — không cần khởi
         động lại. Mỗi lần lưu được ghi vào sổ audit.
+      </p>
+    </section>
+  );
+}
+
+
+/**
+ * Bảng đặt giá niêm yết + lịch sử biến động.
+ *
+ * 🔴 Lịch sử nằm ngay dưới ô nhập, không ở trang khác: câu hỏi *"có nên đổi giá không"*
+ * và câu hỏi *"lần trước đổi vì sao"* là cùng một câu hỏi, hỏi cùng một lúc.
+ */
+function EditPrice({ drug, onClose }: { drug: Drug; onClose: () => void }) {
+  const [gia, setGia] = useState(drug.sale_price ?? "");
+  const [lyDo, setLyDo] = useState("");
+  const [loi, setLoi] = useState<string | null>(null);
+  const luu = useSetPrice(drug.id);
+  const lichSu = usePriceHistory(drug.id);
+
+  // Máy chủ đòi lý do khi đổi giá một mã ĐÃ có giá; lần đầu đặt giá thì không.
+  const canLyDo = drug.sale_price !== null;
+
+  return (
+    <section className={styles.drawer} aria-label={`Giá niêm yết của ${drug.name}`}>
+      <div className={styles.drawerHead}>
+        <h2 className={styles.drawerTitle}>Giá niêm yết · {drug.name}</h2>
+        <button type="button" className={styles.ghost} onClick={onClose}>
+          Đóng
+        </button>
+      </div>
+
+      {loi && (
+        <div className={styles.error} role="alert">
+          <span>{loi}</span>
+        </div>
+      )}
+
+      <label className={local.themKhoi}>
+        <span className={local.nhan}>Giá bán một {drug.base_unit} (đ)</span>
+        <input
+          className={styles.input}
+          inputMode="numeric"
+          value={gia}
+          onChange={(e) => setGia(e.target.value)}
+          aria-label="Giá niêm yết mới"
+        />
+      </label>
+
+      {canLyDo && (
+        <label className={local.themKhoi}>
+          <span className={local.nhan}>Lý do đổi giá (bắt buộc)</span>
+          <input
+            className={styles.input}
+            value={lyDo}
+            onChange={(e) => setLyDo(e.target.value)}
+            placeholder="Nhà phân phối tăng giá, khuyến mãi…"
+            aria-label="Lý do đổi giá"
+          />
+        </label>
+      )}
+
+      <div className={local.cuoi}>
+        <button
+          type="button"
+          className={styles.button}
+          disabled={luu.isPending || !gia.trim() || (canLyDo && !lyDo.trim())}
+          onClick={async () => {
+            setLoi(null);
+            try {
+              await luu.mutateAsync({
+                new_price: gia.trim(),
+                reason: lyDo.trim() || null,
+              });
+              onClose();
+            } catch (err) {
+              setLoi(
+                err instanceof ApiError
+                  ? err.problem.detail
+                  : `Không lưu được — ${err instanceof Error ? err.message : String(err)}`,
+              );
+            }
+          }}
+        >
+          {luu.isPending ? "Đang lưu…" : "Lưu giá"}
+        </button>
+      </div>
+
+      <h3 className={local.nhan}>Biến động giá</h3>
+      {lichSu.data && lichSu.data.length > 0 ? (
+        <ul className={local.rows}>
+          {lichSu.data.map((r) => (
+            <li key={r.id} className={local.row}>
+              <span className={local.ten}>
+                {r.old_price === null
+                  ? `Đặt giá lần đầu: ${Number(r.new_price).toLocaleString("vi-VN")} đ`
+                  : `${Number(r.old_price).toLocaleString("vi-VN")} → ${Number(
+                      r.new_price,
+                    ).toLocaleString("vi-VN")} đ`}
+              </span>
+              <span className={local.trong}>
+                {new Date(r.changed_at).toLocaleString("vi-VN")}
+                {r.reason ? ` · ${r.reason}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={local.trong}>Mã này chưa từng đổi giá.</p>
+      )}
+
+      <p className={local.ghiChu}>
+        Giá niêm yết là quyết định <strong>cấp chuỗi</strong>. Quầy vẫn bán lệch được, nhưng
+        mỗi lần lệch phải ghi lý do và được ghi vào sổ audit.
       </p>
     </section>
   );

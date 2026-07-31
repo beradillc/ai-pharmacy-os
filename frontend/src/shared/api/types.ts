@@ -40,6 +40,16 @@ export interface Drug {
   ingredients: DrugIngredient[];
 }
 
+export interface PriceHistoryEntry {
+  id: string;
+  /** `null` = lần ĐẦU đặt giá cho mã chưa từng có giá, khác hẳn một lần đổi giá. */
+  old_price: string | null;
+  new_price: string;
+  reason: string | null;
+  changed_by: string | null;
+  changed_at: string;
+}
+
 export interface DrugIngredient {
   ingredient_id: string;
   amount: string;
@@ -92,6 +102,8 @@ export interface CreateSaleRequest {
   customer_id?: string | null;
   /** Lý do vẫn bán dù có cảnh báo dị ứng (Đ-6). Thiếu nó khi đơn CÓ xung đột ⇒ 422. */
   allergy_acknowledgement?: string | null;
+  /** Lý do bán lệch giá niêm yết — xem ADR-0003. */
+  price_override_reason?: string | null;
 }
 
 /** Phán quyết dị ứng cho một giỏ hàng — `POST /sales/allergy-check`. */

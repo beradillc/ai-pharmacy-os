@@ -48,6 +48,11 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
       // thấy được; ảnh chụp thấy. Nay đo luôn để nó không quay lại im lặng.
       caoOTim: Math.round(document.querySelector('input[aria-label="Tìm thuốc"]')
         ?.getBoundingClientRect().height ?? 0),
+      // Cột giá niêm yết (2026-07-31). Đếm dòng hiện được SỐ TIỀN, không chỉ có cột:
+      // một cột rỗng vẫn qua được phép kiểm "có tiêu đề".
+      coCotGia: [...document.querySelectorAll("thead th")].some(x => /Giá niêm yết/i.test(x.textContent ?? "")),
+      soDongCoGia: rows.filter(tr => /\d[\d.]*\s*đ/.test(tr.innerText)).length,
+      coNutGia: rows.some(tr => [...tr.querySelectorAll("button")].some(x => x.textContent?.trim() === "Giá")),
     };
   });
 
@@ -69,12 +74,14 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   // Sàn 44px là `--touch-min`; trần 80px cho ô một dòng ở mọi khổ.
   const oTimDung = r.caoOTim >= 44 && r.caoOTim <= 80;
   const dat = r.coCotHoatChat && r.soDong > 0 && r.coNutSua && r.coTenHoatChat &&
+              r.coCotGia && r.soDongCoGia > 0 && r.coNutGia &&
               !r.tranNgang && oTimDung &&
               bang?.soDong > 0 && bang?.coChonThem && bang?.coNutLuu && loi.length === 0;
   if (!dat) hong++;
   console.log(`\n──${ten}──`);
   console.log(`  danh mục: ${r.soDong} thuốc · cột "Hoạt chất": ${r.coCotHoatChat?"✓":"🔴"} · hiện TÊN hoạt chất: ${r.coTenHoatChat?"✓":"🔴"}`);
   console.log(`  cảnh báo "chưa có hoạt chất": ${r.soTrong ?? "(không hiện)"} thuốc · nút Sửa: ${r.coNutSua?"✓":"🔴"}`);
+  console.log(`  cột "Giá niêm yết": ${r.coCotGia?"✓":"🔴"} · dòng hiện giá: ${r.soDongCoGia} · nút Giá: ${r.coNutGia?"✓":"🔴"}`);
   console.log(`  bảng sửa: ${bang?.soDong} dòng · ô thêm: ${bang?.coChonThem?"✓":"🔴"} · nút Lưu: ${bang?.coNutLuu?"✓":"🔴"}`);
   console.log(`  cuộn ngang: ${r.tranNgang?"🔴 CÓ":"✓ không"} · ô tìm cao ${r.caoOTim}px ${oTimDung?"✓":"🔴 (44–80)"} · lỗi JS: ${loi.length}`);
   await ctx.close();

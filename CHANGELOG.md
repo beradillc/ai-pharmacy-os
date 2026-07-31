@@ -17,7 +17,26 @@ mục đã phát hành**, sai thì ghi một mục mới đính chính.
   lặng**. Số đầy đủ lấy qua `GET /customers/{id}/phone` (quyền `crm.pii.reveal`).
   → `docs/adr/ADR-0002`
 
+- **`POST /sales` và `POST /sync/sales` nay trả `422` nếu đơn có dòng bán lệch giá niêm
+  yết mà thiếu `price_override_reason`.** Đường dẫn, hình dạng và mã trạng thái thành
+  công **không đổi**; cái đổi là một yêu cầu trước đây thành công nay có thể bị từ chối.
+  Bán **đúng** giá niêm yết, hoặc bán một mã **chưa đặt giá**, không bị ảnh hưởng.
+  → `docs/adr/ADR-0003`
+
 ### Đã thêm
+
+- **Màn Danh mục thuốc** (`/danh-muc-thuoc`): xem toàn bộ danh mục kèm hoạt chất và giá
+  niêm yết; sửa hoạt chất; đặt/đổi giá. Nút sửa chỉ hiện với `catalog.update` (cấp chuỗi).
+- **`PUT /drugs/{id}/price`** — đặt lại giá bán niêm yết. Quyền `catalog.update`. Trả
+  `422` nếu đổi giá một mã **đã có giá** mà không kèm `reason`, hoặc giá âm/lẻ quá 2 chữ
+  số thập phân/trùng giá đang có.
+- **`GET /drugs/{id}/price-history`** — lịch sử biến động giá, mới nhất trước. Quyền
+  `catalog.read`. `old_price: null` nghĩa là lần **đầu** đặt giá.
+- **`GET /drugs` nay trả thêm `ingredients`** trên mỗi thuốc (trường mới, không phá vỡ).
+- **Quầy bán hàng: thành tiền · khách đưa · thối lại**, kèm nút mệnh giá nhanh và nút
+  "Đủ tiền". Tiền khách đưa **không** gửi lên máy chủ — `payments[].amount` vẫn là tổng
+  đơn, nên không có thay đổi API nào cho phần này.
+- Hai `AuditAction` mới: `CATALOG_DRUG_PRICE_CHANGED`, `SALE_PRICE_OVERRIDE`.
 
 - **`make ui-gates`** — chạy cả 6 cổng trình duyệt bằng một lệnh, in mã thoát tường minh
   của từng cổng. Tách hai nhóm: **đọc-thuần** (an toàn trên mọi CSDL, mặc định) và **ghi**

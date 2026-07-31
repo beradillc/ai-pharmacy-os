@@ -6518,3 +6518,90 @@ trong bộ đếm lỗi JS, hoặc ghi rõ chỉ chạy chúng dưới `next dev
   mang danh sách sai theo cách khác, và trong khoảng đó cảnh báo dị ứng vẫn đang chạy.
 
 Ảnh: `docs/ui-history/2026-07-31-danh-muc-thuoc/` (kèm ảnh **trước** khi vá để đối chiếu).
+
+## 7cn. ✅ Giá bán niêm yết (đặt · sửa · lịch sử) + thu tiền mặt ở quầy — 6/6 bước (2026-07-31)
+
+Chain giao giữa phiên: *"rà soát cách quy định giá bán ra. Áp dụng cho chủ chuỗi cửa hàng
+mới quy định được. Ghi nhận lại biến động giá mỗi lần điều chỉnh. Ngoài ra triển khai phần
+thành tiền, nhận tiền, tiền thối lại… như một phần mềm bán hàng chuyên nghiệp."*
+
+### Rà soát trước khi code — ba kết quả
+
+| Câu hỏi | Hiện trạng đo được |
+|---|---|
+| Ai được đặt giá | **Đã đúng ý Chain từ trước** — `catalog.create`/`catalog.update` là quyền cấp chuỗi, dược sĩ chi nhánh và thu ngân bị loại trừ tường minh (`system_roles.py:181`) |
+| Sửa giá sau khi tạo | **Không có endpoint nào.** Đặt sai một lần là sai vĩnh viễn — cùng hình dạng ca hoạt chất 30/07 |
+| Biến động giá | **Không bảng nào.** Đổi giá là ghi đè |
+| Quầy có bị ép theo giá chuỗi | **Không** — `POST /sales` nhận `unit_price` từ máy khách, không đối chiếu |
+| Tiền khách đưa / thối lại | **Không có** — quầy gửi cứng `payments: [{CASH, đúng bằng tổng}]` |
+
+### 🔴 Căn cứ pháp lý không phải đi tìm — nó nằm sẵn trong repo
+
+`docs/legal/Luật-105-2016-QH13.SUMMARY.md` dòng 34 đã ghi **Điều 6.5.i** cấm *"Bán thuốc
+cao hơn giá kê khai, giá niêm yết"*, kèm đúng một ghi chú: *"Không có enforcement tự động
+trong `sales` hiện tại"*. Dòng 38 ghi **Điều 107.4** buộc niêm yết giá bán lẻ.
+
+Khoảng trống Chain chỉ ra đã nằm trong sổ pháp lý của **chính dự án này**, chưa ai đóng.
+Bài học: trước khi khảo sát pháp lý cho một tính năng, đọc `docs/legal/*.SUMMARY.md` — nó
+đã liệt kê sẵn các gap và tự đánh dấu cái nào chưa có enforcement.
+
+### GĐ đề nghị khác, Chain giữ nguyên — ghi nguyên văn
+
+GĐ đề nghị **bất đối xứng**: bán cao hơn giá niêm yết ⇒ chặn (Điều 6.5.i cấm đích danh
+chiều đó); thấp hơn ⇒ cho, kèm lý do. Lập luận: một dòng lý do không hợp pháp hoá hành vi
+bị cấm, và tệ hơn, nó tạo bằng chứng có ký tên rằng nhà thuốc biết mình bán vượt giá.
+
+**Chain giữ nguyên đối xứng.** Đánh đổi ghi ở `ADR-0003` kèm chỗ sửa nếu sau này muốn siết
+— đúng một hàm `ensure_price_override_acknowledged`, không đụng lược đồ, không đụng API.
+
+### Sáu bước, chốt trước khi bắt đầu (kỷ luật #12)
+
+| # | Việc | Commit |
+|---|---|---|
+| 1 | Bước 0-3 docs/14 | `86514b1` |
+| 2 | domain thuần: `set_sale_price` → `DrugPriceChange` | `d9c54b8` |
+| 3 | bảng `drug_price_history` + use-case + migration `0039` | `f7e904a` |
+| 4 | `PUT /drugs/{id}/price` · `GET /price-history` | `666744c` |
+| 5 | `sales` đối chiếu giá, lệch ⇒ đòi lý do + audit + ADR-0003 | `9c91fd3` |
+| 6 | giao diện: cột giá + sửa giá + lịch sử · quầy thu tiền | phiên này |
+
+### 🔴 Bốn lỗi thật do cổng bắt được, không do đọc lại mã
+
+| Cổng | Bắt được gì |
+|---|---|
+| `mypy --strict` | `Decimal("NaN") < 0` là **False** ⇒ NaN lọt qua phép kiểm giá âm không kêu tiếng nào. NaN dựng được từ đúng một chuỗi trong thân JSON |
+| test tích hợp | Ba lần đổi giá trong **cùng một giây** có cùng `created_at` (SQLite phân giải 1 giây; Postgres trả giờ **bắt đầu giao dịch**) ⇒ "mới nhất trước" thành thứ tự ngẫu nhiên theo UUID |
+| test e2e | `PUT /price` đáp `"12000"` còn `GET /drugs` đáp `"12000.00"` cho **cùng một giá** — và bước sau sắp so hai thứ đó |
+| ảnh chụp | (mục trước, §7cm) ô tìm kiếm cao 260px trong lúc 4 cổng chữ xanh |
+
+Ca thứ hai đáng nhớ nhất: **bình luận tôi viết lần đầu nói ĐÚNG vấn đề nhưng vá SAI** —
+tôi ghi *"`created_at` không đủ, thêm `id` làm khoá phụ"*, mà `id` là UUID ngẫu nhiên nên
+"id giảm dần" không liên quan gì tới thứ tự thời gian. Nhận ra đúng rủi ro không đồng
+nghĩa với vá đúng rủi ro đó; chỉ có test chạy thật mới phân biệt được hai chuyện.
+
+### Quyết định thiết kế nặng nhất: tiền khách đưa KHÔNG phải `payments[].amount`
+
+`SaleOrder.complete()` đòi `paid_total >= subtotal` — trả **thừa được chấp nhận, không báo
+gì**. Gửi tiền khách đưa vào đó sẽ thổi `paid_total` lên 200.000 cho một đơn 2.200 và in
+sai hoá đơn. Thối lại là **phép tính của quầy**. Nhờ vậy phần tiền **không đổi một dòng
+hợp đồng API nào** — bốn câu hỏi tương thích của kỷ luật #17 trả lời được ngay.
+
+### Cổng
+
+| Cổng | Kết quả |
+|---|---|
+| RUFF · IMPORTLINTER · MYPY · PYTEST | `0 · 0 · 0 · 0` — **1320 passed**, 239s (chạy đủ ở mỗi bước 2→5) |
+| ESLINT · TSC · VITEST · BUILD | `0 · 0 · 0 · 0` — **70 passed** (thêm 8) |
+| `make ui-gates` | **7/9** — thêm `check-pos-tien`. Hai cổng đỏ là lỗi phép đo đã chứng minh ở §7cm |
+| Kỷ luật #14 | 4 lượt đột biến, **4 lần đỏ đúng lý do** |
+
+Ảnh: `docs/ui-history/2026-07-31-gia-ban-va-thu-tien/`.
+
+### 🟠 Còn nợ — ghi để không trôi
+
+1. `check-customers` và `check-receive-flow` đỏ vì tiếng ồn `_rsc` dưới `next start`. Phải
+   bỏ qua tiếng ồn đó trong bộ đếm lỗi JS, hoặc ghi rõ chúng chỉ chạy dưới `next dev`.
+2. Máy dev **3,7 GB RAM** không chạy nổi `next dev` (1,5 GB RSS, swap 3,4/3,9 GB, 305% CPU,
+   `/login` không trả lời trong 120 giây). Đường chạy cổng trình duyệt nay là
+   **build + `next start`**. `scripts/lan-dev.sh` vẫn dùng `next dev` — chưa sửa.
+3. Chưa có màn nào để **đặt giá hàng loạt**; đổi 36 mã là 36 lượt bấm.

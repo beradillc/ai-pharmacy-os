@@ -359,3 +359,76 @@
   font-size: var(--text-sm);
   text-align: left;
 }
+
+/* --- Thu tiền mặt: khách đưa · thối lại (2026-07-31, Chain giao) --- */
+
+.tienKhoi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+  border-top: 1px solid var(--beras-border);
+}
+
+.menhGia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* 44px là SÀN chạm được — thu ngân bấm bằng ngón cái, không bằng chuột. */
+.menhGiaNut {
+  flex: 1 1 auto;
+  min-width: 88px;
+  min-height: var(--touch-min);
+  font: inherit;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--beras-border);
+  background: var(--beras-surface);
+  color: var(--beras-text);
+  cursor: pointer;
+}
+
+.menhGiaNut:hover {
+  border-color: var(--beras-text-muted);
+}
+
+.tienHang {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.tienNhan {
+  width: 10rem;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  font: inherit;
+  font-size: var(--text-lg);
+  text-align: right;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--beras-border);
+  background: var(--beras-surface);
+  color: var(--beras-text);
+}
+
+/* 🔴 Tiền thối là con số thu ngân đọc trong lúc đang đếm tiền trong tay — nó phải to
+   hơn mọi thứ khác trên bảng này, kể cả tổng tiền. */
+.thoiLai {
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+
+.thoiLaiThieu {
+  color: var(--beras-danger, #b3261e);
+  font-weight: 700;
+}
+
+.lechGia {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+  border-top: 1px solid var(--beras-border);
+}

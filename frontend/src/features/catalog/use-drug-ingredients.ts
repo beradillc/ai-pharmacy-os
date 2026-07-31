@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/shared/api/client";
-import type { Drug } from "@/shared/api/types";
+import type { Drug, PriceHistoryEntry } from "@/shared/api/types";
 
 /** Danh mục thuốc kèm hoạt chất. `GET /drugs` chưa có tìm phía máy chủ — lọc tại chỗ. */
 export function useCatalogDrugs() {
@@ -37,6 +37,37 @@ export function useReplaceIngredients(drugId: string) {
       void qc.invalidateQueries({ queryKey: ["catalog", "drugs"] });
       // Cảnh báo dị ứng ở quầy đọc hoạt chất — sửa xong phải thấy ngay, không đợi hết hạn cache.
       void qc.invalidateQueries({ queryKey: ["allergy-check"] });
+    },
+  });
+}
+
+/** Lịch sử giá của một thuốc, mới nhất trước. Chỉ tải khi thật sự mở bảng giá. */
+export function usePriceHistory(drugId: string | null) {
+  return useQuery({
+    queryKey: ["catalog", "price-history", drugId],
+    queryFn: () => apiFetch<PriceHistoryEntry[]>(`/drugs/${drugId}/price-history`),
+    enabled: drugId !== null,
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * Đặt lại giá bán niêm yết — `PUT /drugs/{id}/price`.
+ *
+ * 🔴 Quyền `catalog.update` là **cấp chuỗi**: đổi giá ở một chi nhánh là đổi giá của
+ * toàn chuỗi. Máy chủ trả 422 nếu đổi giá một mã ĐÃ có giá mà không kèm lý do.
+ */
+export function useSetPrice(drugId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { new_price: string; reason: string | null }) =>
+      apiFetch<Drug>(`/drugs/${drugId}/price`, { method: "PUT", body }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["catalog", "drugs"] });
+      void qc.invalidateQueries({ queryKey: ["catalog", "price-history", drugId] });
+      // Quầy điền sẵn đơn giá từ `sale_price` — đổi giá xong phải thấy ngay, nếu không
+      // dòng tiếp theo ở quầy sẽ bán giá cũ và bị máy chủ bắt ghi lý do lệch giá.
+      void qc.invalidateQueries({ queryKey: ["drugs"] });
     },
   });
 }
