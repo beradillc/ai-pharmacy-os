@@ -274,3 +274,22 @@ def test_gia_vo_cuc_bi_tu_choi() -> None:
     with pytest.raises(InvalidPriceError):
         d.set_sale_price(Decimal("Infinity"))
     assert d.sale_price is None
+
+
+def test_gia_duoc_chuan_hoa_ve_hai_chu_so_thap_phan() -> None:
+    """`12000` và `12000.00` là cùng một giá — hệ thống phải nói ra bằng cùng một chuỗi.
+
+    Không chuẩn hoá thì `PUT /price` đáp `"12000"` còn `GET /drugs` đáp `"12000.00"`, và
+    bên nào so bằng chuỗi sẽ thấy hai giá trị bằng nhau là khác nhau.
+    """
+    d = _drug()
+    d.set_sale_price(Decimal("12000"))
+    assert str(d.sale_price) == "12000.00"
+
+
+def test_gia_12000_va_12000_chan_van_bi_coi_la_TRUNG() -> None:
+    """Phép so trùng phải chạy SAU khi chuẩn hoá, không phải trước."""
+    d = _drug()
+    d.set_sale_price(Decimal("12000.00"))
+    with pytest.raises(PriceUnchangedError):
+        d.set_sale_price(Decimal("12000"))

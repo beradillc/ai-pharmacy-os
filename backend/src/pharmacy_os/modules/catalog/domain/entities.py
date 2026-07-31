@@ -223,6 +223,14 @@ class Drug:
             raise InvalidPriceError(
                 f"Giá bán chỉ lưu được tới 2 chữ số thập phân, nhận {new_price}"
             )
+        # 🔴 Chuẩn hoá về đúng độ chính xác hệ thống LƯU (`Numeric(18, 2)`), ngay tại đây.
+        # Không làm thì aggregate giữ `Decimal("12000")` còn CSDL trả `Decimal("12000.00")`
+        # ⇒ `PUT /price` đáp `"12000"` nhưng `GET /drugs` đáp `"12000.00"` cho **cùng một
+        # giá**. Test e2e bắt được đúng ca này. Nó không phải chuyện thẩm mỹ: bước sau so
+        # giá bán ở quầy với giá niêm yết, và một bên so bằng chuỗi sẽ thấy hai giá trị
+        # bằng nhau là khác nhau. Phép chuẩn hoá này **không** làm tròn gì — quy tắc 2 chữ
+        # số thập phân ở trên đã loại mọi giá trị có thể mất thông tin khi quantize.
+        new_price = new_price.quantize(Decimal("0.01"))
         if self.sale_price is not None and self.sale_price == new_price:
             raise PriceUnchangedError(f"Giá mới trùng giá đang có: {new_price}")
         old = self.sale_price

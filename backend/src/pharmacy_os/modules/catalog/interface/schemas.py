@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -14,6 +15,7 @@ from pharmacy_os.modules.catalog.application.dto import (
     DrugIngredientInput,
     DrugOutput,
     DrugUnitInput,
+    PriceHistoryOutput,
 )
 from pharmacy_os.modules.catalog.domain import RxClass
 
@@ -155,4 +157,42 @@ class DrugResponse(BaseModel):
                 DrugIngredientResponse(ingredient_id=i.ingredient_id, amount=i.amount, unit=i.unit)
                 for i in out.ingredients
             ],
+        )
+
+
+class SetDrugPriceRequest(BaseModel):
+    """Đặt lại giá bán niêm yết của một thuốc.
+
+    ``ge=0`` chứ không ``gt=0``: hàng tặng/hàng mẫu giá 0 là chuyện có thật, giá âm thì
+    không — cùng lý do đã ghi ở ``CreateDrugRequest.sale_price``.
+
+    ``reason`` không bắt buộc **ở tầng lược đồ** dù nghiệp vụ đòi khi đổi giá đã có: quy
+    tắc *"có giá rồi thì phải ghi lý do"* phụ thuộc vào trạng thái **của thuốc trong CSDL**,
+    thứ mà một lược đồ yêu cầu không nhìn thấy. Bắt buộc ở đây sẽ chặn luôn lần đặt giá
+    đầu tiên. Cưỡng chế thật nằm ở ``CatalogService.set_drug_price`` (422).
+    """
+
+    new_price: Decimal = Field(ge=0)
+    reason: str | None = Field(default=None, max_length=255)
+
+
+class PriceHistoryResponse(BaseModel):
+    """Một dòng lịch sử giá. ``old_price is None`` = lần ĐẦU đặt giá, không phải đổi giá."""
+
+    id: UUID
+    old_price: Decimal | None
+    new_price: Decimal
+    reason: str | None
+    changed_by: UUID | None
+    changed_at: datetime
+
+    @classmethod
+    def of(cls, out: PriceHistoryOutput) -> PriceHistoryResponse:
+        return cls(
+            id=out.id,
+            old_price=out.old_price,
+            new_price=out.new_price,
+            reason=out.reason,
+            changed_by=out.changed_by,
+            changed_at=out.changed_at,
         )

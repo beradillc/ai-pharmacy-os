@@ -14,7 +14,9 @@ from pharmacy_os.modules.catalog.interface.schemas import (
     CreateDrugRequest,
     CreateIngredientRequest,
     DrugResponse,
+    PriceHistoryResponse,
     ReplaceDrugIngredientsRequest,
+    SetDrugPriceRequest,
 )
 
 ContextDep = Callable[..., Awaitable[RequestContext]]
@@ -77,6 +79,45 @@ def _build_drugs_router(get_context: ContextDep) -> APIRouter:
         """
         out = await service.replace_drug_ingredients(drug_id, body.to_input(), ctx)
         return DrugResponse.of(out)
+
+    @router.put("/{drug_id}/price", response_model=DrugResponse)
+    async def set_drug_price(
+        drug_id: UUID,
+        body: SetDrugPriceRequest,
+        service: CatalogService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> DrugResponse:
+        """Đặt lại giá bán niêm yết. Mỗi lần đổi ghi một dòng vào ``drug_price_history``.
+
+        Là tài nguyên con ``/price`` chứ không ``PUT /drugs/{id}``, cùng lý do
+        ``/ingredients``: chỉ động tới đúng một thứ, nên không có đường nào để một lượt
+        đổi giá vô tình ghi đè tên, mã vạch hay hoạt chất.
+
+        Quyền ``catalog.update`` (**cấp chuỗi**) — giá là quyết định của chủ chuỗi, không
+        phải của quầy (Chain chốt 2026-07-31). Trả 404 nếu thuốc không thuộc nhà thuốc;
+        422 nếu giá âm/lẻ quá 2 chữ số thập phân, trùng giá đang có, hoặc **đổi giá một mã
+        đã có giá mà không ghi lý do**.
+        """
+        out = await service.set_drug_price(drug_id, body.new_price, body.reason, ctx)
+        return DrugResponse.of(out)
+
+    @router.get("/{drug_id}/price-history", response_model=list[PriceHistoryResponse])
+    async def drug_price_history(
+        drug_id: UUID,
+        service: CatalogService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+        limit: int = Query(50, ge=1, le=200),
+    ) -> list[PriceHistoryResponse]:
+        """Lịch sử giá của một thuốc, **mới nhất trước**.
+
+        Quyền ``catalog.read``, không phải ``catalog.update``: giá niêm yết phải công khai
+        tại nơi bán (Điều 107.4 Luật Dược), nên lịch sử của nó không phải bí mật với người
+        trong nhà thuốc. Ai được **đổi** mới là chuyện cấp chuỗi.
+        """
+        return [
+            PriceHistoryResponse.of(o)
+            for o in await service.drug_price_history(drug_id, ctx, limit=limit)
+        ]
 
     @router.get("/{drug_id}", response_model=DrugResponse)
     async def get_drug(
