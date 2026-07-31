@@ -7158,3 +7158,118 @@ so với một dòng khai sai trong sổ. Nhưng đây là **quyết định c�
 
 **Kỷ luật #21 chưa được duyệt mà bốn phiên tới đều là phiên giao diện.** Xin duyệt cùng lượt
 với P1 — nếu Chain không duyệt thì GĐ vẫn dựng cổng, chỉ là không nâng thành kỷ luật.
+
+---
+
+## 7cw. 🔒 ĐÓNG PHIÊN P1 — bán được đơn ETC + kỷ luật #21 thành cổng máy (2026-08-01)
+
+Phiên đầu của kế hoạch 6 phiên (§7cv). Chain duyệt một lượt ở đầu phiên, đúng ràng buộc
+*"Chain chỉ duyệt mỗi phiên 1 lần"*. **5/5 bước, 5 commit.**
+
+### Chain quyết gì trong lượt duyệt đó
+
+| Câu hỏi | Chain chọn |
+|---|---|
+| Đơn thuốc chụp ở quầy có hiệu lực bán thế nào | **Thêm nút "Dược sĩ duyệt" một chạm** — không cho ảnh tự đặt `VALIDATED` |
+| Kỷ luật #21 | **DUYỆT** |
+| Thứ tự 6 phiên | **Duyệt, chạy P1 ngay** |
+
+### Lệnh #1 của Chain là HAI lỗi chồng nhau, không phải một
+
+| # | Lỗi | Sửa ở đâu |
+|---|---|---|
+| 1 | `useRxPhoto` trả mã đơn, màn quầy **vứt đi**; `handleCheckout` không gửi `prescription_ref` | `(pos)/page.tsx` + `use-checkout.ts` |
+| 2 | Đơn tạo từ ảnh ở `DRAFT`, luật bán chỉ nhận `VALIDATED`/`DISPENSED` ⇒ **nối dây thôi vẫn không bán được** | `use-rx-approve.ts` + nút gác quyền `rx.approve` |
+
+Backend **không phải đổi một dòng nào**: `CreateSaleRequest.prescription_ref` đã có,
+`PrescriptionInfoAdapter` đã nối dây ở `api/v1/__init__.py:115`. Kiểm bằng `grep` trước khi
+viết dòng đầu tiên — kỷ luật #16, và lần này nó tiết kiệm cả một mục.
+
+`rx.approve` **không** nằm trong `_CASHIER_PERMISSIONS` (Luật Dược Đ6.5.h). Nút vì thế gác
+quyền; thiếu quyền thì hiện câu giải thích, không hiện một nút bấm vào để nhận 403.
+
+### Kỷ luật #14 — năm đột biến, cả năm đỏ đúng chỗ
+
+| Đột biến | Kết quả |
+|---|---|
+| `prescriptionRef` → `null` (tái tạo đúng lỗi Chain báo) | EXIT=1, ③ đỏ, *"cần đơn thuốc hợp lệ"* CÒN |
+| nút duyệt đặt `daDuyet=true` mà **không gọi máy chủ** | EXIT=1, ③ đỏ, *"chưa cho phép bán"* CÒN — **② vẫn XANH** |
+| `<div width:1200>` ở `/kiem-ke` | EXIT=1, đỏ đúng 1/15 màn |
+| nút Thanh toán `marginLeft:320` | EXIT=1, *"x=337 + w=356 = 693 > khung 390px"* |
+| xác nhận bán xong `display:none` | EXIT=1, ③ đỏ |
+
+Đột biến 2 đáng giữ lại: **nhãn giao diện xanh trong lúc máy chủ chưa hề duyệt đơn**. Cổng
+nào chỉ đo nhãn sẽ xanh trọn vẹn với một bản cài đặt nói dối.
+
+### 🔴 Câu chữ của chính kỷ luật #21 KHÔNG chạy được trên repo này
+
+#21 kê toa `documentElement.scrollWidth <= clientWidth`. Nhưng `globals.css` có
+`html, body { overflow-x: hidden }` ⇒ `scrollWidth` **luôn** bằng `clientWidth`. Chèn hẳn
+một `<div style="width:1200px">` vào `/kiem-ke`: cổng vẫn xanh (`MUT21A_EXIT=0`). Không
+chạy đột biến thì hôm nay đã commit một cổng bằng không và tin rằng #21 đã được canh.
+
+Và `overflow-x: hidden` **không** làm nội dung vừa màn — nó **cắt** đi. Người dùng không
+vuốt tới được nữa: hỏng nặng hơn cuộn ngang, mà lặng lẽ hơn. Phép đo thay thế: quét hình
+chữ nhật **từng phần tử**, bỏ qua thứ nằm trong khung cuộn ngang hợp lệ.
+
+### 🔴 Ba lần ảnh chụp thắng phép đo, trên cùng MỘT khẳng định
+
+| Phép đo | Nói | Ảnh nói | Vì sao sai |
+|---|---|---|---|
+| `count() > 0` | ✓ bán xong | không thấy xác nhận nào | đếm cả phần tử trong `display: none` |
+| `isVisible()` | ✓ bán xong | vẫn không thấy | Playwright chỉ hỏi *có hộp và không ẩn* |
+| `trongKhungNhin()` | ✓ | ✓ khớp | đo `boundingBox` so với khung nhìn |
+
+Cộng thêm: cổng ban đầu chỉ chạy **1440×900** trong khi lỗi chỉ có ở khổ điện thoại.
+
+### 📌 Sửa sổ nợ (kỷ luật #16)
+
+§7cu ghi *"cột Chênh bị cắt khỏi màn 390px"* — **KHÔNG CÒN ĐÚNG**. Bố cục thẻ (`.bangThe`)
+đã sửa nó trong chính phiên đó; ảnh `/tmp/kiem-ke/mobile-1-da-nop.png` cho thấy *"Chênh −3"*
+đọc rõ. Lượt đo đầu của mệnh đề ①b báo đỏ *"x=401 > 390px"* là **dương tính giả**: nó đo
+`th` đầu bảng, thứ bị **cố ý** giấu bằng `clip-path: inset(50%)` cho trình đọc màn hình.
+Suýt "sửa thứ không hỏng" lần thứ ba.
+
+### Ba cổng đọc-thuần đỏ — không phải hồi quy phiên này
+
+`check-pos-tien` · `check-pos-allergy` · `check-pos-rx-photo` đều **không mở giỏ** trên
+mobile ⇒ đỏ từ bản vá giỏ 31/07, và cái đỏ là **phép đo**. Thêm bước mở giỏ ⇒
+`make ui-gates` lần đầu **12/12 XANH** (§7cu là 8/10).
+
+### Cổng tại điểm dừng
+
+```
+MAKE_CHECK_EXIT=0 — 1439 passed (6:29) · RUFF/FORMAT/IMPORTLINTER/MYPY = 0
+ESLINT=0  TSC=0  VITEST=0 (70 passed)  BUILD=0
+UIGATES_EXIT=0 — 12/12 cổng đọc-thuần
+write-pos-etc EXIT=0 (cả 2 khổ) · check-kiem-ke EXIT=0 (cả 2 khổ)
+```
+
+⚠️ `MAKE_CHECK_EXIT=2` lượt đầu là `ruff: not found` — shell nền thiếu venv trên PATH. Và
+trình chạy nền báo *"exit code 0"* vì đó là mã thoát của `tee`. Đúng thứ kỷ luật #8 canh.
+
+### Ảnh nghiệm thu (kỷ luật #20)
+
+`docs/ui-history/2026-08-01-pos-etc/` — 8 ảnh, 2 khổ × 4 cảnh, `deviceScaleFactor: 2`,
+kèm `README.md` bảng trước/sau.
+
+### 🔴 Còn treo, phiên sau phải xử
+
+| Việc | Vì sao |
+|---|---|
+| CSDL **`p1etc_thu`** còn nằm trên Postgres | Bản sao dùng-một-lần của `nt650v2` để chạy nhóm cổng GHI. Không tự xoá vì lệnh xoá CSDL nằm trong `deny` của allowlist — **Chain xoá hoặc cho phép**: `docker exec ai_pharmacy_os-postgres-1 dropdb -U pharma p1etc_thu` |
+| Backup `~/backup_pre_p1_20260801_0538.sql` (3,5 MB) | giữ tới khi Chain xác nhận nghiệm thu xong |
+
+### 🔴 Bẫy hạ tầng mất ~25 phút, sẽ tái phát
+
+Chạy `npm run build` khi `next dev` đang dùng chung `.next` đẩy `next-server` lên **284% CPU
+suốt 14 phút**; `page.goto(waitUntil:"load")` hết 30 giây **trong lúc `curl` trả 200** — hai
+phép đo nói ngược nhau, và cả hai đều đúng theo cách của nó. Cách xử: xoá `.next`, khởi động
+lại `make lan`, **hâm bằng `curl` `/login` và `/` trước khi chạy cổng**. Viết tệp mới vào
+`frontend/` cũng kích hoạt biên dịch lại — đừng để script tạm trong đó.
+
+### Điểm dừng chính xác
+
+P1 đóng. Tiếp theo là **P2**: `"Cất vào ô"` → **Sắp xếp** · `/kiem-ke` + `/so-do-kho` hiện
+**tên thuốc** thay số lô · gộp *Nhập nhanh + Khởi tạo tồn* · gộp *Kiểm kê + Sơ đồ kho*.
+Chain quyết một lượt: **tên hai mục gộp trên menu**.
