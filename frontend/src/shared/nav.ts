@@ -41,6 +41,7 @@ export interface NavItem {
 
 export type NavIconName =
   | "drug"
+  | "warehouse-map"
   | "dashboard"
   | "sell"
   | "receipt"
@@ -129,6 +130,17 @@ export const NAV: readonly NavItem[] = [
     group: "kho",
     primary: false,
     icon: "drug",
+  },
+  {
+    href: "/so-do-kho",
+    label: "Sơ đồ kho",
+    short: "Sơ đồ",
+    // `location.read` chứ không `location.write`: ai đứng quầy cũng cần biết thuốc nằm ở
+    // đâu. Nút dựng sơ đồ bên trong mới cần `location.write`.
+    permission: "location.read",
+    group: "kho",
+    primary: false,
+    icon: "warehouse-map",
   },
   {
     href: "/don-mua-hang",

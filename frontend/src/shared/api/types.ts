@@ -401,3 +401,18 @@ export interface PrescriptionImage {
   image_data: string;
   content_type: string;
 }
+
+
+export interface StorageLocation {
+  id: string;
+  parent_id: string | null;
+  /** `WAREHOUSE` | `ZONE` | `SHELF` | `BIN` — từ vựng ĐÓNG. Mã thì do nhà thuốc đặt. */
+  kind: string;
+  code: string;
+  /** Đường dẫn đầy đủ (`KHO1/A/A01/03`) — thứ hiện cho người dùng, không phải UUID. */
+  path: string;
+  name: string | null;
+  is_active: boolean;
+  /** Thứ tự đi lấy hàng. KHÔNG suy ra được từ mã — chỉ người xếp kho biết. */
+  pick_order: number;
+}

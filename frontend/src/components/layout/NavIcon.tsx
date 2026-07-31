@@ -27,6 +27,16 @@ export function NavIcon({ name, filled = false }: { name: NavIconName; filled?: 
   };
 
   switch (name) {
+    // Sơ đồ kho — lưới bốn ô, hai ô đậm: hình học cơ bản, không sao chép của ai.
+    case "warehouse-map":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
+          <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5" />
+          <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" />
+          <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5" />
+        </svg>
+      );
     // Viên nang nghiêng — hai nửa, một vạch chia. Hình học cơ bản, không sao chép của ai.
     case "drug":
       return (
