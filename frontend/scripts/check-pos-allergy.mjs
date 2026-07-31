@@ -61,6 +61,17 @@ for (const kho of KHO) {
     await page.fill('input[placeholder*="Tìm thuốc"]', ten);
     await page.waitForTimeout(1200);
     await page.locator("button", { hasText: /^Thêm$/ }).first().click();
+
+  // 🔴 Trên điện thoại giỏ thu thành thanh đáy (bản vá 31/07 — nút Thanh toán từng nằm cách
+  // 3,9 màn). Giỏ đóng là `display: none`, nên MỌI phép đo bên trong giỏ đều hỏng ở khổ
+  // mobile: `innerText` trả rỗng, `click()` báo "element is not visible". Cổng này chạy hai
+  // khổ nhưng chưa bao giờ mở giỏ ⇒ đỏ ở khổ mobile từ 31/07, và cái đỏ là PHÉP ĐO chứ
+  // không phải sản phẩm. Trên máy tính không có nút này, `count()` bằng 0 nên bỏ qua.
+  const moGio__ = page.getByRole("button", { name: /^Xem giỏ$/ });
+  if (await moGio__.count()) {
+    await moGio__.click();
+    await page.waitForTimeout(900);
+  }
     await page.waitForTimeout(800);
   };
   const doc = () =>

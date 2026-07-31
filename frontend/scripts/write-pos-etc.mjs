@@ -18,6 +18,8 @@
  */
 import { firefox } from "playwright-core";
 
+import { trongKhungNhin } from "./lib/nhin-thay.mjs";
+
 const BASE = process.env.BASE_URL ?? "http://192.168.1.10:3000";
 const EMAIL = process.env.EMAIL ?? process.env.BERAS_EMAIL;
 const PASSWORD = process.env.PASSWORD ?? process.env.BERAS_PASSWORD;
@@ -33,10 +35,24 @@ const PNG = Buffer.from(
 );
 
 const b = await firefox.launch();
-const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } });
+let hong = 0;
+
+// 🔴 CẢ HAI KHỔ. Bản đầu chỉ chạy 1440×900 — và lỗi "bán xong không thấy xác nhận" là lỗi
+// CHỈ CÓ ở khổ điện thoại (giỏ thu thành thanh đáy là bản vá riêng cho mobile). Một cổng
+// chạy đúng một khổ không canh được thứ chỉ hỏng ở khổ kia.
+for (const [khoTen, w, h, mob] of [
+  ["laptop-1440", 1440, 900, false],
+  ["mobile-390", 390, 844, true],
+]) {
+const ctx = await b.newContext({
+  viewport: { width: w, height: h },
+  isMobile: mob,
+  hasTouch: mob,
+});
 const p = await ctx.newPage();
 const loi = [];
 p.on("pageerror", (e) => loi.push(String(e).slice(0, 160)));
+console.log(`\n──${khoTen}──`);
 
 await p.goto(`${BASE}/login`, { waitUntil: "load" });
 await p.waitForTimeout(1500);
@@ -55,6 +71,13 @@ await p
   .locator("button", { hasText: /^Thêm$/ })
   .click();
 await p.waitForTimeout(1200);
+
+// Trên điện thoại giỏ thu thành thanh đáy — phải mở ra mới thao tác được.
+const moGio = p.getByRole("button", { name: /^Xem giỏ$/ });
+if (await moGio.count()) {
+  await moGio.click();
+  await p.waitForTimeout(900);
+}
 
 // Nút duyệt PHẢI chưa có lúc này — chưa có tờ đơn nào để duyệt.
 const duyetTruocKhiChup = await p.getByRole("button", { name: /Dược sĩ duyệt đơn/ }).count();
@@ -84,7 +107,14 @@ await p.waitForTimeout(600);
 await nutTra.click();
 await p.waitForTimeout(5000);
 
-const banXong = (await p.locator("text=Đã bán thành công").count()) > 0;
+// 🔴 `trongKhungNhin`, KHÔNG phải `count()` và cũng KHÔNG phải `isVisible()`. Hai lượt sai
+// liên tiếp trong cùng một bước, cả hai đều do ẢNH CHỤP bắt được chứ không phép đo nào:
+//   · `count()`     xanh khi dòng xác nhận đi theo giỏ vào `display: none`
+//   · `isVisible()` xanh khi dòng xác nhận nằm DƯỚI danh mục thuốc, ngoài khung nhìn —
+//     Playwright chỉ hỏi "có hộp và không display:none", không hỏi "có nhìn thấy được"
+// Kỷ luật #21 lần thứ năm, và cả hai lần nạn nhân là chính cổng tôi vừa viết.
+const xacNhan = await trongKhungNhin(p, p.locator("text=Đã bán thành công").first());
+const banXong = xacNhan.dat;
 // Đo ĐÍCH DANH câu Chain đọc được, không chỉ đo "có lỗi hay không": nếu mai này lỗi đổi
 // sang nguyên nhân khác thì `banXong` vẫn bắt được, còn dòng này nói rõ CÁI GÌ đã hết.
 const conDoiDon = (await p.locator("text=cần đơn thuốc hợp lệ").count()) > 0;
@@ -97,9 +127,13 @@ console.log(
 );
 if (loi.length) console.log("   " + loi.join(" | "));
 
+if (!menhDe1 || !menhDe2 || !menhDe3 || loi.length > 0) hong += 1;
+await ctx.close();
+}
+
 await b.close();
-if (!menhDe1 || !menhDe2 || !menhDe3 || loi.length > 0) {
-  console.log("\n🔴 Luồng bán thuốc kê đơn KHÔNG chạy trọn.");
+if (hong > 0) {
+  console.log(`\n🔴 ${hong} khổ: luồng bán thuốc kê đơn KHÔNG chạy trọn.`);
   process.exit(1);
 }
-console.log("\n✅ Bán được trọn một đơn ETC: chụp ⇒ duyệt ⇒ thanh toán (dữ liệu THẬT).");
+console.log("\n✅ Bán được trọn một đơn ETC ở CẢ HAI KHỔ: chụp ⇒ duyệt ⇒ thanh toán (THẬT).");

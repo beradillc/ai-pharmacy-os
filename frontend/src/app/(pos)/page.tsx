@@ -217,6 +217,25 @@ export default function PosPage() {
           </ul>
         </section>
 
+        {/* 🔴 Xác nhận bán xong nằm NGOÀI giỏ — ảnh chụp 01/08 bắt được. Bán xong thì
+            `setGioMo(false)` đóng giỏ lại, mà trên điện thoại `.cart { display: none }`
+            khi giỏ đóng ⇒ dòng "Đã bán thành công" đi theo giỏ vào chỗ khuất và **người
+            bán không thấy xác nhận nào**. Cổng của chính tôi vẫn xanh vì nó đếm phần tử
+            trong DOM chứ không đo *nhìn thấy được* — đúng hình dạng kỷ luật #21, lần thứ
+            tư. Xác nhận một đơn đã trừ tồn và đã ghi doanh thu thuộc về TRANG, không
+            thuộc về giỏ. */}
+        {lastResult &&
+          (lastResult.queued ? (
+            <p className={`${styles.hint} ${styles.thongBaoBan}`}>
+              Không có mạng — đã lưu đơn tại máy, sẽ tự đồng bộ khi có mạng lại (mã tạm{" "}
+              {lastResult.id.slice(0, 8)})
+            </p>
+          ) : (
+            <p className={`${styles.success} ${styles.thongBaoBan}`}>
+              Đã bán thành công — mã đơn {lastResult.id.slice(0, 8)}
+            </p>
+          ))}
+
         {lines.length > 0 && !gioMo && (
           <div className={styles.gioBar}>
             <span>
@@ -543,15 +562,6 @@ export default function PosPage() {
           )}
 
           {checkoutError && <p className={styles.error}>{checkoutError}</p>}
-          {lastResult &&
-            (lastResult.queued ? (
-              <p className={styles.hint}>
-                Không có mạng — đã lưu đơn tại máy, sẽ tự đồng bộ khi có mạng lại (mã tạm{" "}
-                {lastResult.id.slice(0, 8)})
-              </p>
-            ) : (
-              <p className={styles.success}>Đã bán thành công — mã đơn {lastResult.id.slice(0, 8)}</p>
-            ))}
 
           {dangXacNhan && (
             <div className={styles.xacNhanKhoi}>

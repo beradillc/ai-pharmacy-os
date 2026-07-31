@@ -40,6 +40,17 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
 
   // Thêm một mặt hàng bất kỳ từ danh mục bên trái.
   await p.locator("button", { hasText: /Thêm|\+/ }).first().click().catch(() => {});
+
+  // 🔴 Trên điện thoại giỏ thu thành thanh đáy (bản vá 31/07 — nút Thanh toán từng nằm cách
+  // 3,9 màn). Giỏ đóng là `display: none`, nên MỌI phép đo bên trong giỏ đều hỏng ở khổ
+  // mobile: `innerText` trả rỗng, `click()` báo "element is not visible". Cổng này chạy hai
+  // khổ nhưng chưa bao giờ mở giỏ ⇒ đỏ ở khổ mobile từ 31/07, và cái đỏ là PHÉP ĐO chứ
+  // không phải sản phẩm. Trên máy tính không có nút này, `count()` bằng 0 nên bỏ qua.
+  const moGio__ = p.getByRole("button", { name: /^Xem giỏ$/ });
+  if (await moGio__.count()) {
+    await moGio__.click();
+    await p.waitForTimeout(900);
+  }
   await p.waitForTimeout(1200);
   let thanhTien = so(await p.locator("text=Thành tiền").locator("xpath=..").innerText().catch(() => "0"));
 

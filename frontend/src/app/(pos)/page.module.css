@@ -230,6 +230,28 @@
     box-shadow: 0 -8px 32px rgb(0 0 0 / 18%);
   }
 
+  /* 🔴 Xác nhận bán xong phải NHÌN THẤY ĐƯỢC, không chỉ có trên trang (kỷ luật #21).
+     Ảnh chụp 01/08: bán xong, giỏ đóng lại, dòng "Đã bán thành công" nằm dưới danh mục
+     thuốc — tức ngoài khung nhìn. `isVisible()` của Playwright vẫn trả `true` vì nó chỉ
+     hỏi "có hộp và không display:none", KHÔNG hỏi "có nằm trong khung nhìn". Ảnh và phép
+     đo nói ngược nhau, và ảnh đúng.
+
+     Đặt đúng chỗ thanh giỏ vừa rời đi: sau khi bán, giỏ rỗng nên `.gioBar` biến mất và
+     dải đó trống. Người bán nhìn xuống chỗ vừa bấm là thấy kết quả. */
+  .thongBaoBan {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--bottom-nav-clear) + env(safe-area-inset-bottom, 0));
+    z-index: 30;
+    margin: 0;
+    padding: var(--space-3);
+    text-align: center;
+    background: var(--beras-surface);
+    border-top: 1px solid var(--beras-border);
+    box-shadow: 0 -4px 16px rgb(0 0 0 / 8%);
+  }
+
   /* Chừa chỗ cho thanh đáy, nếu không dòng cuối danh mục bị che. */
   .catalog {
     padding-bottom: calc(var(--touch-min) + var(--space-4));

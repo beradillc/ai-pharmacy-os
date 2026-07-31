@@ -100,9 +100,14 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   // `innerText` đọc được **cả phần tràn ngoài khung nhìn**: ngày 01/08 cổng này báo ✓ trong
   // lúc cột "Chênh" — đúng cột là lý do màn kiểm kê tồn tại — bị cắt khỏi màn 390px. Ảnh
   // chụp bắt được, phép đo thì không. Từ nay phép đo cũng phải biết cái mà ảnh biết.
+  // ⚠️ Đo Ô MANG CON SỐ (`td[data-nhan="Chênh"]`), KHÔNG đo `th` ở đầu bảng. Lượt chạy đầu
+  // đo `th` và báo đỏ *"x=401 > khung 390px"* — nhưng `th` đó bị **cố ý** đẩy khỏi mắt bằng
+  // `clip-path: inset(50%)` để trình đọc màn hình vẫn đọc được, còn khổ điện thoại thì bảng
+  // đổi sang dạng thẻ và nhãn hiện qua `td::before { content: attr(data-nhan) }`. Đo cái
+  // đang cố tình bị giấu là suýt "sửa thứ không hỏng" lần thứ ba (kỷ luật #15/#20).
   const cotChenh = await trongKhungNhin(
     p,
-    p.locator('[data-testid="bang-dem"] thead th', { hasText: /^Chênh$/ }),
+    p.locator('[data-testid="bang-dem"] td[data-nhan="Chênh"]'),
   );
 
   await p.screenshot({ path: `${OUT}/${ten}-1-da-nop.png`, fullPage: true });

@@ -52,6 +52,15 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
     await p.locator("li").filter({ hasText: ten }).first()
       .locator("button", { hasText: /^Thêm$/ }).click();
     await p.waitForTimeout(1200);
+    // 🔴 Trên điện thoại giỏ thu thành thanh đáy (bản vá 31/07). Giỏ đóng là
+    // `display: none` ⇒ `innerText` của khối chụp đơn trả RỖNG và mọi khẳng định về nội
+    // dung khối đó đỏ ở khổ mobile — cái đỏ là PHÉP ĐO, không phải sản phẩm. Trên máy
+    // tính không có nút này nên `count()` bằng 0 và bước này bị bỏ qua.
+    const moGio = p.getByRole("button", { name: /^Xem giỏ$/ });
+    if (await moGio.count()) {
+      await moGio.click();
+      await p.waitForTimeout(900);
+    }
   };
 
   // ① Thuốc THƯỜNG (không có nhãn ETC ở hàng) — khối chụp đơn không được hiện.
