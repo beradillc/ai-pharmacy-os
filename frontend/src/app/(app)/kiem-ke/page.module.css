@@ -1,0 +1,124 @@
+/* Ô nhập số nằm trong bảng: hẹp, canh phải, cùng nhịp với cột số bên cạnh. Không dùng
+   `.input` dùng chung — nó mang `flex: 1 1 auto` và sẽ chiếm hết bề ngang ô bảng. */
+.oSo {
+  width: 5rem;
+  text-align: right;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--radius-sm);
+  background: var(--beras-surface);
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.khop {
+  color: var(--beras-text-muted);
+}
+
+/* Chênh lệch phải nổi lên — đó là toàn bộ lý do người ta mở màn này. */
+.lech {
+  font-weight: 600;
+  color: var(--beras-danger, #b42318);
+}
+
+.aiLam {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+  margin: var(--space-3) 0 0;
+}
+
+/* Người đếm tự duyệt phiếu mình không bị cấm, nhưng phải NHÌN RA ĐƯỢC. */
+.trungTen {
+  color: var(--beras-warning, #b54708);
+}
+
+.cuoi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-3);
+}
+
+.tt_CHO_DUYET {
+  font-weight: 600;
+  color: var(--beras-warning, #b54708);
+}
+
+.tt_DA_DUYET {
+  color: var(--beras-text-muted);
+}
+
+.tt_TU_CHOI {
+  color: var(--beras-text-muted);
+  text-decoration: line-through;
+}
+
+
+/* 🔴 Bảng → THẺ trên điện thoại. Ảnh chụp 390×844 cho thấy cột **Chênh** — đúng cột là lý
+   do màn này tồn tại — bị cắt khỏi màn hình, trong khi cổng Playwright vẫn xanh vì
+   `innerText` đọc được cả phần tràn ra ngoài. Cùng họ với ca "cột định danh trượt khỏi màn
+   ở 5/5 bảng" ngày 29/07: chỉ ảnh thấy, phép đo không thấy.
+
+   Dùng lại đúng khuôn đã đo ở `danh-muc-thuoc`: lưới hai cột nhãn/giá trị, đệm nhỏ. Bản
+   đầu ở màn đó cho mỗi ô một hàng flex riêng và trang phình từ 3,5 lên 12,5 màn. */
+@media (width < 720px) {
+  .bangThe thead {
+    /* Ẩn khỏi mắt nhưng GIỮ cho trình đọc màn hình. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .bangThe,
+  .bangThe tbody,
+  .bangThe tr,
+  .bangThe td {
+    display: block;
+    width: 100%;
+  }
+
+  .bangThe tr {
+    padding: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-1);
+    border: 1px solid var(--beras-border);
+    border-radius: var(--radius-sm);
+    background: var(--beras-surface);
+  }
+
+  .bangThe td {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    line-height: 1.45;
+    text-align: left;
+  }
+
+  .bangThe td::before {
+    content: attr(data-nhan);
+    font-size: var(--text-sm);
+    color: var(--beras-text-muted);
+  }
+
+  /* Ô nhập số: bỏ chiều rộng cố định 5rem — trong thẻ nó là cột giá trị, để nó điền hết. */
+  .bangThe .oSo {
+    width: 100%;
+    text-align: left;
+  }
+
+  .bangThe td.oNut {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: var(--space-1);
+  }
+
+  .bangThe td.oNut::before {
+    content: none;
+  }
+}

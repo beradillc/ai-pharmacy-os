@@ -62,6 +62,7 @@ CONG_GHI=(
   check-vi-tri-lay-hang.mjs # 🔴 CẤT hàng thật vào ô — trọn vòng tới quầy (V2 Phase 2)
   check-nhap-nhanh.mjs      # 🔴 NHẬN hàng thật, gắn ô ngay (V2 Phase 5-6)
   check-khoi-tao-ton.mjs    # 🔴 KHỞI TẠO tồn thật, nhập theo kệ (V2 Phase 9-10)
+  check-kiem-ke.mjs         # 🔴 KIỂM KÊ: nộp không đụng tồn, duyệt mới đụng (V2 Phase 11)
 )
 
 say() { printf '\n\033[1m▶ %s\033[0m\n' "$1"; }

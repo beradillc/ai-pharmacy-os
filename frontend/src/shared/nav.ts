@@ -151,6 +151,17 @@ export const NAV: readonly NavItem[] = [
     icon: "receive",
   },
   {
+    href: "/kiem-ke",
+    label: "Kiểm kê",
+    short: "Kiểm kê",
+    // `inventory.read` chứ không `inventory.reconcile`: người đếm và người duyệt là hai
+    // vai khác nhau, và người đếm phải vào được màn này. Nút Duyệt bên trong mới gác quyền.
+    permission: "inventory.read",
+    group: "kho",
+    primary: false,
+    icon: "warehouse-map",
+  },
+  {
     href: "/so-do-kho",
     label: "Sơ đồ kho",
     short: "Sơ đồ",

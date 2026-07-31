@@ -41,8 +41,23 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("tenant_id", sa.Uuid(), nullable=False),
         sa.Column("branch_id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        # 🔴 `server_default` BẮT BUỘC, không phải trang trí. `TimestampMixin` khai
+        # `server_default=func.now()`; bản đầu của migration này bỏ sót nó và Postgres từ
+        # chối INSERT với NotNullViolation — trong khi **1439 test SQLite xanh hết**, vì
+        # `create_all` dựng bảng thẳng từ ORM nên ở đó server_default luôn có mặt.
+        # Chỉ cổng trình duyệt chạy trên Postgres thật mới bắt được (kỷ luật #7 bổ sung).
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(

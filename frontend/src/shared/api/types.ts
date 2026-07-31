@@ -449,3 +449,28 @@ export interface PutAwayResult {
   /** Số hàng của lô **vẫn chưa có chỗ** — hiện ra chứ không giấu. */
   chua_xep_o: string;
 }
+
+/** Một dòng đếm trong phiên kiểm kê (BERAS V2 Phase 11). */
+export interface StockCountLine {
+  id: string;
+  batch_id: string;
+  counted_qty: string;
+  /** `null` khi phiên **chưa nộp** — cố ý không phải 0, vì 0 đọc y hệt "đã chốt và khớp". */
+  system_qty: string | null;
+  /** Đếm được trừ sổ ghi. Dương = thừa, âm = thiếu, `null` = chưa chốt. */
+  lech: string | null;
+}
+
+/** Một phiên kiểm kê một ô. */
+export interface StockCount {
+  id: string;
+  location_id: string;
+  status: "DANG_DEM" | "CHO_DUYET" | "DA_DUYET" | "TU_CHOI";
+  /** Cả hai tên đều trả về: người đếm được tự duyệt phiếu mình, nên phải nhìn ra khi trùng. */
+  counted_by: string;
+  decided_by: string | null;
+  created_at: string;
+  submitted_at: string | null;
+  decided_at: string | null;
+  lines: StockCountLine[];
+}
