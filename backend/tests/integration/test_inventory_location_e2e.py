@@ -204,3 +204,59 @@ def test_cat_hang_KHONG_doi_tong_ton(client: TestClient) -> None:
     _cat(client, lo, o, "40")
     sau = client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"]
     assert truoc == sau == "100.000"
+
+
+# ─── Phase 5: nhận hàng gắn vị trí ngay ─────────────────────────────────────────
+
+
+def _nhan_vao_o(client: TestClient, drug_id: str, *, qty: str, lot: str, loc: str | None) -> Any:
+    body: dict[str, Any] = {
+        "drug_id": drug_id,
+        "lot_no": lot,
+        "expiry_date": (date.today() + timedelta(days=200)).isoformat(),
+        "quantity": qty,
+        "cost_price": "1000",
+    }
+    if loc is not None:
+        body["location_id"] = loc
+    return client.post("/api/v1/inventory/receive", json=body)
+
+
+def test_nhan_hang_GAN_O_NGAY_thi_quay_thay_cho_lay_lien(client: TestClient) -> None:
+    """🔴 Điểm của cả Phase 5.
+
+    Tách làm hai lượt gọi sẽ để lại một khoảng — vài phút hay vài ngày — mà hàng đã nằm
+    trong sổ tồn nhưng chưa có địa chỉ. Người ra quầy trong khoảng đó được bảo *"chưa xếp
+    ô"* dù hàng đang nằm ngay trên kệ.
+    """
+    d = _drug(client)
+    kho = _o(client, code="KHO", pick=0)
+    o = _o(client, code="A01", pick=1, parent=kho)
+
+    assert _nhan_vao_o(client, d, qty="50", lot="L1", loc=o).status_code == 201
+
+    cho = client.get(f"/api/v1/inventory/where?drug_id={d}").json()
+    assert [(c["location_path"], c["quantity"]) for c in cho] == [("KHO/A01", "50.000")]
+
+
+def test_nhan_KHONG_gan_o_van_hop_le(client: TestClient) -> None:
+    """Hàng vừa dỡ khỏi xe chưa chắc đã biết cất đâu — bắt chọn ô là bắt đoán."""
+    d = _drug(client)
+    assert _nhan_vao_o(client, d, qty="50", lot="L1", loc=None).status_code == 201
+    assert client.get(f"/api/v1/inventory/where?drug_id={d}").json() == []
+
+
+def test_nhan_vao_o_KHONG_TON_TAI_tra_404_va_KHONG_nhan_hang(client: TestClient) -> None:
+    """Toàn-bộ-hoặc-không-gì: từ chối rồi vẫn nhận hàng là để lại hàng không ai biết."""
+    d = _drug(client)
+    assert _nhan_vao_o(client, d, qty="50", lot="L1", loc=str(uuid4())).status_code == 404
+    assert client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"] == "0.000"
+
+
+def test_nhan_vao_o_DA_NGUNG_tra_422(client: TestClient) -> None:
+    d = _drug(client)
+    kho = _o(client, code="KHO", pick=0)
+    o = _o(client, code="A01", pick=1, parent=kho)
+    client.patch(f"/api/v1/locations/{o}", json={"is_active": False})
+
+    assert _nhan_vao_o(client, d, qty="50", lot="L1", loc=o).status_code == 422

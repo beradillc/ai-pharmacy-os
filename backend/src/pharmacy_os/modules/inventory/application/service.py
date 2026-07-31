@@ -168,6 +168,49 @@ class InventoryService:
             await balances.adjust(
                 batch.drug_id, batch.id, ctx.branch_id, ctx.tenant_id, data.quantity
             )
+            # 🔴 Cất thẳng vào ô trong CÙNG một giao dịch với lượt nhận (Phase 5).
+            #
+            # Tách làm hai lượt gọi như trước sẽ để lại một khoảng — có thể vài phút, có
+            # thể vài ngày — mà hàng đã nằm trong sổ tồn nhưng chưa có địa chỉ. Người ra
+            # quầy trong khoảng đó được bảo "chưa xếp ô", dù hàng đang nằm ngay trên kệ.
+            #
+            # Dùng lại đúng `ensure_can_put_away` của Phase 2, không viết quy tắc thứ hai:
+            # bất biến hai sổ phải giống hệt nhau dù hàng vào bằng đường nào.
+            if data.location_id is not None and self._at_location is not None:
+                if self._locations is None:
+                    raise ValidationError("Chưa bật tính năng vị trí lưu trữ")
+                o = await self._locations.get(data.location_id, ctx.tenant_id, ctx.branch_id)
+                if o is None:
+                    raise NotFoundError(f"Không tìm thấy vị trí {data.location_id}")
+                at_loc = self._at_location(uow, ctx)
+                try:
+                    ensure_can_put_away(
+                        dang_xep=await at_loc.total_for_batch(batch.id),
+                        ton_cua_lo=await balances.for_batch(batch.id),
+                        them=data.quantity,
+                        o_dang_hoat_dong=o.is_active,
+                    )
+                except PutAwayError as exc:
+                    raise ValidationError(str(exc)) from exc
+                await at_loc.put_away(
+                    drug_id=batch.drug_id,
+                    batch_id=batch.id,
+                    location_id=data.location_id,
+                    delta=data.quantity,
+                )
+                await movements.add(
+                    StockMovement(
+                        drug_id=batch.drug_id,
+                        batch_id=batch.id,
+                        branch_id=ctx.branch_id,
+                        tenant_id=ctx.tenant_id,
+                        type=MovementType.TRANSFER,
+                        quantity=data.quantity,
+                        ref_type="PUTAWAY",
+                        to_location_id=data.location_id,
+                    )
+                )
+
             on_hand = await balances.on_hand(batch.drug_id, ctx.branch_id)
             uow.collect(
                 StockMovedIn(

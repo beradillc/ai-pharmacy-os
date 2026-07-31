@@ -27,6 +27,15 @@ export function NavIcon({ name, filled = false }: { name: NavIconName; filled?: 
   };
 
   switch (name) {
+    // Nhập hàng: mũi tên đi xuống một cái khay — hình học cơ bản, không sao chép của ai.
+    case "receive":
+      return (
+        <svg {...common}>
+          <path d="M12 3v10" />
+          <path d="M8 9.5l4 4 4-4" />
+          <path d="M3.5 16.5v2a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-2" />
+        </svg>
+      );
     // Sơ đồ kho — lưới bốn ô, hai ô đậm: hình học cơ bản, không sao chép của ai.
     case "warehouse-map":
       return (

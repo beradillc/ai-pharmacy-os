@@ -42,6 +42,7 @@ export interface NavItem {
 export type NavIconName =
   | "drug"
   | "warehouse-map"
+  | "receive"
   | "dashboard"
   | "sell"
   | "receipt"
@@ -130,6 +131,15 @@ export const NAV: readonly NavItem[] = [
     group: "kho",
     primary: false,
     icon: "drug",
+  },
+  {
+    href: "/nhap-nhanh",
+    label: "Nhập hàng nhanh",
+    short: "Nhập nhanh",
+    permission: "inventory.receive",
+    group: "kho",
+    primary: false,
+    icon: "receive",
   },
   {
     href: "/so-do-kho",

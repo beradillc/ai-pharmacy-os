@@ -170,12 +170,16 @@
     background: var(--beras-surface);
   }
 
+  /* Ba dòng dữ liệu gộp thành lưới hai cột: nhãn hẹp, giá trị co giãn. Bản đầu mỗi ô là
+     một hàng flex riêng và trang phình lên 11,4 màn; lưới cho phép nhãn và giá trị nằm
+     sát nhau mà không cần một hàng cho mỗi thứ. */
   .drugTable td {
-    display: flex;
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    align-items: baseline;
     min-height: 0;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
+    gap: var(--space-2);
     padding: 0;
     border: 0;
     line-height: 1.45;

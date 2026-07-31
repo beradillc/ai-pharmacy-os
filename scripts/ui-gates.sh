@@ -60,6 +60,7 @@ CONG_GHI=(
   write-rx-photo.mjs        # 🔴 TẠO một đơn thuốc + lưu ảnh (luồng chụp đơn end-to-end)
   check-so-do-kho.mjs       # 🔴 TẠO kho/kệ/ô thật — sơ đồ kho (BERAS V2 Phase 1)
   check-vi-tri-lay-hang.mjs # 🔴 CẤT hàng thật vào ô — trọn vòng tới quầy (V2 Phase 2)
+  check-nhap-nhanh.mjs      # 🔴 NHẬN hàng thật, gắn ô ngay (V2 Phase 5-6)
 )
 
 say() { printf '\n\033[1m▶ %s\033[0m\n' "$1"; }

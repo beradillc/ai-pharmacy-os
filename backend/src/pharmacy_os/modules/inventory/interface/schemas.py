@@ -30,6 +30,8 @@ class ReceiveStockRequest(BaseModel):
     quantity: Decimal = Field(gt=0)
     cost_price: Decimal = Field(ge=0)
     mfg_date: date | None = None
+    #: Cất thẳng vào ô ngay khi nhận. Bỏ trống = nhận xong xếp sau.
+    location_id: UUID | None = None
 
     def to_input(self) -> ReceiveStockInput:
         return ReceiveStockInput(
@@ -39,6 +41,7 @@ class ReceiveStockRequest(BaseModel):
             quantity=self.quantity,
             cost_price=self.cost_price,
             mfg_date=self.mfg_date,
+            location_id=self.location_id,
         )
 
 

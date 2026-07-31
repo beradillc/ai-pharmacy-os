@@ -18,6 +18,9 @@ class ReceiveStockInput:
     quantity: Decimal
     cost_price: Decimal
     mfg_date: date | None = None
+    #: Cất thẳng vào ô ngay khi nhận (BERAS V2 Phase 5). ``None`` = nhận xong để đó, xếp
+    #: sau — vẫn là đường hợp lệ, vì hàng vừa dỡ khỏi xe chưa chắc đã biết cất đâu.
+    location_id: UUID | None = None
 
 
 @dataclass(slots=True)

@@ -1,0 +1,32 @@
+/* Một cột, ô nhập từ trên xuống theo đúng thứ tự tay người ta làm. Không lưới hai cột:
+   màn này dùng trên điện thoại, đứng cạnh thùng hàng, một tay cầm hộp thuốc. */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 32rem;
+}
+
+.o {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.nhan {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}
+
+/* Danh sách đã nhận trong lượt: người đứng nhập cần thấy mình vừa làm gì, nếu không họ
+   sẽ nhập lại một lô hai lần mà không biết. */
+.daNhan {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--beras-text-muted);
+  font-size: var(--text-sm);
+}
