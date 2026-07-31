@@ -131,3 +131,81 @@
     flex: 1 1 100%;
   }
 }
+
+/* --- Điện thoại: bảng 5 cột không vừa 390px (Chain báo 2026-07-31) -----------
+   Ảnh chụp cho thấy cột "Giá niêm yết" bị cắt cụt thành "GI" và hai nút Giá/Sửa bị
+   đẩy hẳn ra ngoài mép phải. Cổng cũ bỏ sót vì nó đo *trang có cuộn ngang không* —
+   trang thì không, nhưng bảng bên trong `overflow-x: auto` thì có, và một nút chỉ với
+   tới được bằng cách cuộn ngang trong bảng là một nút không tồn tại với người dùng.
+
+   Đổi bảng thành THẺ: mỗi thuốc một khối, nhãn cột đi kèm từng giá trị. Không cuộn
+   ngang, nút luôn bấm được. Trên máy tính bảng vẫn là bảng — thẻ ở khổ rộng là phí chỗ. */
+@media (width < 720px) {
+  .drugTable thead {
+    /* Ẩn khỏi mắt nhưng GIỮ cho trình đọc màn hình — bỏ hẳn `display: none` sẽ lấy mất
+       quan hệ ô ↔ tiêu đề của người dùng bàn phím. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .drugTable,
+  .drugTable tbody,
+  .drugTable tr,
+  .drugTable td {
+    display: block;
+    width: 100%;
+  }
+
+  .drugTable tr {
+    /* Nén: đệm nhỏ và khoảng cách nhỏ. Bản đầu để `--space-3` cho cả hai, và trang phình
+       từ 3,5 lên **12,5 màn** — sửa được chỗ bấm nhưng làm hỏng chỗ tìm. Đo lại rồi mới
+       biết; con số 12,5 là thứ nói ra điều đó, không phải mắt nhìn. */
+    padding: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-1);
+    border: 1px solid var(--beras-border);
+    border-radius: var(--radius-sm);
+    background: var(--beras-surface);
+  }
+
+  .drugTable td {
+    display: flex;
+    min-height: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: 0;
+    border: 0;
+    line-height: 1.45;
+    text-align: left;
+  }
+
+  /* Nhãn cột đi kèm từng giá trị — không có nó thì "12.000 đ" và "— chưa có —" đứng
+     cạnh nhau mà không ai biết cái nào là giá, cái nào là hoạt chất. */
+  .drugTable td::before {
+    content: attr(data-nhan);
+    font-size: var(--text-sm);
+    color: var(--beras-text-muted);
+    flex: 0 0 auto;
+  }
+
+  /* Hai nút xuống cùng một hàng, chia đôi bề ngang — cân đối, và mỗi nút đủ 44px. */
+  .drugTable td.oNut {
+    display: inline-flex;
+    width: calc(50% - var(--space-1));
+    justify-content: center;
+    margin-top: var(--space-1);
+  }
+
+  .drugTable td.oNut::before {
+    content: none;
+  }
+
+  .drugTable td.oNut button {
+    width: 100%;
+    min-height: var(--touch-min);
+    padding-block: 0;
+  }
+}

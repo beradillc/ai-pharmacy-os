@@ -105,13 +105,13 @@ export default function DrugCatalogPage() {
             <tbody>
               {hienThi.map((d) => (
                 <tr key={d.id}>
-                  <td>
+                  <td data-nhan="Thuốc">
                     {d.name}
                     {d.prescription_required && (
                       <span className={`${styles.chip} ${styles.chipWarn} ${local.tag}`}>ETC</span>
                     )}
                   </td>
-                  <td>
+                  <td data-nhan="Hoạt chất">
                     {d.ingredients.length === 0 ? (
                       <span className={local.trong}>— chưa có —</span>
                     ) : (
@@ -120,7 +120,7 @@ export default function DrugCatalogPage() {
                         .join(" · ")
                     )}
                   </td>
-                  <td className={styles.num}>
+                  <td className={styles.num} data-nhan="Giá niêm yết">
                     {d.sale_price === null ? (
                       <span className={local.trong}>— chưa đặt —</span>
                     ) : (
@@ -128,24 +128,24 @@ export default function DrugCatalogPage() {
                     )}
                   </td>
                   {coQuyenSua && (
-                    <td className={styles.num}>
+                    <td className={`${styles.num} ${local.oNut}`}>
                       <button
                         type="button"
                         className={styles.ghost}
                         onClick={() => setDangSuaGia(d)}
                       >
-                        Giá
+                        Sửa giá
                       </button>
                     </td>
                   )}
                   {coQuyenSua && (
-                    <td className={styles.num}>
+                    <td className={`${styles.num} ${local.oNut}`}>
                       <button
                         type="button"
                         className={styles.ghost}
                         onClick={() => setDangSua(d)}
                       >
-                        Sửa
+                        Hoạt chất
                       </button>
                     </td>
                   )}

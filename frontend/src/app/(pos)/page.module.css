@@ -186,11 +186,75 @@
     min-height: var(--touch-min);
   }
 
-  /* Giỏ hàng dính đáy khi cuộn danh mục dài: tổng tiền và nút thanh toán luôn
-     trong tầm ngón cái, không phải cuộn xuống cuối mới thấy. */
+  /* 🔴 `position: sticky` ở đây ĐÃ TỪNG CÓ (29/07) và **không làm gì cả**.
+     Sticky cần khoảng trống trong container để trượt; lưới một cột cho mỗi ô một
+     hàng riêng, cao đúng bằng chính nó — nên không có quãng nào để dính. Đo ngày
+     31/07: nút Thanh toán nằm ở y=3333 trên trang cao 3465, tức **phải kéo 3,9 màn**.
+     Cổng cũ không bắt được vì nó đo "trang có cuộn ngang không", không đo "nút chốt
+     đơn có bấm tới được không".
+
+     Thay bằng thanh CỐ ĐỊNH thật: giỏ thu lại thành một thanh đáy, bấm mới mở ra. */
   .cart {
-    position: sticky;
+    display: none;
+  }
+
+  /* Thanh đáy: số món · tổng tiền · nút mở giỏ. Luôn trong tầm ngón cái. */
+  .gioBar {
+    position: fixed;
+    left: 0;
+    right: 0;
     bottom: calc(var(--bottom-nav-clear) + env(safe-area-inset-bottom, 0));
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    background: var(--beras-surface);
+    border-top: 1px solid var(--beras-border);
+    box-shadow: 0 -4px 16px rgb(0 0 0 / 8%);
+  }
+
+  /* Giỏ mở: tấm phủ từ đáy lên, cao tối đa 85% màn — chừa lại một dải để người dùng
+     thấy mình vẫn đang ở trang cũ và bấm ra ngoài được. */
+  .cart.cartMo {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    max-height: 85vh;
+    overflow-y: auto;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0));
+    box-shadow: 0 -8px 32px rgb(0 0 0 / 18%);
+  }
+
+  /* Chừa chỗ cho thanh đáy, nếu không dòng cuối danh mục bị che. */
+  .catalog {
+    padding-bottom: calc(var(--touch-min) + var(--space-4));
+  }
+}
+
+/* 🔴 Bọc trong `@media (width >= 900px)` chứ KHÔNG để trần.
+   Để trần thì quy tắc này nằm SAU media query của điện thoại trong cùng tệp, cùng độ
+   đặc hiệu — nên nó thắng và thanh đáy bị ẩn ở CẢ hai khổ. Lỗi này không làm đỏ lint,
+   không làm đỏ tsc, và chỉ lộ ra khi đo lại quãng kéo trên điện thoại. */
+@media (width >= 900px) {
+  .gioBar,
+  .dongGio {
+    display: none;
+  }
+}
+
+.gioBarTien {
+  margin-left: auto;
+  font-weight: 700;
+}
+
+@media (width < 900px) {
+  .dongGio {
+    display: inline-flex;
   }
 }
 
@@ -431,4 +495,28 @@
   gap: var(--space-2);
   padding: var(--space-3) var(--space-2);
   border-top: 1px solid var(--beras-border);
+}
+
+/* --- Xác nhận hai bước trước khi chốt đơn (Chain yêu cầu 2026-07-31) --------- */
+
+.cartHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* Khối xác nhận đặt NGAY TRÊN nút, không phải hộp thoại che màn: người đứng quầy cần
+   đọc lại con số và vẫn thấy giỏ hàng phía trên nó. Một hộp thoại che mất thứ đang được
+   xác nhận là bắt người ta xác nhận từ trí nhớ. */
+.xacNhanKhoi {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--beras-border);
+  background: var(--beras-surface-muted, var(--beras-surface));
 }

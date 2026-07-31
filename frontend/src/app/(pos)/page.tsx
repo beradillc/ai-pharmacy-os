@@ -61,6 +61,17 @@ export default function PosPage() {
   // khách đưa vào đó sẽ thổi `paid_total` và in sai hoá đơn.
   const [tienNhan, setTienNhan] = useState("");
 
+  // Giỏ hàng trên điện thoại: thu lại thành thanh đáy, bấm mới mở (Chain báo 31/07 —
+  // đo được nút Thanh toán nằm cách 3,9 màn hình). Trên máy tính CSS bỏ qua trạng thái
+  // này, giỏ luôn hiện — không có nhánh JS riêng cho hai khổ.
+  const [gioMo, setGioMo] = useState(false);
+
+  // 🔴 Xác nhận hai bước trước khi chốt đơn (Chain yêu cầu 31/07). Chain cho chọn giữa
+  // "hỏi lại xác nhận" và "cho sửa trong 10 giây sau khi chốt"; GĐ chọn hỏi lại, vì hoàn
+  // tác sau khi chốt là **huỷ một đơn đã trừ tồn kho và đã ghi doanh thu** — một thao tác
+  // đụng tiền và hàng, không phải một mẹo giao diện. Làm nửa vời còn tệ hơn hỏi một câu.
+  const [dangXacNhan, setDangXacNhan] = useState(false);
+
   // Ảnh đơn thuốc (Chain giao 31/07). Chỉ hiện khi giỏ CÓ thuốc kê đơn — một nút "Chụp
   // đơn" trên giỏ toàn thuốc thường là nhiễu, và nhiễu thì người ta học cách bỏ qua.
   const dongETC = lines.filter((l) => l.requiresPrescription);
@@ -115,6 +126,8 @@ export default function PosPage() {
       setTenBacSi("");
       setRxLoi(null);
       setRxXong(false);
+      setDangXacNhan(false);
+      setGioMo(false);
       // Bỏ gắn khách sau khi bán xong: người tiếp theo ở quầy là một người KHÁC.
       // Giữ lại là cách gắn nhầm hoá đơn cho khách trước — và không ai nhận ra.
       setCustomer(null);
@@ -177,8 +190,34 @@ export default function PosPage() {
           </ul>
         </section>
 
-        <section className={styles.cart}>
-          <h2 className={styles.cartTitle}>Giỏ hàng</h2>
+        {lines.length > 0 && !gioMo && (
+          <div className={styles.gioBar}>
+            <span>
+              {lines.length} món{canGhiLyDoGia ? " · ⚠️ lệch giá" : ""}
+            </span>
+            <strong className={styles.gioBarTien}>{total.toLocaleString("vi-VN")} đ</strong>
+            <button
+              type="button"
+              className={styles.checkoutButton}
+              style={{ width: "auto" }}
+              onClick={() => setGioMo(true)}
+            >
+              Xem giỏ
+            </button>
+          </div>
+        )}
+
+        <section className={`${styles.cart} ${gioMo ? styles.cartMo : ""}`}>
+          <div className={styles.cartHead}>
+            <h2 className={styles.cartTitle}>Giỏ hàng</h2>
+            <button
+              type="button"
+              className={`${styles.ghost} ${styles.dongGio}`}
+              onClick={() => setGioMo(false)}
+            >
+              Thu gọn
+            </button>
+          </div>
 
           {/* Hỏi số điện thoại NGAY TRÊN giỏ, không giấu sau một nút: Chain chốt
               29/07 rằng khách đưa số lúc lên đơn chính là xác nhận cung cấp
@@ -445,6 +484,23 @@ export default function PosPage() {
               <p className={styles.success}>Đã bán thành công — mã đơn {lastResult.id.slice(0, 8)}</p>
             ))}
 
+          {dangXacNhan && (
+            <div className={styles.xacNhanKhoi}>
+              <span>
+                Bán <strong>{lines.length} món</strong> ·{" "}
+                <strong>{total.toLocaleString("vi-VN")} đ</strong>
+                {thoiLai > 0 && ` · thối lại ${thoiLai.toLocaleString("vi-VN")} đ`}
+              </span>
+              <button
+                type="button"
+                className={styles.ghost}
+                onClick={() => setDangXacNhan(false)}
+              >
+                Sửa lại đơn
+              </button>
+            </div>
+          )}
+
           <button
             className={styles.checkoutButton}
             disabled={
@@ -455,7 +511,15 @@ export default function PosPage() {
               (canGhiLyDo && lyDoDiUng.trim() === "") ||
               (canGhiLyDoGia && lyDoLechGia.trim() === "")
             }
-            onClick={handleCheckout}
+            onClick={() => {
+              // Bước một chỉ mở phần xác nhận, KHÔNG gọi máy chủ. Người bấm nhầm ở bước
+              // này không mất gì; ở bước hai thì đã đọc lại số tiền một lần.
+              if (!dangXacNhan) {
+                setDangXacNhan(true);
+                return;
+              }
+              void handleCheckout();
+            }}
           >
             {checkout.isPending
               ? "Đang xử lý..."

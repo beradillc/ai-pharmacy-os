@@ -39,7 +39,10 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
       soDong: rows.length,
       coCotHoatChat: [...document.querySelectorAll("thead th")].some(x => /Hoạt chất/i.test(x.textContent ?? "")),
       soTrong: (t.match(/(\d+) thuốc chưa có hoạt chất/) ?? [])[1] ?? null,
-      coNutSua: rows.some(tr => [...tr.querySelectorAll("button")].some(x => x.textContent?.trim() === "Sửa")),
+      // ⚠️ ĐỔI NHÃN 2026-07-31: "Sửa" → "Hoạt chất", "Giá" → "Sửa giá". Trên điện thoại
+      // hai nút nằm cạnh nhau và "Giá" / "Sửa" không nói được cái nào làm gì; nhãn cũ chỉ
+      // đọc được nhờ tiêu đề cột, mà ở bố cục thẻ thì tiêu đề cột không còn.
+      coNutSua: rows.some(tr => [...tr.querySelectorAll("button")].some(x => x.textContent?.trim() === "Hoạt chất")),
       // Có thuốc nào hiện được hoạt chất bằng TÊN không (không phải id cụt)?
       coTenHoatChat: rows.some(tr => /Paracetamol|Amoxicillin|Ibuprofen/.test(tr.innerText)),
       tranNgang: document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -52,13 +55,25 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
       // một cột rỗng vẫn qua được phép kiểm "có tiêu đề".
       coCotGia: [...document.querySelectorAll("thead th")].some(x => /Giá niêm yết/i.test(x.textContent ?? "")),
       soDongCoGia: rows.filter(tr => /\d[\d.]*\s*đ/.test(tr.innerText)).length,
-      coNutGia: rows.some(tr => [...tr.querySelectorAll("button")].some(x => x.textContent?.trim() === "Giá")),
+      coNutGia: rows.some(tr => [...tr.querySelectorAll("button")].some(x => x.textContent?.trim() === "Sửa giá")),
+      // 🔴 Phép kiểm MỚI, sinh từ đúng lỗi Chain báo: nút phải nằm TRONG khung nhìn, không
+      // phải "tồn tại trong DOM". Cổng cũ chỉ đếm nút và đo cuộn ngang CẤP TRANG — trang
+      // không cuộn, nhưng bảng bên trong `overflow-x: auto` thì có, nên hai nút bị đẩy ra
+      // ngoài mép phải mà mọi phép kiểm vẫn xanh. Một nút chỉ với tới được bằng cách cuộn
+      // ngang trong bảng là một nút không tồn tại với người dùng.
+      nutTrongKhungNhin: (() => {
+        const nut = [...document.querySelectorAll("tbody button")]
+          .find(x => x.textContent?.trim() === "Sửa giá");
+        if (!nut) return false;
+        const r = nut.getBoundingClientRect();
+        return r.left >= 0 && r.right <= document.documentElement.clientWidth;
+      })(),
     };
   });
 
   // Mở bảng sửa của một thuốc CÓ hoạt chất
   await p.locator("tbody tr").filter({ hasText: /Paracetamol|Amoxicillin/ }).first()
-    .locator("button", { hasText: /^Sửa$/ }).click();
+    .locator("button", { hasText: /^Hoạt chất$/ }).click();
   await p.waitForTimeout(1200);
   await p.screenshot({ path: `${OUT}/${ten}-2-sua-hoat-chat.png`, fullPage: true });
   const bang = await p.evaluate(() => {
@@ -74,14 +89,15 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   // Sàn 44px là `--touch-min`; trần 80px cho ô một dòng ở mọi khổ.
   const oTimDung = r.caoOTim >= 44 && r.caoOTim <= 80;
   const dat = r.coCotHoatChat && r.soDong > 0 && r.coNutSua && r.coTenHoatChat &&
-              r.coCotGia && r.soDongCoGia > 0 && r.coNutGia &&
+              r.coCotGia && r.soDongCoGia > 0 && r.coNutGia && r.nutTrongKhungNhin &&
               !r.tranNgang && oTimDung &&
               bang?.soDong > 0 && bang?.coChonThem && bang?.coNutLuu && loi.length === 0;
   if (!dat) hong++;
   console.log(`\n──${ten}──`);
   console.log(`  danh mục: ${r.soDong} thuốc · cột "Hoạt chất": ${r.coCotHoatChat?"✓":"🔴"} · hiện TÊN hoạt chất: ${r.coTenHoatChat?"✓":"🔴"}`);
   console.log(`  cảnh báo "chưa có hoạt chất": ${r.soTrong ?? "(không hiện)"} thuốc · nút Sửa: ${r.coNutSua?"✓":"🔴"}`);
-  console.log(`  cột "Giá niêm yết": ${r.coCotGia?"✓":"🔴"} · dòng hiện giá: ${r.soDongCoGia} · nút Giá: ${r.coNutGia?"✓":"🔴"}`);
+  console.log(`  cột "Giá niêm yết": ${r.coCotGia?"✓":"🔴"} · dòng hiện giá: ${r.soDongCoGia} · nút Sửa giá: ${r.coNutGia?"✓":"🔴"}`);
+  console.log(`  nút NẰM TRONG khung nhìn (không phải chỉ có trong DOM): ${r.nutTrongKhungNhin?"✓":"🔴"}`);
   console.log(`  bảng sửa: ${bang?.soDong} dòng · ô thêm: ${bang?.coChonThem?"✓":"🔴"} · nút Lưu: ${bang?.coNutLuu?"✓":"🔴"}`);
   console.log(`  cuộn ngang: ${r.tranNgang?"🔴 CÓ":"✓ không"} · ô tìm cao ${r.caoOTim}px ${oTimDung?"✓":"🔴 (44–80)"} · lỗi JS: ${loi.length}`);
   await ctx.close();
