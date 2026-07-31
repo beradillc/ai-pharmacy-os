@@ -115,6 +115,9 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         # 2026-07-31: đơn bán lệch giá niêm yết (Đ6.5.i) — Chain chốt cho lệch, đòi lý do.
         "SALE_PRICE_OVERRIDE",
         "INVENTORY_RECONCILIATION_RESOLVED",
+        # 2026-07-31 (BERAS V2 Phase 1): sơ đồ kho quyết định hàng nằm ở đâu.
+        "LOCATION_CREATED",
+        "LOCATION_CHANGED",
         "ANALYTICS_REORDER_RUN",
         "ANALYTICS_SUGGESTION_MATERIALIZED",
         "ANALYTICS_SUGGESTION_DISMISSED",

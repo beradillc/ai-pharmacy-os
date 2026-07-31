@@ -279,6 +279,9 @@ _COVERED_ELSEWHERE = {
     AuditAction.CUSTOMER_PHONE_REVEALED,
     AuditAction.SALE_RETURN_REGISTERED,
     AuditAction.INVENTORY_RECONCILIATION_RESOLVED,
+    # Có test riêng: tests/integration/test_location_e2e.py
+    AuditAction.LOCATION_CREATED,
+    AuditAction.LOCATION_CHANGED,
     AuditAction.ANALYTICS_REORDER_RUN,
     AuditAction.ANALYTICS_SUGGESTION_MATERIALIZED,
     AuditAction.ANALYTICS_SUGGESTION_DISMISSED,

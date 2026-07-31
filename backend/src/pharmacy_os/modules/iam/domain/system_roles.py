@@ -53,6 +53,11 @@ RX_PERMISSIONS = frozenset({"rx.read", "rx.create", "rx.approve", "rx.dispense",
 #: Quyền này KHÔNG mở thêm loại dữ liệu nào — nó chỉ nới chiều chi nhánh cho những loại mà
 #: người gọi vốn đã có quyền đọc.
 ARCHIVE_PERMISSIONS = frozenset({"archive.read.chain"})
+
+#: Sơ đồ kho (BERAS V2 Phase 1). Tách ĐỌC khỏi GHI vì hai việc khác hẳn nhau: ai đứng quầy
+#: cũng cần biết thuốc nằm ở đâu, còn dựng lại sơ đồ kho là việc quản lý — một lần đổi sai
+#: thứ tự lấy hàng làm cả kho đi sai đường.
+LOCATION_PERMISSIONS = frozenset({"location.read", "location.write"})
 CLINICAL_PERMISSIONS = frozenset(
     {"clinical.check", "clinical.accept", "clinical.settings.read", "clinical.settings.write"}
 )
@@ -151,6 +156,7 @@ ALL_PERMISSIONS: frozenset[str] = (
     | AUDIT_PERMISSIONS
     | AUDIT_DASHBOARD_PERMISSIONS
     | ARCHIVE_PERMISSIONS
+    | LOCATION_PERMISSIONS
     | PRIVACY_PERMISSIONS
     | ANALYTICS_PERMISSIONS
 )
@@ -195,6 +201,7 @@ _CHAIN_PHARMACIST_PERMISSIONS = (
     # nhất ngoài quản trị hệ thống có quyền phạm vi này. Dược sĩ chi nhánh chỉ thấy chi
     # nhánh mình: xem ghi chú ở `ARCHIVE_PERMISSIONS`.
     | ARCHIVE_PERMISSIONS
+    | LOCATION_PERMISSIONS
     | PRIVACY_PERMISSIONS
     | ANALYTICS_PERMISSIONS
     | {"iam.user.read", "iam.role.read"}
@@ -207,6 +214,10 @@ _CHAIN_PHARMACIST_PERMISSIONS = (
 #: and ``procurement.supplier.create``.
 _BRANCH_PHARMACIST_PERMISSIONS = (
     (CATALOG_PERMISSIONS - {"catalog.create", "catalog.update"})
+    # Dược sĩ chi nhánh dựng được sơ đồ kho CỦA CHI NHÁNH MÌNH: người xếp kho là người
+    # biết kệ nào đối lưng kệ nào. Vị trí đã theo chi nhánh nên không có đường nào chạm
+    # sang cơ sở khác.
+    | LOCATION_PERMISSIONS
     | INVENTORY_PERMISSIONS
     | SALES_PERMISSIONS
     | RX_PERMISSIONS
@@ -233,7 +244,7 @@ _BRANCH_PHARMACIST_PERMISSIONS = (
 #: ``crm.sensitive.read``/``crm.sensitive.write``/``crm.erase`` — those stay
 #: pharmacist-only, split by NĐ356 Điều 4.2 and GPP TT02/2018 I-1a.III.4.a.
 _CASHIER_PERMISSIONS = (
-    {"catalog.read", "inventory.read", "inventory.dispense"}
+    {"catalog.read", "inventory.read", "inventory.dispense", "location.read"}
     | SALES_PERMISSIONS
     # ``rx.read`` nhưng KHÔNG ``rx.image.read``: thu ngân cần biết đơn có hợp lệ để bán
     # hay không, không cần đọc chẩn đoán của khách. Xem ghi chú ở ``RX_PERMISSIONS``.
@@ -246,6 +257,9 @@ _CASHIER_PERMISSIONS = (
 #: discrepancies this role's own goods-receipt work produces.
 _WAREHOUSE_PERMISSIONS = {
     "catalog.read",
+    # Nhân viên kho ĐỌC được sơ đồ nhưng không dựng lại được nó — nhập hàng cần biết chỗ,
+    # đổi cấu trúc kho là quyết định khác.
+    "location.read",
     "inventory.read",
     "inventory.receive",
     "inventory.reconcile",

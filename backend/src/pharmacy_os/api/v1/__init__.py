@@ -43,6 +43,7 @@ from pharmacy_os.modules.crm.interface import register as register_crm
 from pharmacy_os.modules.iam.application import AuthService
 from pharmacy_os.modules.iam.interface import register as register_iam
 from pharmacy_os.modules.inventory.interface import register as register_inventory
+from pharmacy_os.modules.location.interface import register as register_location
 from pharmacy_os.modules.prescription.application import PrescriptionService
 from pharmacy_os.modules.prescription.interface import register as register_prescription
 from pharmacy_os.modules.procurement.interface import register as register_procurement
@@ -65,6 +66,7 @@ def build_api_router(container: Container) -> APIRouter:
     api.include_router(privacy_router)
     api.include_router(register_catalog(container, get_context))
     api.include_router(register_inventory(container, get_context))
+    api.include_router(register_location(container, get_context))
     api.include_router(register_prescription(container, get_context))
     # Clinical: deterministic interaction check + AI-explanation audit (mock LLM).
     api.include_router(register_clinical(container, get_context))

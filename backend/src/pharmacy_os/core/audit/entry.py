@@ -240,6 +240,21 @@ class AuditAction(StrEnum):
     handled — "ai đã xử lý chênh lệch tồn kho này". The record itself carries no
     actor/timestamp for the resolve action; this is the only place that does."""
 
+    # --- sơ đồ kho (BERAS V2 Phase 1, 2026-07-31) ---
+    LOCATION_CREATED = "LOCATION_CREATED"
+    """Một vị trí lưu trữ được tạo (Kho/Khu/Kệ/Ô).
+
+    Đáng ghi vết vì sơ đồ kho quyết định **hàng nằm ở đâu**, và một vị trí tạo nhầm sẽ kéo
+    theo mọi lượt nhập vào đó. ``context`` mang đường dẫn — thứ người soát sổ đọc được,
+    khác một UUID."""
+
+    LOCATION_CHANGED = "LOCATION_CHANGED"
+    """Đổi tên, thứ tự lấy hàng, hoặc bật/tắt một vị trí.
+
+    **Ngừng hoạt động** là thao tác đáng ngờ nhất trong nhóm này: nó làm một chỗ biến mất
+    khỏi mọi màn hình mà hàng có thể vẫn đang nằm đó. Mã vị trí không đổi được nên không
+    có ca "đổi mã âm thầm"."""
+
     # --- procurement (cam kết tài chính với NCC, xác nhận nhận hàng thật) ---
     PROCUREMENT_PO_ORDERED = "PROCUREMENT_PO_ORDERED"
     """DRAFT -> ORDERED — the moment a purchase order becomes a real financial
