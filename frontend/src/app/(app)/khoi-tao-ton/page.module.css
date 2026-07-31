@@ -1,0 +1,71 @@
+/* Ô đang đếm nằm TRÊN CÙNG và ở lại đó — nó là ngữ cảnh của mọi dòng bên dưới. Nền khác
+   màu để khi cúi xuống đếm rồi ngẩng lên, mắt bắt được ngay mình đang ở ô nào. */
+.oDang {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--radius-md);
+  background: var(--beras-surface-2, var(--beras-surface));
+  margin-bottom: var(--space-4);
+}
+
+.nhanO {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}
+
+.duongDan {
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.tenO {
+  color: var(--beras-text-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 32rem;
+}
+
+/* 🔴 KHÔNG đặt `flex` ở đây. `.o` là một flex COLUMN, và `.input` dùng chung mang
+   `flex: 1 1 auto` để giãn ngang trong các hàng ngang — trong cột thì nó giãn DỌC. Bản đầu
+   viết `flex: 1 1 14rem` trên `.o` và ba ô nhập cao gần 250px mỗi ô. Bốn cổng tự động xanh
+   hết; chỉ ảnh chụp thấy. Cùng họ với lỗi ô tìm kiếm 260px ngày 30/07. */
+.o {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Chỉ trong thanh "đang đếm ô" — đó mới là hàng NGANG, nơi ô chọn cần chiếm chỗ còn lại. */
+.oDang .o {
+  flex: 1 1 14rem;
+}
+
+.nhan {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}
+
+.ghiChu {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+  margin: 0;
+}
+
+.daDem {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--beras-text-muted);
+  font-size: var(--text-sm);
+}

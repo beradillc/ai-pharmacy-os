@@ -142,6 +142,15 @@ export const NAV: readonly NavItem[] = [
     icon: "receive",
   },
   {
+    href: "/khoi-tao-ton",
+    label: "Khởi tạo tồn kho",
+    short: "Khởi tạo",
+    permission: "inventory.receive",
+    group: "kho",
+    primary: false,
+    icon: "receive",
+  },
+  {
     href: "/so-do-kho",
     label: "Sơ đồ kho",
     short: "Sơ đồ",
