@@ -1,3 +1,4 @@
+from dataclasses import FrozenInstanceError
 from decimal import Decimal
 from uuid import uuid4
 
@@ -11,6 +12,8 @@ from pharmacy_os.modules.catalog.domain import (
     DuplicateIngredientError,
     DuplicateUnitError,
     InvalidIngredientError,
+    InvalidPriceError,
+    PriceUnchangedError,
     RxClass,
 )
 
@@ -187,3 +190,87 @@ def test_replace_ingredients_giu_nguyen_ham_luong_va_don_vi() -> None:
     d.replace_ingredients([hc])
     assert d.ingredients[0].amount == Decimal("62.5")
     assert d.ingredients[0].unit == "mg/ml"
+
+
+# ─── giá bán niêm yết (2026-07-31, Chain giao) ──────────────────────────────────
+
+
+def test_dat_gia_lan_dau_ghi_old_price_la_none() -> None:
+    """Lần đầu đặt giá KHÁC đổi giá — người đọc sổ phải phân biệt được hai chuyện."""
+    d = _drug()
+    change = d.set_sale_price(Decimal("12000"))
+    assert d.sale_price == Decimal("12000")
+    assert change.old_price is None
+    assert change.new_price == Decimal("12000")
+    assert change.drug_id == d.id
+
+
+def test_doi_gia_giu_lai_gia_cu_trong_ban_ghi() -> None:
+    d = _drug()
+    d.set_sale_price(Decimal("12000"))
+    change = d.set_sale_price(Decimal("13500"), reason="Nhà phân phối tăng giá")
+    assert change.old_price == Decimal("12000")
+    assert change.new_price == Decimal("13500")
+    assert change.reason == "Nhà phân phối tăng giá"
+
+
+def test_gia_am_bi_tu_choi() -> None:
+    d = _drug()
+    with pytest.raises(InvalidPriceError):
+        d.set_sale_price(Decimal("-1"))
+    assert d.sale_price is None
+
+
+def test_gia_le_hon_hai_chu_so_thap_phan_bi_tu_choi() -> None:
+    """Để CSDL tự làm tròn là tạo ra một giá niêm yết không ai gõ vào."""
+    d = _drug()
+    with pytest.raises(InvalidPriceError):
+        d.set_sale_price(Decimal("12000.005"))
+    assert d.sale_price is None
+
+
+def test_gia_trung_gia_cu_bi_tu_choi() -> None:
+    d = _drug()
+    d.set_sale_price(Decimal("12000"))
+    with pytest.raises(PriceUnchangedError):
+        d.set_sale_price(Decimal("12000"))
+
+
+def test_gia_bang_khong_van_dat_duoc() -> None:
+    """Hàng tặng/hàng mẫu giá 0 là thật; chỉ giá ÂM mới vô nghĩa."""
+    d = _drug()
+    change = d.set_sale_price(Decimal("0"))
+    assert d.sale_price == Decimal("0")
+    assert change.new_price == Decimal("0")
+
+
+def test_ban_ghi_bien_dong_gia_khong_sua_duoc() -> None:
+    """Một bản ghi lịch sử sửa được thì không phải lịch sử."""
+    d = _drug()
+    change = d.set_sale_price(Decimal("12000"))
+    with pytest.raises(FrozenInstanceError):
+        change.new_price = Decimal("1")  # type: ignore[misc]
+
+
+def test_gia_bi_tu_choi_thi_khong_thay_doi_gi_ca() -> None:
+    """Toàn-bộ-hoặc-không-gì: giá cũ phải nguyên vẹn sau một lần đặt giá hỏng."""
+    d = _drug()
+    d.set_sale_price(Decimal("12000"))
+    with pytest.raises(InvalidPriceError):
+        d.set_sale_price(Decimal("-5"))
+    assert d.sale_price == Decimal("12000")
+
+
+def test_gia_NaN_bi_tu_choi() -> None:
+    """`Decimal("NaN") < 0` là False — một NaN lọt qua phép kiểm âm mà không kêu tiếng nào."""
+    d = _drug()
+    with pytest.raises(InvalidPriceError):
+        d.set_sale_price(Decimal("NaN"))
+    assert d.sale_price is None
+
+
+def test_gia_vo_cuc_bi_tu_choi() -> None:
+    d = _drug()
+    with pytest.raises(InvalidPriceError):
+        d.set_sale_price(Decimal("Infinity"))
+    assert d.sale_price is None

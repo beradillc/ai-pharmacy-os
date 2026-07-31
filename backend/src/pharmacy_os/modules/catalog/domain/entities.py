@@ -11,6 +11,8 @@ from pharmacy_os.modules.catalog.domain.exceptions import (
     DuplicateIngredientError,
     DuplicateUnitError,
     InvalidIngredientError,
+    InvalidPriceError,
+    PriceUnchangedError,
 )
 
 
@@ -83,6 +85,29 @@ class DrugIngredient:
             raise InvalidIngredientError("Đơn vị hàm lượng hoạt chất không được để trống")
 
 
+@dataclass(frozen=True, slots=True)
+class DrugPriceChange:
+    """Một lần đổi giá niêm yết — **bất biến**, sinh ra rồi không sửa.
+
+    ``frozen=True`` không phải để cho đẹp: đây là dòng dữ liệu trả lời câu hỏi *"ngày ấy
+    mã này niêm yết bao nhiêu"*. Một bản ghi lịch sử sửa được thì không phải lịch sử.
+    Cùng tinh thần append-only với ``ControlledLedgerEntry`` và ``NationalSyncLog``.
+
+    ``old_price is None`` nghĩa là **lần đầu đặt giá** cho mã chưa từng có giá — khác hẳn
+    với đổi giá, và người đọc sổ cần phân biệt được hai chuyện đó.
+
+    Ai đổi và đổi lúc nào **không** nằm ở đây: miền không biết ai đang đăng nhập và không
+    được đọc đồng hồ. Tầng ứng dụng gắn ``changed_by`` từ ngữ cảnh yêu cầu, CSDL gắn thời
+    điểm bằng ``server_default``.
+    """
+
+    drug_id: UUID
+    new_price: Decimal
+    old_price: Decimal | None = None
+    reason: str | None = None
+    id: UUID = field(default_factory=uuid4)
+
+
 @dataclass(slots=True)
 class Drug:
     """Drug master record (aggregate root)."""
@@ -147,6 +172,38 @@ class Drug:
                 )
             seen.add(i.ingredient_id)
         self.ingredients = list(ingredients)
+
+    def set_sale_price(self, new_price: Decimal, reason: str | None = None) -> DrugPriceChange:
+        """Đặt lại giá bán niêm yết, trả về **bản ghi biến động** để tầng trên lưu lại.
+
+        Vì sao trả về một bản ghi thay vì chỉ gán giá trị: giá cũ chỉ còn tồn tại trong
+        đúng khoảnh khắc này. Gán xong rồi mới đi tìm giá cũ thì không còn gì để tìm —
+        và câu hỏi *"ngày 12/7 mã này niêm yết bao nhiêu"* là câu hỏi thanh tra hỏi, theo
+        Điều 107.4 Luật Dược. Bắt phương thức trả về bản ghi khiến việc **quên ghi lịch
+        sử** trở thành một biến không dùng, thay vì một khoảng trống im lặng.
+
+        ``reason`` để trống được: lần đặt giá đầu tiên cho một mã chưa có giá không cần
+        giải thích gì. Đổi giá của một mã **đã có giá** thì tầng ứng dụng đòi lý do —
+        đó là quy tắc nghiệp vụ, không phải quy tắc miền, nên nó không nằm ở đây.
+        """
+        # 🔴 `is_finite` phải đứng TRƯỚC mọi phép so sánh. `Decimal("NaN") < 0` là `False`,
+        # nên một NaN lọt qua phép kiểm âm mà không kêu một tiếng — và `Decimal("NaN")` dựng
+        # được từ đúng một chuỗi trong thân yêu cầu JSON. mypy --strict bắt được ca này:
+        # `as_tuple().exponent` của NaN/Infinity là chữ ('n'/'N'/'F'), không phải số.
+        if not new_price.is_finite():
+            raise InvalidPriceError(f"Giá bán phải là một số hữu hạn: {new_price}")
+        if new_price < 0:
+            raise InvalidPriceError(f"Giá bán không được âm: {new_price}")
+        exponent = new_price.as_tuple().exponent
+        if not isinstance(exponent, int) or exponent < -2:
+            raise InvalidPriceError(
+                f"Giá bán chỉ lưu được tới 2 chữ số thập phân, nhận {new_price}"
+            )
+        if self.sale_price is not None and self.sale_price == new_price:
+            raise PriceUnchangedError(f"Giá mới trùng giá đang có: {new_price}")
+        old = self.sale_price
+        self.sale_price = new_price
+        return DrugPriceChange(drug_id=self.id, old_price=old, new_price=new_price, reason=reason)
 
     def is_prescription_required(self) -> bool:
         return self.rx_class in (RxClass.ETC, RxClass.CONTROLLED)
