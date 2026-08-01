@@ -62,6 +62,25 @@ test:
 #
 # Hai nền, một bộ test: SQLite cho vòng lặp nhanh (`make test`), Postgres cho lượt trước khi
 # đóng mục. Cần `docker compose up -d postgres` và CSDL `beras_test`.
+# 🔴 "CI" CỦA DỰ ÁN NÀY LÀ MỘT LỆNH NGƯỜI TA GÕ, không phải một máy chủ.
+#
+# Chain chốt 2026-08-01: **không đưa mã lên GitHub**. Đó là quyết định về nơi cất mã
+# nguồn nhà thuốc, không phải về chất lượng — nhưng nó có một hệ quả phải nói thẳng:
+# `.github/workflows/ci.yml` từ nay là **mã chết vĩnh viễn**, không phải "chờ ngày có
+# remote". Phát hiện C-03 của kiểm toán 26/07 vì thế **không đóng bằng cách nối remote**
+# mà đóng bằng cách chuyển toàn bộ nội dung nó định chạy sang đây.
+#
+# Chạy đúng thứ ci.yml định chạy, cộng bộ test trên Postgres — thứ CI đám mây có sẵn
+# container còn máy này thì phải bật tay.
+#
+#   make ci        trước khi đóng một mục có động tới backend
+#   make ci-full   + cổng trình duyệt (cần `make lan` chạy ở cửa sổ khác)
+ci: lint contracts typecheck test test-pg
+	@printf '\n\033[32m✅ CI cục bộ XANH — 4 cổng nhanh + test trên CẢ HAI nền.\033[0m\n'
+
+ci-full: ci check-fe ui-gates
+	@printf '\n\033[32m✅ CI cục bộ ĐẦY ĐỦ — thêm frontend và cổng trình duyệt thật.\033[0m\n'
+
 test-pg:
 	docker exec -e PGPASSWORD=pharma ai_pharmacy_os-postgres-1 psql -U pharma -d postgres \
 	  -c "DROP DATABASE IF EXISTS beras_test" -c "CREATE DATABASE beras_test" >/dev/null

@@ -1,4 +1,18 @@
-name: CI
+# ⚠️ DEPRECATED 2026-08-01 — MÃ CHẾT, KHÔNG PHẢI "CHỜ NGÀY CÓ REMOTE".
+#
+# Chain chốt 01/08: **không đưa mã lên GitHub**. Tệp này vì thế sẽ không bao giờ chạy.
+# Giữ lại theo kỷ luật #18 (*quy tắc lỗi thời thì đánh dấu Deprecated kèm lý do, KHÔNG
+# xoá — người đọc sau cần biết nó từng tồn tại và vì sao thôi áp dụng*), và vì nó là
+# một đặc tả đọc được về **những gì phải chạy trước khi đóng một mục**.
+#
+# 🔴 Thứ thay thế nó: **`make ci`** và **`make ci-full`**. Sửa ở đây KHÔNG có tác dụng
+# gì — sửa ở `Makefile`.
+#
+# Lịch sử: tệp này nằm trong repo từ commit ĐẦU TIÊN và chưa chạy lần nào trong hơn
+# 200 commit (kiểm toán 26/07, phát hiện C-03). Suốt thời gian đó nó được nhắc tới như
+# "hạ tầng đã có" — hạ tầng viết sẵn mà không nối dây thì bằng không.
+
+name: CI (DEPRECATED — xem `make ci`)
 
 on:
   push:
