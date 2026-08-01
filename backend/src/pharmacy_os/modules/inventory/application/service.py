@@ -706,9 +706,21 @@ class InventoryService:
         return ReconciliationOutput.of(record)
 
     async def _record(
-        self, ctx: RequestContext, action: AuditAction, target_type: str, target_id: UUID
+        self,
+        ctx: RequestContext,
+        action: AuditAction,
+        target_type: str,
+        target_id: UUID,
+        **extra: str,
     ) -> None:
-        """Append one audit row — metadata only, never cost price/lot content."""
+        """Append one audit row — metadata only, never cost price/lot content.
+
+        ``extra`` chỉ nhận **số đếm, mã, lý do do người gõ** — không nhận nội dung lô hay
+        giá vốn, cùng kỷ luật đã ghi ở :attr:`AuditAction.CATALOG_DRUG_INGREDIENTS_REPLACED`.
+        Thêm 2026-08-01 cho đường điều chỉnh tồn nhanh (M-07): nó cần mang ``old_qty`` /
+        ``new_qty`` / ``reason``, và sổ audit là chỗ **duy nhất** trả lời được *"vì sao tồn
+        của lô này đổi"* — bảng ``stock_movements`` chỉ ghi rằng nó đã đổi.
+        """
         await self._audit.record(
             AuditEntry(
                 actor_user_id=ctx.user_id,
@@ -716,7 +728,7 @@ class InventoryService:
                 action=action,
                 target_type=target_type,
                 target_id=str(target_id),
-            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id))
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id), **extra)
         )
 
     async def stock_report_rows(
@@ -1037,7 +1049,9 @@ class InventoryService:
             await uow.commit()
         return phien
 
-    async def approve_count(self, count_id: UUID, ctx: RequestContext) -> StockCount:
+    async def approve_count(
+        self, count_id: UUID, ctx: RequestContext, **audit_extra: str
+    ) -> StockCount:
         """Duyệt phiên và **áp chênh lệch vào cả hai sổ**. Quyền ``inventory.reconcile``.
 
         Ba thứ phải đi cùng một giao dịch, nếu không sổ sẽ lệch nhau:
@@ -1099,8 +1113,73 @@ class InventoryService:
             await repo.update(phien)
             await uow.commit()
 
-        await self._record(ctx, AuditAction.INVENTORY_COUNT_APPROVED, "stock_count", phien.id)
+        await self._record(
+            ctx, AuditAction.INVENTORY_COUNT_APPROVED, "stock_count", phien.id, **audit_extra
+        )
         return phien
+
+    async def adjust_stock_at_location(
+        self,
+        *,
+        location_id: UUID,
+        batch_id: UUID,
+        actual_qty: Decimal,
+        reason: str,
+        ctx: RequestContext,
+    ) -> StockCount:
+        """Điều chỉnh tồn **một lô tại một ô** trong một lượt (UAT lỗi M-07, 2026-08-01).
+
+        🔴 **Không phải một đường đổi tồn kho mới.** Nó chạy trọn vẹn luồng kiểm kê đã có —
+        mở phiên → ghi số đếm → nộp → duyệt — chỉ gộp bốn lượt bấm thành một. Lý do gắt:
+
+        * ``approve_count`` phải cập nhật **cả ba** sổ trong cùng một giao dịch —
+          ``stock_balances``, ``stock_at_location``, và một ``StockMovement`` loại ``ADJUST``.
+          Một đường tắt sửa thẳng ``stock_balances`` sẽ làm hai sổ lệch nhau **im lặng**, và
+          chỉ lộ ra khi có người đứng trước một ô rỗng.
+        * Đúng một đường đổi tồn nghĩa là đúng một chỗ phải canh, và mọi lượt điều chỉnh đều
+          để lại một phiếu kiểm kê tra được — thứ thanh tra hỏi khi tồn sổ khác tồn thực.
+
+        Vẫn giữ **tách quyền**: mở/ghi số cần ``inventory.receive``, duyệt cần
+        ``inventory.reconcile``. Ai chỉ có quyền đếm mà không có quyền duyệt sẽ dừng ở bước
+        cuối với 403 — đúng như đi đường dài, không có ưu ái nào cho đường tắt.
+
+        ``reason`` **bắt buộc**, và đi vào ``context`` của dòng audit chứ không vào một cột
+        mới: sổ audit là chỗ duy nhất trả lời được *"vì sao tồn của lô này đổi"* —
+        ``stock_movements`` chỉ ghi rằng nó đã đổi. Kèm ``old_qty``/``new_qty`` để màn Nhật
+        ký hiện thẳng "cũ → mới" (M-05) mà không phải mở thêm màn nào.
+
+        ⚠️ Bốn bước **không nằm chung một giao dịch**. Hỏng giữa chừng để lại một phiên kiểm
+        kê dở dang — nó **hiện ra ở màn Kiểm kê** để người ta xử tiếp, chứ không phải một sổ
+        lệch âm thầm. Đây là đánh đổi có chủ đích: thà một phiếu treo nhìn thấy được còn hơn
+        một con số sai không ai biết.
+        """
+        if not reason.strip():
+            raise ValidationError("Điều chỉnh tồn phải ghi lý do")
+        if actual_qty < 0:
+            raise ValidationError("Số thực tế không thể âm")
+
+        phien = await self.open_count(location_id, ctx)
+        await self.count_line(phien.id, batch_id, actual_qty, ctx)
+        da_nop = await self.submit_count(phien.id, ctx)
+
+        # Số sổ ĐANG ghi, chốt tại lúc nộp — đọc từ chính phiên vừa nộp thay vì hỏi lại sổ,
+        # để con số ghi vào audit đúng là con số mà phép so sánh đã dùng.
+        dong = next((d for d in da_nop.lines if d.batch_id == batch_id), None)
+        so_cu = "?" if dong is None or dong.system_qty is None else str(dong.system_qty)
+
+        # 🔴 Ngữ cảnh đi KÈM lời gọi duyệt, không phải một dòng audit thứ hai. Bản đầu ghi
+        # thêm một `_record` riêng và mỗi lượt điều chỉnh để lại **HAI** dòng
+        # `INVENTORY_COUNT_APPROVED` cho cùng một việc — một dòng trần, một dòng có lý do.
+        # Không cổng nào đỏ (cả hai dòng đều hợp lệ), nhưng người soát sổ đếm gấp đôi số
+        # lượt duyệt, và dòng trần đọc như một lượt duyệt KHÔNG có lý do.
+        return await self.approve_count(
+            phien.id,
+            ctx,
+            old_qty=so_cu,
+            new_qty=str(actual_qty),
+            reason=reason.strip()[:500],
+            adjust_batch_id=str(batch_id),
+        )
 
     async def reject_count(self, count_id: UUID, ctx: RequestContext) -> StockCount:
         """Từ chối phiên. **Không** đụng tồn kho. Quyền ``inventory.reconcile``."""

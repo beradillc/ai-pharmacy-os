@@ -11,6 +11,7 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.inventory.application import InventoryService
 from pharmacy_os.modules.inventory.domain.counting import CountStatus
 from pharmacy_os.modules.inventory.interface.schemas import (
+    AdjustStockRequest,
     ChangLayResponse,
     CountLineRequest,
     DispenseRequest,
@@ -229,6 +230,29 @@ def build_router(get_context: ContextDep) -> APIRouter:
     ) -> StockCountResponse:
         """Mở phiên kiểm kê cho một ô. Quyền ``inventory.receive``."""
         return StockCountResponse.of(await service.open_count(body.location_id, ctx))
+
+    @router.post("/adjust", response_model=StockCountResponse, status_code=status.HTTP_201_CREATED)
+    async def adjust_stock(
+        body: AdjustStockRequest,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> StockCountResponse:
+        """Điều chỉnh tồn một lô tại một ô **trong một lượt** (UAT lỗi M-07).
+
+        Chạy trọn luồng kiểm kê đã có (mở → đếm → nộp → duyệt), chỉ gộp bốn lượt bấm. Vì
+        vậy nó cần **cả hai** quyền: ``inventory.receive`` để đếm và ``inventory.reconcile``
+        để duyệt — đường tắt không đi kèm ưu ái quyền hạn nào.
+
+        Trả về phiên kiểm kê đã duyệt, để người dùng tra lại được phiếu bất cứ lúc nào.
+        """
+        out = await service.adjust_stock_at_location(
+            location_id=body.location_id,
+            batch_id=body.batch_id,
+            actual_qty=body.actual_qty,
+            reason=body.reason,
+            ctx=ctx,
+        )
+        return StockCountResponse.of(out)
 
     @router.get("/counts", response_model=list[StockCountResponse])
     async def list_counts(

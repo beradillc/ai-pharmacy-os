@@ -269,6 +269,22 @@ class CountLineRequest(BaseModel):
     counted_qty: Decimal = Field(ge=0)
 
 
+class AdjustStockRequest(BaseModel):
+    """Điều chỉnh tồn một lô tại một ô trong một lượt (UAT M-07, 2026-08-01).
+
+    ``reason`` **bắt buộc và không được rỗng**. Đây không phải thủ tục hành chính: điều
+    chỉnh tồn là lúc con số trong máy bị sửa cho khớp thực tế, và câu duy nhất còn lại để
+    trả lời *"vì sao"* là dòng này. ``min_length=3`` để một dấu chấm không tính là lý do.
+    """
+
+    location_id: UUID
+    batch_id: UUID
+    actual_qty: Decimal = Field(
+        ge=0, description="Số ĐẾM ĐƯỢC ngoài thực tế, không phải chênh lệch"
+    )
+    reason: str = Field(min_length=3, max_length=500)
+
+
 class CountLineResponse(BaseModel):
     """Một dòng đếm.
 

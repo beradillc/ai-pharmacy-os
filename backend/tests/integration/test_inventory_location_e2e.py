@@ -14,6 +14,7 @@ Ba tính chất tệp này canh:
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from datetime import date, timedelta
 from decimal import Decimal
@@ -679,3 +680,143 @@ def test_tom_tat_MOT_luot_goi_cho_NHIEU_o(client: TestClient) -> None:
     kq = client.get("/api/v1/inventory/locations/summary").json()
 
     assert len(kq) == 3
+
+
+class TestDieuChinhTonNhanh:
+    """``POST /inventory/adjust`` — điều chỉnh tồn một lô trong một lượt (UAT M-07).
+
+    🔴 Mệnh đề trung tâm: đường tắt này **không phải một đường đổi tồn kho mới**. Nó chạy
+    trọn luồng kiểm kê đã có, nên cả ba sổ (``stock_balances``, ``stock_at_location``,
+    ``stock_movements``) phải đổi **y hệt** như khi đi đường dài bốn bước. Nếu có ngày ai
+    đó "tối ưu" nó thành một lệnh UPDATE thẳng vào tồn, hai sổ sẽ lệch nhau im lặng — và
+    chỉ lộ ra khi có người đứng trước một ô rỗng.
+    """
+
+    def test_dieu_chinh_mot_luot_doi_dung_ca_hai_so(self, client: TestClient) -> None:
+        d, lo, o = _o_co_hang(client, qty="10", lot=f"DC{uuid4().hex[:4]}")
+
+        r = client.post(
+            "/api/v1/inventory/adjust",
+            json={
+                "location_id": o,
+                "batch_id": lo,
+                "actual_qty": "7",
+                "reason": "Vỡ 3 hộp khi xếp kệ",
+            },
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["status"] == "DA_DUYET"
+
+        # Sổ tổng đổi…
+        assert Decimal(
+            client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"]
+        ) == Decimal("7.000")
+        # …và sổ vị trí đi theo, không lệch.
+        trong_o = client.get(f"/api/v1/inventory/locations/{o}/stock").json()
+        assert [x["quantity"] for x in trong_o] == ["7.000"]
+
+    def test_de_lai_mot_phieu_kiem_ke_tra_duoc(self, client: TestClient) -> None:
+        """Mỗi lượt điều chỉnh để lại một phiếu — thứ thanh tra hỏi khi sổ khác thực tế."""
+        _, lo, o = _o_co_hang(client, qty="4", lot=f"DP{uuid4().hex[:4]}")
+        pid = client.post(
+            "/api/v1/inventory/adjust",
+            json={"location_id": o, "batch_id": lo, "actual_qty": "9", "reason": "Đếm lại"},
+        ).json()["id"]
+
+        phieu = client.get(f"/api/v1/inventory/counts/{pid}")
+        assert phieu.status_code == 200
+        assert phieu.json()["status"] == "DA_DUYET"
+        assert Decimal(phieu.json()["lines"][0]["system_qty"]) == Decimal("4.000")
+        assert phieu.json()["lines"][0]["lech"] == "5.000"
+
+    def test_bat_buoc_co_ly_do(self, client: TestClient) -> None:
+        """Không có lý do thì không có gì trả lời được câu *"vì sao tồn đổi"*.
+
+        🔴 ``"   "`` (ba dấu cách) có mặt vì một lý do cụ thể: nó **lọt qua** ``min_length=3``
+        của Pydantic và chỉ bị chặn ở tầng service. Bản đầu của test này chỉ thử ``""``,
+        ``"  "``, ``"."`` — cả ba đều bị Pydantic từ chối, nên **xoá hẳn phép kiểm ở service
+        vẫn xanh** (đo thật: `MUTANT2_EXIT=0`). Một test canh hai lớp phòng thủ mà chỉ chạm
+        được lớp ngoài thì lớp trong không có gì canh nó.
+        """
+        _, lo, o = _o_co_hang(client, qty="4", lot=f"LD{uuid4().hex[:4]}")
+        for ly_do in ["", "  ", ".", "   ", "\t\n "]:
+            r = client.post(
+                "/api/v1/inventory/adjust",
+                json={"location_id": o, "batch_id": lo, "actual_qty": "3", "reason": ly_do},
+            )
+            assert r.status_code == 422, f"lý do {ly_do!r} lẽ ra phải bị từ chối: {r.text}"
+
+    def test_audit_mang_ly_do_va_gia_tri_cu_moi(self, client: TestClient, db_path: Path) -> None:
+        """Dòng audit phải mang ``reason`` + ``old_qty``/``new_qty``.
+
+        🔴 Đây là **toàn bộ** giá trị của đường tắt về mặt truy vết: ``stock_movements`` ghi
+        rằng tồn đã đổi, chỉ sổ audit trả lời được *vì sao*. Và cặp ``old_qty``/``new_qty``
+        chính là thứ màn Nhật ký hiện thành cột "Thay đổi" (M-05) — bỏ nó đi thì cột ấy
+        trống và không cổng nào từng biết.
+
+        Bản đầu của bộ test này không khẳng định gì về audit, nên xoá hai dòng ghi
+        ``old_qty``/``new_qty`` vẫn xanh trọn vẹn (đo thật: `MUTANT3_EXIT=0`).
+        """
+        _, lo, o = _o_co_hang(client, qty="6", lot=f"AU{uuid4().hex[:4]}")
+        client.post(
+            "/api/v1/inventory/adjust",
+            json={"location_id": o, "batch_id": lo, "actual_qty": "2", "reason": "Hết hạn, huỷ 4"},
+        )
+        engine = create_engine(urls_csdl_thu(db_path)[0])
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    "SELECT context FROM audit_logs WHERE action='INVENTORY_COUNT_APPROVED' "
+                    "ORDER BY occurred_at DESC"
+                )
+            ).all()
+        engine.dispose()
+        # 🔴 ĐÚNG MỘT dòng, không phải hai. Bản đầu gọi `_record` thêm một lượt sau
+        # `approve_count`, nên mỗi lượt điều chỉnh để lại HAI dòng `INVENTORY_COUNT_APPROVED`
+        # cho cùng một việc — một dòng trần, một dòng có lý do. Không cổng nào đỏ (cả hai
+        # đều là dòng hợp lệ), nhưng người soát sổ đếm gấp đôi số lượt duyệt và dòng trần
+        # đọc như một lượt duyệt KHÔNG có lý do.
+        assert len(rows) == 1, f"chờ đúng 1 dòng audit, có {len(rows)} — đang ghi trùng"
+        ctx = json.loads(rows[0][0]) if isinstance(rows[0][0], str) else rows[0][0]
+        assert ctx["reason"] == "Hết hạn, huỷ 4"
+        assert Decimal(ctx["old_qty"]) == Decimal("6")
+        assert Decimal(ctx["new_qty"]) == Decimal("2")
+        # Thiết bị vẫn đi kèm — M-06 áp cho MỌI dòng audit, kể cả dòng mới thêm hôm nay.
+        assert "user_agent" in ctx
+
+    def test_so_thuc_te_am_bi_tu_choi(self, client: TestClient) -> None:
+        _, lo, o = _o_co_hang(client, qty="4", lot=f"AM{uuid4().hex[:4]}")
+        r = client.post(
+            "/api/v1/inventory/adjust",
+            json={"location_id": o, "batch_id": lo, "actual_qty": "-1", "reason": "thử"},
+        )
+        assert r.status_code == 422, r.text
+
+    def test_ghi_chuyen_dong_ADJUST_y_het_duong_dai(
+        self, client: TestClient, db_path: Path
+    ) -> None:
+        """Cùng ``MovementType.ADJUST`` / ``ref_type='COUNT'`` như đường bốn bước.
+
+        Nếu đường tắt ghi một ``ref_type`` khác, mọi báo cáo đối chiếu tồn kho sẽ bỏ sót
+        đúng những lượt điều chỉnh làm bằng đường tắt — mà đó lại là đa số.
+        """
+        _, lo, o = _o_co_hang(client, qty="5", lot=f"MV{uuid4().hex[:4]}")
+        client.post(
+            "/api/v1/inventory/adjust",
+            json={"location_id": o, "batch_id": lo, "actual_qty": "8", "reason": "Tìm thấy thêm"},
+        )
+        engine = create_engine(urls_csdl_thu(db_path)[0])
+        with engine.connect() as conn:
+            # KHÔNG lọc theo `batch_id`: SQLite lưu UUID dạng hex **không dấu gạch**, nên so
+            # với chuỗi có gạch thì không dòng nào khớp và test đỏ vì **phép đo** chứ không
+            # phải sản phẩm (đã mất một lượt chạy vì đúng chuyện này). Cùng lớp chênh lệch
+            # dialect mà kỷ luật #7 (bổ sung) canh — lọc theo `type` là dialect-trung-lập.
+            rows = conn.execute(
+                text("SELECT type, quantity, ref_type FROM stock_movements WHERE type='ADJUST'")
+            ).all()
+        engine.dispose()
+        assert len(rows) == 1
+        assert rows[0][0] == "ADJUST"
+        # So bằng SỐ, không bằng chuỗi: SQLite trả `3`, Postgres trả `3.000`.
+        assert Decimal(str(rows[0][1])) == Decimal("3")
+        assert rows[0][2] == "COUNT"
