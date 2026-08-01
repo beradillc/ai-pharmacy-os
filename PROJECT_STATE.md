@@ -8690,3 +8690,95 @@ kỷ luật #14 sinh ra để chặn, và lần này nó suýt lọt qua tay ch�
 - **`qt650` nay sạch: 0 đơn bán, 0 dòng bán, 0 thanh toán.** 70 thuốc, thông tin cơ sở giữ nguyên.
 - `uat650` **vẫn còn** `gate-rejected-0001` — CSDL kiểm thử, không dọn, không ảnh hưởng ai.
 - **Việc tiếp theo:** quay theo thứ tự `02→03→04→05→01→08→06→07→09→10→13→11→12`.
+
+---
+
+## 7dk. 🎬 Bắt đầu sản xuất video — và một lỗi CHẶN Ô TÌM THUỐC ở màn bán hàng (2026-08-02)
+
+**Chain: *"Duyệt toàn bộ, GĐ chỉ đạo sản xuất video mà không cần hỏi lại."*** Bắt tay quay.
+Bản quay **không chạy trọn**, nhưng đường tới đó tìm ra một lỗi nặng hơn cả bộ video.
+
+### 🔴 Lỗi sản phẩm: cửa sổ ĐÃ ĐÓNG vẫn được vẽ và chặn cú chạm
+
+`<dialog>` không có thuộc tính `open` được trình duyệt cho `display: none`. `.hop` trong
+`DetailDialog.module.css` đè `display: flex` **vô điều kiện** ⇒ cửa sổ đã đóng **vẫn được vẽ**,
+và thanh đầu `.dau` (`position: sticky`, `pointer-events: auto`) nằm đè lên màn phía sau.
+
+| | |
+|---|---|
+| ô **"Tìm thuốc"** — màn BÁN HÀNG, khổ 402px | y=89, cao 38 |
+| `.dau` của dialog **đã đóng** | phủ dải y=72…141 |
+| `document.elementFromPoint` giữa ô nhập | trả về `.dau` — **không** trả về ô nhập |
+
+**Dược sĩ chạm vào ô tìm thuốc thì không có gì xảy ra** — trên đúng màn dùng nhiều nhất cả
+ngày, và ở **CẢ HAI** khổ, không riêng điện thoại.
+
+Vá: `.hop:not([open]) { display: none; }` — một dòng, không đổi gì khi cửa sổ mở.
+
+### Vì sao 21 cổng trình duyệt đều mù
+
+Chúng đo hai bậc: **có trên trang** (`innerText`, `count()`) và **nhìn thấy được**
+(`boundingBox` trong khung nhìn — kỷ luật #21). Không cổng nào đo bậc **ba**: *chạm tới được*.
+
+Cổng mới `check-cham-toi.mjs` đo bậc ba bằng `document.elementFromPoint` tại **tâm** phần tử —
+thứ ngón tay thật sự chạm phải. Đã thêm vào nhóm đọc-thuần.
+
+```
+TRƯỚC khi vá (git stash riêng tệp CSS):  EXIT=1 · "🔴 BỊ CHE" ở CẢ mobile lẫn desktop
+SAU khi vá:                              EXIT=0 · 6/6 chạm được
+```
+
+🔴 **Nó lộ ra không nhờ một phép đo nào — mà vì BẢN QUAY VIDEO CHẾT** đúng chỗ đó với
+`subtree intercepts pointer events`. Cùng họ với ca ảnh chụp ở §7dj: **thứ chạy thật biết
+những điều phép đo không được dặn tìm.** Đề nghị nâng thành kỷ luật: *"có trong DOM" ≠ "nhìn
+thấy được" ≠ "chạm tới được"* — ba bậc, không phải hai.
+
+### Hạ tầng sản xuất video
+
+`lib/dung-du-lieu-quay.mjs` (mới) — dựng nhà cung cấp + đơn mua bằng **API thật**, idempotent,
+tự xác nhận sau khi tạo. Hai lỗi bị chính phép tự-kiểm bắt tại chỗ:
+
+| Đoán | Sự thật |
+|---|---|
+| trạng thái sau `/place` là `PLACED` (theo tên endpoint) | **`ORDERED`** — tạo xong đọc lại ra 0 đơn |
+| phiếu `PARTIALLY_RECEIVED` dùng lại được để quay | **KHÔNG** — dòng đã nhận còn 0 để nhận ⇒ bản quay chết ở đoạn 07 |
+
+🔴 **Khoảng trống nghiệp vụ phát hiện kèm:** phiếu `PARTIALLY_RECEIVED` **không đóng và không
+huỷ được** — cả `/close` lẫn `/cancel` đều trả 422. Lối ra duy nhất là **nhận nốt**. Nhà cung
+cấp giao thiếu rồi không giao nữa ⇒ phiếu kẹt vĩnh viễn. Chưa sửa, cần Chain quyết.
+
+### Bản quay: 12/16 đoạn, chưa trọn
+
+| Lượt | Tới đoạn | Vì sao dừng |
+|---|---|---|
+| 1 | 04/16 | `qt650` chưa có nhà cung cấp/đơn mua (đúng điều kiện M-01 đã ghi từ đầu) |
+| 2 | 09/16 | hộp thoại "Lộ trình lấy hàng" — tính năng thêm **sau** khi kịch bản quay được viết |
+| 3 | 09/16 | vá đóng hộp thoại **một lần** chưa đủ — nó vẽ lại sau điều hướng ⇒ gọi **hai** lần |
+| 4 | 12/16 | 🔴 lỗi CSS ở trên — vá xong mới qua được |
+| 5 | 12/16 | nút **Thanh toán** `boundingBox` = `null` cả 4 lần đo |
+
+**Điểm dừng thật:** ở khổ 402px nút Thanh toán **có trong DOM nhưng không có hộp bố cục** — nó
+nằm trong khay giỏ hàng chưa mở. **Kịch bản quay lạc hậu so với bố cục hiện tại, không phải lỗi
+sản phẩm.** Việc tiếp theo: thêm bước mở khay giỏ trước khi bấm Thanh toán.
+
+⚠️ **`record-tutorial.mjs` chỉ quay MỘT video tổng quan 16 đoạn**, không phải bộ 14 video. Bộ 14
+video còn cần **giọng đọc hai người** (`durations.json` vốn đo từ tệp âm thanh thật bằng
+`ffprobe`) — phần này **máy không làm được**. Nhịp đang dùng là **ước lượng**, chỉ để quay được
+hình; đọc thật xong phải đo lại.
+
+### Cổng tại điểm dừng
+
+```
+ESLINT=0  TSC=0  VITEST=0 (117)  BUILD=0 (24 route)
+PYTEST=0  1480 passed          (sau khi vá 2 test hẹn giờ, §7 trước)
+check-cham-toi   EXIT=0 (mới)  · đỏ đúng lý do trước khi vá
+check-man-rong   EXIT=0        · 12/12
+RUFF/FORMAT/IMPORT-LINTER/MYPY = 0 (hook)
+```
+
+### Điểm dừng
+
+- App chạy trên **`qt650`** · `http://192.168.1.8:3000`.
+- `qt650` nay có: 1 nhà cung cấp · PO-0001 (RECEIVED) · PO-0002 · lô hàng đã nhận · vài đơn bán
+  của các lượt quay — **cố ý giữ**, đó là dữ liệu video sau cần.
+- Bản quay thô: `/tmp/quay01/*.webm` (12/16 đoạn) — **chưa đạt, chưa giao**.
