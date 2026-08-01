@@ -28,6 +28,7 @@ from sqlalchemy import create_engine, text
 from pharmacy_os.core.config import AppSettings, DatabaseSettings, SecuritySettings, Settings
 from pharmacy_os.main import create_app
 from pharmacy_os.models_registry import Base
+from tests.conftest import urls_csdl_thu
 
 
 @pytest.fixture
@@ -37,13 +38,14 @@ def db_path(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def client(db_path: Path) -> Iterator[TestClient]:
-    sync_engine = create_engine(f"sqlite:///{db_path}")
+    _sync_url, _async_url = urls_csdl_thu(db_path)
+    sync_engine = create_engine(_sync_url)
     Base.metadata.create_all(sync_engine)
     sync_engine.dispose()
 
     settings = Settings(
         app=AppSettings(env="dev", debug=True),
-        db=DatabaseSettings(url=f"sqlite+aiosqlite:///{db_path}"),
+        db=DatabaseSettings(url=_async_url),
         security=SecuritySettings(allow_dev_auth=True),
     )
     with TestClient(create_app(settings)) as c:
@@ -107,7 +109,7 @@ def test_cat_hang_vao_o_va_hien_so_CHUA_XEP(client: TestClient) -> None:
 
     r = _cat(client, lo, o, "30")
     assert r.status_code == 201, r.text
-    assert r.json()["chua_xep_o"] == "70.000"
+    assert Decimal(r.json()["chua_xep_o"]) == Decimal("70.000")
     assert r.json()["location_path"] == "KHO/A01"
 
 
@@ -132,7 +134,7 @@ def test_cat_hai_dot_vao_CUNG_mot_o_thi_CONG_DON(client: TestClient) -> None:
     _cat(client, lo, o, "30")
     r = _cat(client, lo, o, "20")
     assert r.status_code == 201, r.text
-    assert r.json()["chua_xep_o"] == "50.000"
+    assert Decimal(r.json()["chua_xep_o"]) == Decimal("50.000")
 
     ton_o = client.get(f"/api/v1/inventory/locations/{o}/stock").json()
     assert [x["quantity"] for x in ton_o] == ["50.000"]
@@ -255,7 +257,9 @@ def test_nhan_vao_o_KHONG_TON_TAI_tra_404_va_KHONG_nhan_hang(client: TestClient)
     """Toàn-bộ-hoặc-không-gì: từ chối rồi vẫn nhận hàng là để lại hàng không ai biết."""
     d = _drug(client)
     assert _nhan_vao_o(client, d, qty="50", lot="L1", loc=str(uuid4())).status_code == 404
-    assert client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"] == "0.000"
+    assert Decimal(
+        client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"]
+    ) == Decimal("0.000")
 
 
 def test_nhan_vao_o_DA_NGUNG_tra_422(client: TestClient) -> None:
@@ -290,11 +294,13 @@ def test_khoi_tao_ton_ghi_ref_type_INIT_khong_phai_GRN(client: TestClient, db_pa
         },
     )
     assert r.status_code == 201, r.text
-    assert client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"] == "80.000"
+    assert Decimal(
+        client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"]
+    ) == Decimal("80.000")
 
     # 🔴 Đọc THẲNG sổ chuyển động. Chỉ khẳng định tồn kho thì test này xanh kể cả khi
     # `ref_type` không hề được đặt — đúng loại "xanh vì lý do sai" mà kỷ luật #14 canh.
-    engine = create_engine(f"sqlite:///{db_path}")
+    engine = create_engine(urls_csdl_thu(db_path)[0])
     with engine.connect() as conn:
         loai = (
             conn.execute(text("SELECT ref_type FROM stock_movements WHERE type='IN'"))
@@ -332,7 +338,7 @@ def test_nhap_mua_van_ghi_GRN(client: TestClient, db_path: Path) -> None:
     d = _drug(client)
     assert _nhan_vao_o(client, d, qty="5", lot="MUA-1", loc=None).status_code == 201
 
-    engine = create_engine(f"sqlite:///{db_path}")
+    engine = create_engine(urls_csdl_thu(db_path)[0])
     with engine.connect() as conn:
         loai = (
             conn.execute(text("SELECT ref_type FROM stock_movements WHERE type='IN'"))
@@ -391,16 +397,20 @@ def test_kiem_ke_tron_vong_duyet_thi_ton_kho_MOI_doi(client: TestClient) -> None
     r = client.post(f"/api/v1/inventory/counts/{pid}/submit")
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "CHO_DUYET"
-    assert r.json()["lines"][0]["system_qty"] == "10.000"
+    assert Decimal(r.json()["lines"][0]["system_qty"]) == Decimal("10.000")
     assert r.json()["lines"][0]["lech"] == "-3.000"
 
     # 🔴 Nộp rồi mà tồn kho VẪN chưa đổi — đây là chỗ dễ code sai nhất.
-    assert client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"] == "10.000"
+    assert Decimal(
+        client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"]
+    ) == Decimal("10.000")
 
     r = client.post(f"/api/v1/inventory/counts/{pid}/approve")
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "DA_DUYET"
-    assert client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"] == "7.000"
+    assert Decimal(
+        client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"]
+    ) == Decimal("7.000")
 
     # Sổ vị trí đi theo, không lệch với sổ tổng.
     trong_o = client.get(f"/api/v1/inventory/locations/{o}/stock").json()
@@ -415,7 +425,7 @@ def test_duyet_ghi_chuyen_dong_ADJUST_ref_COUNT(client: TestClient, db_path: Pat
     client.post(f"/api/v1/inventory/counts/{pid}/submit")
     client.post(f"/api/v1/inventory/counts/{pid}/approve")
 
-    engine = create_engine(f"sqlite:///{db_path}")
+    engine = create_engine(urls_csdl_thu(db_path)[0])
     with engine.connect() as conn:
         rows = conn.execute(
             text("SELECT type, ref_type, quantity FROM stock_movements WHERE type='ADJUST'")
@@ -439,7 +449,9 @@ def test_tu_choi_thi_ton_kho_KHONG_doi(client: TestClient) -> None:
     r = client.post(f"/api/v1/inventory/counts/{pid}/reject")
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "TU_CHOI"
-    assert client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"] == "10.000"
+    assert Decimal(
+        client.get(f"/api/v1/inventory/on-hand?drug_id={d}").json()["on_hand"]
+    ) == Decimal("10.000")
 
 
 def test_dong_KHOP_khong_sinh_chuyen_dong_nao(client: TestClient, db_path: Path) -> None:
@@ -450,7 +462,7 @@ def test_dong_KHOP_khong_sinh_chuyen_dong_nao(client: TestClient, db_path: Path)
     client.post(f"/api/v1/inventory/counts/{pid}/submit")
     client.post(f"/api/v1/inventory/counts/{pid}/approve")
 
-    engine = create_engine(f"sqlite:///{db_path}")
+    engine = create_engine(urls_csdl_thu(db_path)[0])
     with engine.connect() as conn:
         n = conn.execute(text("SELECT count(*) FROM stock_movements WHERE type='ADJUST'")).scalar()
     engine.dispose()

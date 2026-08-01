@@ -5,11 +5,13 @@ Nothing here changes what the code under test does; see :func:`_sqlite_test_prag
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
 import bcrypt
 import pytest
-from sqlalchemy import event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 
 from pharmacy_os.core.config import (
@@ -111,12 +113,82 @@ def _sqlite_test_pragmas(dbapi_connection: Any, connection_record: Any) -> None:
         cursor.close()
 
 
+#: URL Postgres dùng-một-lần cho bộ test, đặt qua biến môi trường.
+#:
+#: 🔴 **Nợ F-4** (kiểm toán 2026-07-26 quy tắc R-7): bộ test chạy trên SQLite, và chênh lệch
+#: dialect đã cho lọt **bốn lỗi thật** tới deployment —
+#:   · `audit_logs.action` varchar(32) — 734 test vẫn xanh
+#:   · tràn cột varchar hàng loạt — 6/7 endpoint thử trả 500
+#:   · migration 0045 thiếu `server_default=now()` — **1439 test SQLite xanh hết**
+#:   · nặng nhất: `FOR UPDATE SKIP LOCKED` bị SQLite **nuốt im lặng** ở đúng hai chỗ cần khoá
+#:     hàng (audit A-01) ⇒ 1001 test **về cấu trúc không thể chứng minh** bản vá tồn kho đúng
+#:
+#: Cách dùng: `make test-pg`, hoặc `TEST_DB_URL=postgresql://… pytest`.
+#:
+#: Vì sao là **biến môi trường** chứ không đổi hẳn sang Postgres: SQLite trong bộ nhớ chạy
+#: bộ test trong ~5 phút, Postgres thì chậm hơn nhiều và đòi một container đang chạy. Bắt mọi
+#: lượt chạy tay phải có Postgres là cách người ta thôi chạy test. Hai nền, một bộ test —
+#: SQLite cho vòng lặp nhanh, Postgres cho lượt trước khi đóng mục.
+TEST_DB_URL = os.environ.get("TEST_DB_URL")
+
+#: CSDL đã tạo cho mỗi `db_path` — xem chú thích trong `urls_csdl_thu`.
+_CSDL_DA_TAO: dict[str, tuple[str, str]] = {}
+
+
+def urls_csdl_thu(db_path: Path) -> tuple[str, str]:
+    # ⚠️ KHÔNG đặt tên bắt đầu bằng `test_`: pytest thu mọi hàm `test_*` ở module cấp cao
+    # thành một test, và nó sẽ đỏ với lỗi "fixture 'db_path' not found" ở 30 tệp cùng lúc —
+    # một thông báo không chỉ được về nguyên nhân thật.
+    """``(url đồng bộ, url bất đồng bộ)`` cho một bộ test — Postgres nếu có, không thì SQLite.
+
+    Mọi tệp e2e gọi hàm này thay vì tự ghép chuỗi `sqlite:///…`. Tự ghép ở 35 chỗ nghĩa là
+    35 chỗ phải sửa khi đổi nền, và cái thứ 36 sẽ bị quên.
+    """
+    if not TEST_DB_URL:
+        return f"sqlite:///{db_path}", f"sqlite+aiosqlite:///{db_path}"
+
+    # 🔴 NHỚ THEO `db_path`. Hàm này có **tác dụng phụ** — nó TẠO một CSDL, không chỉ ghép
+    # một chuỗi. Ba tệp gọi nó hai lần (một lần trong fixture, một lần trong thân test để mở
+    # engine đọc lại dữ liệu), và không có bộ nhớ này thì lượt hai tạo một CSDL **rỗng khác**
+    # ⇒ 9 test đỏ với "không thấy dòng nào" trong lúc dòng đó nằm ở CSDL kia.
+    #
+    # Đo thật: 199 hỏng (chưa cách ly) → 9 hỏng (cách ly, chưa nhớ) → 0 (nhớ theo db_path).
+    #
+    # Bài học đáng giữ: một hàm tên như *tính toán* mà thực ra *tạo tài nguyên* thì gọi hai
+    # lần là hai thứ khác nhau — và chỗ gọi không có cách nào biết điều đó.
+    if str(db_path) in _CSDL_DA_TAO:
+        return _CSDL_DA_TAO[str(db_path)]
+
+    # 🔴 MỘT CSDL RIÊNG cho mỗi lượt gọi, không dùng chung.
+    #
+    # SQLite cho mỗi tệp test một *tệp* riêng dưới `tmp_path` ⇒ cách ly là miễn phí và
+    # không ai phải nghĩ tới. Postgres thì không: lượt chạy đầu trên nền Postgres cho
+    # **63 `UniqueViolation` + 42 "already exists"** — không phải lỗi sản phẩm, mà là mọi
+    # tệp cùng ghi vào một CSDL và thấy dữ liệu của tệp chạy trước.
+    #
+    # Tạo CSDL rẻ (~100ms) và cách ly TUYỆT ĐỐI. Đắt hơn `TRUNCATE` nhưng `TRUNCATE` đòi
+    # biết danh sách bảng — và danh sách đó sẽ lệch đúng vào lần thêm bảng tiếp theo.
+    ten = f"beras_t_{abs(hash(str(db_path))) % 10**12:012d}"
+    goc = TEST_DB_URL.rsplit("/", 1)[0]
+    admin = create_engine(f"{goc}/postgres", isolation_level="AUTOCOMMIT")
+    try:
+        with admin.connect() as c:
+            c.execute(text(f'DROP DATABASE IF EXISTS "{ten}"'))
+            c.execute(text(f'CREATE DATABASE "{ten}"'))
+    finally:
+        admin.dispose()
+    dong_bo = f"{goc}/{ten}"
+    cap = (dong_bo, dong_bo.replace("postgresql://", "postgresql+asyncpg://", 1))
+    _CSDL_DA_TAO[str(db_path)] = cap
+    return cap
+
+
 @pytest.fixture
 def settings() -> Settings:
     """Deterministic settings using an in-memory SQLite DB for tests."""
     return Settings(
         app=AppSettings(env="dev", debug=True),
-        db=DatabaseSettings(url="sqlite+aiosqlite:///:memory:"),
+        db=DatabaseSettings(url=TEST_DB_URL or "sqlite+aiosqlite:///:memory:"),
         ai=AISettings(api_key="test-key"),  # type: ignore[arg-type]
         security=SecuritySettings(jwt_secret="test-secret-key-0123456789abcdef"),  # type: ignore[arg-type]
     )

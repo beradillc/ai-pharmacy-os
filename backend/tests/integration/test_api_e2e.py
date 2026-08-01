@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import date, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -13,19 +14,21 @@ from sqlalchemy import create_engine
 from pharmacy_os.core.config import AppSettings, DatabaseSettings, SecuritySettings, Settings
 from pharmacy_os.main import create_app
 from pharmacy_os.models_registry import Base
+from tests.conftest import urls_csdl_thu
 
 
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
     db_path = tmp_path / "api.db"
+    _sync_url, _async_url = urls_csdl_thu(db_path)
     # Create the schema up-front via a sync engine on the same file.
-    sync_engine = create_engine(f"sqlite:///{db_path}")
+    sync_engine = create_engine(_sync_url)
     Base.metadata.create_all(sync_engine)
     sync_engine.dispose()
 
     settings = Settings(
         app=AppSettings(env="dev", debug=True),
-        db=DatabaseSettings(url=f"sqlite+aiosqlite:///{db_path}"),
+        db=DatabaseSettings(url=_async_url),
         security=SecuritySettings(allow_dev_auth=True),
     )
     with TestClient(create_app(settings)) as c:
@@ -64,14 +67,14 @@ def test_catalog_and_inventory_flow(client: TestClient) -> None:
 
     # 3) On-hand reflects both receipts.
     r = client.get("/api/v1/inventory/on-hand", params={"drug_id": drug_id})
-    assert r.json()["on_hand"] == "20.000"
+    assert Decimal(r.json()["on_hand"]) == Decimal("20.000")
 
     # 4) FEFO dispense pulls from the nearer-expiry batch first.
     r = client.post("/api/v1/inventory/dispense", json={"drug_id": drug_id, "quantity": "12"})
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["on_hand"] == "8.000"
-    assert body["allocations"][0]["quantity"] == "10.000"
+    assert Decimal(body["on_hand"]) == Decimal("8.000")
+    assert Decimal(body["allocations"][0]["quantity"]) == Decimal("10.000")
 
     # 5) Over-dispensing is rejected.
     r = client.post("/api/v1/inventory/dispense", json={"drug_id": drug_id, "quantity": "999"})
@@ -151,7 +154,7 @@ def test_stock_screen_reads_lots_then_labels_them_in_one_call(client: TestClient
     rows = stock.json()
 
     assert [r["lot_no"] for r in rows] == ["LO-GAN", "LO-XA"]  # cận hạn lên trước
-    assert rows[0]["quantity"] == "12.000"
+    assert Decimal(rows[0]["quantity"]) == Decimal("12.000")
 
     ids = sorted({r["drug_id"] for r in rows})
     labelled = client.get("/api/v1/drugs", params={"ids": ids})

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
@@ -13,18 +14,20 @@ from sqlalchemy import create_engine
 from pharmacy_os.core.config import AppSettings, DatabaseSettings, SecuritySettings, Settings
 from pharmacy_os.main import create_app
 from pharmacy_os.models_registry import Base
+from tests.conftest import urls_csdl_thu
 
 
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
     db_path = tmp_path / "sales_api.db"
-    sync_engine = create_engine(f"sqlite:///{db_path}")
+    _sync_url, _async_url = urls_csdl_thu(db_path)
+    sync_engine = create_engine(_sync_url)
     Base.metadata.create_all(sync_engine)
     sync_engine.dispose()
 
     settings = Settings(
         app=AppSettings(env="dev", debug=True),
-        db=DatabaseSettings(url=f"sqlite+aiosqlite:///{db_path}"),
+        db=DatabaseSettings(url=_async_url),
         security=SecuritySettings(allow_dev_auth=True),
     )
     with TestClient(create_app(settings)) as c:
@@ -190,7 +193,7 @@ def test_register_return_partial_then_full(client: TestClient) -> None:
     )
     assert partial.status_code == 200, partial.text
     assert partial.json()["status"] == "PARTIALLY_RETURNED"
-    assert partial.json()["lines"][0]["returned_quantity"] == "1.000"
+    assert Decimal(partial.json()["lines"][0]["returned_quantity"]) == Decimal("1.000")
 
     full = client.post(
         f"/api/v1/sales/{sale['id']}/returns", json={"line_id": line_id, "quantity": "1"}

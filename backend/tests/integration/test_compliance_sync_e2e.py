@@ -23,6 +23,7 @@ from sqlalchemy import create_engine, text
 from pharmacy_os.core.config import AppSettings, DatabaseSettings, SecuritySettings, Settings
 from pharmacy_os.main import create_app
 from pharmacy_os.models_registry import Base
+from tests.conftest import urls_csdl_thu
 
 
 @pytest.fixture
@@ -32,13 +33,14 @@ def db_path(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def client(db_path: Path) -> Iterator[TestClient]:
-    sync_engine = create_engine(f"sqlite:///{db_path}")
+    _sync_url, _async_url = urls_csdl_thu(db_path)
+    sync_engine = create_engine(_sync_url)
     Base.metadata.create_all(sync_engine)
     sync_engine.dispose()
 
     settings = Settings(
         app=AppSettings(env="dev", debug=True),
-        db=DatabaseSettings(url=f"sqlite+aiosqlite:///{db_path}"),
+        db=DatabaseSettings(url=_async_url),
         security=SecuritySettings(allow_dev_auth=True),
     )
     with TestClient(create_app(settings)) as c:
@@ -69,7 +71,7 @@ def _sale_body(client_uuid: str, drug_id: str, qty: str) -> dict[str, object]:
 
 def _sync_rows(db_path: Path, client_uuid: str) -> list[tuple[str, str]]:
     """(payload_type, status) of every national_sync_logs row for a client_uuid."""
-    engine = create_engine(f"sqlite:///{db_path}")
+    engine = create_engine(urls_csdl_thu(db_path)[0])
     try:
         with engine.connect() as conn:
             result = conn.execute(

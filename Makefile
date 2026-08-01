@@ -55,6 +55,19 @@ test:
 # Test đua B-01/B-02/B-04 trên Postgres THẬT (đã vá ở F-5 2026-07-27 — 10 passed,
 # 0 xfail). Đọc backend/tests/concurrency/README.md trước khi diễn giải kết quả, và
 # giữ nguyên quy tắc: xfail ở thư mục đó = BUG CHƯA VÁ, không phải "test đã xanh".
+# 🔴 NỢ F-4 (kiểm toán 26/07 R-7): bộ test chạy trên SQLite, và chênh lệch dialect đã cho
+# lọt BỐN lỗi thật tới deployment — `audit_logs.action` varchar(32) · tràn cột varchar hàng
+# loạt · migration 0045 thiếu `server_default` (1439 test SQLite xanh hết) · `FOR UPDATE SKIP
+# LOCKED` bị SQLite NUỐT IM LẶNG ở đúng hai chỗ cần khoá hàng.
+#
+# Hai nền, một bộ test: SQLite cho vòng lặp nhanh (`make test`), Postgres cho lượt trước khi
+# đóng mục. Cần `docker compose up -d postgres` và CSDL `beras_test`.
+test-pg:
+	docker exec -e PGPASSWORD=pharma ai_pharmacy_os-postgres-1 psql -U pharma -d postgres \
+	  -c "DROP DATABASE IF EXISTS beras_test" -c "CREATE DATABASE beras_test" >/dev/null
+	cd backend && TEST_DB_URL=postgresql://pharma:pharma@localhost:5432/beras_test \
+	  ./.venv/bin/python -m pytest tests -q
+
 test-concurrency:
 	cd backend && pytest tests/concurrency
 

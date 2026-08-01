@@ -23,6 +23,7 @@ from pharmacy_os.modules.crm.application.dto import mask_phone
 from pharmacy_os.modules.iam.domain.system_roles import (
     SYSTEM_ROLES_BY_CODE,
 )
+from tests.conftest import urls_csdl_thu
 
 SO_THAT = "0357205494"
 DA_CHE = "*494"
@@ -87,12 +88,13 @@ def test_chi_CAP_CHUOI_co_quyen_xem_so_day_du() -> None:
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
     db_path = tmp_path / "phone_mask.db"
-    sync_engine = create_engine(f"sqlite:///{db_path}")
+    _sync_url, _async_url = urls_csdl_thu(db_path)
+    sync_engine = create_engine(_sync_url)
     Base.metadata.create_all(sync_engine)
     sync_engine.dispose()
     settings = Settings(
         app=AppSettings(env="dev", debug=True),
-        db=DatabaseSettings(url=f"sqlite+aiosqlite:///{db_path}"),
+        db=DatabaseSettings(url=_async_url),
         security=SecuritySettings(allow_dev_auth=True),
     )
     with TestClient(create_app(settings)) as c:

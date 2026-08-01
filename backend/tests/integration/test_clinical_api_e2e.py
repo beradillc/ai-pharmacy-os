@@ -21,6 +21,7 @@ from pharmacy_os.main import create_app
 from pharmacy_os.models_registry import Base
 from pharmacy_os.modules.clinical.domain import DrugInteraction, InteractionSeverity
 from pharmacy_os.modules.clinical.infrastructure.mappers import interaction_to_orm
+from tests.conftest import urls_csdl_thu
 
 
 def _seed_interaction(engine: object, **kw: object) -> None:
@@ -42,7 +43,8 @@ def _seed_interaction(engine: object, **kw: object) -> None:
 
 def _build_client(tmp_path: Path) -> TestClient:
     db_path = tmp_path / "clinical_api.db"
-    sync_engine = create_engine(f"sqlite:///{db_path}")
+    _sync_url, _async_url = urls_csdl_thu(db_path)
+    sync_engine = create_engine(_sync_url)
     Base.metadata.create_all(sync_engine)
     _seed_interaction(sync_engine, a="Warfarin", b="Aspirin", severity=InteractionSeverity.MAJOR)
     _seed_interaction(
@@ -52,7 +54,7 @@ def _build_client(tmp_path: Path) -> TestClient:
 
     settings = Settings(
         app=AppSettings(env="dev", debug=True),
-        db=DatabaseSettings(url=f"sqlite+aiosqlite:///{db_path}"),
+        db=DatabaseSettings(url=_async_url),
         security=SecuritySettings(allow_dev_auth=True),
     )
     return TestClient(create_app(settings))

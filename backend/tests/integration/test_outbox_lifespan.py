@@ -29,6 +29,7 @@ from pharmacy_os.core.config import (
 )
 from pharmacy_os.main import create_app
 from pharmacy_os.models_registry import Base
+from tests.conftest import urls_csdl_thu
 
 _BACKGROUND_TASKS = frozenset({"outbox-relay", "outbox-retention", "national-sync-retry"})
 
@@ -37,12 +38,13 @@ def _settings(
     tmp_path: Path, outbox: OutboxSettings, national_sync: NationalSyncSettings | None = None
 ) -> Settings:
     db_path = tmp_path / "lifespan.db"
-    sync_engine = create_engine(f"sqlite:///{db_path}")
+    _sync_url, _async_url = urls_csdl_thu(db_path)
+    sync_engine = create_engine(_sync_url)
     Base.metadata.create_all(sync_engine)
     sync_engine.dispose()
     return Settings(
         app=AppSettings(env="dev", debug=False),
-        db=DatabaseSettings(url=f"sqlite+aiosqlite:///{db_path}"),
+        db=DatabaseSettings(url=_async_url),
         ai=AISettings(api_key="test-key"),  # type: ignore[arg-type]
         security=SecuritySettings(jwt_secret="test-secret-key-0123456789abcdef"),  # type: ignore[arg-type]
         outbox=outbox,

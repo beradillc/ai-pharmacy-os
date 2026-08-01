@@ -29,6 +29,7 @@ from pharmacy_os.models_registry import Base
 from pharmacy_os.modules.iam.application import BootstrapTenantInput, IamService
 from pharmacy_os.modules.iam.domain import CASHIER
 from pharmacy_os.modules.iam.interface import build_repositories
+from tests.conftest import urls_csdl_thu
 
 ADMIN_EMAIL = "admin@bera.vn"
 ADMIN_PASSWORD = "MatKhauAdmin2026"
@@ -62,11 +63,12 @@ async def _bootstrap(db_url: str) -> None:
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
     db_path = tmp_path / "analytics_e2e.db"
-    sync_engine = create_engine(f"sqlite:///{db_path}")
+    _sync_url, _async_url = urls_csdl_thu(db_path)
+    sync_engine = create_engine(_sync_url)
     Base.metadata.create_all(sync_engine)
     sync_engine.dispose()
 
-    db_url = f"sqlite+aiosqlite:///{db_path}"
+    db_url = _async_url
     asyncio.run(_bootstrap(db_url))
 
     settings = Settings(

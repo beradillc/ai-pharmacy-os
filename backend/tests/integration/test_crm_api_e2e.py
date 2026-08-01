@@ -20,6 +20,7 @@ from pharmacy_os.main import create_app
 from pharmacy_os.models_registry import Base
 from pharmacy_os.modules.catalog.domain import ActiveIngredient
 from pharmacy_os.modules.catalog.infrastructure.mappers import ingredient_to_orm
+from tests.conftest import urls_csdl_thu
 
 _PENICILLIN_ID = uuid4()
 
@@ -27,7 +28,8 @@ _PENICILLIN_ID = uuid4()
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
     db_path = tmp_path / "crm_api.db"
-    sync_engine = create_engine(f"sqlite:///{db_path}")
+    _sync_url, _async_url = urls_csdl_thu(db_path)
+    sync_engine = create_engine(_sync_url)
     Base.metadata.create_all(sync_engine)
     with Session(sync_engine) as session:
         session.add(ingredient_to_orm(ActiveIngredient(id=_PENICILLIN_ID, name="Penicillin")))
@@ -36,7 +38,7 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
 
     settings = Settings(
         app=AppSettings(env="dev", debug=True),
-        db=DatabaseSettings(url=f"sqlite+aiosqlite:///{db_path}"),
+        db=DatabaseSettings(url=_async_url),
         security=SecuritySettings(allow_dev_auth=True),
     )
     with TestClient(create_app(settings)) as c:

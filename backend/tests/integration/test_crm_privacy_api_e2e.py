@@ -28,6 +28,7 @@ from pharmacy_os.modules.crm.domain import ANONYMISED_NAME
 from pharmacy_os.modules.iam.application import BootstrapTenantInput, IamService
 from pharmacy_os.modules.iam.domain import BRANCH_PHARMACIST, CASHIER
 from pharmacy_os.modules.iam.interface import build_repositories
+from tests.conftest import urls_csdl_thu
 
 ADMIN_EMAIL = "admin@bera.vn"
 ADMIN_PASSWORD = "MatKhauAdmin2026"
@@ -66,11 +67,12 @@ async def _seed(db_url: str) -> None:
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
     db_path = tmp_path / "crm_privacy_e2e.db"
-    sync_engine = create_engine(f"sqlite:///{db_path}")
+    _sync_url, _async_url = urls_csdl_thu(db_path)
+    sync_engine = create_engine(_sync_url)
     Base.metadata.create_all(sync_engine)
     sync_engine.dispose()
 
-    db_url = f"sqlite+aiosqlite:///{db_path}"
+    db_url = _async_url
     asyncio.run(_seed(db_url))
     settings = Settings(
         app=AppSettings(env="dev", debug=True),

@@ -33,6 +33,7 @@ from pharmacy_os.models_registry import Base
 from pharmacy_os.modules.iam.application import BootstrapTenantInput, IamService
 from pharmacy_os.modules.iam.domain import BRANCH_PHARMACIST, CASHIER
 from pharmacy_os.modules.iam.interface import build_repositories
+from tests.conftest import urls_csdl_thu
 
 ADMIN_EMAIL = "admin@bera.vn"
 ADMIN_PASSWORD = "AdminPass@2026"
@@ -72,11 +73,12 @@ def db_path(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def client(db_path: Path) -> Iterator[TestClient]:
-    sync_engine = create_engine(f"sqlite:///{db_path}")
+    _sync_url, _async_url = urls_csdl_thu(db_path)
+    sync_engine = create_engine(_sync_url)
     Base.metadata.create_all(sync_engine)
     sync_engine.dispose()
 
-    db_url = f"sqlite+aiosqlite:///{db_path}"
+    db_url = _async_url
     asyncio.run(_bootstrap(db_url))
 
     settings = Settings(
@@ -208,7 +210,7 @@ def test_moi_luot_XEM_anh_ghi_mot_dong_audit(client: TestClient, db_path: Path) 
             == 200
         )
 
-    engine = create_engine(f"sqlite:///{db_path}")
+    engine = create_engine(urls_csdl_thu(db_path)[0])
     with engine.connect() as conn:
         rows = conn.execute(
             select(AuditLogORM).where(
@@ -232,7 +234,7 @@ def _doi_chi_nhanh(db_path: Path, rx_id: str) -> None:
     **sống sót một đột biến**: tôi cho `toan_chuoi = True` (ai cũng thấy toàn chuỗi) mà
     24/24 test vẫn xanh. Đúng thứ kỷ luật #14 sinh ra để bắt.
     """
-    engine = create_engine(f"sqlite:///{db_path}")
+    engine = create_engine(urls_csdl_thu(db_path)[0])
     with engine.begin() as conn:
         kq = conn.execute(
             text("UPDATE prescriptions SET branch_id = :b WHERE id = :i"),
