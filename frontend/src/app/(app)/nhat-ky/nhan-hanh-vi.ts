@@ -116,8 +116,10 @@ export const NHOM: { nhan: string; ma: string }[] = [
  * Mã lấy từ backend (`target_type=` và `_record(ctx, …, "…")`), không đoán.
  */
 export const DOI_TUONG: Record<string, string> = {
+  ai_recommendation: "Khuyến nghị của AI",
   batch: "Lô thuốc",
   branch: "Chi nhánh",
+  controlled_ledger_entry: "Bút toán sổ kiểm soát",
   customer: "Khách hàng",
   drug: "Thuốc",
   drug_return_record: "Phiếu trả thuốc",
@@ -129,9 +131,11 @@ export const DOI_TUONG: Record<string, string> = {
   prescription: "Đơn thuốc",
   purchase_order: "Đơn mua hàng",
   refresh_token: "Phiên đăng nhập",
+  reorder_suggestion: "Đề xuất đặt hàng",
   sale: "Đơn bán",
   stock_count: "Phiếu kiểm kê",
   stock_reconciliation_needed: "Chênh lệch tồn",
+  tenant_compliance_config: "Thông tin cơ sở",
   user: "Tài khoản",
   user_role: "Vai trò tài khoản",
 };

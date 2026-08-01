@@ -38,6 +38,13 @@ PASSWORD="${PASSWORD:-${BERAS_PASSWORD:-NhaThuoc650@2026}}"
 export EMAIL PASSWORD
 export BERAS_EMAIL="$EMAIL" BERAS_PASSWORD="$PASSWORD"
 API_URL="${API_URL:-${BASE_URL%:*}:8000/api/v1}"
+# 🔴 QUY ƯỚC TÊN BIẾN THỨ BA, phát hiện 2026-08-01 khi chạy gom cả bộ: `check-customers` và
+# `check-receive-flow` đọc `BERAS_BASE`, các cổng khác đọc `BASE_URL`, và `API_URL` thì tính
+# ra ở đây nhưng **không hề export**. Hệ quả: ba cổng đó âm thầm chạy vào IP mặc định cũ
+# (192.168.1.10) và đỏ vì HẠ TẦNG, không phải vì sản phẩm — mà đọc log thì trông y hệt nhau.
+# Cùng cách xử đã dùng cho EMAIL/BERAS_EMAIL: xuất CẢ HAI ở đây, chỗ biết địa chỉ có đúng một.
+export BASE_URL API_URL
+export BERAS_BASE="$BASE_URL"
 CHAY_CA_NHOM_GHI=0
 [ "${1:-}" = "--all" ] && CHAY_CA_NHOM_GHI=1
 
