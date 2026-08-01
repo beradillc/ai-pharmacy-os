@@ -357,13 +357,33 @@ try {
 
   // ── 12 · thanh toán ──────────────────────────────────────────────────────
   begin("12");
-  // Đoạn 11 kết thúc bằng `mouse.wheel(0, 700)`. Trang cuộn MƯỢT, nên ngay sau đó nút vẫn
-  // đang trôi và Playwright từ chối bấm với `waiting for element to be stable` — đọc như nút
-  // hỏng, thật ra là bấm quá sớm. Cho nó lắng rồi mới chạm.
+  // 🔴 Ở khổ ĐIỆN THOẠI giỏ hàng thu lại thành **thanh đáy**, phải bấm "Xem giỏ" mới mở
+  //    (`gioMo` trong `(pos)/page.tsx` — Chain báo 31/07 vì nút Thanh toán từng nằm cách
+  //    3,9 màn hình). Kịch bản quay này viết trước lúc đó nên bấm thẳng vào Thanh toán.
+  //    Triệu chứng đánh lừa: `count()` = 1 nhưng `boundingBox()` = **null** cả 4 lần đo,
+  //    và Playwright báo `waiting for element to be stable` — đọc như nút đang trôi, thật
+  //    ra là nút KHÔNG CÓ HỘP BỐ CỤC vì nằm trong khay chưa mở.
+  //    Quay luôn thao tác mở giỏ: người xem trên điện thoại cũng phải bấm đúng nút này.
+  const xemGio = page.locator('button:has-text("Xem giỏ")');
+  if (await xemGio.count()) {
+    await tap(xemGio.first());
+    await page.waitForTimeout(1200);
+  }
   const pay = page.locator('button:has-text("Thanh toán")').first();
   await pay.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(1200);
   await tap(pay);
+
+  // 🔴 XÁC NHẬN HAI BƯỚC (Chain yêu cầu 31/07): **cùng một nút**, bấm lần đầu chỉ mở khối
+  //    xác nhận và KHÔNG gọi máy chủ; bấm lần hai mới chốt đơn. Kịch bản quay viết trước
+  //    lúc đó nên bấm một lần rồi đợi "Đã bán thành công" — câu đó không bao giờ hiện.
+  //    Giữ màn ở khối xác nhận một nhịp: đó chính là thứ người xem cần đọc, và là lý do
+  //    bước này tồn tại.
+  const xacNhan = page.locator("text=Sửa lại đơn");
+  if (await xacNhan.count()) {
+    await page.waitForTimeout(2000);
+    await tap(pay);
+  }
   await page.locator("text=Đã bán thành công").waitFor({ timeout: 25_000 });
   await page.waitForTimeout(1200);
   await hold();

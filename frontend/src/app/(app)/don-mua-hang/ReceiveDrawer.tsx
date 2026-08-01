@@ -166,8 +166,17 @@ export function ReceiveDrawer({
 
       {done ? (
         <div className={local.notice} role="status">
-          <strong>Đã nhận hàng và chốt phiếu.</strong> Tồn kho đã tăng theo từng lô
-          vừa nhập. Đơn mua chuyển sang{" "}
+          {/* 🔴 Câu này từng ghi cứng "Đã nhận hàng và CHỐT PHIẾU" cho cả hai trường hợp, rồi
+              ngay sau đó nói phiếu chuyển sang "Nhận một phần" — hai vế NÓI NGƯỢC NHAU trong
+              cùng một khối. Người đọc không biết phiếu xong hay chưa, mà đây đúng là câu duy
+              nhất trên màn trả lời câu hỏi đó. Lộ ra khi xem lại ảnh của bản quay (kỷ luật
+              #20). Nay cả hai vế cùng phân nhánh theo một điều kiện. */}
+          <strong>
+            {active.length === items.length
+              ? "Đã nhận hàng và chốt phiếu."
+              : "Đã nhận một phần, phiếu vẫn đang mở."}
+          </strong>{" "}
+          Tồn kho đã tăng theo từng lô vừa nhập. Đơn mua chuyển sang{" "}
           <strong>{active.length === items.length ? "“Đã nhận đủ”" : "“Nhận một phần”"}</strong>.
           <div className={local.actions}>
             <button type="button" className={styles.button} onClick={onClose}>
