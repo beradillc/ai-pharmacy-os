@@ -26,6 +26,11 @@
 export const NHAN_TRUONG: Record<string, string> = {
   price: "Giá bán",
   count: "Số hoạt chất",
+  // Thêm lại 2026-08-01 khi `POST /inventory/adjust` (M-07) bắt đầu ghi `old_qty`/`new_qty`.
+  // 🔴 Nhãn này từng bị **cổng bắt buộc gỡ bỏ** vài giờ trước, vì lúc ấy tôi đặt nó SẴN cho
+  // một tính năng chưa viết — chiều "không nhãn thừa" đỏ đúng lý do. Đó là cổng làm việc
+  // của nó: một bảng nhãn trỏ vào thứ backend không ghi là một lời hứa suông.
+  qty: "Số lượng tồn",
 };
 
 /**

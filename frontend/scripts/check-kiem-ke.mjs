@@ -133,12 +133,64 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   const tonSauDuyet = await donSoTrongO(p, BASE, khoMa, oMa, loMa);
   const duyetMoiDoiTon = tonSauDuyet === 7;
 
+  // ⑤ ĐIỀU CHỈNH NHANH (UAT M-07, 01/08) — cùng ô, cùng lô, 7 → 5.
+  //    🔴 Đo bằng đường KHÁC (Sơ đồ kho), y như mệnh đề ②/③: nếu đường tắt sửa thẳng
+  //    `stock_balances` mà quên `stock_at_location`, màn kiểm kê vẫn báo thành công và chỉ
+  //    Sơ đồ kho mới thấy hai sổ đã lệch. Đó đúng là kịch bản đường tắt này sinh ra để
+  //    tránh, nên phép đo phải nhìn từ phía có thể phát hiện nó.
+  await p.goto(`${BASE}/kiem-ke`, { waitUntil: "load" });
+  await p.waitForTimeout(2500);
+  await p.locator("button", { hasText: /^Điều chỉnh nhanh một lô…$/ }).click();
+  await p.waitForTimeout(500);
+  // `selectOption` chỉ nhận nhãn là CHUỖI CHÍNH XÁC, không nhận biểu thức chính quy — nên
+  // đọc danh sách lựa chọn ra rồi tự tìm. Bản đầu truyền `new RegExp(...)` và Playwright ném
+  // "expected string, got object": phép đo hỏng, không phải sản phẩm.
+  const giaTriO = await p.evaluate(
+    (ma) =>
+      [...document.querySelectorAll('select[aria-label="Ô cần điều chỉnh"] option')].find((o) =>
+        o.textContent.includes(ma),
+      )?.value ?? "",
+    `${khoMa}/${oMa}`,
+  );
+  if (!giaTriO) throw new Error(`không thấy ô ${khoMa}/${oMa} trong danh sách điều chỉnh`);
+  await p.selectOption('select[aria-label="Ô cần điều chỉnh"]', giaTriO);
+  await p.waitForTimeout(2500);
+  const giaTriLo = await p.evaluate(
+    (ma) =>
+      [...document.querySelectorAll('select[aria-label="Lô cần điều chỉnh"] option')].find((o) =>
+        o.textContent.includes(ma),
+      )?.value ?? "",
+    loMa,
+  );
+  if (!giaTriLo) throw new Error(`không thấy lô ${loMa} trong ô vừa chọn`);
+  await p.selectOption('select[aria-label="Lô cần điều chỉnh"]', giaTriLo);
+  await p.fill('input[aria-label="Số đếm được thực tế"]', "5");
+  await p.fill('input[aria-label="Lý do điều chỉnh"]', "Vỡ 2 hộp khi xếp kệ");
+
+  // ⑤b Chênh lệch phải nói ra TRƯỚC khi bấm: ô nhập hỏi "số đếm được", còn thứ người ta
+  //     nghĩ trong đầu là "thiếu 2" — nhập 2 vào đó là sai một cách trông rất giống đúng.
+  const noiChenh = /sổ đang ghi[\s\S]*7[\s\S]*sẽ thành[\s\S]*5[\s\S]*thiếu\s*2/i.test(
+    await p.locator("body").innerText(),
+  );
+  await p.screenshot({ path: `${OUT}/${ten}-3-dieu-chinh.png`, fullPage: true });
+
+  await p.locator("button", { hasText: /^Ghi điều chỉnh$/ }).click();
+  await p.waitForTimeout(4000);
+  const noiDaGhi = /Phiếu kiểm kê .* đã duyệt/i.test(await p.locator("body").innerText());
+  await p.screenshot({ path: `${OUT}/${ten}-4-da-dieu-chinh.png`, fullPage: true });
+
+  const tonSauDieuChinh = await donSoTrongO(p, BASE, khoMa, oMa, loMa);
+  const dieuChinhDoiTon = tonSauDieuChinh === 5;
+
   const dat =
     noiRaLech &&
     cotChenh.dat &&
     nopChuaDungTon &&
     duyetMoiDoiTon &&
     noiCungMotNguoi &&
+    noiChenh &&
+    noiDaGhi &&
+    dieuChinhDoiTon &&
     loi.length === 0;
   if (!dat) hong++;
 
@@ -148,6 +200,8 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   console.log(`  ② NỘP chưa đụng tồn kho: ${nopChuaDungTon ? "✓" : "🔴"} · ô đang giữ ${tonSauNop} (phải là 10)`);
   console.log(`  ③ DUYỆT mới đổi tồn kho: ${duyetMoiDoiTon ? "✓" : "🔴"} · ô đang giữ ${tonSauDuyet} (phải là 7)`);
   console.log(`  ④ nói ra "cùng một người": ${noiCungMotNguoi ? "✓" : "🔴"}`);
+  console.log(`  ⑤ điều chỉnh nhanh 7→5 (M-07): sổ vị trí đang giữ ${tonSauDieuChinh} (phải là 5) ${dieuChinhDoiTon ? "✓" : "🔴 HAI SỔ ĐÃ LỆCH"}`);
+  console.log(`  ⑤b nói ra chênh lệch trước khi bấm: ${noiChenh ? "✓" : "🔴"} · xác nhận đã tạo phiếu: ${noiDaGhi ? "✓" : "🔴"}`);
   console.log(`  lỗi JS: ${loi.length}${loi.length ? " · " + loi.join(" | ") : ""}`);
   await ctx.close();
 }

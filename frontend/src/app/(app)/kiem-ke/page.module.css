@@ -137,3 +137,42 @@
     content: none;
   }
 }
+
+/* ── Điều chỉnh tồn nhanh (UAT M-07, 2026-08-01) ─────────────────────────────────
+   Khối này CỐ Ý trông khác phần kiểm kê thường: nó đổi tồn kho ngay lập tức, không
+   qua bước chờ duyệt của người khác. Trông giống hệt phần còn lại sẽ khiến người ta
+   dùng nó theo phản xạ. */
+.dieuChinh {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px dashed var(--beras-border);
+  border-radius: var(--radius-sm);
+  background: var(--beras-surface);
+}
+
+.dieuChinhY {
+  margin-bottom: var(--space-2);
+  color: var(--beras-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* Chênh lệch nói ra TRƯỚC khi bấm — ô nhập hỏi "số đếm được", còn thứ người ta nghĩ
+   trong đầu thường là "thiếu 3". */
+.chenh {
+  margin: var(--space-2) 0;
+  font-size: var(--text-sm);
+}
+
+/* `wrap`: hai nút, và ép một hàng trên khổ 390px là đúng bẫy tràn đã gặp bốn lần (#21). */
+.dieuChinhNut {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.daGhi {
+  margin-top: var(--space-2);
+  color: var(--beras-ok, #15803d);
+  font-size: var(--text-sm);
+}

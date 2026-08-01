@@ -8,6 +8,7 @@ import {
   NHAN_TRANG_THAI,
   useApproveCount,
   useCountLine,
+  useAdjustStock,
   useOpenCount,
   useRejectCount,
   useStockCount,
@@ -82,6 +83,7 @@ export default function StockCountPage() {
       <TabManGop tabs={TAB_KHO} />
 
       {demDuoc && <MoPhien onMo={setDangMo} />}
+      {demDuoc && duyetDuoc && <DieuChinhNhanh />}
 
       {ds.isLoading ? (
         <p className={styles.hint}>Đang tải…</p>
@@ -184,6 +186,168 @@ function MoPhien({ onMo }: { onMo: (id: string) => void }) {
         <span className={styles.error} role="alert">
           {loi}
         </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * **Điều chỉnh tồn nhanh một lô** — đóng lỗi M-07 (UAT 2026-08-01).
+ *
+ * 🔴 Vì sao nó nằm ở ĐÂY chứ không phải một màn riêng: nó **là** luồng kiểm kê, chỉ gộp
+ * bốn lượt bấm thành một. Đặt nó ở một màn khác sẽ dạy người dùng rằng có *hai cách* đổi
+ * tồn kho — và cách nghĩ đó là bước đầu tiên dẫn tới một đường tắt thật sự bỏ qua phiếu.
+ *
+ * Chỉ hiện khi có **cả hai** quyền `inventory.receive` và `inventory.reconcile`: ai chỉ
+ * đếm được mà không duyệt được vẫn phải đi đường dài, để người duyệt là một người khác.
+ * Không hiện một nút rồi báo 403 — dự án đã bỏ lối đó từ Sprint 9.
+ */
+function DieuChinhNhanh() {
+  const [mo, setMo] = useState(false);
+  const [o, setO] = useState("");
+  const [lo, setLo] = useState("");
+  const [so, setSo] = useState("");
+  const [lyDo, setLyDo] = useState("");
+  const [loi, setLoi] = useState<string | null>(null);
+  const [xong, setXong] = useState<string | null>(null);
+
+  const locs = useLocations();
+  const cho = (locs.data ?? []).filter((l) => l.kind === "BIN" || l.kind === "SHELF");
+  const trongO = useStockAtLocation(o || null);
+  const ten = useDrugNames((trongO.data ?? []).map((r) => r.drug_id));
+  const sua = useAdjustStock();
+
+  const loDangChon = (trongO.data ?? []).find((r) => r.batch_id === lo);
+
+  if (!mo) {
+    return (
+      <button type="button" className={styles.ghost} onClick={() => setMo(true)}>
+        Điều chỉnh nhanh một lô…
+      </button>
+    );
+  }
+
+  return (
+    <div className={local.dieuChinh}>
+      <p className={local.dieuChinhY}>
+        Sửa tồn của <strong>một lô trong một ô</strong> mà không phải đếm cả ô. Vẫn tạo một{" "}
+        <strong>phiếu kiểm kê đã duyệt</strong> — không có đường nào đổi tồn mà không để lại
+        phiếu.
+      </p>
+      <div className={styles.controls}>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Ô</span>
+          <select
+            className={styles.select}
+            value={o}
+            onChange={(e) => {
+              setO(e.target.value);
+              setLo("");
+            }}
+            aria-label="Ô cần điều chỉnh"
+          >
+            <option value="">— chọn ô —</option>
+            {cho.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.path}
+                {l.name ? ` · ${l.name}` : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Lô</span>
+          <select
+            className={styles.select}
+            value={lo}
+            onChange={(e) => setLo(e.target.value)}
+            disabled={o === ""}
+            aria-label="Lô cần điều chỉnh"
+          >
+            <option value="">— chọn lô —</option>
+            {(trongO.data ?? []).map((r) => (
+              <option key={r.batch_id} value={r.batch_id}>
+                {ten.nameOf(r.drug_id) ?? `Mã ${r.drug_id.slice(0, 8)}`} · lô {r.lot_no} · sổ ghi{" "}
+                {r.quantity}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Số ĐẾM ĐƯỢC thực tế</span>
+          <input
+            className={styles.input}
+            type="number"
+            min="0"
+            step="any"
+            value={so}
+            onChange={(e) => setSo(e.target.value)}
+            aria-label="Số đếm được thực tế"
+          />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Lý do (bắt buộc)</span>
+          <input
+            className={styles.input}
+            type="text"
+            value={lyDo}
+            onChange={(e) => setLyDo(e.target.value)}
+            placeholder="Vỡ 3 hộp khi xếp kệ"
+            aria-label="Lý do điều chỉnh"
+          />
+        </label>
+      </div>
+
+      {/* 🔴 Nói ra CHÊNH LỆCH trước khi bấm. Ô nhập hỏi "số đếm được", nhưng thứ người ta
+          nghĩ trong đầu thường là "thiếu 3" — và nhập 3 vào ô hỏi số đếm được là cách sai
+          một cách trông rất giống đúng. Hiện phép trừ ra là chặn đúng nhầm lẫn đó. */}
+      {loDangChon && so !== "" && Number.isFinite(Number(so)) && (
+        <p className={local.chenh}>
+          Sổ đang ghi <strong>{loDangChon.quantity}</strong> → sẽ thành <strong>{so}</strong> (
+          {Number(so) - Number(loDangChon.quantity) >= 0 ? "thừa " : "thiếu "}
+          {Math.abs(Number(so) - Number(loDangChon.quantity))})
+        </p>
+      )}
+
+      <div className={local.dieuChinhNut}>
+        <button
+          type="button"
+          className={styles.button}
+          disabled={o === "" || lo === "" || so === "" || lyDo.trim().length < 3 || sua.isPending}
+          onClick={async () => {
+            setLoi(null);
+            setXong(null);
+            try {
+              const p = await sua.mutateAsync({
+                location_id: o,
+                batch_id: lo,
+                actual_qty: so,
+                reason: lyDo,
+              });
+              setXong(p.id);
+              setSo("");
+              setLyDo("");
+            } catch (err) {
+              setLoi(err instanceof ApiError ? err.problem.detail : String(err));
+            }
+          }}
+        >
+          {sua.isPending ? "Đang ghi…" : "Ghi điều chỉnh"}
+        </button>
+        <button type="button" className={styles.ghost} onClick={() => setMo(false)}>
+          Đóng
+        </button>
+      </div>
+      {loi && (
+        <p className={styles.error} role="alert">
+          {loi}
+        </p>
+      )}
+      {xong && (
+        <p className={local.daGhi}>
+          ✓ Đã ghi. Phiếu kiểm kê <span className={styles.mono}>{xong.slice(0, 8)}</span> đã duyệt
+          — xem trong danh sách bên dưới, và lý do nằm ở <em>Nhật ký hoạt động</em>.
+        </p>
       )}
     </div>
   );

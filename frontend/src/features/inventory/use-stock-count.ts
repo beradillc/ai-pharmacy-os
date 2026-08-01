@@ -94,3 +94,28 @@ export const NHAN_TRANG_THAI: Record<StockCount["status"], string> = {
   DA_DUYET: "Đã duyệt",
   TU_CHOI: "Từ chối",
 };
+
+/**
+ * **Điều chỉnh tồn một lô trong một lượt** — UAT lỗi M-07 (2026-08-01).
+ *
+ * 🔴 Không phải một đường đổi tồn kho mới. Máy chủ chạy trọn luồng kiểm kê đã có (mở →
+ * đếm → nộp → duyệt) và trả về phiếu đã duyệt, nên mọi lượt điều chỉnh vẫn để lại một
+ * phiếu tra được — thứ thanh tra hỏi khi tồn sổ khác tồn thực.
+ *
+ * Vì thế nó cần **cả hai** quyền `inventory.receive` và `inventory.reconcile`: đường tắt
+ * bỏ bớt lượt bấm, không bỏ bớt thẩm quyền.
+ *
+ * `reason` bắt buộc — máy chủ trả 422 nếu rỗng hoặc chỉ toàn dấu cách.
+ */
+export function useAdjustStock() {
+  const lamMoi = useLamMoi();
+  return useMutation({
+    mutationFn: (v: {
+      location_id: string;
+      batch_id: string;
+      actual_qty: string;
+      reason: string;
+    }) => apiFetch<StockCount>("/inventory/adjust", { method: "POST", body: v }),
+    onSuccess: lamMoi,
+  });
+}
