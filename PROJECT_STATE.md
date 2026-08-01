@@ -7930,3 +7930,75 @@ MYPY=0  RUFF=0  FORMAT=0  IMPORTLINTER=0
 
 Ba việc còn lại xếp theo tỉ lệ hoàn vốn: **① `git remote`** (chờ Chain) · **② Phase 12 mức
 1** · **③ `SalesPorts`**.
+
+---
+
+## 7dd. 🏥 CSDL CHẠY THỬ THẬT — Quầy thuốc 650 (2026-08-01)
+
+Chain giao: **xoá toàn bộ CSDL cũ**, dựng **một** CSDL duy nhất cho Quầy thuốc 650 (xã Thạnh
+Trị, Vĩnh Long — dược sĩ Trần Thị Trinh Thư, chủ quầy) để **chạy thử một tuần tại quầy** và
+**làm video training**.
+
+Bàn giao đầy đủ: `docs/QUAY_THUOC_650_CHAY_THU.md`.
+
+### Đã làm
+
+| Bước | Kết quả |
+|---|---|
+| Sao lưu toàn cụm trước khi xoá | `~/backup_truoc_khi_xoa_20260801_1406.sql` (5,8 MB, `pg_dumpall`) |
+| Xoá 8 CSDL cũ | `nhathuoc650` · `nt650` · `nt650v2` · `pharmacy_os` · `pharmacy_os_demo` · `pharmacy_os_restore_drill` · `pharmacy_os_test` · `beras_test` |
+| Dựng `qt650` | migrate `0001`→`0045` · seed tham chiếu · bootstrap tenant · danh mục |
+| Mốc khôi phục "quay lại đầu" | `~/beras-moc-khoi-phuc/` kèm `README.md` |
+
+### Dữ liệu — đo bằng SQL, không tin log
+
+```
+thuoc=70  ke_don=25  hoat_chat=61  thuoc_co_hoat_chat=63  nguoi_dung=1
+ton=0  khach=0  don_hang=0  vi_tri=0
+```
+
+Bảy mã không có hoạt chất là **vật tư y tế** — đúng, không phải bỏ sót.
+
+### 🔴 Vì sao KHÔNG dùng `demo_pharmacy`
+
+Seeder đó dựng một nhà thuốc **giả** đầy đủ (tồn kho, đơn bán lùi ngày, khách hàng) để đưa
+khách xem trong mười phút. Trộn nó vào một CSDL sắp chạy **thật** là sai lầm tốn kém nhất có
+thể xảy ra ở đây: **một dòng tồn kho giả nằm lẫn trong kho thật sẽ được đối chiếu, được báo
+cáo, và không ai nhớ nó từ đâu ra.**
+
+### 📌 Chính phần mềm bắt được thiếu sót của tôi
+
+Màn Danh mục thuốc cảnh báo *"9 thuốc chưa có hoạt chất"* ⇒ soi ra **hai mã thật bị bỏ**
+(Otrivin → Xylometazolin; Bổ phế Nam Hà → nhóm dược liệu). Không nối thì cảnh báo dị ứng **im
+lặng vĩnh viễn** trên đúng những mã đó — đúng khiếm khuyết §7ce.
+
+Sửa seed rồi **dựng lại cả CSDL**, không vá: lúc đó nó còn trống nên dựng lại sạch hơn.
+
+Đây là lần đầu một cảnh báo **do chính dự án viết ra** bắt được lỗi của người vận hành nó.
+
+### 🟠 Cờ pháp lý — GĐ nêu, KHÔNG kết luận
+
+Chain gọi cơ sở là **"Quầy thuốc"**. Theo Luật Dược, **quầy thuốc** và **nhà thuốc** là hai
+loại hình bán lẻ **khác nhau** — khác về trình độ người phụ trách và về **phạm vi thuốc được
+bán**. Danh mục có **25 mã kê đơn**; nếu phạm vi hành nghề hẹp hơn nhà thuốc thì một số mã
+**có thể không được phép bán** tại quầy.
+
+**Không kết luận** — quy tắc R-10: không kết luận phạm vi/nghĩa vụ từ một tầng văn bản, phải
+đọc đủ Luật → Nghị định → Thông tư. Đây là cờ để **Trợ lý Pháp Lý rà** trước khi tuần chạy
+thử phát sinh giao dịch thật. Rà rẻ: xem Giấy chứng nhận đủ điều kiện kinh doanh ghi loại
+hình gì, đối chiếu 25 mã ETC.
+
+### GĐ đề xuất thêm (Chain mời)
+
+| Đề xuất | Vì sao |
+|---|---|
+| **Tài khoản thứ hai — thu ngân** | Thu ngân **không có** `rx.approve` (Luật Dược Đ6.5.h) ⇒ quay được cảnh *thu ngân bán ETC bị chặn, phải nhờ dược sĩ duyệt*. Đó vừa là điểm mạnh nhất của phần mềm, vừa là điều quầy cần chứng minh khi bị kiểm tra. Để Chain **tự tạo** — chính nó cũng là một cảnh video |
+| **Điền `ORG__PHONE` / `ORG__TAX_CODE`** | Hoá đơn in bỏ hẳn hai dòng đó nếu trống. Tôi **không bịa** hai con số này |
+| **Sửa giá theo giá nhập thật** | 70 mã có giá tham khảo — không phải giá của quầy |
+| **Sao lưu hằng ngày** | Dữ liệu bán hàng **thật**, không phải demo |
+| **Kịch bản 10 cảnh video** | Cùng thứ tự với dựng dữ liệu thật ⇒ quay một lần được cả hai. Cảnh 6 (bán ETC có duyệt) và 7 (thu ngân bị chặn) là hai cảnh đáng quay nhất |
+
+### Điểm dừng
+
+App đang chạy trên `qt650` tại `http://192.168.1.10:3000`. Đăng nhập
+`trinhthu@quaythuoc650.vn` — phần mềm bắt đổi mật khẩu lần đầu.
