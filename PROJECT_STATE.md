@@ -7869,3 +7869,64 @@ mục lục cho `PROJECT_STATE.md` (nay hơn 7.400 dòng) ④ gom port `SalesSer
 `SalesPorts` (chữ ký tám tham số đã suýt nổ một lần).
 
 Vẫn còn treo từ P1: **CSDL thử `p1etc_thu`** chờ Chain xoá.
+
+---
+
+## 7dc. 🔧 TỒN ĐỌNG — 3/6 đóng, 3 còn lại có lý do rõ (2026-08-01)
+
+Chain duyệt *"làm hết các tồn đọng"*. Chốt 6 bước, **đóng 3**, và nói rõ 3 cái còn lại thay
+vì im lặng thu hẹp.
+
+### ✅ Đã đóng
+
+| # | Việc | Kết quả |
+|---|---|---|
+| 1 | Xoá CSDL thử `p1etc_thu` | `DROPDB_EXIT=0`, xác nhận bằng `psql -l` |
+| 2 | Mục lục §7 + sửa khối tóm tắt | 105 dòng mục lục **sinh từ tiêu đề thật**; header từng đứng yên ở *"Sprint 7 · 2026-07-26"* suốt **6 ngày và 30 mục nhật ký** |
+| 3 | **Nợ F-4 — bộ test chạy trên Postgres** | `make test-pg` → **1455 passed**, `PYTEST_PG_EXIT=0`. `make test` (SQLite) vẫn **1455 passed** |
+
+### 🔴 F-4 — ba lỗi của chính bản sửa, mỗi lỗi một bài học
+
+| # | Lỗi | Bài học |
+|---|---|---|
+| 1 | Đặt tên helper `test_db_urls` ⇒ **pytest thu nó thành một test**, đỏ 30 tệp cùng lúc | Tên bắt đầu bằng `test_` ở module cấp cao là một hợp đồng với pytest, không phải một cái tên |
+| 2 | Lượt đầu Postgres: **199 hỏng** (63 `UniqueViolation` + 42 *already exists*) | SQLite cho mỗi tệp một *tệp* riêng ⇒ cách ly **miễn phí và vô hình**. Đổi nền thì thứ vô hình đó biến mất, và nó không nằm trong bất kỳ test nào |
+| 3 | Còn **9 hỏng**: helper gọi hai lần **tạo hai CSDL** | Một hàm tên như *tính toán* mà thực ra *tạo tài nguyên* thì gọi hai lần là hai thứ khác nhau — **chỗ gọi không có cách nào biết** |
+
+Đo thật: **199 → 9 → 1**.
+
+Cái **cuối cùng** là một chênh lệch dialect thật, đúng thứ F-4 tồn tại để phơi ra: SQLite trả
+`"0.000"`, Postgres trả `"0"` cho cùng một `Decimal`. **Sản phẩm đúng ở cả hai; test sai** —
+nó khẳng định **định dạng chuỗi** thay vì **giá trị**. 13 khẳng định cùng loại trên 3 tệp.
+
+> Không chạy trên Postgres thì 13 khẳng định đó **xanh mãi mãi và sai mãi mãi** — chúng canh
+> một thứ không ai quan tâm (chuỗi) thay vì thứ có quan tâm (số).
+
+**Hai nền, một bộ test** — cố ý không đổi hẳn sang Postgres: SQLite 5:35, Postgres 22:36 và
+đòi container. Bắt mọi lượt chạy tay phải có Postgres là cách người ta **thôi chạy test**.
+
+### 🚧 CHƯA LÀM — nói rõ, không giấu
+
+| # | Việc | Vì sao chưa |
+|---|---|---|
+| 4 | **`git remote` để CI chạy** | 🔴 **Chặn ở phía Chain, không phải bỏ.** Máy **chưa cài `gh`**, repo **không có remote**. Và đẩy toàn bộ mã nguồn nhà thuốc lên GitHub là **quyết định của Chain**: tài khoản nào, riêng tư hay công khai. Tôi không tự làm một hành động ra-ngoài không dễ đảo ngược |
+| 5 | **Phase 12 — sơ đồ trực quan mức 1** | Cần thêm một endpoint tổng hợp tồn theo ô (`StockAtLocationRepository` hiện chỉ có truy vấn **một** ô; lưới cần **mọi** ô, gọi N lần là N lượt đi mạng). Là một mục đầy đủ: port + repo + service + HTTP + test + lưới + CSS + cổng + ảnh |
+| 6 | **Gom port `SalesService` thành `SalesPorts`** | Refactor thuần, chạm mọi bên gọi, và mỗi lượt kiểm là 5:35 (SQLite) + 22:36 (Postgres). Giá trị thấp nhất trong bốn việc — không ai **thấy** nó |
+
+**Vì sao dừng ở đây thay vì làm tiếp:** ở §7db tôi từ chối nhét Phase 12 vào P6 với lý do
+*"gộp thêm một tính năng giao diện nguyên vẹn sẽ cho ra thứ chưa được kiểm tử tế"*. Lý lẽ đó
+không đổi khi việc trở nên gấp hơn. Bắt đầu mục thứ tư mà không còn chỗ chạy đủ cổng là đúng
+thứ kỷ luật #6 gọi là **overclaim DoD**.
+
+### Cổng tại điểm dừng
+
+```
+POSTGRES: 1455 passed (22:36) — PYTEST_PG_EXIT=0   ← LẦN ĐẦU trong lịch sử dự án
+SQLITE:   1455 passed (5:35)  — PYTEST_SQLITE_EXIT=0
+MYPY=0  RUFF=0  FORMAT=0  IMPORTLINTER=0
+```
+
+### Điểm dừng chính xác
+
+Ba việc còn lại xếp theo tỉ lệ hoàn vốn: **① `git remote`** (chờ Chain) · **② Phase 12 mức
+1** · **③ `SalesPorts`**.
