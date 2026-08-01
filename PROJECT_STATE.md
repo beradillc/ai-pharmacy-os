@@ -1,14 +1,150 @@
 # PROJECT_STATE — AI Pharmacy OS
 
-> Nguồn sự thật về **trạng thái hiện tại** của dự án. Cập nhật mỗi khi có thay đổi quan trọng.
-> Cập nhật cuối: **2026-07-26** · Sprint hiện tại: **Sprint 7 (Compliance & Analytics) — ✅ ĐÓNG (DoD đạt, verify trên Postgres thật, §7ap)**. Sprint 1–6 đã đóng; Sprint 5 DONE mức MOCK (`# BLOCKER: AI__API_KEY` thật). **Sprint 8 (Plugin & Hardening) — ĐANG MỞ** (Chain ủy quyền toàn quyền GĐ, §7ax): report đợt 2 + **retry DAV (§7ay)** đã đóng. **⚠️ Quy trình đổi (§7az, 2026-07-26):** 4 mục Plugin loader/2FA/Mã hóa at-rest/`payment_vnpay` nay qua cổng nghiêm ngặt hơn full-auto (thiết kế → 2 lượt duyệt GĐ+Chain → code → GĐĐH tự kiểm tra thật). **Mục 1/4 Plugin loader ✅ XONG (§7ba)** · **Mục 2/4 2FA ✅ XONG (§7bb, 2026-07-26)** · **Mục 3/4 mã hoá at-rest ĐANG LÀM — bước 5/N XONG (§7bc, 2026-07-26)**: primitive+cột+2FA+compliance PII+CRM+lệnh backfill đã có (5 commit `27d816f`→`5a3f930`); còn nợ runbook bật trên deployment thật + quyết định thao tác xoay khoá trước khi coi mục 3/4 XONG hẳn. **Mục 4/4 `payment_vnpay` — CODE XONG cả 4 bước (§7bd, 2026-07-26), CHẶN ở "GĐĐH tự kiểm tra thật trên sandbox VNPAY"**: cần Chain cấp `tmn_code`/`hash_secret` sandbox (Claude không tự đăng ký được) + xác nhận tunnel công khai tạm thời — chưa coi là XONG, chưa mở mục kế tiếp. Rate limit/observability/load test vẫn full-auto bình thường, chưa mục nào bắt đầu. **🔍 KIỂM TOÁN ĐỘC LẬP (2026-07-26): Phiên A+B XONG — 29 phát hiện, 0 Critical, 6 High, 2 mục 🚫 RELEASE BLOCKER Sprint 9 (A-02/A-03) + 1 mục ⏸️ chờ Chain quyết (A-05). Đọc `docs/audit/00_AUDIT_INDEX.md`. Phiên C (audit quy trình + báo cáo cuối) chờ phiên hạn mức đầy — §7bf.**
+> Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Kế tiếp:** 2 blocker nền cũ (§7j) đã gỡ 1 — RBAC/IAM thật XONG (§7k), nên hồ sơ KH đã làm được và **đã xong**; còn lại **tích điểm KH** (chưa làm, phải qua [docs/14](docs/14_FEATURE_PROCESS.md)) và **`docs/legal/` vẫn thiếu** Luật BVDLCN 91/2025, Luật Dược, NĐ 356/2025, GPP. Nợ mang sang sau Sprint 7 (cập nhật §7ay): ~~report đợt 2~~ **XONG**; ~~retry DAV~~ **XONG (§7ay — relay riêng, không qua `event_outbox`; kết nối DAV thật vẫn chặn ở đặc tả API)**; tồn-âm khi outbox async (gộp Sprint 8 load test); `analytics` v2 (Sprint 8/9); FE cho `analytics` (hoãn Sprint 9, quyết định §7ax).
-
+> **Cập nhật cuối: 2026-08-01** — đóng **kế hoạch 6 phiên** (§7cv → §7db): chín lệnh Chain giao
+> 01/08 xong hết, cộng BERAS V2 Phase 4. Trước đó: Sprint 1–8 đã đóng, BERAS V2 Phase 0–11
+> (§7cu), kiểm toán độc lập 2026-07-26 (`docs/audit/00_AUDIT_INDEX.md`).
+>
+> 🔴 **Khối tóm tắt này từng đứng yên ở "Sprint 7, 2026-07-26" suốt sáu ngày và 30 mục nhật ký**
+> — nguồn sự thật nói sai về chính nó. Sửa cùng lúc với việc thêm mục lục (§0). Ai đóng một mục
+> phải sửa **dòng "Cập nhật cuối"** này, không chỉ thêm mục ở cuối tệp.
+>
+> **Còn nợ, xếp theo tỉ lệ hoàn vốn** (chi tiết `docs/ARCHITECTURE_REVIEW.md`):
+> ① `git remote` để CI thật sự chạy — `ci.yml` nằm trong repo từ commit đầu và **chưa chạy lần
+> nào** (kiểm toán C-03) · ② bộ test chạy trên **Postgres** (nợ F-4 — 4 lỗi đã lọt vì thiếu) ·
+> ③ BERAS V2 **Phase 12** sơ đồ trực quan (có thiết kế `docs/inventory/LOCATION_MAP.md`) ·
+> ④ **Phase 8** multi-supplier (hoãn có lý do, cần Chain chốt tiêu chí chọn NCC).
+>
+> **Nợ nền cũ chưa gỡ:** `docs/legal/` thiếu Luật BVDLCN 91/2025 · Luật Dược · NĐ 356/2025 · GPP.
+> `# BLOCKER: AI__API_KEY` thật (Sprint 5 vẫn mức MOCK). Tích điểm KH chưa làm.
+>
 > ⚠️ **Lưu ý vận hành — trạng thái docker/hạ tầng trong tài liệu này là ảnh chụp tại thời điểm ghi, KHÔNG phải trạng thái sống.**
 > Container có thể tự `Exited` giữa các phiên dù tài liệu ghi "đang chạy"/"healthy" (đã xảy ra 2026-07-22: postgres Exited 5h,
 > redis Exited 18h dù §7b ghi "đang chạy healthy"). **Luôn chạy `docker compose ps` để xác nhận thực tế mỗi khi resume phiên —
 > không tin nội dung mục "Hạ tầng dev"/"Hạ tầng còn mở" trong tài liệu.**
+
+---
+
+## 0. MỤC LỤC §7 — nhật ký triển khai theo phiên
+
+> 🔴 **Vì sao có mục này** (2026-08-01): tệp này đã **hơn 7.400 dòng** và **chỉ-ghi-thêm**.
+> Kiểm toán 26/07 chỉ ra chính xác cơ chế hỏng: *"PROJECT_STATE dài 3.606 dòng và chỉ-ghi-thêm;
+> phiên sau không đọc lại"* — và đó là lý do 16 sự cố "niềm tin giả" chỉ có **một** bài học được
+> thể chế hoá. Nay tệp dài **gấp đôi** lúc đó. Một trí nhớ dự án không tra được thì bằng không.
+>
+> **Cách dùng:** tra bằng mã mục (`§7cv`), đừng cuộn. Mục mới **thêm vào cuối** tệp và thêm một
+> dòng vào bảng này — cùng lúc, không để sau.
+>
+> Mã mục chạy `7` → `7a` → … → `7z` → `7aa` → … Thứ tự bảng là **thứ tự thời gian**.
+
+| Mục | Ngày | Nội dung |
+|---|---|---|
+| [§7](#7-s5-4-cross-module-prescription-sales-xon) |  | S5.4 Cross-module prescription↔sales — XONG (để phiên sau nối lại ngay) |
+| [§7b](#7b-compliance-c-1-c-5-ng-l-u-v-t-phi-n-sau) |  | Compliance C.1–C.5 (ĐÃ ĐÓNG — lưu vết để phiên sau nối lại nếu mở tiếp) |
+| [§7c](#7c-s5-5-clinical-ai-done-m-c-mock-5-5-1-5-5) |  | S5.5 Clinical AI (DONE mức MOCK — 5.5.1→5.5.3 xong; 5.5.4 blocker) |
+| [§7d](#7d-sprint-6-procurement-crm-ang-m-b-c-1-xon) |  | Sprint 6 — Procurement & CRM (ĐANG MỞ — Bước 1 XONG hoàn toàn: domain + app+infra+migration) |
+| [§7e](#7e-module-crm-xong-ho-n-to-n-domain-app-inf) | 2026-07-22 | Module `crm` (XONG HOÀN TOÀN — domain + app+infra+migration `0009` + interface HTTP, ) |
+| [§7f](#7f-feature-flag-ai-theo-tenant-saas-xong-ho) | 2026-07-22 | Feature flag AI theo tenant (SaaS) — XONG HOÀN TOÀN |
+| [§7g](#7g-i-m-b-t-u-ti-p-theo-ch-c-n-procurement) | 2026-07-22 | Điểm bắt đầu tiếp theo — chỉ còn `procurement` (, resume point) |
+| [§7h](#7h-sprint-6-b-c-2-5-5-4-auto-check-t-ng-t-c) | 2026-07-22 | Sprint 6 Bước 2 — 5.5.4 auto-check tương tác + nối dị ứng KH (XONG HOÀN TOÀN, ) |
+| [§7i](#7i-procurement-domain-thu-n-xong-d-ng-tr-c) | 2026-07-22 | `procurement` — domain thuần XONG (, DỪNG trước app+infra) |
+| [§7j](#7j-i-m-b-t-u-ti-p-theo-t-nh-n-ng-th-ng-m-i) | 2026-07-23 | Điểm bắt đầu tiếp theo — tính năng thương mại qua cổng `docs/14` (, resume point) |
+| [§7k](#7k-module-iam-th-t-users-roles-jwt-xong-4-4) | 2026-07-23 | Module IAM thật (users/roles/JWT) — ✅ XONG 4/4 bước |
+| [§7l](#7l-audit-logs-persist-nh-t-k-truy-v-t-g-n) | 2026-07-23 | `audit_logs` — persist nhật ký truy vết (gỡ nợ F8) — ✅ XONG 3/3 bước |
+| [§7n](#7n-ch-t-phi-n-opus-c-m-c-n-y-tr-c-khi-l-m) | 2026-07-23 | ✅ CHỐT PHIÊN  (Opus) — ĐỌC MỤC NÀY TRƯỚC KHI LÀM GÌ Ở PHIÊN SAU |
+| [§7m](#7m-h-s-s-c-kh-e-kh-ch-h-ng-qua-c-ng-docs-14) | 2026-07-23 | Hồ sơ sức khỏe khách hàng — qua cổng `docs/14` Bước 0-4, ĐÃ DUYỆT, CHƯA CODE |
+| [§7o](#7o-s4-6-fe-pos-t-i-thi-u-4-5-b-c-phi-n-sonn) | 2026-07-23 | S4.6 — FE POS tối thiểu, 4/5 bước (, phiên Sonnet) |
+| [§7p](#7p-i-m-d-ng-to-n-phi-n-ch-s-p-g-s-p-x-p-l) | 2026-07-23 | ⏸️ ĐIỂM DỪNG TOÀN PHIÊN  — chờ sếp + GĐ sắp xếp lại ưu tiên |
+| [§7q](#7q-mount-router-compliance-xong-phi-n-b-n-u) | 2026-07-23 | Mount router `compliance` — XONG (, phiên bàn ưu tiên GĐ+Code) |
+| [§7r](#7r-audit-cho-prescription-compliance-xong-m) | 2026-07-23 | Audit cho `prescription` + `compliance` — XONG (, mục #4 danh sách ưu tiên đã duyệt) |
+| [§7s](#7s-s4-6-b-c-5-dexie-offline-queue-xong-m-c) | 2026-07-23 | S4.6 Bước 5 — Dexie offline queue: XONG (, mục #7 danh sách ưu tiên đã duyệt) |
+| [§7t](#7t-ch-t-phi-n-bu-i-b-n-u-ti-n-g-code-11-11) | 2026-07-23 | ✅ CHỐT PHIÊN  (buổi bàn ưu tiên GĐ+Code, 11/11 mục đã duyệt XONG) |
+| [§7u](#7u-endpoint-http-active-ingredients-xong-n) | 2026-07-23 | Endpoint HTTP `active_ingredients` — XONG (, nợ kỹ thuật đơn module, tiếp phiên sau §7t) |
+| [§7v](#7v-audit-cho-sales-xong-g-ch-n-u-ti-n-audit) | 2026-07-23 | Audit cho `sales` — XONG (, GĐ chọn ưu tiên: audit 5 module còn lại, bắt đầu từ sales) |
+| [§7w](#7w-audit-cho-inventory-xong-ti-p-th-t-g-ch) | 2026-07-23 | Audit cho `inventory` — XONG (, tiếp thứ tự GĐ đã chọn sau §7v) |
+| [§7x](#7x-audit-cho-procurement-xong-ti-p-th-t-g-c) | 2026-07-23 | Audit cho `procurement` — XONG (, tiếp thứ tự GĐ đã chọn sau §7w) |
+| [§7y](#7y-audit-cho-clinical-xong-ti-p-th-t-g-ch-n) | 2026-07-23 | Audit cho `clinical` — XONG (, tiếp thứ tự GĐ đã chọn sau §7x) |
+| [§7z](#7z-audit-cho-catalog-xong-m-ch-5-module-ng) | 2026-07-23 | Audit cho `catalog` — XONG  — **MẠCH 5 MODULE ĐÃ ĐÓNG, 9/9 MODULE CÓ AUDIT** |
+| [§7aa](#7aa-persist-tr-h-ng-register-return-xong-use) | 2026-07-23 | Persist trả hàng (`register_return`) — XONG use-case, KHÔNG auto-restock tồn kho |
+| [§7ab](#7ab-nh-m-vi-c-r-i-ro-th-p-duy-t-3-vi-c-c-l-p) | 2026-07-23 | Nhóm việc rủi ro thấp đã duyệt  — 3 việc độc lập, mỗi việc 1 commit |
+| [§7ac](#7ac-g-p-l-pa-b-xong-cho-c-2-lu-ng-g-t-ch-t-t) | 2026-07-23 | Gộp lô (PA B) — XONG cho cả 2 luồng (, GĐ tự chốt theo full-auto) |
+| [§7ad](#7ad-medicationhistoryentry-t-ng-d-ng-otc-xon) | 2026-07-24 | MedicationHistoryEntry tự động + dị ứng OTC — XONG (, phiên Opus full-auto, 3 bước) |
+| [§7ae](#7ae-outbox-retry-b-c-1-3-codec-serialize-des) | 2026-07-24 | Outbox/retry — Bước 1/3: codec serialize/deserialize (domain thuần) — XONG |
+| [§7af](#7af-i-m-d-ng-phi-n-ch-s-p-i-model-sang-opus) | 2026-07-24 | ⏸️ ĐIỂM DỪNG PHIÊN  — chờ sếp đổi model sang Opus cho outbox Bước 2/3 |
+| [§7ag](#7ag-outbox-retry-b-c-2-3-machinery-b-ng-repo) | 2026-07-24 | Outbox/retry — Bước 2/3: machinery (bảng + repo + relay) NGỦ, flag OFF — XONG |
+| [§7ah](#7ah-i-m-d-ng-phi-n-b-c-2-xong-s-p-ch-t-a-t) | 2026-07-24 | ⏸️ ĐIỂM DỪNG PHIÊN  — Bước 2 xong, sếp chốt (a), tạm dừng |
+| [§7ai](#7ai-outbox-b-c-3-3-flip-xong-phi-n-opus-ful) | 2026-07-24 | ✅ OUTBOX BƯỚC 3/3 — FLIP XONG (, phiên Opus full-auto) |
+| [§7aj](#7aj-retention-event-outbox-phi-n-opus-full) | 2026-07-24 | ✅ RETENTION `event_outbox` (, phiên Opus full-auto — GĐ chọn việc) |
+| [§7ak](#7ak-i-m-d-ng-phi-n-m-ch-outbox-ng-tr-n-chuy) | 2026-07-24 | ⏸️ ĐIỂM DỪNG PHIÊN  — mạch outbox đóng trọn, chuyển sang Design |
+| [§7al](#7al-audit-dashboard-xong-phi-n-opus-full-au) | 2026-07-24 | ✅ AUDIT DASHBOARD — XONG (, phiên Opus full-auto — GĐ giao 1/3 mục Sprint 7) |
+| [§7am](#7am-y-u-c-u-analytics-report-xu-t-kh-u-g-ch) | 2026-07-24 | Yêu cầu `analytics` + `report xuất khẩu` — GĐ chốt (, Chain duyệt) |
+| [§7an](#7an-report-xu-t-kh-u-t-1-xong-sonnet-t-2-an) | 2026-07-24 | `report xuất khẩu` đợt 1 XONG (Sonnet, ) — đợt 2 + `analytics` còn nợ |
+| [§7ao](#7ao-l-c-doanh-thu-theo-nh-n-vi-n-b-n-c-t-sol) | 2026-07-25 | Lọc doanh thu theo nhân viên bán — cột `sold_by_user_id` XONG (Opus, ) |
+| [§7ap](#7ap-module-analytics-xong-sprint-7-ng-opus-f) | 2026-07-25 | Module `analytics` XONG — Sprint 7 ĐÓNG (, Opus full-auto) |
+| [§7aq](#7aq-r-to-n-b-r-ng-c-t-varchar-chain-duy-t-sa) | 2026-07-25 | Rà toàn bộ độ rộng cột `varchar` — Chain duyệt sau §7ap |
+| [§7ar](#7ar-tt-18-2026-tt-byt-thay-tt-20-2017-b-c-1) | 2026-07-25 | TT 18/2026/TT-BYT thay TT 20/2017 — Bước 1/3 (chỉ tài liệu) XONG |
+| [§7as](#7as-c-xong-n-163-2025-tt33-2025-tt26-2025-o) | 2026-07-25 | Đọc xong NĐ163/2025 + TT33/2025 + TT26/2025 — ⭐ ĐẢO NGƯỢC KẾT LUẬN BÁO CÁO ĐỊNH KỲ (, GĐ dưới ủy quyền toàn qu |
+| [§7at](#7at-b-o-c-o-nh-k-m-u-s-06-n-163-i-u-35-2-b-c) | 2026-07-25 | Báo cáo định kỳ Mẫu số 06 (NĐ163 Điều 35.2) — Bước 0-3 xong, bắt đầu code |
+| [§7au](#7au-b-c-4-6-m-ch-tt18-bi-n-b-n-nh-n-l-i-thu) | 2026-07-25 | Bước 4/6 mạch TT18 — Biên bản nhận lại thuốc PL XVIII |
+| [§7av](#7av-b-c-5-6-m-ch-tt18-k-t-xu-t-cu-i-ng-y-has) | 2026-07-25 | Bước 5/6 mạch TT18 — Kết xuất cuối ngày + hash toàn vẹn (, Sonnet) |
+| [§7aw](#7aw-b-c-6-6-m-ch-tt18-k-x-c-nh-n-i-n-t-h-ng) | 2026-07-25 | Bước 6/6 mạch TT18 — Ký xác nhận điện tử, hướng A (, Opus — MẠCH ĐÓNG TRỌN) |
+| [§7ay](#7ay-retry-y-dav-xong-opus-full-auto-sprint-8) | 2026-07-25 | Retry đẩy DAV — XONG (, Opus full-auto, Sprint 8 item 0b) |
+| [§7ax](#7ax-b-o-c-o-giai-o-n-1-sprint-8-chain-duy-t) | 2026-07-25 | Báo cáo Giai đoạn 1 Sprint 8 (Chain duyệt) + ủy quyền toàn quyền GĐ — mở Sprint 8 |
+| [§7az](#7az-i-m-d-ng-phi-n-chain-t-quy-tr-nh-nghi-m) | 2026-07-26 | ĐIỂM DỪNG PHIÊN  — Chain đặt quy trình nghiêm ngặt hơn cho 4 mục đụng tiền/khóa mã hóa thật |
+| [§7ba](#7ba-plugin-loader-xong-m-c-1-4-quy-tr-nh-ngh) | 2026-07-26 | Plugin loader XONG — mục 1/4 quy trình nghiêm ngặt (, Sonnet) |
+| [§7bb](#7bb-2fa-vai-tr-nh-y-c-m-xong-m-c-2-4-quy-tr) | 2026-07-26 | 2FA vai trò nhạy cảm XONG — mục 2/4 quy trình nghiêm ngặt (, Sonnet) |
+| [§7bc](#7bc-m-ho-at-rest-b-c-5-n-m-c-3-4-l-nh-backfi) | 2026-07-26 | Mã hoá at-rest bước 5/N mục 3/4 — lệnh backfill (, Sonnet, nối phiên bị mất điện) |
+| [§7bd](#7bd-payment-vnpay-code-xong-c-4-b-c-ch-n-t) | 2026-07-26 | `payment_vnpay` — CODE XONG cả 4 bước, CHẶN ở tự kiểm tra sandbox thật (, Sonnet) |
+| [§7bf](#7bf-ki-m-to-n-c-l-p-phi-n-a-b-xong-phi-n-c-c) | 2026-07-26 | KIỂM TOÁN ĐỘC LẬP — Phiên A+B XONG, Phiên C chờ hạn mức đầy |
+| [§7be](#7be-d-ng-phi-n-ng-nghi-th-c-chain-cho-ng-phi) | 2026-07-26 | DỪNG PHIÊN đúng nghi thức  — Chain: "cho đóng phiên toàn bộ đúng quy trình" |
+| [§7bg](#7bg-f-1-r-1-r-10-c-ng-c-r-ng-b-i-h-c-v-o-v-n) | 2026-07-26 | F-1 + R-1→R-10 — cổng có RĂNG, bài học vào văn bản có hiệu lực (, Opus) |
+| [§7bh](#7bh-i-m-d-ng-phi-n-f-4-thi-t-k-xong-duy-t-c) | 2026-07-27 | ⏸️ ĐIỂM DỪNG PHIÊN  — F-4 THIẾT KẾ XONG, ĐÃ DUYỆT, **CHƯA CODE** |
+| [§7bi](#7bi-f-4-n-n-test-ng-th-i-c-th-t-opus) | 2026-07-27 | F-4 — NỀN TEST ĐỒNG THỜI CÓ THẬT (, Opus) |
+| [§7bj](#7bj-i-m-d-ng-phi-n-phi-n-2-trong-ng-y-f-4-x) | 2026-07-27 | ⏸️ ĐIỂM DỪNG PHIÊN (, phiên 2 trong ngày) — F-4 XONG, F-5 MỞ ĐƯỢC |
+| [§7bk](#7bk-f-5-b-01-b-02-b-04-v-7-7-xfail-ng-opus) | 2026-07-27 | F-5 — B-01 / B-02 / B-04 ĐÃ VÁ, 7/7 XFAIL ĐÓNG (, Opus) |
+| [§7bl](#7bl-t-i-u-pytest-t-1-ng-n-alembic-opus) | 2026-07-27 | TỐI ƯU PYTEST ĐỢT 1 + ĐÓNG NỢ ALEMBIC (, Opus) |
+| [§7bm](#7bm-ng-3-release-blocker-sprint-9-f-2-f-3-f) | 2026-07-27 | ĐÓNG 3 RELEASE BLOCKER SPRINT 9 — F-2 / F-3 / F-15 (, Opus) |
+| [§7bn](#7bn-pilot-decision-lock-f-19-thi-t-k-xong-op) | 2026-07-28 | PILOT DECISION LOCK + F-19 THIẾT KẾ XONG (, Opus) |
+| [§7bo](#7bo-f-9-rate-limit-8-12-opus) | 2026-07-28 | F-9 RATE LIMIT — 8/12 (, Opus) |
+| [§7bp](#7bp-f-16-di-n-t-p-kh-i-ph-c-ch-y-th-t-f-8-ru) | 2026-07-28 | F-16 DIỄN TẬP KHÔI PHỤC (ĐÃ CHẠY THẬT) + F-8 RUNBOOK (, Opus) |
+| [§7bq](#7bq-d-ops-01-d-sec-01-kho-script-backup-t-ki) | 2026-07-28 | D-OPS-01 + D-SEC-01 KHOÁ · SCRIPT BACKUP TỰ KIỂM CHỨNG (, Opus) |
+| [§7br](#7br-staging-d-ng-xong-f-8-ch-y-h-t-f-17-o-op) | 2026-07-28 | STAGING DỰNG XONG · F-8 CHẠY HẾT · F-17 ĐÃ ĐO (, Opus) |
+| [§7bs](#7bs-ng-phi-n-s9-m-thi-t-k-ui-duy-t) | 2026-07-28 | ĐÓNG PHIÊN  — S9 mở, thiết kế UI đã duyệt |
+| [§7bt](#7bt-g-r-so-t-laptrinh-k-ho-ch-s9-fe-phi-n-2) | 2026-07-28 | GĐ RÀ SOÁT LAPTRINH + KẾ HOẠCH S9-FE (, phiên 2 trong ngày, Opus) |
+| [§7bu](#7bu-ng-phi-n-phi-n-2-trong-ng-y-g-c-n-i-cha) | 2026-07-28 | ⏸️ ĐÓNG PHIÊN  (phiên 2 trong ngày) — GĐ cân đối, Chain duyệt đóng |
+| [§7bv](#7bv-sprint-10-b-n-demo-g-i-kh-ch-h-ng-12-12) | 2026-07-28 | ✅ SPRINT 10 — BẢN DEMO GỬI KHÁCH HÀNG, 12/12 BƯỚC (, phiên 3, Opus) |
+| [§7bw](#7bw-ng-phi-n-sprint-10-t-ui-u1-u3-17-commit) | 2026-07-29 | ⏸️ ĐÓNG PHIÊN  — Sprint 10 + đợt UI U1–U3, 17 commit |
+| [§7bx](#7bx-lan-dev-t-i-u-giao-di-n-phi-n-2-chain-i) | 2026-07-29 | ✅ LAN DEV + TỐI ƯU GIAO DIỆN (, phiên 2 — Chain đi vắng, GĐ chạy liên tục) |
+| [§7by](#7by-safari-tr-ng-m-n-nh-n-h-ng-c-t-ghim-phi) | 2026-07-29 | ✅ SAFARI TRẮNG + MÀN NHẬN HÀNG + CỘT GHIM (, phiên 3, Opus) |
+| [§7bz](#7bz-ng-phi-n-phi-n-3-safari-tr-ng-nh-n-h-ng) | 2026-07-29 | ⏸️ ĐÓNG PHIÊN  (phiên 3) — Safari trắng · Nhận hàng · video hướng dẫn |
+| [§7cb](#7cb-ng-phi-n-phi-n-4-kh-ch-h-ng-t-ch-i-m-a1) | 2026-07-29 | ⏸️ ĐÓNG PHIÊN  (phiên 4) — Khách hàng & Tích điểm, A1+A2+B1 |
+| [§7cc](#7cc-ng-phi-n-d-ng-b-c-1-8-9-g-tr-ng-4-commi) | 2026-07-30 | ⏸️ ĐÓNG PHIÊN  — dị ứng bước 1 + Đ-8/Đ-9 + gỡ trùng, 4 commit |
+| [§7cd](#7cd-c-t-b-c-3-4-n-i-c-ng-d-ng-v-o-complete) |  | 📋 ĐẶC TẢ BƯỚC 3/4 — nối cổng dị ứng vào `complete_sale` (chưa code) |
+| [§7ce](#7ce-khi-m-khuy-t-d-li-u-seeder-t-o-ho-t-ch) |  | 🔴 KHIẾM KHUYẾT DỮ LIỆU — seeder tạo hoạt chất nhưng KHÔNG NỐI vào thuốc |
+| [§7cf](#7cf-v-7ce-seeder-n-i-thu-c-ho-t-ch-t-26-36) | 2026-07-30 | ✅ VÁ §7ce — seeder nối thuốc → hoạt chất, 26/36 mã |
+| [§7cg](#7cg-ng-n-7cf-backfill-nt650v2-c-nh-b-o-d-ng) | 2026-07-30 | ✅ ĐÓNG NỢ §7cf — backfill `nt650v2`: cảnh báo dị ứng nay nổ trên CSDL Chain đang dùng |
+| [§7ch](#7ch-s-a-c-ho-t-ch-t-c-a-thu-c-t-o-put-drugs) | 2026-07-30 | ✅ Sửa được hoạt chất của thuốc đã tạo — `PUT /drugs/{id}/ingredients`, 3 bước (/31) |
+| [§7ci](#7ci-c-nh-b-o-d-ng-ra-t-i-qu-y-ng-kho-ng-c-c) | 2026-07-31 | ✅ Cảnh báo dị ứng ra tới QUẦY — đóng khoảng cách "đã code" ↔ "bấm được" |
+| [§7cj](#7cj-make-ui-gates-gom-6-c-ng-tr-nh-duy-t-v) | 2026-07-31 | ✅ `make ui-gates` — gom 6 cổng trình duyệt, và nó bắt lỗi ngay lần chạy đầu |
+| [§7ck](#7ck-v-m-t-l-i-m-t-d-li-u-n-offline-b-t-ch-i) | 2026-07-31 | 🔴 Vá một lỗi MẤT DỮ LIỆU: đơn offline bị từ chối biến mất không dấu vết |
+| [§7cl](#7cl-i-u-tra-sync-sales-nh-n-thu-c-kh-ng-t-n) | 2026-07-31 | 🟠 Điều tra `/sync/sales` nhận thuốc không tồn tại — KHÔNG sửa, và vì sao |
+| [§7cm](#7cm-m-n-danh-m-c-thu-c-api-s-a-ho-t-ch-t-na) | 2026-07-31 | ✅ Màn Danh mục thuốc — API sửa hoạt chất nay bấm được; ảnh bắt lỗi bốn cổng chữ đều mù |
+| [§7cn](#7cn-gi-b-n-ni-m-y-t-t-s-a-l-ch-s-thu-ti-n-m) | 2026-07-31 | ✅ Giá bán niêm yết (đặt · sửa · lịch sử) + thu tiền mặt ở quầy — 6/6 bước |
+| [§7co](#7co-ph-ng-n-b-cho-sync-sales-qu-t-s-ph-p-l) | 2026-07-31 | ✅ Phương án B cho `/sync/sales` + quét sổ pháp lý — GĐ chọn dưới uỷ quyền của Chain |
+| [§7cp](#7cp-chain-thu-h-p-ph-m-vi-etc-t-m-ng-3-m-c) | 2026-07-31 | 📋 Chain thu hẹp phạm vi ETC + tạm đóng 3 mục pháp lý — Bước 0-3 đã viết, CHỜ DUYỆT |
+| [§7cq](#7cq-nh-n-thu-c-etc-backend-xong-3-5-b-c-gia) | 2026-07-31 | ⏸️ Ảnh đơn thuốc ETC — backend XONG (3/5 bước), giao diện DỪNG chờ Chain quyết |
+| [§7cr](#7cr-nh-n-thu-c-etc-ng-5-5-b-c) | 2026-07-31 | ✅ Ảnh đơn thuốc ETC — đóng đủ 5/5 bước |
+| [§7cs](#7cs-c-i-t-l-u-tr-ch-p-n-kh-ng-c-n-kh-ch-4-4) | 2026-07-31 | ✅ Cài đặt → Lưu trữ + chụp đơn không cần khách — 4/4 bước lượt hai |
+| [§7ct](#7ct-ng-t-nh-n-ng-nh-n-thu-c-etc-v-t-ng-k-t) | 2026-07-31 | 🔒 ĐÓNG tính năng ảnh đơn thuốc ETC — và tổng kết cả phiên |
+| [§7cu](#7cu-ng-phi-n-08-01-beras-v2-phase-0-11-11-1) | 2026-07-31 | 🔒 ĐÓNG PHIÊN  → 08-01 — BERAS V2 Phase 0-11 (11/15 phase) |
+| [§7cv](#7cv-k-ho-ch-6-phi-n-beras-v2-ph-n-c-n-l-i-9) | 2026-08-01 | 📋 KẾ HOẠCH 6 PHIÊN — BERAS V2 phần còn lại + 9 lệnh mới của Chain |
+| [§7cw](#7cw-ng-phi-n-p1-b-n-c-n-etc-k-lu-t-21-th-nh) | 2026-08-01 | 🔒 ĐÓNG PHIÊN P1 — bán được đơn ETC + kỷ luật #21 thành cổng máy |
+| [§7cx](#7cx-ng-phi-n-p2-nh-n-s-p-x-p-t-n-thu-c-thay) | 2026-08-01 | 🔒 ĐÓNG PHIÊN P2 — nhãn Sắp xếp · tên thuốc thay số lô · gộp 4 màn thành 2 mục |
+| [§7cy](#7cy-ng-phi-n-p3-ho-n-c-a-s-c-in-ng-m-t-n-m) | 2026-08-01 | 🔒 ĐÓNG PHIÊN P3 — hoá đơn: cửa sổ có ✕ · in đúng một đơn · mẫu K80 |
+| [§7cz](#7cz-ng-phi-n-p4-14-d-i-tr-t-th-nh-c-a-s-c) | 2026-08-01 | 🔒 ĐÓNG PHIÊN P4 — 14 dải trượt thành cửa sổ có ✕ |
+| [§7da](#7da-ng-phi-n-p5-nh-d-ng-s-vn-c-a-s-laptop-d) | 2026-08-01 | 🔒 ĐÓNG PHIÊN P5 — định dạng số VN · cửa sổ laptop · danh mục thuốc hết chật |
+| [§7db](#7db-ng-phi-n-p6-l-tr-nh-l-y-h-ng-v2-phase-4) | 2026-08-01 | 🔒 ĐÓNG PHIÊN P6 — lộ trình lấy hàng (V2 Phase 4) + 6 tệp spec |
 
 ---
 
