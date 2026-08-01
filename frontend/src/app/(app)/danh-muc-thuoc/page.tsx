@@ -12,6 +12,7 @@ import {
 } from "@/features/catalog/use-drug-ingredients";
 import { useAuthStore } from "@/features/auth/auth-store";
 import { ApiError } from "@/shared/api/errors";
+import { formatMoney, formatSo, money } from "@/shared/format/number";
 import type { Drug } from "@/shared/api/types";
 import { DetailDialog } from "@/components/overlay/DetailDialog";
 
@@ -126,7 +127,7 @@ export default function DrugCatalogPage() {
                     {d.sale_price === null ? (
                       <span className={local.trong}>— chưa đặt —</span>
                     ) : (
-                      `${Number(d.sale_price).toLocaleString("vi-VN")} đ`
+                      `${money(d.sale_price)}`
                     )}
                   </td>
                   {coQuyenSua && (
@@ -192,7 +193,16 @@ function EditIngredients({
   onClose: () => void;
 }) {
   const [rows, setRows] = useState<IngredientRow[]>(
-    drug.ingredients.map((i) => ({ ingredient_id: i.ingredient_id, amount: i.amount, unit: i.unit })),
+    // 🔴 `formatSo` chứ không phải `i.amount` thô (Chain báo 01/08: *"Hoạt chất có 1.0000
+    // viên là gì có thừa không"*). Backend trả `Decimal` dạng chuỗi `"1.0000"` — đúng ở
+    // tầng dữ liệu, nhưng người nhập nhìn thấy bốn số 0 vô nghĩa và không dám xoá vì tưởng
+    // nó có ý nghĩa. Chuẩn hoá NGAY LÚC NẠP, không phải lúc hiển thị: đây là ô NHẬP, giá
+    // trị trong nó chính là thứ sẽ được gửi đi.
+    drug.ingredients.map((i) => ({
+      ingredient_id: i.ingredient_id,
+      amount: formatSo(i.amount),
+      unit: i.unit,
+    })),
   );
   const [them, setThem] = useState("");
   const [loi, setLoi] = useState<string | null>(null);
@@ -321,7 +331,9 @@ function EditIngredients({
  * và câu hỏi *"lần trước đổi vì sao"* là cùng một câu hỏi, hỏi cùng một lúc.
  */
 function EditPrice({ drug, onClose }: { drug: Drug; onClose: () => void }) {
-  const [gia, setGia] = useState(drug.sale_price ?? "");
+  // `formatSo` vì cùng lý do với ô hoạt chất: backend trả `"2200.00"`, người sửa giá nhìn
+  // thấy hai số 0 thừa. Xem `formatSo` để biết vì sao KHÔNG dùng `formatMoney` ở ô nhập.
+  const [gia, setGia] = useState(drug.sale_price === null ? "" : formatSo(drug.sale_price));
   const [lyDo, setLyDo] = useState("");
   const [loi, setLoi] = useState<string | null>(null);
   const luu = useSetPrice(drug.id);
@@ -396,10 +408,8 @@ function EditPrice({ drug, onClose }: { drug: Drug; onClose: () => void }) {
             <li key={r.id} className={local.row}>
               <span className={local.ten}>
                 {r.old_price === null
-                  ? `Đặt giá lần đầu: ${Number(r.new_price).toLocaleString("vi-VN")} đ`
-                  : `${Number(r.old_price).toLocaleString("vi-VN")} → ${Number(
-                      r.new_price,
-                    ).toLocaleString("vi-VN")} đ`}
+                  ? `Đặt giá lần đầu: ${money(r.new_price)}`
+                  : `${formatMoney(r.old_price)} → ${money(r.new_price)}`}
               </span>
               <span className={local.trong}>
                 {new Date(r.changed_at).toLocaleString("vi-VN")}

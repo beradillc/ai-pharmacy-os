@@ -97,7 +97,9 @@
 
   .bangThe td {
     display: grid;
-    grid-template-columns: 5.5rem 1fr;
+    /* `minmax(…, max-content)` chứ không phải `5.5rem` cứng: nhãn dài hơn thì cột nới ra
+       thay vì để chữ tràn sang giá trị. */
+    grid-template-columns: minmax(5.5rem, max-content) 1fr;
     align-items: center;
     gap: var(--space-2);
     min-height: 0;
@@ -111,6 +113,12 @@
     content: attr(data-nhan);
     font-size: var(--text-sm);
     color: var(--beras-text-muted);
+    /* Nhãn là CHỮ. Không có dòng này thì nhãn của một ô số thừa hưởng monospace và trông
+       như thuộc về một hệ thống khác (Chain báo 01/08). */
+    font-family: var(--beras-font-sans);
+    /* Nhãn dài hơn cột ("Giá niêm yết" > 5,5rem) thì tràn sang đè lên giá trị —
+       `Giá niêm yết2.200 đ` dính liền, không còn khoảng trắng nào. */
+    white-space: nowrap;
   }
 
   /* Ô nhập số: bỏ chiều rộng cố định 5rem — trong thẻ nó là cột giá trị, để nó điền hết. */

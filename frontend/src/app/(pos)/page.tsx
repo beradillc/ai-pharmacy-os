@@ -15,6 +15,7 @@ import { useRxApprove } from "@/features/prescription/use-rx-approve";
 import { useRxPhoto } from "@/features/prescription/use-rx-photo";
 import { ApiError } from "@/shared/api/errors";
 import type { Customer, Drug } from "@/shared/api/types";
+import { formatMoney, formatQty, money } from "@/shared/format/number";
 import { useOfflineSync } from "@/shared/offline/use-offline-sync";
 
 import { CustomerCapture } from "./CustomerCapture";
@@ -241,7 +242,7 @@ export default function PosPage() {
             <span>
               {lines.length} món{canGhiLyDoGia ? " · ⚠️ lệch giá" : ""}
             </span>
-            <strong className={styles.gioBarTien}>{total.toLocaleString("vi-VN")} đ</strong>
+            <strong className={styles.gioBarTien}>{money(String(total))}</strong>
             <button
               type="button"
               className={styles.checkoutButton}
@@ -278,7 +279,7 @@ export default function PosPage() {
                   <div className={styles.cartLineInfo}>
                     <div>{line.name}</div>
                     <div className={styles.drugMeta}>
-                      {line.unitPrice} đ × {line.unitName}
+                      {money(line.unitPrice)} × {line.unitName}
                     </div>
                     <ViTriLay drugId={line.drugId} />
                   </div>
@@ -359,7 +360,7 @@ export default function PosPage() {
 
           <div className={styles.total}>
             <span>Thành tiền</span>
-            <strong>{total.toLocaleString("vi-VN")} đ</strong>
+            <strong>{money(String(total))}</strong>
           </div>
 
           {/* 🔴 Lý do bán lệch giá niêm yết (ADR-0003). Đặt TRÊN nút Thanh toán, trên
@@ -514,7 +515,7 @@ export default function PosPage() {
                     className={styles.menhGiaNut}
                     onClick={() => setTienNhan(String(soTienNhan + m))}
                   >
-                    +{m.toLocaleString("vi-VN")}
+                    +{formatMoney(String(m))}
                   </button>
                 ))}
                 {/* Khách đưa đúng số tiền là ca phổ biến nhất — một nút, không phải gõ. */}
@@ -540,7 +541,7 @@ export default function PosPage() {
                 <input
                   className={styles.tienNhan}
                   inputMode="numeric"
-                  value={soTienNhan === 0 ? "" : soTienNhan.toLocaleString("vi-VN")}
+                  value={soTienNhan === 0 ? "" : formatMoney(String(soTienNhan))}
                   onChange={(e) => setTienNhan(e.target.value)}
                   placeholder="0"
                   aria-label="Tiền khách đưa"
@@ -555,7 +556,7 @@ export default function PosPage() {
                   className={thoiLai < 0 ? styles.thoiLaiThieu : styles.thoiLai}
                   data-testid="thoi-lai"
                 >
-                  {thoiLai.toLocaleString("vi-VN")} đ
+                  {money(String(thoiLai))}
                 </strong>
               </div>
             </div>
@@ -567,8 +568,8 @@ export default function PosPage() {
             <div className={styles.xacNhanKhoi}>
               <span>
                 Bán <strong>{lines.length} món</strong> ·{" "}
-                <strong>{total.toLocaleString("vi-VN")} đ</strong>
-                {thoiLai > 0 && ` · thối lại ${thoiLai.toLocaleString("vi-VN")} đ`}
+                <strong>{money(String(total))}</strong>
+                {thoiLai > 0 && ` · thối lại ${money(String(thoiLai))}`}
               </span>
               <button
                 type="button"
@@ -654,7 +655,7 @@ function ViTriLay({ drugId }: { drugId: string }) {
     <div className={styles.drugMeta} data-testid="vi-tri-lay">
       📍 <strong>{dau.location_path}</strong> · lô {dau.lot_no} · HSD{" "}
       {new Date(dau.expiry_date).toLocaleDateString("vi-VN")} · còn{" "}
-      {Number(dau.quantity).toLocaleString("vi-VN")}
+      {formatQty(dau.quantity)}
       {ds.length > 1 && ` · +${ds.length - 1} chỗ khác`}
     </div>
   );

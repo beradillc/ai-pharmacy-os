@@ -98,28 +98,20 @@
 }
 
 @media (max-width: 640px) {
-  /* Bảng 3 cột phải vừa khung 390px — cùng bài học với màn Khách hàng (31/07). */
-  .drugTable {
-    width: 100%;
-    table-layout: fixed;
-  }
+  /* 🔴 Chain báo 2026-08-01: *"Danh mục thuốc trên mobile đang rất chật chội"*.
+     Nguyên nhân là HAI MEDIA QUERY ĐÁ NHAU, không phải thiếu chỗ.
 
-  .drugTable th,
-  .drugTable td {
-    padding-right: var(--space-2);
-    padding-left: var(--space-2);
-    word-break: break-word;
-  }
+     Khối này (≤640px) từng là bản vá "bảng 3 cột vừa khung 390px": `table-layout: fixed`
+     + `width: 42%/38%` cho hai cột đầu. Sau đó ngày 31/07 bảng được đổi hẳn sang **thẻ**
+     ở `<720px` (khối ngay dưới). Ở khổ 390px thì **cả hai cùng áp**: `td` vừa là `block`
+     của thẻ, vừa mang `width: 42%` của bảng ⇒ cột giá trị co còn ~90px và chữ vỡ từng ký
+     tự — `Alaxa` / `n` / `Ibu` / `prof`.
 
-  .drugTable th:first-child,
-  .drugTable td:first-child {
-    width: 42%;
-  }
-
-  .drugTable th:nth-child(2),
-  .drugTable td:nth-child(2) {
-    width: 38%;
-  }
+     Xoá phần bảng, GIỮ hai quy tắc `.row`/`.ten` vì chúng thuộc cửa sổ sửa hoạt chất,
+     không thuộc bảng. Không cổng tự động nào bắt được ca này: trang không cuộn ngang,
+     không phần tử nào tràn khung nhìn, `innerText` đọc đủ chữ — chỉ **ảnh chụp** thấy.
+     Đúng họ với ba ca kỷ luật #21, nhưng khác cơ chế: đây là chữ VỠ chứ không phải chữ
+     BỊ CẮT, nên `boundingBox` cũng không thấy. */
 
   /* Hàng sửa hoạt chất xoay dọc, nhưng KHÔNG dùng `flex-basis` px trong hộp dọc —
      hai lần đã sai vì thế (ô nhập cao 260px, khối chữ cao 260px). */
@@ -175,7 +167,9 @@
      sát nhau mà không cần một hàng cho mỗi thứ. */
   .drugTable td {
     display: grid;
-    grid-template-columns: 5.5rem 1fr;
+    /* `minmax(…, max-content)` chứ không phải `5.5rem` cứng: nhãn dài hơn thì cột nới ra
+       thay vì để chữ tràn sang giá trị. */
+    grid-template-columns: minmax(5.5rem, max-content) 1fr;
     align-items: baseline;
     min-height: 0;
     align-items: center;
@@ -192,6 +186,12 @@
     content: attr(data-nhan);
     font-size: var(--text-sm);
     color: var(--beras-text-muted);
+    /* Nhãn là CHỮ. Không có dòng này thì nhãn của một ô số thừa hưởng monospace và trông
+       như thuộc về một hệ thống khác (Chain báo 01/08). */
+    font-family: var(--beras-font-sans);
+    /* Nhãn dài hơn cột ("Giá niêm yết" > 5,5rem) thì tràn sang đè lên giá trị —
+       `Giá niêm yết2.200 đ` dính liền, không còn khoảng trắng nào. */
+    white-space: nowrap;
     flex: 0 0 auto;
   }
 

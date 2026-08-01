@@ -1,6 +1,12 @@
 /* Cửa sổ xem/nhập/sửa chi tiết. Xem `DetailDialog.tsx` để biết vì sao dùng `<dialog>`. */
 
 .hop {
+  /* 🔴 GIỮA màn, cả ngang lẫn DỌC (Chain giao 2026-08-01). `<dialog>` mặc định chỉ căn
+     giữa theo chiều ngang; theo chiều dọc nó bám mép trên, nên trên màn laptop 900px một
+     cửa sổ cao 400px nằm lệch hẳn lên trên và mắt phải đi tìm. `margin: auto` với
+     `max-height` đã đặt là cách căn giữa hai chiều mà không cần `position: fixed` —
+     giữ nguyên được mọi thứ trình duyệt lo hộ cho phần tử `<dialog>` modal. */
+  margin: auto;
   /* Bề ngang: vừa màn điện thoại có chừa mép, và không quá rộng trên laptop — một bảng
      kéo ngang hết màn 1440px thì mắt phải quét cả gang tay để nối đầu dòng với cuối dòng. */
   width: min(100% - 2 * var(--space-3), 56rem);
@@ -20,6 +26,11 @@
 }
 
 .dau {
+  /* Tay cầm để kéo cửa sổ đi (chỉ máy tính — xem `DetailDialog.tsx`). `grab` là dấu hiệu
+     duy nhất cho biết kéo được; không có nó thì tính năng tồn tại mà không ai biết. */
+  cursor: grab;
+  /* Kéo mà con trỏ quét qua chữ thì trình duyệt bôi đen tiêu đề thay vì di chuyển cửa sổ. */
+  user-select: none;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -79,6 +90,11 @@
 }
 
 @media (width < 900px) {
+  .dau {
+    /* Điện thoại không kéo được (xem `DetailDialog.tsx`) ⇒ đừng hứa bằng con trỏ. */
+    cursor: default;
+  }
+
   .hop {
     /* Trên điện thoại: tấm phủ từ đáy lên, giống giỏ hàng ở quầy — cùng một ngôn ngữ cử
        chỉ trong cả ứng dụng, không mỗi màn một kiểu. */

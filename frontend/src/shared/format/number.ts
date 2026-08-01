@@ -22,6 +22,23 @@ export function formatQty(value: string): string {
   return n.toLocaleString(VI, { maximumFractionDigits: 3 });
 }
 
+/**
+ * Số cho **Ô NHẬP**: bỏ số 0 thừa, **KHÔNG** chấm ngăn hàng nghìn.
+ *
+ * 🔴 Khác {@link formatQty} ở đúng một điểm, và điểm đó quan trọng: `formatQty` chấm ngăn
+ * hàng nghìn cho người ĐỌC (`1.500`), còn giá trị trong một ô nhập là thứ sẽ được **gửi
+ * lên máy chủ**. Đưa `"1.500"` vào ô rồi bấm Lưu thì backend nhận một chuỗi mà nó hiểu là
+ * *một phẩy năm* — sai 1000 lần, và sai **im lặng**.
+ *
+ * Sinh từ Chain báo 2026-08-01: ô hoạt chất hiện `1.0000` (Decimal thô của backend). Đúng
+ * ở tầng dữ liệu, nhưng người nhập nhìn thấy bốn số 0 vô nghĩa và không dám xoá.
+ */
+export function formatSo(value: string): string {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return value;
+  return String(n);
+}
+
 export function formatTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;

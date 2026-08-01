@@ -13,6 +13,7 @@ import {
   useUpdateLocation,
 } from "@/features/location/use-locations";
 import { ApiError } from "@/shared/api/errors";
+import { formatQty } from "@/shared/format/number";
 import type { StorageLocation } from "@/shared/api/types";
 import { DetailDialog } from "@/components/overlay/DetailDialog";
 
@@ -334,7 +335,7 @@ function TrongO({ o, onClose }: { o: StorageLocation; onClose: () => void }) {
                     <div className={`${styles.mono} ${local.soLo}`}>Lô {r.lot_no}</div>
                   </td>
                   <td>{new Date(r.expiry_date).toLocaleDateString("vi-VN")}</td>
-                  <td className={styles.num}>{Number(r.quantity).toLocaleString("vi-VN")}</td>
+                  <td className={styles.num}>{formatQty(r.quantity)}</td>
                 </tr>
               ))}
             </tbody>

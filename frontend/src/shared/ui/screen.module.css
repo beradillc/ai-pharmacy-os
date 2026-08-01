@@ -88,6 +88,11 @@
   justify-content: center;
   gap: var(--space-2);
   font: inherit;
+  /* 🔴 `font: inherit` kéo theo cả `font-family` của ô cha. Nút nằm trong một `td.num`
+     (ô số, monospace) sẽ hiện chữ "Sửa giá" bằng font đánh máy, lệch hẳn mọi nút khác
+     trên cùng màn — Chain báo 01/08: *"kích thước chữ tương đồng nhau tại mọi cửa sổ"*.
+     Nút là CHỮ, không phải số; ép lại font chữ. */
+  font-family: var(--beras-font-sans);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   min-height: var(--touch-min);
@@ -381,7 +386,20 @@
 
 /* --- mobile-first: nới ra khi có chỗ --- */
 @media (width >= 600px) {
-  .input {
+  /* 🔴 CHỈ trong `.controls` — hộp NGANG của thanh lọc. Trước đây quy tắc này áp cho MỌI
+     `.input`, và `flex-basis` thì đo theo TRỤC CHÍNH của hộp cha: trong một hộp DỌC
+     (`display: flex; flex-direction: column` — mọi khối `<label>` nhãn-trên-ô-dưới của dự
+     án này) `260px` trở thành **CHIỀU CAO**. Kết quả: ô nhập giá cao 260px trong cửa sổ
+     Sửa giá, đo thật ngày 01/08.
+
+     Đây là lần thứ BA cùng một bẫy — `danh-muc-thuoc/page.module.css` đã ghi *"KHÔNG dùng
+     flex-basis px trong hộp dọc — hai lần đã sai vì thế (ô nhập cao 260px, khối chữ cao
+     260px)"*. Hai lần trước sửa ở chỗ DÙNG; lần này sửa ở chỗ KHAI, nên nó không quay lại
+     được nữa.
+
+     Và nó chỉ lộ ra ở khổ LAPTOP (`≥600px`) — đúng thứ lệnh #9 của Chain yêu cầu rà. Mọi
+     ảnh chụp trước nay của các cửa sổ này đều ở khổ điện thoại, nơi media query không áp. */
+  .controls .input {
     flex: 0 1 260px;
     min-width: 200px;
   }

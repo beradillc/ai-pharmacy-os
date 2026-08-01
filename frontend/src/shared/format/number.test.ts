@@ -7,7 +7,15 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { CURRENCY, daysOfStockLeft, formatDate, formatMoney, formatQty, money } from "./number";
+import {
+  CURRENCY,
+  daysOfStockLeft,
+  formatDate,
+  formatMoney,
+  formatQty,
+  formatSo,
+  money,
+} from "./number";
 
 describe("tiền", () => {
   it("nhóm hàng nghìn theo kiểu Việt (dấu chấm)", () => {
@@ -37,6 +45,25 @@ describe("số lượng", () => {
   it("bỏ số 0 thừa sau dấu phẩy", () => {
     expect(formatQty("16.000")).toBe("16");
     expect(formatQty("16.500")).toBe("16,5");
+  });
+});
+
+describe("số cho Ô NHẬP (Chain báo 2026-08-01)", () => {
+  it("bỏ số 0 thừa — ô hoạt chất KHÔNG hiện 1.0000", () => {
+    expect(formatSo("1.0000")).toBe("1");
+    expect(formatSo("2200.00")).toBe("2200");
+    expect(formatSo("16.500")).toBe("16.5");
+  });
+
+  it("🔴 KHÔNG chấm ngăn hàng nghìn — khác formatQty ở đúng điểm này", () => {
+    // Giá trị trong ô nhập là thứ sẽ được GỬI LÊN MÁY CHỦ. Đưa "1.500" vào ô rồi bấm Lưu
+    // thì backend hiểu là *một phẩy năm* — sai 1000 lần, và sai IM LẶNG.
+    expect(formatSo("1500")).toBe("1500");
+    expect(formatQty("1500")).toBe("1.500");
+  });
+
+  it("chuỗi không phải số thì trả nguyên, không ra NaN", () => {
+    expect(formatSo("chưa rõ")).toBe("chưa rõ");
   });
 });
 

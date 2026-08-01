@@ -245,11 +245,18 @@
      giữ quy tắc cũ sẽ khiến nó hiện "Sức khoẻ" trên điện thoại và "Dữ liệu" trên
      desktop — hai tên cho một cột, đúng thứ làm người dùng nghi ngờ mình đọc nhầm. */
 
-  /* Cỡ chữ bảng giảm nhẹ ở khổ điện thoại (Chain chốt 31/07): 15px → 13px.
-     Giảm NHẸ, không giảm sâu — 13px vẫn đọc được ở khoảng cách cầm tay, còn 12px là
-     cỡ dành cho nhãn phụ, không dành cho dữ liệu người ta phải đối chiếu đúng/sai. */
+  /* Cỡ chữ bảng giảm nhẹ ở khổ điện thoại (Chain chốt 31/07): 15px → nhỏ hơn một bậc.
+     Giảm NHẸ, không giảm sâu — 12px là cỡ dành cho nhãn phụ, không dành cho dữ liệu
+     người ta phải đối chiếu đúng/sai.
+
+     🔴 Đổi `13px` cứng → `--text-sm` (14px) ngày 01/08. HAI chỉ đạo của Chain đá nhau, và
+     cái mới thắng: 31/07 Chain chốt *"giảm cỡ chữ bảng khách hàng trên điện thoại"*, 01/08
+     Chain chốt *"kích thước chữ tương đồng nhau tại mọi cửa sổ"*. `13px` là con số **duy
+     nhất trong toàn hệ** không thuộc thang chữ — đo được: khổ điện thoại có 7 cỡ chữ còn
+     laptop có 6, và cái thừa ra đúng là nó. Giữ nguyên ý định (nhỏ hơn 15px) nhưng dùng
+     bậc có sẵn của thang, nên nó không còn là ngoại lệ của riêng một màn. */
   .customerTable {
-    font-size: 13px;
+    font-size: var(--text-sm);
   }
 
   .customerTable th {
