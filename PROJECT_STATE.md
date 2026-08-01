@@ -7535,3 +7535,97 @@ Sau P5 còn **P6** — trả nợ BERAS V2: Phase 4 (pick list) · Phase 12 (sơ
 tệp spec. Chain quyết một lượt: **Phase 8 (multi-supplier) làm hay hoãn**.
 
 Vẫn còn treo từ P1: **CSDL thử `p1etc_thu`** chờ Chain xoá.
+
+---
+
+## 7da. 🔒 ĐÓNG PHIÊN P5 — định dạng số VN · cửa sổ laptop · danh mục thuốc hết chật (2026-08-01)
+
+Phiên 5/6 của kế hoạch §7cv. Chain duyệt kèm **bốn yêu cầu mới** ngay trong lượt duyệt.
+**5/5 bước, 1 commit.**
+
+### Chain giao gì, làm gì
+
+| Yêu cầu | Kết quả |
+|---|---|
+| Cửa sổ laptop ưu tiên **ở giữa**, kéo di chuyển được | `margin: auto` + kéo bằng thanh tiêu đề (chỉ máy tính) |
+| Danh mục thuốc mobile **rất chật chội** | hai media query đá nhau — đã gỡ |
+| *"Hoạt chất có `1.0000` viên là gì có thừa không"* | `formatSo` — ô nhập hiện `1` |
+| Giá VND **không** `.00`, số lượng chẵn **không** `,0` | 9 chỗ render thô đã dồn về bộ định dạng |
+| Phải có `.` phân cách ngàn/triệu | đã có sẵn trong `formatMoney`, nay dùng đúng chỗ |
+
+### Bộ định dạng đã có sẵn — vấn đề là chỗ KHÔNG dùng nó
+
+`formatMoney` (chấm ngăn ngàn, không thập phân) và `formatQty` (bỏ 0 thừa) đã đúng quy ước
+Việt Nam từ Sprint trước. Chín chỗ render số **thô** — `2200.00 đ × viên` là chỗ Chain nhìn
+thấy.
+
+Thêm **`formatSo`** cho ô nhập: bỏ 0 thừa nhưng **không** chấm ngăn ngàn. Khác `formatQty`
+ở đúng điểm đó, và điểm đó quan trọng — giá trị trong ô nhập là thứ sẽ được **gửi lên máy
+chủ**. Đưa `"1.500"` vào ô rồi bấm Lưu thì backend hiểu là *một phẩy năm*: sai 1000 lần, và
+sai **im lặng**.
+
+### 🔴 Ba lỗi thật, đều chỉ lộ ở khổ laptop hoặc chỉ trên ảnh
+
+**① Ô nhập cao 260px — lần thứ BA cùng một bẫy.** `flex: 0 1 260px` áp cho **mọi** `.input`
+ở `≥600px`; `flex-basis` đo theo **trục chính**, nên trong hộp dọc nó là **chiều cao**.
+
+`danh-muc-thuoc/page.module.css` đã ghi sẵn *"KHÔNG dùng flex-basis px trong hộp dọc — hai
+lần đã sai vì thế"*. Hai lần trước sửa ở chỗ **dùng**; lần này sửa ở chỗ **khai**, nên nó
+không quay lại được nữa. Đây là điểm đáng rút: một bài học ghi ở chỗ **hậu quả** thì phải
+nhớ mãi; ghi ở chỗ **nguyên nhân** thì máy nhớ hộ.
+
+Đột biến cho thấy bẫy này đang ảnh hưởng **ba màn**, không chỉ màn phát hiện ra
+(`/danh-muc-thuoc` · `/nhap-nhanh` · `/so-do-kho`) — cổng biết nhiều hơn người tìm ra nó.
+
+**② Danh mục thuốc mobile vỡ chữ — hai media query đá nhau.** `≤640px` đặt
+`table-layout: fixed` + `width: 42%`, `<720px` đổi bảng thành thẻ; ở 390px **cả hai cùng
+áp** ⇒ cột giá trị co còn ~90px, chữ vỡ dọc thành `Alaxa`/`n`/`Ibu`/`prof`.
+
+Không cổng cũ nào bắt được: trang không cuộn ngang, không phần tử nào tràn khung nhìn,
+`innerText` đọc **đủ chữ**. Cùng họ với kỷ luật #21 nhưng **khác cơ chế** — đây là chữ
+**vỡ**, không phải chữ **bị cắt**, nên `boundingBox` cũng mù. Cần một phép đo thứ ba: tỉ lệ
+cao/rộng của ô.
+
+**③ Font đánh máy lây sang nút.** `.ghost` dùng `font: inherit` ⇒ nút trong một `td.num`
+hiện chữ "Sửa giá" bằng monospace.
+
+### ⚠️ Đã đổi MỘT QUYẾT ĐỊNH CŨ CỦA CHAIN — ghi rõ để Chain biết
+
+Bảng khách hàng để `font-size: 13px` ở mobile, **Chain chốt 31/07**. Chỉ đạo mới 01/08
+(*"kích thước chữ tương đồng nhau tại mọi cửa sổ"*) đè lên nó.
+
+Cơ sở không phải cảm tính: đo được **mobile 7 cỡ chữ, laptop 6**, và cái thừa ra đúng là
+`13px` — con số **duy nhất trong toàn hệ** không thuộc thang chữ. Đổi sang `--text-sm`
+(14px): giữ nguyên ý định *nhỏ hơn 15px* nhưng dùng bậc có sẵn. Chain đổi lại được bất cứ
+lúc nào bằng một dòng.
+
+### Kỷ luật #14
+
+| Đột biến | Kết quả |
+|---|---|
+| `formatSo` chấm ngăn ngàn như `formatQty` | `VITEST=1`, đỏ 2 test (`"2.200"` ≠ `"2200"`) |
+| trả `flex: 0 1 260px` về mọi `.input` | `GATE=1`, đỏ **3 màn**, liệt kê đúng ô và đúng 260px |
+
+### Cổng tại điểm dừng
+
+```
+MAKE_CHECK_EXIT=0 — 1447 passed (6:47) · RUFF/FORMAT/IMPORTLINTER/MYPY = 0
+TSC=0  ESLINT=0  VITEST=0 (76 passed, +3 mới)  BUILD=0
+UIGATES_EXIT=0 — 15/15 đọc-thuần (thêm check-can-xung)
+cỡ chữ: 6 cỡ, GIỐNG HỆT nhau ở cả hai khổ
+```
+
+### Ảnh nghiệm thu
+
+`docs/ui-history/2026-08-01-can-xung/` — 8 ảnh, 4 cảnh × 2 khổ, kèm `README.md`.
+
+### Điểm dừng chính xác
+
+P5 đóng. **Năm trên sáu phiên xong**, chín lệnh Chain giao 01/08 đã đóng hết.
+
+Còn **P6** — trả nợ BERAS V2: Phase 4 (pick list) · Phase 12 (sơ đồ trực quan) · các tệp
+spec (`PICKING_ASSIST.md` · `PICK_LIST.md` · `SMART_PURCHASE.md` · `LOCATION_MAP.md` ·
+`INVENTORY_ARCHITECTURE.md` · `ARCHITECTURE_REVIEW.md`). Chain quyết một lượt: **Phase 8
+(multi-supplier) làm hay hoãn**.
+
+Vẫn còn treo từ P1: **CSDL thử `p1etc_thu`** chờ Chain xoá.
