@@ -26,8 +26,8 @@
 | Kỷ luật bắt buộc **19** (đóng mục giao diện phải chạy cổng trình duyệt) | **2026-07-31** — gom 6 cổng vào `make ui-gates` thì lộ ra 2 cổng đã hỏng cùng ngày mà không ai biết |
 | Kỷ luật bắt buộc **20** (Chain nghiệm thu bằng ảnh chụp) | **2026-07-31** — Chain chốt: *"mở trình duyệt test, chụp màn hình lại là coi như xong; xem trên ảnh là đủ"* |
 | Kỷ luật bắt buộc **21** (cổng đo *nhìn thấy được*, không chỉ *có trên trang*) | **2026-08-01** — GĐ đề nghị sau lần thứ **ba** cùng một hình dạng: cổng xanh vì `innerText` đọc được cả phần tràn ngoài khung nhìn. **Chain DUYỆT cùng ngày** |
-| Kỷ luật bắt buộc **22** (chuỗi nối hai thế giới phải có cổng đọc thẳng nguồn bên kia) | **2026-08-01** — GĐ đề nghị sau lần thứ **tư** cùng một hình dạng trong ba ngày: class CSS · mã quyền · mã hành vi audit · `target_type`, cả bốn xanh qua `tsc`/`eslint`/`pytest`. **CHỜ CHAIN DUYỆT** |
-| Kỷ luật bắt buộc **23** (hai vế của một phép so phải có hai nguồn độc lập) + **24** (mỗi dòng của #22 phải kèm cổng của nó) | **2026-08-01** — GĐ đề nghị sau khi một cổng khẳng định *tồn cuối kỳ cộng đúng* xanh trọn vẹn trong lúc màn hình hiện **-5**, che một lỗi sổ pháp lý im lặng từ Sprint 7. **CHỜ CHAIN DUYỆT** |
+| Kỷ luật bắt buộc **22** (chuỗi nối hai thế giới phải có cổng đọc thẳng nguồn bên kia) | **2026-08-01** — GĐ đề nghị sau lần thứ **tư** cùng một hình dạng trong ba ngày: class CSS · mã quyền · mã hành vi audit · `target_type`, cả bốn xanh qua `tsc`/`eslint`/`pytest`. **Chain DUYỆT 2026-08-02** |
+| Kỷ luật bắt buộc **23** (hai vế của một phép so phải có hai nguồn độc lập) + **24** (mỗi dòng của #22 phải kèm cổng của nó) | **2026-08-01** — GĐ đề nghị sau khi một cổng khẳng định *tồn cuối kỳ cộng đúng* xanh trọn vẹn trong lúc màn hình hiện **-5**, che một lỗi sổ pháp lý im lặng từ Sprint 7. **Chain DUYỆT 2026-08-02** |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -448,8 +448,8 @@ máy này, khác với văn bản ủy quyền (file này) nay đã có lịch s
     - Cùng một vấn đề lặp **từ 3 lần** ⇒ đề xuất nâng thành kỷ luật chính thức ở file này.
 
 22. **Mọi CHUỖI nối hai thế giới phải có một cổng đọc thẳng nguồn bên kia.** (2026-08-01, GĐ
-    đề nghị — **CHỜ CHAIN DUYỆT**; ghi ở đây ngay từ lúc đề nghị vì kỷ luật #13 đòi bài học
-    phương pháp vào FILE NÀY chứ không vào nhật ký)
+    đề nghị — **Chain DUYỆT 2026-08-02**; ghi ở đây ngay từ lúc đề nghị vì kỷ luật #13 đòi bài
+    học phương pháp vào FILE NÀY chứ không vào nhật ký)
 
     Khi một chuỗi ký tự ở phía này phải khớp một thứ được khai ở phía kia — và **không trình
     biên dịch nào nối được hai đầu** — thì viết sai chuỗi đó **không làm đỏ cổng nào**. Nó
@@ -485,8 +485,8 @@ máy này, khác với văn bản ủy quyền (file này) nay đã có lịch s
     **Phạm vi** quyết định một bản vá có kín không, không phải **vị trí** dòng sửa. Sau khi
     vá "ở chỗ khai", hỏi tiếp: *bộ chọn/điều kiện của bản vá có bỏ sót cách dùng nào không?*
 
-23. **Hai vế của một phép so phải có HAI NGUỒN ĐỘC LẬP.** (2026-08-01, GĐ đề nghị — **CHỜ CHAIN
-    DUYỆT**; ghi ở đây ngay từ lúc đề nghị theo kỷ luật #13)
+23. **Hai vế của một phép so phải có HAI NGUỒN ĐỘC LẬP.** (2026-08-01, GĐ đề nghị — **Chain
+    DUYỆT 2026-08-02**; ghi ở đây ngay từ lúc đề nghị theo kỷ luật #13)
 
     Một cổng so `A` với `B` chỉ chứng minh được điều gì khi `A` và `B` **đến từ hai chỗ khác
     nhau**. Cùng một nguồn thì phép so là một **phép gán đội lốt**: nó luôn xanh, và nó xanh
@@ -512,7 +512,7 @@ máy này, khác với văn bản ủy quyền (file này) nay đã có lịch s
       để nó đổi màu theo*. Một cổng tự soi gương thì không bao giờ đổi màu.
 
 24. **Mỗi dòng thêm vào kỷ luật #22 phải kèm CỔNG của nó, cùng lúc.** (2026-08-01, GĐ đề nghị —
-    **CHỜ CHAIN DUYỆT**)
+    **Chain DUYỆT 2026-08-02**)
 
     Kỷ luật #22 liệt kê bốn chuỗi nối hai thế giới đã gây lỗi thật — class CSS, **mã quyền**, mã
     hành vi audit, `target_type`. Ngày 01/08, ba trong bốn đã có cổng; **mã quyền thì không**.
