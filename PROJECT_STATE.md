@@ -7455,3 +7455,83 @@ nhân viên · tồn kho · đơn mua hàng · đề xuất · kiểm kê · sơ
 nghiệp vụ nào cần Chain — trừ khi phát sinh.
 
 Vẫn còn treo từ P1: **CSDL thử `p1etc_thu`** chờ Chain xoá.
+
+---
+
+## 7cz. 🔒 ĐÓNG PHIÊN P4 — 14 dải trượt thành cửa sổ có ✕ (2026-08-01)
+
+Phiên 4/6 của kế hoạch §7cv. Chain duyệt một chữ, phiên thuần kỹ thuật, không quyết định
+nghiệp vụ nào. **4/4 bước, 1 commit.**
+
+### 14 chỗ, 10 tệp
+
+`danh-muc-thuoc` (hoạt chất · giá) · `ton-kho` (sắp xếp) · `khach-hang` (thêm · sức khoẻ ·
+đồng ý) · `nhan-vien` (thêm · vai trò) · `don-mua-hang` (nhận hàng) · `kiem-ke` (cả trạng
+thái *đang tải*) · `so-do-kho` (thêm chỗ · hàng trong ô) · `cai-dat/luu-tru` (ảnh đơn) ·
+`hoa-don` (đã làm ở P3).
+
+| | Trước | Sau |
+|---|---|---|
+| Hình dạng | `<section>` nằm **cuối trang** | `<dialog>` thật, mobile trượt từ đáy lên |
+| Thoát | nút chữ "Đóng" — **hai cửa sổ không có nút nào** | ✕ luôn có, dính đầu cửa sổ khi thân cuộn |
+| `Esc` · bấm ra ngoài | không có | trình duyệt lo |
+| Cuộn nền khi mở | trang sau trôi tự do | khoá |
+
+### Làm bằng script, không sửa tay 14 lần
+
+Mười bốn chỗ **cùng một hình dạng**. Sửa tay là mười bốn cơ hội bỏ sót một `</section>` — và
+một thẻ đóng **sai** thì `tsc` bắt được, còn một thẻ đóng **đúng mà gắn nhầm cửa sổ** thì
+không cổng nào bắt.
+
+### Cổng mới `check-cua-so` — mệnh đề ③ mới là lý do nó tồn tại
+
+Bốn mệnh đề mỗi lối vào: mở ra có `<dialog open>` · có ✕ · **✕ nằm trong khung nhìn** · bấm ✕
+đóng thật.
+
+*"Có cửa sổ"* thì nhìn ảnh là biết. *"Nút thoát có chạm tới được ở khổ 390px không"* thì chỉ
+phép đo trả lời được — và đó đúng là chỗ ba lần trước đã hỏng (kỷ luật #21).
+
+### 📌 Lần đầu trong bốn phiên: cổng đỏ ĐÚNG LÀ hồi quy của tôi
+
+Chín cổng cũ bám vào `section[aria-label=…]`. Ba cổng đỏ ngay lượt chạy đầu
+(`check-customers`, `check-receive-flow`, `check-danh-muc-thuoc`).
+
+P2 và P3 mỗi phiên có một cổng đỏ **không phải** hồi quy (đã chứng minh bằng `git stash`).
+Lần này thì có — và điều đáng nói là **cách phân biệt vẫn y hệt**: đọc log, tìm selector,
+đối chiếu với thứ mình vừa đổi. Không đoán. Sửa trong cùng phiên, đúng kỷ luật #17
+(*test đỏ ⇒ dừng triển khai*).
+
+### Kỷ luật #14
+
+| Đột biến | Kết quả |
+|---|---|
+| trả cửa sổ "Sắp xếp lô vào ô" về `<section>` cũ | `GATE=1`, đỏ **đúng một** dòng `/ton-kho` (`khong-mo-duoc`), 4 lối vào kia và cả hai khổ vẫn xanh |
+
+### Cổng tại điểm dừng
+
+```
+MAKE_CHECK_EXIT=0 — 1447 passed (6:16) · RUFF/FORMAT/IMPORTLINTER/MYPY = 0
+TSC=0  ESLINT=0  VITEST=0 (73)  BUILD=0
+UIGATES_EXIT=0 — 14/14 đọc-thuần (thêm check-cua-so)
+```
+
+### Ảnh nghiệm thu
+
+`docs/ui-history/2026-08-01-cua-so/` — 8 ảnh, 4 cảnh × 2 khổ, kèm `README.md`.
+
+### 📌 Bằng chứng sẵn có cho P5
+
+`mobile-390-sua-gia.png` cho thấy bảng danh mục thuốc **vỡ chữ** ở khổ 390px
+(`Alaxa`/`n`/`Ibu`/`prof`) — đúng lệnh `#8` của Chain, *"danh mục thuốc mobile chưa cân
+xứng"*. Ảnh đã có sẵn, P5 không phải đi tìm lại.
+
+### Điểm dừng chính xác
+
+P4 đóng. Tiếp theo **P5 — cân xứng mobile + rà laptop**: thang chữ/khoảng cách dùng chung ·
+sửa danh mục thuốc mobile (lệnh #8) · rà toàn bộ màn ở 1440×900 (lệnh #9). Không có quyết
+định nghiệp vụ nào cần Chain.
+
+Sau P5 còn **P6** — trả nợ BERAS V2: Phase 4 (pick list) · Phase 12 (sơ đồ trực quan) · các
+tệp spec. Chain quyết một lượt: **Phase 8 (multi-supplier) làm hay hoãn**.
+
+Vẫn còn treo từ P1: **CSDL thử `p1etc_thu`** chờ Chain xoá.
