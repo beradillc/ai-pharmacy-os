@@ -8002,3 +8002,86 @@ hình gì, đối chiếu 25 mã ETC.
 
 App đang chạy trên `qt650` tại `http://192.168.1.10:3000`. Đăng nhập
 `trinhthu@quaythuoc650.vn` — phần mềm bắt đổi mật khẩu lần đầu.
+
+---
+
+## 7de. 🔧 SỬA LỖI UAT — Đợt 1 + C-02 (2026-08-01)
+
+Chain uỷ quyền *"sửa toàn bộ lỗi trước khi quay video"*. Phiên này đóng **10/18 mục**.
+
+### ✅ Đã đóng
+
+| Mục | Nội dung |
+|---|---|
+| **C-01** | Màn đổi mật khẩu + **cửa chặn** ở `AppShell` — gõ thẳng URL cũng không đi vòng được |
+| **C-02** | Màn **Đổi trả hàng** trong cửa sổ chi tiết hoá đơn, trả theo **dòng** |
+| U-01…U-04 | Vùng chạm: "Thêm" 36→**48px** · "Thanh toán" 43→48px · 4 tab 38→44px · "Tính lại" 36→44px |
+| U-05 | Trạng thái rỗng cho Báo cáo và Đề xuất |
+| U-06 | Tooltip phân biệt *Nhập hàng nhanh* ↔ *Khởi tạo tồn kho* |
+| — | **CSDL UAT `uat650`** — 36 thuốc · 72 lô · 10 khách · 249 đơn · 4 NCC |
+
+### 🔴 Bốn lỗi cùng một họ: MỘT CHUỖI SAI KHÔNG LÀM ĐỎ CỔNG NÀO
+
+| Chuỗi sai | Hậu quả | Ai bắt được |
+|---|---|---|
+| `styles.primary` — class **không tồn tại** | CSS Modules trả `undefined` ⇒ nút rơi về mặc định trình duyệt: 36px, không màu thương hiệu | **phép đo vùng chạm** |
+| `sales.refund` — quyền **không tồn tại** | cột "Khách trả" **không bao giờ hiện** với bất kỳ ai | đọc lại `SALES_PERMISSIONS` |
+| `"Nhà thuốc" in text` trong test | test canh **máy đang chạy**, không canh sản phẩm; đỏ ngay khi đặt tên cơ sở thật | `make check` |
+| *"Hàng sẽ quay lại kho"* trên hộp thoại | **lời hứa sai** — backend cố ý không trả hàng về kho | **truy vấn SQL** sau khi trả thật |
+
+Không lint nào bắt được (đều là chuỗi hợp lệ về cú pháp), không test nào bắt được (nút vẫn
+bấm được, màn vẫn chạy). **Chỉ phép đo trên sản phẩm thật lộ ra.**
+
+### 🔴 Giao diện của tôi đã NÓI SAI, và SQL bắt được
+
+Hộp thoại trả hàng bản đầu hứa *"Hàng sẽ quay lại kho và doanh thu giảm tương ứng."*
+
+Đo sau khi trả thật: `sale_lines.returned_quantity = 1` **có** ghi; `stock_movements`
+**không có dòng nào**.
+
+`register_return` **cố ý** không trả hàng về kho — docstring nói rõ: *thuốc khách trả phải
+được dược sĩ kiểm tình trạng trước khi bán lại*, nên nhập lại là quyết định riêng qua
+`POST /inventory/receive`. Quyết định nghiệp vụ **đúng**; cái sai là câu tôi viết.
+
+Và nó đúng loại khẳng định sai mà chính báo cáo UAT vừa nêu là **tệ hơn im lặng, vì người
+dùng tin nó**. Nay hộp thoại nói thẳng: doanh thu giảm, **thuốc không tự vào lại kho**.
+
+### 📌 Sửa một cổng ở sai chỗ thì nó đỏ vì lý do MỚI
+
+Bản vá *"mở giỏ"* của tôi ở P1 chèn vào **giữa** hàm `themThuoc` của
+`check-pos-allergy` ⇒ lần thêm thuốc thứ hai bị **chính giỏ đang mở che mất nút**. Cổng vẫn
+đỏ, nhưng vì một lý do khác hẳn — và nếu chỉ nhìn màu thì tưởng chưa sửa được gì.
+
+### Cổng tại điểm dừng
+
+```
+MAKE_CHECK: 1458 passed (sau khi sửa test phụ thuộc .env)
+UIGATES: 13/15 trên CSDL UAT — từ 11/15 trên CSDL trống
+TSC=0  ESLINT=0  VITEST=0 (76)  BUILD=0
+```
+
+Hai cổng còn đỏ **đã chứng minh không phải sản phẩm**: `customer_allergies = 0` trong CSDL
+UAT (`demo_pharmacy` tạo 10 khách nhưng không tạo dị ứng nào); `check-rejected-sales` cần
+đơn offline bị từ chối, không có sẵn.
+
+### 🚧 CÒN LẠI — 8 mục, nói rõ
+
+| Mục | Nội dung |
+|---|---|
+| **C-03** | Màn **Sổ thuốc kiểm soát đặc biệt** — Critical, có mặt pháp lý, **cần Trợ lý Pháp Lý rà trước** |
+| M-01 | Màn Nhà cung cấp — mở khoá màn Đơn mua hàng đang có |
+| M-02 | Màn Thông tin cơ sở |
+| M-03 | Màn Thông tin người dùng |
+| M-04 | Màn Nhật ký hoạt động |
+| M-05 | Audit log: **giá trị cũ → mới** |
+| M-06 | Audit log: thiết bị |
+| M-07 · M-08 | Điều chỉnh tồn trực tiếp · Tra cứu đơn thuốc |
+
+**Vì sao dừng ở đây:** tám mục còn lại là **sáu màn hình mới** cộng một thay đổi lược đồ
+`audit_logs`. Đó là khối lượng lớn hơn hẳn phần vừa làm, và gộp vào cuối một phiên đã rất
+dài sẽ cho ra thứ chưa được kiểm tử tế — cùng lý lẽ đã dùng ở §7db và Chain đã chấp nhận.
+
+### Điểm dừng
+
+App đang chạy trên **`uat650`** (CSDL kiểm thử). CSDL của quầy là **`qt650`**, không bị đụng.
+Đổi lại bằng `DB__URL=…/qt650 ./scripts/lan-dev.sh`.
