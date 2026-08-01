@@ -11,7 +11,7 @@
 | Địa chỉ | xã Thạnh Trị, tỉnh Vĩnh Long |
 | Người phụ trách chuyên môn | **Dược sĩ Trần Thị Trinh Thư** — chủ quầy, hơn 10 năm kinh nghiệm |
 | CSDL | `qt650` |
-| Đăng nhập | `trinhthu@quaythuoc650.vn` · `QuayThuoc650@2026` — **phần mềm bắt đổi mật khẩu ở lần đăng nhập đầu** |
+| Đăng nhập | `trinhthu@quaythuoc650.vn` · `QuayThuoc650@2026` — 🔴 **CẢI CHÍNH 01/08:** dòng này ban đầu ghi *"phần mềm bắt đổi mật khẩu ở lần đăng nhập đầu"*. **Sai.** UAT cùng ngày đo được: hệ thống đặt cờ *phải đổi* nhưng **không có màn để đổi** và **không chặn đăng nhập** — xem lỗi C-01 |
 | Địa chỉ dùng trong quầy | `http://192.168.1.10:3000` (điện thoại/máy tính bảng cùng Wi-Fi) |
 
 ## Dữ liệu có gì
