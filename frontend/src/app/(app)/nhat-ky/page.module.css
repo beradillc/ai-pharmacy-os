@@ -22,7 +22,53 @@
   line-height: 1.5;
 }
 
+/* Thay đổi giá trị cũ → mới (M-05). Mỗi cặp một dòng: một hành vi có thể đổi nhiều trường,
+   và ghép chúng vào một dòng chạy dài là cách chắc chắn để cột này tràn khỏi màn 390px. */
+.thayDoi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.truong {
+  color: var(--beras-text-muted);
+  font-size: var(--text-xs);
+}
+
+/* Giá trị cũ gạch ngang: mắt phân biệt được cũ/mới mà không cần đọc chữ — quan trọng vì cột
+   này thường là hai con số trông giống hệt nhau. */
+.cu {
+  color: var(--beras-text-muted);
+  text-decoration: line-through;
+  font-family: var(--beras-font-mono);
+}
+
+.moi {
+  font-family: var(--beras-font-mono);
+  font-weight: 600;
+}
+
+/* Thiết bị (M-06): không `nowrap`. Nhãn dài nhất là "Điện thoại Android · Chrome" và ép nó
+   một dòng trên khổ 390px là đúng bẫy tràn cột đã gặp 3 lần (kỷ luật #21). */
+.thietBi {
+  font-size: var(--text-sm);
+}
+
 @media (width < 720px) {
+  /* Ô không có gì để nói. Trên khổ máy tính nó là một ô trống bình thường của bảng; ở đây
+     `td::before` in nhãn ra kể cả khi ô rỗng, nên phải giấu hẳn — 50 dòng × 2 nhãn trống
+     là nửa màn hình chữ không nội dung.
+
+     🔴 Bộ chọn phải là `.bangThe td.oRong`, KHÔNG phải `.oRong`: quy tắc `.bangThe td`
+     ngay dưới có độ đặc hiệu (0,1,1) và sẽ thắng một `.oRong` (0,1,0) — `display: block`
+     đè `display: none` và ô rỗng hiện lại y như cũ. Đây đúng hệ luận kỷ luật #22: sửa
+     **đúng chỗ** chưa đủ, **phạm vi** của bộ chọn mới quyết định bản vá có kín không. */
+  .bangThe td.oRong {
+    display: none;
+  }
+
   .bangThe thead {
     /* Ẩn khỏi mắt nhưng GIỮ cho trình đọc màn hình. */
     position: absolute;
