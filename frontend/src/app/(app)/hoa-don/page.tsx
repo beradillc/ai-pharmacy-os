@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
+import { ConfirmDialog } from "@/components/overlay/ConfirmDialog";
 import { DetailDialog } from "@/components/overlay/DetailDialog";
+import { useAuthStore } from "@/features/auth/auth-store";
 import { useDrugNames } from "@/features/catalog/use-drug-names";
 import {
   SALES_PAGE_SIZE,
@@ -11,6 +13,8 @@ import {
   useSalesList,
 } from "@/features/sales/use-sales-list";
 import { useReceiptPrint } from "@/features/sales/use-receipt-print";
+import { useRegisterReturn } from "@/features/sales/use-return";
+import type { SaleLine } from "@/shared/api/types";
 import { ApiError, thongDiepLoi } from "@/shared/api/errors";
 import { formatMoney, formatQty, formatTime } from "@/shared/format/number";
 import styles from "@/shared/ui/screen.module.css";
@@ -49,6 +53,18 @@ export default function InvoicesPage() {
   const detail = useSaleDetail(openId);
   const names = useDrugNames((detail.data?.lines ?? []).map((l) => l.drug_id));
   const inHoaDon = useReceiptPrint();
+  const traHang = useRegisterReturn(openId);
+  const [dangTra, setDangTra] = useState<{ line: SaleLine; conTraDuoc: number } | null>(null);
+  const [traLoi, setTraLoi] = useState<string | null>(null);
+  /** `sales.return` — trả hàng đụng TIỀN và TỒN KHO. Thiếu quyền ⇒ **không hiện cột**, chứ
+   *  không hiện nút rồi trả 403.
+   *
+   *  📌 Tên quyền phải khớp `SALES_PERMISSIONS` của backend. Bản đầu tôi gõ `sales.refund`
+   *  (không tồn tại) ⇒ cột sẽ **không bao giờ hiện** với bất kỳ ai, và không có gì báo lỗi —
+   *  cùng họ với `styles.primary` ở lỗi U-03: một chuỗi sai không làm đỏ cổng nào. */
+  const coQuyenTra = new Set(useAuthStore((s) => s.session)?.permissions ?? []).has(
+    "sales.return",
+  );
   const [inLoi, setInLoi] = useState<string | null>(null);
 
   const dayTotal = rows
@@ -218,6 +234,7 @@ export default function InvoicesPage() {
       >
         <>
           {inLoi && <p className={styles.muted}>{inLoi}</p>}
+          {traLoi && <p className={styles.error}>{traLoi}</p>}
           {detail.isLoading && <div className={styles.skeleton} />}
           {detail.error && (
             <p className={styles.muted}>
@@ -236,26 +253,108 @@ export default function InvoicesPage() {
                     <th className={styles.num}>Đơn giá</th>
                     <th className={styles.num}>Thành tiền</th>
                     <th className={styles.num}>Đã trả lại</th>
+                    {coQuyenTra && <th className={styles.num}>Khách trả</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {detail.data.lines.map((line) => (
-                    <tr key={line.id}>
-                      <td>{names.nameOf(line.drug_id) ?? `Mã ${line.drug_id.slice(0, 8)}`}</td>
-                      <td className={styles.num}>{formatQty(line.quantity)}</td>
-                      <td className={styles.num}>{formatMoney(line.unit_price)} đ</td>
-                      <td className={styles.num}>{formatMoney(line.line_total)} đ</td>
-                      <td className={`${styles.num} ${styles.muted}`}>
-                        {Number(line.returned_quantity) > 0 ? formatQty(line.returned_quantity) : "—"}
-                      </td>
-                    </tr>
-                  ))}
+                  {detail.data.lines.map((line) => {
+                    const daBan = Number(line.quantity);
+                    const daTra = Number(line.returned_quantity);
+                    const conTraDuoc = daBan - daTra;
+                    return (
+                      <tr key={line.id}>
+                        <td data-nhan="Thuốc">
+                          {names.nameOf(line.drug_id) ?? `Mã ${line.drug_id.slice(0, 8)}`}
+                        </td>
+                        <td className={styles.num} data-nhan="SL">{formatQty(line.quantity)}</td>
+                        <td className={styles.num} data-nhan="Đơn giá">
+                          {formatMoney(line.unit_price)} đ
+                        </td>
+                        <td className={styles.num} data-nhan="Thành tiền">
+                          {formatMoney(line.line_total)} đ
+                        </td>
+                        <td className={`${styles.num} ${styles.muted}`} data-nhan="Đã trả lại">
+                          {daTra > 0 ? formatQty(line.returned_quantity) : "—"}
+                        </td>
+                        {coQuyenTra && (
+                          <td className={styles.num} data-nhan="Khách trả">
+                            {/* 🔴 Trả theo DÒNG, không theo cả đơn (lỗi C-02). Khách mua năm
+                                món trả một món là ca thường nhất; một nút "huỷ cả đơn" sẽ bị
+                                dùng nhầm cho đúng ca đó, và huỷ nhầm một đơn đã thu tiền thì
+                                sửa lại rất tốn.
+
+                                🔴 VÀ: ghi nhận trả hàng KHÔNG tự đưa thuốc về kho. Backend cố
+                                ý như vậy — thuốc khách trả phải được dược sĩ kiểm tình trạng
+                                trước khi bán lại, nên nhập lại là một QUYẾT ĐỊNH riêng, không
+                                phải một phản ứng tự động (xem `register_return`).
+
+                                Bản đầu của hộp thoại này hứa *"hàng sẽ quay lại kho"* — SAI,
+                                và đúng loại khẳng định sai mà chính báo cáo UAT vừa nêu là tệ
+                                hơn im lặng. Đo được bằng SQL: `returned_quantity=1` có ghi,
+                                `stock_movements` KHÔNG có dòng nào. */}
+                            {conTraDuoc <= 0 ? (
+                              <span className={styles.muted}>đã trả hết</span>
+                            ) : (
+                              <button
+                                type="button"
+                                className={styles.ghost}
+                                onClick={() => setDangTra({ line, conTraDuoc })}
+                              >
+                                Trả lại
+                              </button>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
         </>
       </DetailDialog>
+
+      {/* Hỏi SỐ LƯỢNG trả bằng hộp thoại có sẵn, không hỏi bằng `window.prompt` — một số
+          webview nuốt lời gọi đó và trả `null` lặng lẽ (xem `ConfirmDialog`). */}
+      <ConfirmDialog
+        open={dangTra !== null}
+        title={`Khách trả lại "${dangTra ? (names.nameOf(dangTra.line.drug_id) ?? "mặt hàng") : ""}"`}
+        description={
+          dangTra
+            ? `Đã bán ${formatQty(dangTra.line.quantity)}, còn trả lại được ${formatQty(String(dangTra.conTraDuoc))}. ` +
+              "Ghi nhận trả hàng làm GIẢM DOANH THU của đơn này. " +
+              "⚠️ Thuốc KHÔNG tự vào lại kho — dược sĩ phải kiểm tình trạng rồi nhập lại bằng tay ở màn Nhập hàng."
+            : undefined
+        }
+        confirmLabel="Ghi nhận trả hàng"
+        tone="danger"
+        input={{ label: "Số lượng khách trả", defaultValue: "1", type: "number" }}
+        onConfirm={(gt) => {
+          if (dangTra === null) return;
+          const sl = Number(gt);
+          setTraLoi(null);
+          if (!Number.isFinite(sl) || sl <= 0 || sl > dangTra.conTraDuoc) {
+            setTraLoi(`Số lượng phải từ 1 đến ${formatQty(String(dangTra.conTraDuoc))}.`);
+            setDangTra(null);
+            return;
+          }
+          traHang.mutate(
+            { line_id: dangTra.line.id, quantity: String(sl) },
+            {
+              onSuccess: () => {
+                setDangTra(null);
+                void detail.refetch();
+              },
+              onError: (err) => {
+                setTraLoi(thongDiepLoi(err));
+                setDangTra(null);
+              },
+            },
+          );
+        }}
+        onCancel={() => setDangTra(null)}
+      />
     </div>
   );
 }
