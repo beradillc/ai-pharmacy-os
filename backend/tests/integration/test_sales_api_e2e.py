@@ -165,7 +165,14 @@ def test_get_receipt_thermal_k80(client: TestClient) -> None:
     assert resp.status_code == 200, resp.text
     assert resp.headers["content-type"].startswith("text/plain")
     text = resp.text
-    assert "Nhà thuốc" in text  # default OrgSettings.pharmacy_name
+    # 🔴 KHÔNG khẳng định tên nhà thuốc. `OrgSettings` đọc từ biến môi trường / `.env`, nên
+    # khẳng định `"Nhà thuốc" in text` là khẳng định về **máy đang chạy test**, không phải về
+    # sản phẩm. Nó đỏ ngay khi ai đó đặt `ORG__PHARMACY_NAME` cho một cơ sở thật — đúng điều
+    # xảy ra 01/08 khi dựng CSDL Quầy thuốc 650.
+    #
+    # Thứ test này thật sự cần canh: bản in **có đủ ba phần bắt buộc của một hoá đơn** —
+    # tiêu đề cơ sở (dòng đầu không rỗng), phần tiền, và chỗ ký.
+    assert text.splitlines()[0].strip() != ""  # có tên cơ sở, bất kể tên gì
     assert "Ký tên:" in text
     assert "Tổng cộng:" in text
 

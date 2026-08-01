@@ -58,21 +58,34 @@ for (const kho of KHO) {
   await page.waitForTimeout(3000);
 
   const themThuoc = async (ten) => {
+    // Giỏ đang mở CHE danh sách thuốc phía sau ⇒ thu gọn trước khi bấm Thêm. Trên máy tính
+    // không có nút này (giỏ luôn hiện cạnh danh sách), `count()` bằng 0 nên bỏ qua.
+    const thuGon = page.getByRole("button", { name: /^Thu gọn$/ });
+    if (await thuGon.count()) {
+      await thuGon.click();
+      await page.waitForTimeout(600);
+    }
     await page.fill('input[placeholder*="Tìm thuốc"]', ten);
     await page.waitForTimeout(1200);
     await page.locator("button", { hasText: /^Thêm$/ }).first().click();
-
-  // 🔴 Trên điện thoại giỏ thu thành thanh đáy (bản vá 31/07 — nút Thanh toán từng nằm cách
-  // 3,9 màn). Giỏ đóng là `display: none`, nên MỌI phép đo bên trong giỏ đều hỏng ở khổ
-  // mobile: `innerText` trả rỗng, `click()` báo "element is not visible". Cổng này chạy hai
-  // khổ nhưng chưa bao giờ mở giỏ ⇒ đỏ ở khổ mobile từ 31/07, và cái đỏ là PHÉP ĐO chứ
-  // không phải sản phẩm. Trên máy tính không có nút này, `count()` bằng 0 nên bỏ qua.
-  const moGio__ = page.getByRole("button", { name: /^Xem giỏ$/ });
-  if (await moGio__.count()) {
-    await moGio__.click();
-    await page.waitForTimeout(900);
-  }
     await page.waitForTimeout(800);
+  };
+
+  /**
+   * Mở giỏ trên khổ điện thoại — giỏ đóng là `display: none`, nên mọi phép đo bên trong nó
+   * hỏng (`innerText` rỗng, `click()` báo "element is not visible").
+   *
+   * 🔴 GỌI SAU KHI THÊM HẾT THUỐC, không gọi trong `themThuoc`. Bản vá 01/08 của tôi chèn
+   * nó vào giữa `themThuoc` ⇒ lần thêm thứ hai bị chính giỏ đang mở CHE MẤT nút "Thêm", và
+   * Playwright báo `cartHead ... intercepts pointer events`. Sửa một cổng ở sai chỗ thì nó
+   * đỏ vì một lý do mới, không phải hết đỏ.
+   */
+  const moGio = async () => {
+    const nut = page.getByRole("button", { name: /^Xem giỏ$/ });
+    if (await nut.count()) {
+      await nut.click();
+      await page.waitForTimeout(900);
+    }
   };
   const doc = () =>
     page.evaluate(() => {
@@ -92,12 +105,14 @@ for (const kho of KHO) {
 
   // --- ① thuốc sạch, chưa có khách: KHÔNG được hiện gì cả -------------------
   await themThuoc(THUOC_SACH);
+  await moGio();
   const chuaKhach = await doc();
 
   // --- ② gắn khách CÓ dị ứng + thuốc xung đột --------------------------------
   await page.fill('input[placeholder*="số"], input[type="tel"]', SDT_DI_UNG);
   await page.waitForTimeout(2500);
   await themThuoc(THUOC_XUNG_DOT);
+  await moGio();
   await page.waitForTimeout(2500);
   const coXungDot = await doc();
   await page.screenshot({ path: `${OUT}/${kho.ten}-1-canh-bao.png`, fullPage: true });
