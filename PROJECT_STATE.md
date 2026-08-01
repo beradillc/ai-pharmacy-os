@@ -7629,3 +7629,107 @@ spec (`PICKING_ASSIST.md` · `PICK_LIST.md` · `SMART_PURCHASE.md` · `LOCATION_
 (multi-supplier) làm hay hoãn**.
 
 Vẫn còn treo từ P1: **CSDL thử `p1etc_thu`** chờ Chain xoá.
+
+---
+
+## 7db. 🔒 ĐÓNG PHIÊN P6 — lộ trình lấy hàng (V2 Phase 4) + 6 tệp spec (2026-08-01)
+
+Phiên 6/6 của kế hoạch §7cv. Chain duyệt một chữ, không nêu Phase 8 ⇒ GĐ tự chốt theo quy
+tắc *"Chain chỉ duyệt mỗi phiên một lần"*. **4/4 bước, 2 commit.**
+
+### 🔴 Quyết định tự chốt: HOÃN Phase 8 (multi-supplier)
+
+Multi-supplier giải bài toán **so giá giữa nhiều nhà cung cấp**. BeraLLC hiện là **một nhà
+thuốc**, và cả chín lệnh Chain giao 01/08 đều là việc ở quầy — không lệnh nào đụng mua hàng.
+Nguyên tắc dùng suốt sáu phiên: **sửa cái đang gãy trước cái chưa có**; Phase 8 không gãy,
+nó chưa tồn tại. Lý do và điều kiện mở lại ghi ở `docs/inventory/SMART_PURCHASE.md` — trong
+đó có một câu **chỉ Chain trả lời được**: chọn nhà cung cấp theo *rẻ nhất*, *giao nhanh
+nhất*, hay *đang nợ ai ít nhất*.
+
+### Kỷ luật #16 tiết kiệm mục thứ BA trong sáu phiên
+
+Trước khi viết dòng nào: `where_is` (FEFO + `pick_order`), `GET /inventory/where`,
+`sort_pick_candidates`, `allocate_from_locations` **đều đã có**, và quầy đang dùng chúng để
+chỉ chỗ lấy cho **một mã**. Thứ Phase 4 thật sự thiếu là gộp **nhiều mã thành một vòng đi**
+— khoảng một phần năm khối lượng tôi tưởng.
+
+Ba mục đã tiết kiệm được nhờ kỷ luật này: khớp dị ứng (30/07, xoá 262 dòng) · mẫu in hoá đơn
+(P3) · lộ trình lấy hàng (P6). **Tỉ lệ hoàn vốn cao nhất trong 21 kỷ luật.**
+
+### Quy tắc mới, và vì sao
+
+| Quy tắc | Vì sao |
+|---|---|
+| Đơn vị lộ trình là **Ô**, không phải mặt hàng | Cái tốn công là *đi tới ô*. Liệt kê theo mặt hàng bắt người ta đi A → B → **quay lại A** |
+| Sắp theo `pick_order`, **không** theo hạn dùng | FEFO đã quyết ở bước **chọn lô**; sắp lại theo HSD cho lộ trình nhảy cóc mà **không đổi một hộp nào** |
+| Thiếu hàng ⇒ **vẫn trả** lộ trình phần lấy được | Giỏ mười mã thiếu một thì họ vẫn cần chín mã kia. Khác `allocate_from_locations` (toàn-vẹn-hoặc-không) một cách có chủ đích |
+| `POST`, không `GET` | Giỏ hai chục mã trong query string chạm giới hạn URL của proxy |
+
+### 📌 Bẫy "xanh vì rỗng" bắt được ngay trong phiên
+
+Lượt chụp **đầu tiên** cho *"0 ô"* — cửa sổ mở đúng, không lỗi JS, nhưng **nhánh có-lộ-trình
+chưa hề chạy**: ba thuốc tôi chọn chưa được xếp ô trong CSDL đó. Nếu chỉ nhìn "cửa sổ mở
+được, không lỗi" thì đã đóng mục. Phải truy vấn CSDL tìm mã **thật sự đã xếp ô** rồi chụp
+lại — và lượt sau cho 2 ô, hai mã gộp đúng vào một chặng.
+
+Đúng thứ kỷ luật #14 canh, và lần này nạn nhân suýt là chính ảnh nghiệm thu.
+
+### Kỷ luật #14 — ba đột biến
+
+| Đột biến | Kết quả |
+|---|---|
+| sắp lộ trình theo HSD thay vì `pick_order` | `PYTEST=1`, đỏ đúng 1 test, 18 test kia xanh |
+| gộp theo `drug_id` thay vì `location_id` | `PYTEST=1`, đỏ 3 test |
+| `raise` thay vì gom vào `thieu` | `PYTEST=1`, đỏ đúng test "một mã thiếu vẫn trả phần lấy được" |
+
+### Hook pre-commit lần đầu thực sự CHẶN
+
+Sáu phiên, đây là lần đầu hook dừng tay tôi lại (thứ tự import sai). Cưỡng chế bằng máy hoạt
+động — kỷ luật #10.
+
+### Sáu tệp spec — nợ từ §7cu đã trả
+
+| Tệp | Nội dung |
+|---|---|
+| `docs/inventory/PICK_LIST.md` | lộ trình lấy hàng — **đã chạy** |
+| `docs/inventory/PICKING_ASSIST.md` | ba mảnh trợ giúp lấy hàng, bức tranh chung |
+| `docs/inventory/INVENTORY_ARCHITECTURE.md` | hai sổ, bất biến, ranh giới module |
+| `docs/inventory/LOCATION_MAP.md` | Phase 12 — **thiết kế, chưa làm** |
+| `docs/inventory/SMART_PURCHASE.md` | Phase 8 — **hoãn**, điều kiện mở lại |
+| `docs/ARCHITECTURE_REVIEW.md` | tự rà kiến trúc sau V2 |
+
+### 🔴 KHÔNG LÀM TRONG PHIÊN NÀY — nói rõ, không giấu
+
+**Phase 12 (sơ đồ kho trực quan) chưa code một dòng nào.** Chỉ có **thiết kế** ở
+`LOCATION_MAP.md`. Phiên này đã dùng hết phần ngân sách hợp lý cho Phase 4 + 6 tệp spec, và
+gộp thêm một tính năng giao diện nguyên vẹn vào đây sẽ cho ra thứ chưa được kiểm tử tế.
+
+Thiết kế đó có một cảnh báo Chain nên đọc trước khi duyệt: **sơ đồ mặt bằng thật đòi toạ độ,
+mà toạ độ thì phải có người đo và nhập**. Không ai nhập thì tính năng hiện một lưới ô vuông
+xếp theo bảng chữ cái — trông như bản đồ nhưng không phải, và **tệ hơn không có** vì người
+ta tin vào nó. Đề xuất chia hai mức, làm mức 1 (lưới theo `pick_order`, không cần dữ liệu
+mới) trước.
+
+### Cổng tại điểm dừng
+
+```
+MAKE_CHECK_EXIT=0 — 1455 passed (5:20) · RUFF/FORMAT/IMPORTLINTER/MYPY = 0
+TSC=0  ESLINT=0  VITEST=0 (76)  BUILD=0
+UIGATES_EXIT=0 — 15/15 đọc-thuần
+```
+
+### Ảnh nghiệm thu
+
+`docs/ui-history/2026-08-01-lo-trinh/` — 2 khổ, giỏ 3 mã → 2 ô, hai mã gộp một chặng.
+
+### Điểm dừng chính xác
+
+**Kế hoạch 6 phiên §7cv đóng.** Chín lệnh Chain giao 01/08 xong hết; nợ V2 còn **Phase 12**
+(có thiết kế) và **Phase 8** (hoãn có lý do).
+
+Bốn việc `ARCHITECTURE_REVIEW.md` đề nghị, xếp theo tỉ lệ hoàn vốn: ① nối `git remote` để CI
+thật sự chạy (đóng C-03 mở từ 26/07) ② bộ test chạy trên Postgres (nợ F-4, đã 4 lỗi lọt) ③
+mục lục cho `PROJECT_STATE.md` (nay hơn 7.400 dòng) ④ gom port `SalesService` thành
+`SalesPorts` (chữ ký tám tham số đã suýt nổ một lần).
+
+Vẫn còn treo từ P1: **CSDL thử `p1etc_thu`** chờ Chain xoá.
