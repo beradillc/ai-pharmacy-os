@@ -27,6 +27,7 @@
 | Kỷ luật bắt buộc **20** (Chain nghiệm thu bằng ảnh chụp) | **2026-07-31** — Chain chốt: *"mở trình duyệt test, chụp màn hình lại là coi như xong; xem trên ảnh là đủ"* |
 | Kỷ luật bắt buộc **21** (cổng đo *nhìn thấy được*, không chỉ *có trên trang*) | **2026-08-01** — GĐ đề nghị sau lần thứ **ba** cùng một hình dạng: cổng xanh vì `innerText` đọc được cả phần tràn ngoài khung nhìn. **Chain DUYỆT cùng ngày** |
 | Kỷ luật bắt buộc **22** (chuỗi nối hai thế giới phải có cổng đọc thẳng nguồn bên kia) | **2026-08-01** — GĐ đề nghị sau lần thứ **tư** cùng một hình dạng trong ba ngày: class CSS · mã quyền · mã hành vi audit · `target_type`, cả bốn xanh qua `tsc`/`eslint`/`pytest`. **CHỜ CHAIN DUYỆT** |
+| Kỷ luật bắt buộc **23** (hai vế của một phép so phải có hai nguồn độc lập) + **24** (mỗi dòng của #22 phải kèm cổng của nó) | **2026-08-01** — GĐ đề nghị sau khi một cổng khẳng định *tồn cuối kỳ cộng đúng* xanh trọn vẹn trong lúc màn hình hiện **-5**, che một lỗi sổ pháp lý im lặng từ Sprint 7. **CHỜ CHAIN DUYỆT** |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -483,3 +484,55 @@ máy này, khác với văn bản ủy quyền (file này) nay đã có lịch s
     vẫn dính nguyên (ô nhập ngày cao **260px**, đo thật `flex=0 1 260px`).
     **Phạm vi** quyết định một bản vá có kín không, không phải **vị trí** dòng sửa. Sau khi
     vá "ở chỗ khai", hỏi tiếp: *bộ chọn/điều kiện của bản vá có bỏ sót cách dùng nào không?*
+
+23. **Hai vế của một phép so phải có HAI NGUỒN ĐỘC LẬP.** (2026-08-01, GĐ đề nghị — **CHỜ CHAIN
+    DUYỆT**; ghi ở đây ngay từ lúc đề nghị theo kỷ luật #13)
+
+    Một cổng so `A` với `B` chỉ chứng minh được điều gì khi `A` và `B` **đến từ hai chỗ khác
+    nhau**. Cùng một nguồn thì phép so là một **phép gán đội lốt**: nó luôn xanh, và nó xanh
+    **bất kể sản phẩm đúng hay sai**.
+
+    Ca thật, ngày 01/08: cổng màn Sổ kiểm soát khẳng định *"tồn cuối kỳ cộng đúng"* bằng cách so
+    `Σnhập − Σxuất` với `balance` — **cả hai lấy từ cùng một lượt gọi API**. Nó in ra:
+
+    ```
+      ⑥ tồn cuối kỳ: Σnhập−Σxuất = 88 · API trả 88 · màn hiện "-5" ✓
+    ```
+
+    Dấu ✓ nằm **ngay cạnh** con số sai. Và `−5` là một lỗi thật im lặng từ Sprint 7: cột "Còn
+    lại" cộng lại từ 0 mỗi lượt truy vấn, nên **tệp CSV đem trình thanh tra** có thể hiện sổ
+    thuốc gây nghiện **tồn âm** — đọc như *"đã bán thuốc chưa từng nhập"*.
+
+    - Cách làm đúng: đo `A` từ **API**, đo `B` từ **thứ màn hình thật sự vẽ ra**, và khẳng định
+      cả hai — *cộng thêm* một tính chất độc lập với cả hai (*"không dòng nào tồn âm"*), vì tính
+      chất ấy đỏ được ngay cả khi hai bên cùng sai một kiểu.
+    - Mẫu đúng đã có sẵn: `check-kiem-ke` đo tồn qua **Sơ đồ kho** (không đọc lại màn vừa bấm),
+      `check-don-thuoc` gọi **hai** API rồi so (§7dg). Chỗ hỏng là chỗ **quên dùng mẫu đã có**.
+    - Bổ sung cho #14: #14 nói *mã thoát phải biết đổi màu*; #23 nói *phải có thứ gì bên ngoài
+      để nó đổi màu theo*. Một cổng tự soi gương thì không bao giờ đổi màu.
+
+24. **Mỗi dòng thêm vào kỷ luật #22 phải kèm CỔNG của nó, cùng lúc.** (2026-08-01, GĐ đề nghị —
+    **CHỜ CHAIN DUYỆT**)
+
+    Kỷ luật #22 liệt kê bốn chuỗi nối hai thế giới đã gây lỗi thật — class CSS, **mã quyền**, mã
+    hành vi audit, `target_type`. Ngày 01/08, ba trong bốn đã có cổng; **mã quyền thì không**.
+    Kỷ luật ghi lại bài học, nó **không tự sinh ra phép kiểm**.
+
+    Hệ quả nếu quên: `permissions.has("compliance.ledger.reed")` là một `string` hợp lệ — `tsc`
+    xanh, `eslint` xanh, `pytest` xanh, và mục menu **không bao giờ hiện với bất kỳ ai**. Nó
+    trông y hệt *"tính năng chưa làm"*, nên người phát hiện sẽ đi viết lại tính năng thay vì sửa
+    một chữ.
+
+    - Khi thêm một dòng vào bảng #22, hỏi ngay: **"cổng của nó đâu?"** Không có thì viết luôn,
+      cùng commit. Chi phí đo thật: `shared/quyen.test.ts` mất **~4 phút** kể cả 3 lượt đột biến.
+    - **Một danh sách các lỗi đã biết mà không có cổng là một danh sách các lỗi SẼ LẶP LẠI.** Đó
+      chính là kết luận kiểm toán 26/07 — 16 sự cố "niềm tin giả" → đúng **1** bài học được thể
+      chế hoá → và đó là bài học **duy nhất không tái phát** — nay áp vào chính kỷ luật #22.
+
+    🔴 **Hệ luận về ẢNH CHỤP.** Kỷ luật #15 dặn *"phóng to trước khi kết luận"* sau hai lần suýt
+    sửa thứ không hỏng vì tin ảnh thu nhỏ. Ngày 01/08 xảy ra ca **ngược lại**: ảnh cho thấy chữ
+    dính `"pháp lý.Bố cục"`, tôi **ngờ ảnh sai**, đo `innerText` — **ảnh đúng**, JSX nuốt khoảng
+    trắng sau `</strong>`. Trong tuần này ảnh **đúng 5/6 lần**, và **bốn lỗi chỉ ảnh thấy được**
+    (`Mã 00000000` · dấu `·` mồ côi · ô rỗng vẫn chiếm dòng nhãn ở 390px · giá hiện thô).
+    *"Đừng tin ảnh thu nhỏ"* KHÔNG có nghĩa *"ảnh hay sai"* — nó có nghĩa **đo trước khi kết
+    luận, theo cả hai hướng**.
