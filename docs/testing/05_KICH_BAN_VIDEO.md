@@ -338,10 +338,10 @@ Phần mềm không cho đi tắt.
 
 ---
 
-# Khuôn chung cho các video còn lại
+# Khuôn chung — sáu bước, dùng cho MỌI video
 
-Mười một video còn lại dùng **cùng một khuôn sáu bước**. Ghi ở đây thay vì lặp lại lời thoại,
-để người viết kịch bản tiếp theo có mẫu thống nhất:
+Mọi video dùng **cùng một khuôn sáu bước**. Ghi ở đây một lần, các video bên dưới chỉ viết
+phần khác nhau:
 
 | Bước | Thời lượng | Nội dung | Ai nói |
 |---|---|---|---|
@@ -384,3 +384,712 @@ Mỗi video quay tối thiểu các cảnh sau, đặt tên tệp theo mẫu `vX
 
 🔴 **Cảnh `c06` là cảnh hay bị bỏ nhất và cũng hữu ích nhất.** Người xem nhớ *"khi tôi làm sai
 thì màn hình trông thế này"* lâu hơn nhớ đường đi đúng.
+
+---
+
+# VIDEO 02 — Thông tin cơ sở và tài khoản của bạn
+
+**Thời lượng:** 4 phút · **Khổ quay:** laptop (nhiều ô nhập) · **Màn:** `Cài đặt`
+
+> 🆕 Khối **Thông tin cơ sở** mới có từ 2026-08-01 (đóng lỗi UAT M-02). Trước đó tên nhà
+> thuốc nằm trong cấu hình cài đặt, người dùng không đổi được.
+
+### Cảnh 1 — Mở đầu `0:00`
+
+**NỮ:** Video này làm đúng hai việc, và cả hai chỉ làm **một lần rồi thôi**: khai thông tin
+nhà thuốc, và đổi mật khẩu của mình.
+
+**NAM:** Khai thông tin nhà thuốc để làm gì? Mình biết mình là ai rồi mà.
+
+**NỮ:** Mình biết, nhưng **phần mềm chưa biết**. Khi mình xuất báo cáo gửi Sở Y tế, tên và mã
+cơ sở phải in lên đó. Không khai thì lúc cần xuất báo cáo mình phải ngồi điền tay từng tờ.
+
+### Cảnh 2 — Làm nhanh `0:25`
+
+`[CẢNH: Cài đặt → cuộn tới "Thông tin cơ sở" → điền 5 ô → Lưu thông tin cơ sở]` ⏸
+
+Không giải thích. Chỉ cho thấy nó nhanh.
+
+### Cảnh 3 — Làm lại thật chậm `1:05`
+
+`[CẢNH: 🔍 từng ô]`
+
+**NỮ:** **Tên cơ sở** — chép **đúng như trên giấy chứng nhận đủ điều kiện kinh doanh dược**,
+không phải tên mình hay gọi ở nhà. Nếu giấy ghi *"Quầy thuốc Trịnh Thu"* thì gõ đúng vậy.
+
+**NAM:** Ghi tên ngắn cho đẹp thì sao?
+
+**NỮ:** Tên trên báo cáo lệch với tên trên giấy phép là chuyện phải giải thích với đoàn kiểm
+tra. Không đáng để đẹp hơn một chút.
+
+**NỮ:** **Địa chỉ**, **Điện thoại**, **Mã số thuế** — cũng từ tờ giấy đó. ⏸
+
+**NỮ:** **Mã cơ sở bán lẻ** là mã do **Cục Quản lý Dược** cấp, không phải mã số thuế. Hai cái
+khác nhau. Ô này **bắt buộc**, không điền thì nút Lưu không bấm được.
+
+**NAM:** Còn ô **bán buôn**?
+
+**NỮ:** Nhà thuốc bán lẻ thì bỏ trống. Chỉ cơ sở có cả bán buôn mới điền.
+
+`[CẢNH: 🔍 dòng cảnh báo màu nhạt phía trên]`
+
+**NỮ:** Chỗ này phần mềm nói thật với mình một điều: **hoá đơn in ra chưa dùng thông tin ở
+đây**. Đầu trang hoá đơn vẫn lấy tên từ lúc cài đặt máy.
+
+**NAM:** Vậy khai ở đây có tác dụng gì?
+
+**NỮ:** Có — cho **báo cáo gửi cơ quan quản lý**. Còn phần hoá đơn thì bên kỹ thuật còn nợ,
+và họ ghi thẳng lên màn hình thay vì để mình tự phát hiện sau khi in 200 tờ sai tên.
+
+### Cảnh 4 — Tài khoản của tôi `2:20`
+
+`[CẢNH: cuộn lên khối "Tài khoản của tôi"]`
+
+**NỮ:** Chỗ này cho biết **mình đang đăng nhập bằng ai** và **đang đứng ở chi nhánh nào**.
+Nghe thừa, nhưng đến lúc quầy có hai người dùng chung một máy thì đây là chỗ đầu tiên phải nhìn.
+
+### Cảnh 5 — Đổi mật khẩu `2:50`
+
+`[CẢNH: bấm "Đổi mật khẩu"]`
+
+**NỮ:** Mật khẩu ban đầu là do người cài đặt phần mềm đặt cho mình. **Người khác biết thì nó
+không còn là mật khẩu nữa.**
+
+**NAM:** Đổi rồi quên thì sao?
+
+**NỮ:** Người quản trị đặt lại được. Nhưng nhớ điều này: **tài khoản này ký vào sổ bán thuốc**.
+Ai đăng nhập bằng tài khoản của mình mà bán thuốc thì sổ ghi tên **mình**.
+
+### Cảnh 6 — Lỗi thường gặp `3:20`
+
+| Người xem sẽ gặp | Màn hình nói gì | Phải làm gì |
+|---|---|---|
+| Bấm Lưu mà không được | Nút mờ đi | Chưa điền **Mã cơ sở bán lẻ** |
+| Lưu xong tải lại thì trống | — | Sai quyền: chỉ có `xem`, không có `sửa` |
+| Đổi mật khẩu báo yếu | Câu nhắc đỏ | Mật khẩu phải đủ dài và có chữ hoa/số |
+
+### Cảnh 7 — Tóm tắt `3:45`
+
+**NAM:** Khai thông tin cơ sở theo **giấy phép**, không theo trí nhớ. Mã cơ sở bán lẻ bắt
+buộc. Đổi mật khẩu ngay hôm nhận máy.
+
+---
+
+# VIDEO 03 — Danh mục thuốc, hoạt chất và giá niêm yết ⭐
+
+**Thời lượng:** 6 phút · **Màn:** `Danh mục thuốc`
+
+> ⭐ Video **quan trọng thứ hai** sau video bán hàng, vì hai lý do đều liên quan tới an toàn
+> và pháp luật.
+
+### Cảnh 1 — Mở đầu `0:00`
+
+**NỮ:** Danh mục thuốc là **danh sách thuốc quầy mình có bán**. Nghe đơn giản, nhưng có một ô
+quyết định việc phần mềm có cứu được khách hàng hay không.
+
+**NAM:** Ô nào?
+
+**NỮ:** Ô **hoạt chất**. Mình để cuối video và nói kỹ.
+
+### Cảnh 3 — Làm lại thật chậm `1:00`
+
+`[CẢNH: 🔍 ô "Tìm theo tên thuốc…"]`
+
+**NỮ:** Ô tìm gõ **một phần tên** cũng ra, không cần gõ đủ. ⏸
+
+`[CẢNH: 🔍 cột phân loại]`
+
+**NỮ:** Mỗi thuốc có một phân loại: **OTC** bán không cần đơn, **ETC** bắt buộc có đơn thuốc,
+**kiểm soát đặc biệt** thì còn chặt hơn nữa.
+
+**NAM:** Nếu mình phân loại nhầm một thuốc ETC thành OTC?
+
+**NỮ:** Thì quầy sẽ **bán được nó mà không đòi đơn**. Phần mềm tin vào phân loại này, nên
+phân loại sai là mở một cửa mà lẽ ra phải đóng.
+
+### Cảnh 4 — Giá niêm yết `2:15`
+
+`[CẢNH: bấm sửa giá → 🔍 ô "Giá niêm yết mới" và ô "Lý do đổi giá"]`
+
+**NỮ:** Đổi giá thì phải ghi **lý do**. Không phải thủ tục hành chính: Luật Dược buộc nhà
+thuốc **niêm yết giá** và **cấm bán cao hơn giá niêm yết**.
+
+**NAM:** Ghi lý do gì cho đúng?
+
+**NỮ:** Đúng lý do thật. *"Nhà phân phối tăng giá"*, *"khuyến mãi tháng 8"*. Sáu tháng sau khi
+có người hỏi vì sao thuốc này tháng đó bán giá đó, câu trả lời nằm ở đây.
+
+`[CẢNH: bấm "Biến động giá"]`
+
+**NỮ:** Và đây là toàn bộ lịch sử giá của thuốc đó — **không xoá được**.
+
+### Cảnh 5 — Hoạt chất ⭐ `3:30`
+
+`[CẢNH: 🔍 khối Hoạt chất]`
+
+**NỮ:** Đây là phần quan trọng nhất video. Một thuốc có thể có nhiều **hoạt chất**. Khách khai
+dị ứng thì khai **theo hoạt chất**, không theo tên thuốc.
+
+**NAM:** Vì sao không theo tên thuốc cho dễ?
+
+**NỮ:** Vì cùng một hoạt chất có **hàng chục tên thuốc khác nhau**. Khách nói *"tôi dị ứng
+Augmentin"*, nhưng thứ làm họ dị ứng là **Acid clavulanic** — và chất đó còn nằm trong nhiều
+thuốc khác tên hoàn toàn khác.
+
+**NỮ:** 🔴 Điều phải nhớ: **thuốc không khai hoạt chất thì cảnh báo dị ứng IM LẶNG.** Im lặng
+không có nghĩa là *không có nguy cơ* — nó có nghĩa là *phần mềm không biết gì để mà cảnh báo*.
+
+**NAM:** Nghĩa là bán một thuốc chưa khai hoạt chất cho khách dị ứng thì màn hình không hiện gì?
+
+**NỮ:** Đúng. Và đó là lý do khai hoạt chất không phải việc làm cho đủ.
+
+### Cảnh 6 — Lỗi thường gặp `5:00`
+
+| Gặp | Vì sao | Cách xử |
+|---|---|---|
+| Bán thuốc kê đơn mà không bị đòi đơn | Phân loại sai thành OTC | Sửa phân loại trong Danh mục |
+| Khách dị ứng mà không có cảnh báo | Thuốc **chưa khai hoạt chất** | Mở thuốc, thêm hoạt chất |
+| Bấm Lưu giá không được | Chưa ghi lý do | Ghi lý do thật, không ghi dấu chấm |
+
+### Cảnh 7 — Tóm tắt `5:35`
+
+**NAM:** Phân loại quyết định có đòi đơn hay không. Hoạt chất quyết định cảnh báo dị ứng có
+kêu hay không. Đổi giá phải ghi lý do.
+
+---
+
+# VIDEO 04 — Sơ đồ kho và khởi tạo tồn
+
+**Thời lượng:** 5 phút · **Màn:** `Sơ đồ & Kiểm kê` → `Sơ đồ kho`, rồi `Nhập hàng` → `Khởi tạo tồn`
+
+### Cảnh 1 — Mở đầu `0:00`
+
+**NỮ:** Hai việc này làm **một lần lúc bắt đầu**, rồi hầu như không đụng lại.
+
+**NAM:** Vậy sao vẫn phải có video riêng?
+
+**NỮ:** Vì làm sai ở đây thì **mọi việc sau đó đều lệch**, mà lệch một cách rất khó nhìn ra.
+
+### Cảnh 3 — Dựng sơ đồ `0:40`
+
+`[CẢNH: bấm "+ Thêm kho" → gõ mã → "Lưu vị trí"]`
+
+**NỮ:** Sơ đồ kho có bốn tầng: **Kho → Khu → Kệ → Ô**. Không bắt buộc dùng đủ bốn tầng — quầy
+nhỏ thì Kho rồi Ô là đủ.
+
+**NỮ:** 🔍 Ô **thứ tự lấy hàng**: số nhỏ đi trước. Đặt theo **đường chân mình đi** trong quầy,
+không đặt theo bảng chữ cái.
+
+**NAM:** Đặt sai thì sao?
+
+**NỮ:** Phần mềm vẫn chỉ đúng ô có hàng, chỉ là nó bắt mình đi vòng. Sửa lại lúc nào cũng được.
+
+**NỮ:** 🔴 Còn cái **không** sửa lại được dễ dàng: **mã vị trí**. Đặt rồi thì giữ.
+
+### Cảnh 4 — Khởi tạo tồn `2:00`
+
+`[CẢNH: Nhập hàng → tab "Khởi tạo tồn" → "Bắt đầu đếm ô này"]`
+
+**NỮ:** Khởi tạo tồn là khai **hàng đang có sẵn trên kệ từ trước khi dùng phần mềm**.
+
+**NAM:** Khác gì nhập hàng?
+
+**NỮ:** Khác ở chỗ **tiền**. Nhập hàng là hàng mới mua về, có hoá đơn, có công nợ nhà cung cấp.
+Khởi tạo tồn là hàng **đã có rồi** — khai để phần mềm biết, không phải để ghi một lần mua.
+
+**NỮ:** 🔴 Dùng nhầm khởi tạo tồn cho hàng mới mua thì **báo cáo mua hàng sẽ thiếu**, mà tồn
+kho vẫn đúng — nên không ai phát hiện cho tới lúc đối chiếu công nợ cuối tháng.
+
+**NỮ:** Mỗi dòng cần: chọn thuốc, **số lượng**, **số lô**, **hạn dùng**, rồi bấm *Ghi vào ô này*.
+
+### Cảnh 5 — Lỗi thường gặp `4:00`
+
+| Gặp | Vì sao |
+|---|---|
+| Không chọn được ô | Ô đang ở trạng thái **ngừng hoạt động** |
+| Ghi vào ô báo lỗi số lượng | Cất vào ô nhiều hơn số hàng thật của lô |
+| Hàng có mà tra "ở đâu" không ra | Đã nhận hàng nhưng **chưa xếp vào ô nào** |
+
+### Cảnh 6 — Tóm tắt `4:35`
+
+**NAM:** Thứ tự lấy hàng theo đường chân đi. Khởi tạo tồn **chỉ dùng một lần** cho hàng có sẵn.
+
+---
+
+# VIDEO 05 — Nhập hàng
+
+**Thời lượng:** 4 phút · **Màn:** `Nhập hàng`
+
+### Cảnh 3 — Làm lại thật chậm `1:00`
+
+**NỮ:** Chọn thuốc, điền **Số lượng nhập**, **Giá vốn**, **Số lô**, **Hạn dùng**, và nếu biết
+chỗ cất thì chọn luôn **Sắp xếp vào ô**.
+
+**NAM:** Số lô với hạn dùng có bắt buộc không? Nhiều hộp giống hệt nhau mà.
+
+**NỮ:** 🔴 **Bắt buộc.** Đây là thứ giúp phần mềm bán **đúng lô sắp hết hạn trước**. Không có
+hạn dùng thì phần mềm không biết lô nào nên bán trước, và hàng cận date sẽ nằm lại trên kệ
+cho tới lúc phải bỏ.
+
+**NAM:** Còn giá vốn?
+
+**NỮ:** Giá vốn không hiện cho khách, nó để tính lãi. Điền sai thì báo cáo lãi sai — và sai
+theo hướng mình **tưởng lãi nhiều hơn thật**.
+
+**NỮ:** 🔍 Khối *"Đã nhận trong lượt này"* bên dưới liệt kê những gì vừa nhận. Nhìn vào đó
+trước khi đóng màn, đừng tin trí nhớ.
+
+### Cảnh 4 — Lỗi thường gặp `2:45`
+
+| Gặp | Vì sao |
+|---|---|
+| Nhập rồi mà quầy không bán được | Hàng chưa **xếp vào ô** — tra được nhưng không ai chỉ tới chỗ lấy |
+| Hạn dùng báo lỗi | Gõ nhầm năm; hạn dùng đã qua thì phần mềm từ chối |
+| Nhập trùng hai lần | Chưa nhìn khối *"Đã nhận trong lượt này"* |
+
+### Cảnh 5 — Tóm tắt `3:30`
+
+**NAM:** Số lô và hạn dùng **bắt buộc**. Xếp vào ô ngay lúc nhận thì đỡ một vòng đi lại.
+
+---
+
+# VIDEO 08 — Khách hàng và dị ứng ⭐
+
+**Thời lượng:** 5 phút · **Màn:** `Khách hàng`
+
+### Cảnh 1 — Mở đầu `0:00`
+
+**NỮ:** Lưu thông tin khách để làm hai việc: **nhận ra khách quen**, và **cảnh báo khi thuốc
+sắp bán có thể gây dị ứng**.
+
+### Cảnh 3 — Làm lại thật chậm `0:50`
+
+`[CẢNH: "Thêm khách hàng" → điền tên, số điện thoại → "Tạo khách hàng"]`
+
+**NỮ:** 🔍 Số điện thoại trong danh sách hiện dạng che, chỉ thấy ba số cuối.
+
+**NAM:** Sao lại giấu? Mình tự nhập vào mà.
+
+**NỮ:** Vì số điện thoại của khách là **dữ liệu cá nhân**. Ai cần xem đủ thì bấm xem, và
+**việc bấm đó được ghi lại**. Không phải để làm khó — để khi số của khách rò ra ngoài thì trả
+lời được câu *"ai đã lấy nó"*.
+
+### Cảnh 4 — Đồng ý lưu dữ liệu sức khoẻ ⭐ `2:00`
+
+`[CẢNH: 🔍 nhãn "Đã đồng ý" / "Chưa đồng ý"]`
+
+**NỮ:** Muốn ghi **dị ứng** của khách thì khách phải **đồng ý** trước. Đây là quy định về dữ
+liệu cá nhân nhạy cảm, không phải tuỳ chọn của phần mềm.
+
+**NAM:** Hỏi khách thế nào cho gọn?
+
+**NỮ:** *"Em lưu lại thuốc anh/chị dị ứng để lần sau máy nhắc, anh/chị đồng ý không ạ?"* —
+đồng ý thì bật nhãn, không thì thôi.
+
+**NỮ:** 🔴 Và **khai dị ứng theo HOẠT CHẤT**, không theo tên thuốc — đúng như đã nói ở video 03.
+Khách bảo *"tôi dị ứng Augmentin"* thì mình ghi **Acid clavulanic**.
+
+### Cảnh 5 — Lỗi thường gặp `3:45`
+
+| Gặp | Vì sao |
+|---|---|
+| Không ghi được dị ứng | Khách **chưa đồng ý** cho lưu dữ liệu sức khoẻ |
+| Đã khai dị ứng mà bán vẫn không cảnh báo | Thuốc đó **chưa khai hoạt chất** (video 03) |
+| Không thấy số điện thoại đầy đủ | Thiếu quyền xem — quyền này chỉ cấp cho một số người |
+
+### Cảnh 6 — Tóm tắt `4:30`
+
+**NAM:** Xin đồng ý trước. Khai dị ứng theo hoạt chất. Số điện thoại che là cố ý.
+
+---
+
+# VIDEO 09 — Hoá đơn và trả hàng
+
+**Thời lượng:** 4 phút · **Màn:** `Hoá đơn`
+
+### Cảnh 3 — Làm lại thật chậm `0:50`
+
+**NỮ:** Lọc theo **Từ ngày / Đến ngày**, bấm một dòng để mở chi tiết. ⏸
+
+**NỮ:** 🔍 Trạng thái đơn: **Hoàn tất**, **Nháp**, **Đã huỷ**, **Đã trả lại**. Báo cáo doanh
+thu chỉ tính đơn **Hoàn tất**.
+
+`[CẢNH: bấm In]`
+
+**NỮ:** 🔴 Nút In chỉ in **đúng một đơn** — không in cả trang danh sách. Nghe hiển nhiên,
+nhưng đây là lỗi đã từng có và đã sửa, nên mình nói ra để mình khỏi lo.
+
+### Cảnh 4 — Ghi nhận trả hàng `2:00`
+
+`[CẢNH: mở một đơn → "Ghi nhận trả hàng"]`
+
+**NỮ:** Khách trả hàng thì ghi ở đây, ghi được **từng phần**, không bắt trả cả đơn.
+
+**NAM:** Ghi trả rồi thì hàng tự về kho luôn à?
+
+**NỮ:** 🔴 **Không.** Cố ý không. Thuốc khách mang về rồi thì phải có **dược sĩ xem lại** mới
+biết còn bán được hay không — bảo quản thế nào, còn nguyên vỏ không, còn hạn không. Muốn đưa
+lại lên kệ thì **nhập lại bằng tay**, như một quyết định riêng.
+
+### Cảnh 5 — Lỗi thường gặp `3:00`
+
+| Gặp | Vì sao |
+|---|---|
+| Không thấy đơn vừa bán | Lọc ngày đang bỏ sót hôm nay |
+| Trả hàng xong tồn kho không tăng | **Đúng như thiết kế** — xem cảnh 4 |
+| In ra trắng | Máy in nhiệt chưa chọn đúng khổ K80 |
+
+### Cảnh 6 — Tóm tắt `3:35`
+
+**NAM:** Chỉ đơn Hoàn tất mới vào doanh thu. Ghi trả hàng **không** tự nhập kho lại.
+
+---
+
+# VIDEO 10 — Kiểm kê và điều chỉnh tồn ⭐
+
+**Thời lượng:** 6 phút · **Màn:** `Sơ đồ & Kiểm kê` → `Kiểm kê`
+
+> 🆕 Khối **Điều chỉnh nhanh một lô** mới có từ 2026-08-01 (đóng lỗi UAT M-07).
+
+### Cảnh 1 — Mở đầu `0:00`
+
+**NỮ:** Kiểm kê là đếm lại hàng thật trên kệ rồi so với sổ. Video này có **một điểm hay bị
+hiểu nhầm nhất** trong cả bộ, mình để ngay giữa.
+
+### Cảnh 3 — Làm lại thật chậm `0:50`
+
+`[CẢNH: chọn ô → "Bắt đầu kiểm ô này"]`
+
+**NỮ:** Chọn **một ô**, không kiểm cả kho một lượt. Một ô là chỗ mình đứng đếm được trong một
+lần đứng dậy.
+
+**NỮ:** Danh sách lô trong ô **hiện sẵn** — mình chỉ điền số đếm được vào từng dòng.
+
+**NỮ:** 🔍 Cột *"Sổ ghi"* đang **để trống**, không phải bằng 0. Trống nghĩa là **chưa chốt**.
+Phần mềm cố ý chưa cho mình thấy số sổ lúc đang đếm.
+
+**NAM:** Sao lại giấu? Cho xem luôn thì nhanh hơn.
+
+**NỮ:** Vì nhìn thấy số sổ trước khi đếm xong thì tay mình sẽ **đếm cho khớp**. Đó là bản
+năng, không phải gian dối — và nó làm cả buổi kiểm kê thành vô nghĩa.
+
+### Cảnh 4 — NỘP ≠ DUYỆT ⭐ `2:30`
+
+`[CẢNH: bấm "Nộp phiên" → 🔍 cột Chênh hiện −3]`
+
+**NỮ:** Nộp xong, phần mềm mới chốt số sổ và hiện **chênh lệch**. Ở đây là **thiếu 3**.
+
+`[CẢNH: mở lại Sơ đồ kho, xem hàng trong ô — vẫn là 10]` ⏸
+
+**NỮ:** 🔴 **Nộp phiếu CHƯA đụng tồn kho.** Nhìn đây: sổ vẫn ghi 10, dù mình vừa nộp phiếu
+đếm được 7.
+
+**NAM:** Vậy khi nào tồn mới đổi?
+
+**NỮ:** Khi có người bấm **Duyệt**. Con số mình đếm được là một **lời khai**, chưa phải một
+**sự thật**. Đếm sót một hộp khuất sau lô khác là chuyện thường — mà một khi đã duyệt thì nó
+nằm trong sổ vĩnh viễn.
+
+`[CẢNH: bấm Duyệt → quay lại Sơ đồ kho — nay là 7]` ⏸
+
+**NỮ:** Duyệt rồi. Giờ sổ mới đổi.
+
+**NAM:** Quầy mình có mỗi mình thì tự đếm tự duyệt à?
+
+**NỮ:** Được — phần mềm không chặn. Nhưng nó **hiện cả hai tên**, và khi hai tên trùng nhau
+thì người đọc sổ nhìn ra ngay. Không cấm, chỉ không giấu.
+
+### Cảnh 5 — Điều chỉnh nhanh một lô 🆕 `4:30`
+
+`[CẢNH: bấm "Điều chỉnh nhanh một lô…"]`
+
+**NỮ:** Khi chỉ cần sửa **một lô** — vỡ vài hộp, tìm thấy thêm hàng — thì không phải đếm cả ô.
+
+**NỮ:** Chọn ô, chọn lô, điền **số đếm được thực tế**, ghi **lý do**, bấm *Ghi điều chỉnh*.
+
+**NỮ:** 🔍 Chú ý dòng này: *"Sổ đang ghi 7 → sẽ thành 5 (thiếu 2)"*. Ô nhập hỏi **số đếm
+được**, không hỏi **số thiếu**. Nhiều người nghĩ trong đầu là *"thiếu 2"* rồi gõ số 2 vào —
+dòng phép trừ này là để chặn đúng chuyện đó.
+
+**NAM:** Nhanh thế thì có bỏ qua bước duyệt không?
+
+**NỮ:** 🔴 **Không.** Nó vẫn tạo **một phiếu kiểm kê đã duyệt** đầy đủ, chỉ gộp các lượt bấm.
+Và nó **chỉ hiện với người có cả quyền đếm lẫn quyền duyệt** — ai chỉ được đếm thì vẫn phải đi
+đường dài để người khác duyệt.
+
+**NỮ:** **Lý do bắt buộc**, và nó nằm trong **Nhật ký hoạt động** cùng với số cũ → số mới.
+
+### Cảnh 6 — Lỗi thường gặp `5:30`
+
+| Gặp | Vì sao |
+|---|---|
+| Nộp rồi mà tồn không đổi | **Đúng như thiết kế** — chưa duyệt |
+| Không sửa được số sau khi nộp | Nộp là chốt. Mở phiên mới để đếm lại |
+| Không thấy nút Điều chỉnh nhanh | Thiếu quyền duyệt |
+
+### Cảnh 7 — Tóm tắt `5:50`
+
+**NAM:** **Nộp chưa đụng tồn — duyệt mới đụng.** Cột sổ để trống là cố ý. Điều chỉnh nhanh
+vẫn để lại phiếu và vẫn bắt ghi lý do.
+
+---
+
+# VIDEO 11 — Báo cáo
+
+**Thời lượng:** 3 phút · **Màn:** `Báo cáo`
+
+### Cảnh 3 — Làm lại thật chậm `0:40`
+
+**NỮ:** Chọn **Kỳ báo cáo**, xem **Doanh thu theo kỳ**, **Thuốc bán chạy**, **Tồn kho theo lô**.
+
+**NỮ:** 🔴 Doanh thu tính theo **đơn đã hoàn tất**. Đơn nháp và đơn đã huỷ **không** vào đây.
+
+**NAM:** Vậy số này khớp với tiền trong két chứ?
+
+**NỮ:** Khớp nếu mọi đơn đều đã hoàn tất và không có đơn nào bán ngoài phần mềm. Lệch thì mở
+**Hoá đơn** lọc đúng ngày đó, đối chiếu từng đơn — đừng đoán.
+
+`[CẢNH: bấm "Tải CSV"]`
+
+**NỮ:** Tải CSV để mở bằng Excel, gửi kế toán, hoặc lưu lại.
+
+### Cảnh 4 — Lỗi thường gặp `2:00`
+
+| Gặp | Vì sao |
+|---|---|
+| Báo cáo trống | Kỳ đang chọn không có đơn hoàn tất nào |
+| Số lệch với két | Có đơn còn ở trạng thái Nháp, hoặc bán ngoài phần mềm |
+| Tải CSV không được | Thiếu quyền đọc bán hàng |
+
+### Cảnh 5 — Tóm tắt `2:40`
+
+**NAM:** Chỉ đơn **hoàn tất** mới tính. Lệch thì đối chiếu ở Hoá đơn, không đoán.
+
+---
+
+# VIDEO 12 — Tổng quan (Dashboard)
+
+**Thời lượng:** 3 phút · **Màn:** `Tổng quan`
+
+### Cảnh 3 — Làm lại thật chậm `0:35`
+
+**NỮ:** Màn này để nhìn **một cái là biết hôm nay thế nào**: doanh thu, giao dịch gần đây,
+thuốc bán chạy, hàng sắp hết hạn.
+
+**NỮ:** 🔴 Con số ở đây là **để quyết định**, không phải để **đối chiếu sổ sách**. Muốn đối
+chiếu thì sang **Báo cáo** hoặc **Hoá đơn** — ở đó có kỳ, có bộ lọc, có tệp tải về.
+
+**NAM:** Khác nhau chỗ nào? Đều là số mà.
+
+**NỮ:** Khác ở chỗ **câu hỏi**. Tổng quan trả lời *"hôm nay có gì cần để ý không"*. Báo cáo
+trả lời *"tháng trước bán được bao nhiêu"*. Dùng nhầm màn thì câu trả lời trông vẫn hợp lý.
+
+### Cảnh 4 — Lỗi thường gặp `1:50`
+
+| Gặp | Vì sao |
+|---|---|
+| Số không khớp Báo cáo | Hai màn tính theo hai khoảng thời gian khác nhau |
+| Ô trống | Chưa có giao dịch nào trong khoảng đang xem |
+
+### Cảnh 5 — Tóm tắt `2:30`
+
+**NAM:** Tổng quan để **quyết định**, Báo cáo để **đối chiếu**.
+
+---
+
+# VIDEO 13 — Nhật ký hoạt động
+
+**Thời lượng:** 4 phút · **Màn:** `Nhật ký hoạt động`
+
+> 🆕 Toàn bộ màn này mới có từ 2026-08-01 (UAT M-04), và hai cột **Thay đổi** · **Thiết bị**
+> thêm cùng ngày (M-05 · M-06).
+
+### Cảnh 1 — Mở đầu `0:00`
+
+**NỮ:** Khi quầy lệch tiền hoặc lệch hàng, câu hỏi đầu tiên luôn là *"ai đã làm gì, lúc nào"*.
+Màn này trả lời đúng câu đó.
+
+### Cảnh 3 — Làm lại thật chậm `0:40`
+
+**NỮ:** Lọc theo **Từ ngày / Đến ngày** và theo **Loại hoạt động**. ⏸
+
+`[CẢNH: 🔍 từng cột]`
+
+**NỮ:** **Người thực hiện** — ai. Máy tự chạy thì ghi *"hệ thống"*, không ghi một mã số.
+
+**NỮ:** **Hoạt động** — làm gì, bằng tiếng Việt.
+
+**NỮ:** **Thay đổi** — 🆕 đổi **từ giá trị nào sang giá trị nào**. Ví dụ *Giá bán 3.200 → 2.200*,
+số cũ gạch ngang.
+
+**NAM:** Cột này lúc nào cũng có à?
+
+**NỮ:** Không. Trống nghĩa là hoạt động đó **chưa ghi được** cũ/mới, **không phải** không có
+gì đổi. Màn hình nói rõ điều này ở dòng cảnh báo phía trên.
+
+**NỮ:** **Thiết bị** — 🆕 làm từ máy nào: *Máy tính · Firefox*, *iPhone · Safari*.
+
+**NAM:** Có chắc không? Nhỡ ai đó giả?
+
+**NỮ:** 🔴 Câu hỏi đúng. Màn hình cũng nói thẳng: đây là **manh mối, không phải bằng chứng** —
+chuỗi này do máy khách tự khai. Nó dùng để phân biệt *máy quầy* với *điện thoại của ai đó ở
+nhà*, không dùng để buộc tội ai.
+
+### Cảnh 4 — Điều quan trọng nhất `2:40`
+
+**NỮ:** 🔴 Dòng nhật ký **không sửa và không xoá được** — kể cả bằng tài khoản quản trị.
+
+**NAM:** Nghe hơi đáng sợ.
+
+**NỮ:** Ngược lại. Nếu xoá được thì nó chẳng chứng minh gì cho **mình** cả. Sổ mà chủ quầy xoá
+được là sổ mà người khác cũng viện cớ xoá được.
+
+### Cảnh 5 — Lỗi thường gặp `3:20`
+
+| Gặp | Vì sao |
+|---|---|
+| Không thấy mục Nhật ký trong menu | Thiếu quyền — không phải ai cũng xem được ai đã làm gì |
+| Cột Người thực hiện hiện *"Mã ..."* | Tài khoản đó đã bị xoá; dòng nhật ký vẫn sống |
+| Không tìm thấy việc mình nhớ là có làm | Nới khoảng ngày, bỏ bộ lọc loại hoạt động |
+
+### Cảnh 6 — Tóm tắt `3:45`
+
+**NAM:** Ai, làm gì, lúc nào, từ máy nào, đổi từ đâu sang đâu — và **không xoá được**.
+
+---
+
+# VIDEO 14 — Sổ thuốc kiểm soát đặc biệt ⭐🔴
+
+**Thời lượng:** 6 phút · **Màn:** `Sổ kiểm soát đặc biệt`
+
+> 🆕 Toàn bộ màn này mới có từ 2026-08-01 (UAT C-03).
+>
+> 🔴 **TRƯỚC KHI QUAY:** màn này hiện một nhãn đỏ *"Chưa được rà pháp lý"*. **Không cắt nhãn
+> đó ra khỏi khung hình, không quay góc tránh nó.** Nếu tới ngày quay mà nhãn đã gỡ, phải hỏi
+> lại — vì việc rà pháp lý phải xong trước, không phải nhãn bị xoá đi.
+
+### Cảnh 1 — Mở đầu `0:00`
+
+**NỮ:** Video cuối, và là video **duy nhất** trong bộ nói về một thứ **luật bắt buộc phải có**,
+không phải một tính năng cho tiện.
+
+**NAM:** Sổ này là sổ gì?
+
+**NỮ:** Sổ theo dõi xuất, nhập, tồn kho thuốc **kiểm soát đặc biệt** — gây nghiện, hướng thần,
+tiền chất, thuốc độc. Thông tư 18, Phụ lục VIII và XVI.
+
+### Cảnh 2 — Nói ngay về nhãn đỏ ⭐ `0:40`
+
+`[CẢNH: 🔍 nhãn đỏ trên đầu màn, giữ 3 giây]` ⏸
+
+**NỮ:** Trước khi đi tiếp, đọc dòng này cùng nhau: *"Chưa được rà pháp lý"*.
+
+**NỮ:** 🔴 Nghĩa là: bố cục và cách tính đã theo mẫu Thông tư 18, **nhưng chưa có ai đối chiếu
+với văn bản gốc**. Dùng để theo dõi nội bộ thì tốt. **Bản in ra vẫn phải đối chiếu mẫu giấy
+trước khi ký.**
+
+**NAM:** Sao lại để nguyên câu đó trên màn?
+
+**NỮ:** Vì giấu đi thì mình sẽ tin nó nhiều hơn thực tế — và mình chỉ phát hiện ra đúng lúc
+cần nó nhất.
+
+### Cảnh 3 — Làm lại thật chậm `1:40`
+
+**NỮ:** Chọn **Mẫu sổ**: *Phụ lục VIII* cho gây nghiện, hướng thần, tiền chất. *Phụ lục XVI*
+cho thuốc dạng phối hợp, thuốc độc, chất thuộc danh mục cấm.
+
+**NỮ:** Chọn kỳ bằng **Từ ngày / Đến ngày**.
+
+`[CẢNH: 🔍 các cột]`
+
+**NỮ:** Mỗi dòng là một **bút toán**: thời gian, tên thuốc, số chứng từ, nơi nhập hoặc nơi
+nhận, **Nhập**, **Xuất**, **Còn lại**, số lô và hạn dùng.
+
+**NỮ:** 🔍 Cột **Còn lại** là tồn **lũy kế** — nó cộng tiếp từ **tồn đầu kỳ**, không bắt đầu
+lại từ 0 mỗi lần đổi khoảng ngày.
+
+**NAM:** Nếu nó bắt đầu lại từ 0 thì sao?
+
+**NỮ:** Thì sổ sẽ hiện tồn **âm** — đọc như *"đã bán thuốc gây nghiện chưa từng nhập"*. Đó
+đúng là một lỗi đã có và đã sửa ngày 01/08.
+
+**NỮ:** 🔴 Và mỗi dòng ở đây **không sửa, không xoá được**.
+
+### Cảnh 4 — Kết xuất và nghĩa vụ in hằng ngày ⭐ `3:20`
+
+`[CẢNH: 🔍 dòng chữ nhỏ dưới các nút]`
+
+**NỮ:** Đọc kỹ dòng này: *"Mẫu sổ điện tử chỉ hợp lệ khi được trích xuất và in vào cuối MỖI
+ngày"*. Thông tư 18 Điều 15.1.
+
+**NAM:** **Mỗi ngày** thật à? Cuối tháng in một lượt không được?
+
+**NỮ:** Không. Đây là chỗ dễ mất điểm nhất khi có đoàn kiểm tra, và cũng là lý do mình để hẳn
+một nút riêng.
+
+`[CẢNH: bấm "Kết xuất cuối ngày"]`
+
+**NỮ:** Nút này xuất **đúng một ngày**, kèm một mã kiểm tra toàn vẹn — để sau này nếu có ai
+hỏi *"tờ này có bị sửa sau khi in không"*, mình đối chiếu được.
+
+`[CẢNH: bấm "Kết xuất sổ (CSV)"]`
+
+**NỮ:** Còn nút này xuất **cả kỳ**, để soát hoặc gửi kế toán.
+
+### Cảnh 5 — Ký xác nhận sổ ngày `4:40`
+
+`[CẢNH: bấm "Ký xác nhận sổ ngày"]`
+
+**NỮ:** Chữ ký điện tử thay cho việc ký tay từng trang. Phải **nhập lại mật khẩu** ngay tại đây.
+
+**NAM:** Đang đăng nhập rồi mà còn nhập lại?
+
+**NỮ:** 🔴 Vì ký rồi thì **không ký lại được ngày đó**, và **không ghi thêm bút toán nào vào
+ngày đó** được nữa. Một cú bấm nhầm trên máy để quên đăng nhập là đủ để khoá vĩnh viễn một
+ngày trong sổ. Nhập lại mật khẩu là cái phanh cuối cùng.
+
+**NỮ:** Chưa ký thì **vẫn phải in ra và ký tay** — màn hình cũng nói vậy.
+
+### Cảnh 6 — Lỗi thường gặp `5:20`
+
+| Gặp | Vì sao |
+|---|---|
+| Sổ trống dù quầy có bán | Thuốc **chưa được đánh dấu** kiểm soát đặc biệt trong Danh mục |
+| Ký báo lỗi 409 | Ngày đó **đã ký rồi** — không ký lại được |
+| Ghi bút toán báo lỗi 409 | Ngày đó đã ký, sổ đã khoá |
+| Không thấy mục trong menu | Thiếu quyền `compliance.ledger.read` |
+
+### Cảnh 7 — Tóm tắt `5:45`
+
+**NAM:** Đây là **nghĩa vụ pháp lý**, không phải tính năng tiện ích. In cuối **mỗi** ngày. Ký
+rồi là khoá. Và nhãn đỏ trên màn vẫn còn — phần mềm chưa được rà pháp lý.
+
+**NỮ:** Hết bộ hướng dẫn. Cảm ơn mình đã xem tới đây.
+
+---
+
+# Trạng thái bộ kịch bản
+
+| Video | Kịch bản | Quay được ngay? | Ghi chú |
+|---|---|---|---|
+| 01 Đăng nhập · tổng quan | ✅ đầy đủ | ✅ | |
+| 02 Cơ sở · tài khoản | ✅ đầy đủ | ✅ | Khối *Thông tin cơ sở* mới 01/08 |
+| 03 Danh mục thuốc | ✅ đầy đủ | ✅ | |
+| 04 Sơ đồ kho · khởi tạo tồn | ✅ đầy đủ | ⚠️ | Cần CSDL quay **chưa dựng sơ đồ** |
+| 05 Nhập hàng | ✅ đầy đủ | ⚠️ | Cần sơ đồ kho có sẵn (quay sau 04) |
+| 06 Bán thuốc ⭐ | ✅ đầy đủ | ✅ | |
+| 07 Phân quyền ⭐ | ✅ đầy đủ | ⚠️ | Cần **2 tài khoản** khác vai |
+| 08 Khách hàng ⭐ | ✅ đầy đủ | ✅ | |
+| 09 Hoá đơn · trả hàng | ✅ đầy đủ | ⚠️ | Cần vài đơn đã bán |
+| 10 Kiểm kê ⭐ | ✅ đầy đủ | ⚠️ | Cần hàng đã xếp ô (quay sau 04-05) |
+| 11 Báo cáo | ✅ đầy đủ | ⚠️ | Cần vài ngày dữ liệu bán |
+| 12 Tổng quan | ✅ đầy đủ | ⚠️ | Như 11 |
+| 13 Nhật ký | ✅ đầy đủ | ✅ | Màn mới 01/08 |
+| 14 Sổ kiểm soát ⭐🔴 | ✅ đầy đủ | 🔴 | **Chờ Trợ lý Pháp Lý rà** — xem cảnh 2 |
+
+**Thứ tự quay đề nghị** (theo dữ liệu tích luỹ, không theo số thứ tự):
+
+`02 → 03 → 04 → 05 → 01 → 08 → 06 → 07 → 09 → 10 → 13 → 11 → 12 → 14`
+
+Lý do: mỗi video sau **dùng dữ liệu video trước vừa tạo ra**, nên quay theo thứ tự này thì
+không phải dựng dữ liệu giả lần nào. Video 14 để cuối vì nó còn chờ rà pháp lý.

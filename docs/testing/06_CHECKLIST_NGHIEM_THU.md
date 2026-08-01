@@ -41,8 +41,18 @@
 | ☐ | Tài khoản thu ngân đã tạo | Video 07 — cảnh quan trọng nhất — không quay được nếu thiếu |
 | ☐ | Kịch bản đã đọc thử thành tiếng | Lời viết ra và lời nói ra khác nhau; đọc thử mới biết chỗ nào vấp |
 | ☐ | Thư mục `docs/testing/videos/` đã tạo | ✅ đã có |
+| ☑ | **Kịch bản đủ 14/14 video** | ✅ **xong 2026-08-01** — `05_KICH_BAN_VIDEO.md`, trước đó chỉ có 01·06·07 |
+| ☑ | 5 lỗi UAT còn treo đã đóng | ✅ **xong 2026-08-01** — C-03 · M-02 · M-05 · M-06 · M-07 |
+| ☐ | 🔴 **Trợ lý Pháp Lý rà màn Sổ kiểm soát đặc biệt** | **Chặn video 14.** Màn đang tự dán nhãn *"Chưa được rà pháp lý"*, và kịch bản CẤM cắt nhãn đó ra khỏi khung hình |
 
-**Quay được ngay không chờ gì:** video **01** và **03**.
+**Quay được ngay không chờ gì:** video **01 · 02 · 03 · 06 · 08 · 13**.
+
+**Thứ tự quay đề nghị** (mỗi video dùng dữ liệu video trước vừa tạo ⇒ không phải dựng dữ liệu
+giả lần nào): `02 → 03 → 04 → 05 → 01 → 08 → 06 → 07 → 09 → 10 → 13 → 11 → 12 → 14`.
+
+🔴 **Video 14 để CUỐI và còn bị chặn.** Không phải vì kịch bản thiếu — kịch bản đủ — mà vì nó
+quay một màn phần mềm **tự khai là chưa được rà pháp lý**. Quay trước khi rà xong là biến một
+ảnh chụp thành một lời cam kết tuân thủ mà không ai đứng sau.
 
 ---
 

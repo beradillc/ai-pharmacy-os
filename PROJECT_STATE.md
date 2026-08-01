@@ -8286,3 +8286,135 @@ Cùng một lý lẽ đã dùng cho 3 đơn thuốc thử ở M-08. Nguyên tắ
   cổng duy nhất còn ở trạng thái *chưa đo được*; đừng đọc nó là *đã đo và tốt*.
 - Còn một CSDL **`pharmacy_os_test` (10 MB)** không thuộc phiên này — chưa rõ nguồn, **không
   xoá** vì chưa hiểu nó dùng làm gì.
+
+---
+
+## 7dh. ✅ ĐỢT 4 sửa lỗi UAT — ĐÓNG NỐT 5/5 + hoàn thiện kịch bản video (2026-08-01)
+
+Chain: *"Uỷ quyền toàn bộ cho GĐ tiếp tục xử lý hết lỗi đến hoàn thiện kịch bản video hướng
+dẫn."* Đóng **toàn bộ 16/16 lỗi UAT**, và viết đủ **14/14 kịch bản video** (trước có 3).
+
+### Quyết định tự chốt (full-auto #3)
+
+| # | Quyết định | Vì sao |
+|---|---|---|
+| 1 | **Đảo thứ tự** — làm M-05/M-06 trước, không theo số bước §7dg | §7dg tự ghi *"nên làm ĐẦU một phiên còn nhiều hạn mức"*. Tổng số bước vẫn 6 (kỷ luật #12) |
+| 2 | M-05/M-06 **không đổi lược đồ** `audit_logs` | `context` đã là JSONB, đã được API trả về. §7dg ước lượng ĐẮT hơn sự thật |
+| 3 | `ctx.audit_meta` là chỗ **duy nhất** liệt kê siêu dữ liệu request | Thêm `user_agent` đáng lẽ phải sửa 21 chỗ; quên chỗ nào thì không cổng nào đỏ |
+| 4 | Nhãn thiết bị rút ở **màn hình**, không đoán ở backend | `audit_logs` không xoá được — đoán sai lưu vào đó là vĩnh viễn |
+| 5 | C-03 thêm **route JSON mới**, không đổi `…/export` sang `Accept` | `export` đã có bên gọi; đổi kiểu trả về là phá tương thích theo cách khó thấy nhất |
+| 6 | M-07 **BÁC** đường sửa thẳng tồn, đi trọn luồng kiểm kê | `approve_count` cập nhật 3 sổ cùng giao dịch; đường tắt sẽ làm 2 sổ lệch **im lặng** |
+| 7 | M-07 lưu lý do vào **`context` audit**, không thêm cột | Sổ audit là chỗ duy nhất trả lời *vì sao tồn đổi*; kèm `old_qty`/`new_qty` cho M-05 hiện luôn |
+| 8 | M-02 **mở rộng** `tenant_compliance_configs`, không dựng bảng mới | Cùng một tờ giấy chứng nhận đủ điều kiện kinh doanh dược |
+| 9 | M-02 **KHÔNG báo xong** phần hoá đơn | Nối được đòi read-port cross-module. Nợ có tên, và **màn tự nói ra** |
+| 10 | Đặt lại mật khẩu tài khoản `uat650` | Không ghi ở đâu cả ⇒ 18 cổng trình duyệt chỉ chạy được nếu ai đó nhớ trong đầu |
+
+### Lỗi THẬT tìm được (không phải lỗi của việc đang làm)
+
+| # | Lỗi | Im lặng từ | Ai bắt |
+|---|---|---|---|
+| 1 | `PASSWORD_CHANGED` truyền cứng `client_ip=None` | Sprint 8 | cổng `test_audit_carries_device` |
+| 2 | `TWO_FACTOR_BACKUP_CODE_USED` (step-up) thiếu thiết bị | Sprint 8 | cùng cổng |
+| 3 | `SALE_VNPAY_CANCELLED` không mang cả IP lẫn thiết bị | Sprint 8 | cùng cổng |
+| 4 | 🔴 **Sổ kiểm soát cộng lại từ 0 mỗi lượt truy vấn ⇒ tồn ÂM trên tệp trình thanh tra** | Sprint 7 | **màn hình mới**, sau khi cổng đầu tiên bỏ qua |
+| 5 | `Mã 00000000` — **4** mã tác nhân hệ thống, khai ở 4 tệp Python | — | **ảnh chụp** |
+| 6 | Mỗi lượt điều chỉnh tồn ghi **HAI** dòng audit trùng | (do chính bản vá này) | đọc dữ liệu thật |
+
+### 🔴 Bài học 1 — kỷ luật #16 soi được CẢ HAI CHIỀU
+
+§7dg dạy *sổ nợ nói RẺ hơn sự thật* (màn Lưu trữ "đã có"). Phiên này gặp chiều ngược lại: sổ
+nợ nói **ĐẮT** hơn sự thật — M-05/M-06 ghi *"đổi lược đồ `audit_logs`"*, thực tế `context` đã
+là JSONB và `old_price`/`new_price` **đã được ghi từ 31/07**, chỉ không màn nào hiện ra.
+
+Bỏ được một migration trên bảng chỉ-ghi-thêm là bỏ đúng rủi ro mà báo cáo UAT §6 xếp cao nhất.
+**Cả hai chiều đều xảy ra ⇒ grep trước, đừng đọc sổ rồi ước lượng.**
+
+### 🔴 Bài học 2 — một cổng SO API VỚI API là một cổng không đo gì
+
+Cổng đầu tiên cho màn C-03 khẳng định *"tồn cuối kỳ cộng đúng"* bằng cách so `Σnhập−Σxuất` với
+`balance` — **cả hai lấy từ cùng một lượt gọi API**. Nó chỉ chứng minh API nhất quán với chính
+nó, rồi in ra dòng `màn hiện "-5"` **ngay bên cạnh dấu ✓**.
+
+Con số `−5` ấy là một lỗi thật từ Sprint 7 trên **tệp CSV đem trình thanh tra**: sổ thuốc gây
+nghiện tồn âm đọc như *"đã bán thuốc chưa từng nhập"*.
+
+Nguyên tắc: **hai vế của một phép so phải có hai nguồn độc lập.** Cùng nguồn thì phép so là
+một phép gán đội lốt. Đây là kỷ luật #14 ở dạng tinh vi nhất — cổng không sai, nó chứng minh
+một mệnh đề **khác** mệnh đề người đọc tưởng.
+
+### 🔴 Bài học 3 — kỷ luật #22 cần cổng, không cần thêm chữ
+
+Kỷ luật #22 liệt kê **bốn** chuỗi nối hai thế giới đã gây lỗi thật, trong đó có *"mã quyền"*.
+Nhưng **không cổng nào canh mã quyền** — kỷ luật ghi lại bài học, nó không tự sinh ra phép
+kiểm. Phiên này dựng `frontend/src/shared/quyen.test.ts`, đột biến 3/3 đỏ đúng lý do.
+
+Rút ra: mỗi lần thêm một dòng vào kỷ luật #22, hỏi ngay *"cổng của nó đâu"*. Một danh sách các
+lỗi đã biết mà không có cổng là một danh sách các lỗi **sẽ lặp lại**.
+
+### 🔴 Bài học 4 — BỐN lần trong một phiên, cái ĐỎ là PHÉP ĐO
+
+| # | Phép đo hỏng thế nào | Nếu không phát hiện |
+|---|---|---|
+| 1 | cổng so API với API | xanh trong lúc màn hiện `−5` |
+| 2 | cổng so màn (kỳ từ đầu tháng) với API (kỳ cả năm) | đỏ vì hai kỳ khác nhau — nghi oan sản phẩm |
+| 3 | `WHERE batch_id = :b` — SQLite lưu UUID **không dấu gạch** | test đỏ vì dialect, không phải vì mã |
+| 4 | `selectOption` nhận `RegExp` — Playwright ném; bản vá đầu lại chọn **ô cuối danh sách** | suýt thành cổng xanh vì lý do sai |
+
+Cộng với ba lần ở §7dg và ba lần ở kỷ luật #15: **mười lần**. Một kết quả tự mâu thuẫn hoặc
+một lỗi khó hiểu ở phép đo **luôn** đáng dừng lại đọc kỹ trước khi sửa sản phẩm.
+
+### 🔴 Bài học 5 — ẢNH lại thắng phép đo, và lần này tôi suýt không tin ảnh
+
+Ảnh chụp bắt được **bốn** thứ không phép đo nào thấy: `Mã 00000000` · dấu `·` mồ côi · ô rỗng
+vẫn chiếm một dòng nhãn ở khổ 390px · giá hiện thô `3200.00`.
+
+Và một ca ngược: ảnh cho thấy chữ dính `"pháp lý.Bố cục"`. Tôi **ngờ ảnh sai** (kỷ luật #15 dặn
+đừng tin ảnh thu nhỏ), đo `innerText` — **ảnh đúng**, JSX nuốt khoảng trắng sau `</strong>`.
+
+Rút ra: *"đừng tin ảnh thu nhỏ"* KHÔNG có nghĩa *"ảnh hay sai"*. Nó có nghĩa **đo trước khi
+kết luận**, theo cả hai hướng. Đếm trong tuần này: ảnh đúng 5/6 lần.
+
+### Cổng tại điểm dừng
+
+```
+RUFF=0  FORMAT=0  IMPORTLINTER=19/19  MYPY=0 (285 tệp)
+PYTEST_EXIT=0   1480 passed  (1464 → 1469 → 1474 → 1480)
+TSC=0  ESLINT=0  VITEST=0 (113, từ 85)  BUILD=0 (21 route, từ 20)
+MIGRATE_EXIT=0  0045_stock_counts → 0046_tenant_co_so  (pg_dump trước, full-auto #6)
+
+Cổng trình duyệt chạy tay trong phiên — desktop + mobile, LAN IP thật:
+  check-nhat-ky        EXIT=0   (đỏ 2 lượt giữa chừng vì đúng lý do)
+  check-so-kiem-soat   EXIT=0   (mới)  · đỏ 2 lượt vì phép đo
+  check-kiem-ke        EXIT=0   (+2 mệnh đề M-07, GHI thật)
+  check-thong-tin-co-so EXIT=0  (mới)
+```
+
+**Đột biến — 12 lượt (kỷ luật #14). 10 đỏ đúng lý do; 2 SỐNG SÓT ⇒ phải vá chính cổng:**
+
+| Đối tượng | Kết quả |
+|---|---|
+| `test_audit_carries_device` | 3/3 đỏ (bỏ `user_agent` · `audit_meta` thiếu trường · phép quét sai tên hàm) |
+| `quyen.test.ts` | 3/3 đỏ (sai mã quyền menu · sai mã quyền nút · phép quét sai đường dẫn) |
+| M-07 lượt đầu | 1/3 đỏ — **2 sống sót**: lý-do-rỗng bị Pydantic chặn trước nên tầng service không được chạm; audit không được khẳng định |
+| M-07 sau khi vá cổng | 3/3 đỏ |
+
+### 🚧 Nợ mở ra trong phiên này (nói rõ, không giấu)
+
+| # | Nợ | Vì sao chưa làm |
+|---|---|---|
+| N-1 | 🔴 **Hoá đơn chưa đọc `ten_co_so`/`dia_chi`/… của tenant** | Đòi read-port cross-module (`sales` bị cấm import `compliance`). **Màn hình tự nói ra**, cổng đo câu nói đó |
+| N-2 | Báo cáo định kỳ Mẫu số 06 chưa in phần đầu sổ | Nay đã có dữ liệu; thêm header sẽ **đổi hình dạng CSV** — cần quyết định riêng (kỷ luật #17) |
+| N-3 | 🔴 **Video 14 bị chặn tới khi Trợ lý Pháp Lý rà xong** | Màn tự dán nhãn *"Chưa được rà pháp lý"*; kịch bản CẤM cắt nhãn ra khỏi khung hình |
+| N-4 | Mật khẩu `uat650` (`uat@bera.vn`) chỉ nằm trong nhật ký này | `ui-gates.sh` vẫn để mặc định `trinhthu@nhathuoc650.vn` — **không khớp CSDL nào**. Nên thống nhất một chỗ |
+| N-5 | `check-rejected-sales` vẫn **chưa đo được** | Cần một đơn offline bị từ chối; phải mô phỏng hàng đợi offline |
+
+### Điểm dừng
+
+- App chạy trên **`uat650`**: frontend từ `lan-dev.sh` (cổng 3000), backend khởi động thủ công
+  (`setsid nohup`, cổng 8000). LAN IP hôm nay là **192.168.1.8** (§7dg ghi .10 — đổi theo ngày).
+- **`qt650` không bị đụng** trong cả phiên.
+- `uat650` nay có thêm: **4 bút toán sổ kiểm soát** (2 mẫu sổ) · **thông tin cơ sở đã khai** ·
+  vài phiếu kiểm kê và điều chỉnh tồn từ cổng — **cố ý giữ**, vì các cổng cần chúng.
+- Tài khoản kiểm thử `uat650`: `uat@bera.vn` / `UatBera650@2026`.
+- Dừng sạch: `pkill -f "uvicorn pharmacy_os.main:app"` **ở một lượt shell riêng** (chạy chung
+  lượt sẽ giết luôn shell, exit 144 — §7dg bài học 2 vẫn đúng), rồi `make lan`.
