@@ -111,6 +111,7 @@ describe("hai màn gộp một mục menu (Chain giao 2026-08-01)", () => {
       "/kiem-ke",
       "/so-do-kho",
       "/don-mua-hang",
+      "/nha-cung-cap",
       "/de-xuat-dat-hang",
       "/bao-cao",
       "/nhan-vien",

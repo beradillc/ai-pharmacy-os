@@ -180,6 +180,9 @@ export const NAV: readonly NavItem[] = [
     permission: "procurement.po.read",
     group: "kho",
     primary: false,
+    // Gộp với `/nha-cung-cap` (UAT 01/08, lỗi M-01): không có nhà cung cấp thì không tạo
+    // được đơn mua — hai màn của cùng một việc, vào chung một cửa như các cặp đã gộp.
+    alsoActiveFor: ["/nha-cung-cap"],
     icon: "purchase",
   },
   {

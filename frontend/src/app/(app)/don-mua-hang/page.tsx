@@ -16,6 +16,8 @@ import type { PurchaseOrderListItem } from "@/shared/api/types";
 import styles from "@/shared/ui/screen.module.css";
 
 import { ReceiveDrawer } from "./ReceiveDrawer";
+import { TabManGop } from "@/components/layout/TabManGop";
+
 import local from "./page.module.css";
 
 const STATUS_CLASS: Record<string, string> = {
@@ -53,6 +55,19 @@ const WHY_NOT: Record<string, string> = {
  * gọi tới, nên câu hỏi "đặt xong thì hàng về kho bằng cách nào" không có câu
  * trả lời trên giao diện.
  */
+const TAB_MUA = [
+  {
+    href: "/don-mua-hang",
+    nhan: "Đơn mua hàng",
+    moTa: "Đặt hàng từ nhà cung cấp, theo dõi tới lúc nhận đủ.",
+  },
+  {
+    href: "/nha-cung-cap",
+    nhan: "Nhà cung cấp",
+    moTa: "Nơi quầy nhập hàng về. Phải có ít nhất một thì mới tạo được đơn mua.",
+  },
+] as const;
+
 export default function PurchaseOrdersPage() {
   const [status, setStatus] = useState<PoStatus | null>(null);
   const [page, setPage] = useState(0);
@@ -94,6 +109,7 @@ export default function PurchaseOrdersPage() {
           </select>
         </div>
       </div>
+      <TabManGop tabs={TAB_MUA} />
 
       {error && (
         <div className={styles.error} role="alert">
