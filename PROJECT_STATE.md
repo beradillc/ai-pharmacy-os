@@ -7360,3 +7360,98 @@ P2 đóng. Tiếp theo **P3 — Hoá đơn**: dựng `DetailDialog` dùng chung 
 Chain quyết một lượt: **khổ in mặc định** — K80 máy in nhiệt / PDF A5 / PDF A4.
 
 Vẫn còn treo từ P1: **CSDL thử `p1etc_thu`** chờ Chain xoá.
+
+---
+
+## 7cy. 🔒 ĐÓNG PHIÊN P3 — hoá đơn: cửa sổ có ✕ · in đúng một đơn · mẫu K80 (2026-08-01)
+
+Phiên 3/6 của kế hoạch §7cv. Chain chốt khổ in: *"K80 nếu có kết nối, không thì PDF khổ K80"*.
+**5/5 bước, 2 commit.**
+
+### 🔴 Nói trước một giới hạn kỹ thuật, không giấu tới lúc code xong
+
+**Trình duyệt KHÔNG dò được máy in nhiệt** có đang cắm hay không — không API nào cho phép, và
+mọi cách "đoán" đều là đoán. Nên đường mặc định là **PDF rộng đúng 80mm**, phục vụ được cả hai
+trường hợp Chain nêu: có máy in nhiệt thì hộp thoại in chọn đúng nó, không có thì vẫn in giấy
+thường hoặc lưu lại. Bản text K80 thô giữ nguyên (`format=thermal_k80`).
+
+### Mẫu in chuyên nghiệp ĐÃ CÓ SẴN — kỷ luật #16 tiết kiệm cả một mục
+
+`render_thermal_k80` + `render_pdf` dựng từ Sprint 7 đã có đủ thứ Chain liệt kê: tên nhà thuốc,
+địa chỉ, MST, mã đơn, ngày giờ, từng dòng, tổng, khách đưa, **tiền thối**, ô ký. Việc phải làm
+chỉ là **nối dây** cho giao diện gọi đúng nó, thêm **người bán**, thêm **khổ K80**.
+
+| Trước | Sau |
+|---|---|
+| `window.print()` trần ⇒ in **cả trang** (bảng, bộ lọc, phân trang, thanh điều hướng) | `GET /sales/{id}/receipt?format=pdf_k80` ⇒ **đúng một đơn** |
+| chi tiết là dải trượt ở **cuối trang** | **cửa sổ** có ✕, trên mobile trượt từ đáy lên |
+| hoá đơn không có người bán | có (`SalespersonInfoProvider` + adapter ở composition root) |
+
+### ⚠️ Bẫy phá tương thích SUÝT LỌT
+
+Tôi chèn `salesperson_info` vào **GIỮA** chữ ký `SalesService.__init__`, ngay sau
+`prescription_info`. `register()` và các test truyền **theo vị trí** ⇒ `AuditLogger` sẽ rơi vào
+`salesperson_info` cho mọi bên gọi cũ. Chữ ký vẫn "trông đúng", `tsc` không có ở đây, và mypy
+chỉ bắt được ở một chỗ. Đã chuyển xuống **cuối**. Đúng thứ kỷ luật #17 cảnh báo: *hình dạng
+không đổi KHÔNG có nghĩa là không phá vỡ*.
+
+### 🔴 Cổng bắt được một lỗi THẬT, không phải lỗi đi tìm
+
+`problem.detail` của lỗi **422** (FastAPI/Pydantic) **không phải chuỗi** mà là một **mảng
+object** `{type, loc, msg, input, ctx}`. Render thẳng vào JSX ⇒ React ném *"Objects are not
+valid as a React child"* và **vỡ cả cây** — người dùng mất luôn màn hình đang đứng, vì một lỗi
+lẽ ra chỉ cần một dòng chữ đỏ.
+
+Không cổng nào khác thấy được: `tsc` chiều lòng vì `ProblemDetail` khai `detail: string`, và
+**máy chủ không đọc khai báo TypeScript của máy khách**. Gom thành `thongDiepLoi()` dùng chung
+trong `shared/api/errors.ts`. Đây là lần thứ hai trong ba phiên mà cổng trình duyệt bắt được
+thứ bốn cổng nhanh mù hoàn toàn.
+
+### Cổng mới `check-hoa-don` — cách đo mệnh đề ③ đáng dùng lại
+
+*"Nút In gọi đúng endpoint, KHÔNG gọi `window.print()`"* không quan sát được từ ngoài. Cách đo:
+**chặn `window.print` thành một cái đếm** + **bắt mọi request tới `/receipt`**. Chứng minh được
+*"gọi đúng endpoint với đúng khổ"* chứ không chỉ *"có gì đó xảy ra"*.
+
+Và cổng **thà đỏ còn hơn xanh vì rỗng**: không có đơn nào trong 400 ngày thì nó dừng và báo đỏ.
+Lần chạy đầu nó làm đúng thế thật — CSDL demo không bán gì hôm nay.
+
+### Kỷ luật #14 — năm đột biến, cả năm đỏ đúng chỗ
+
+| Đột biến | Kết quả |
+|---|---|
+| `_K80_PAGE_WIDTH` 80mm → 58mm | `PYTEST=1`, đỏ đúng test bề ngang, 5 test kia xanh |
+| in `"Người bán:"` cả khi tên rỗng | `PYTEST=1`, đỏ đúng test bỏ-hẳn-dòng |
+| khổ K80 cố định, không dài theo nội dung | `PYTEST=1`, đỏ đúng test dài-theo-số-dòng |
+| thêm lại `window.print()` | `GATE=1`, ③ đỏ, `window.print(): 1` |
+| bỏ nút ✕ khỏi `DetailDialog` | `GATE=1`, ① ② đỏ, `khong-ton-tai` |
+
+`receipt_rendering.py` trước lượt này **không có test nào** — vẫn "xanh" suốt vì không ai hỏi
+nó câu gì. Nay 6 test, đo trên **sản phẩm** (đọc `/MediaBox` của chính tệp PDF) chứ không
+khẳng định lại hằng số trong mã.
+
+### Cổng tại điểm dừng
+
+```
+MAKE_CHECK_EXIT=0 — 1447 passed (5:15) · RUFF/FORMAT/IMPORTLINTER/MYPY = 0
+TSC=0  ESLINT=0  VITEST=0 (73)  BUILD=0
+UIGATES_EXIT=0 — 13/13 đọc-thuần (thêm check-hoa-don)
+```
+
+### Ảnh nghiệm thu
+
+`docs/ui-history/2026-08-01-hoa-don/` — 4 ảnh, 2 khổ × 2 cảnh, kèm `README.md`.
+
+### 📌 Ghi cho P5
+
+Ảnh `mobile-390-2` cho thấy bảng hoá đơn bị **nén cột** ở khổ 390px (cột mã đơn còn một chữ).
+`check-nhin-thay` xanh — **đúng**, vì bảng cuộn ngang trong khung riêng của nó chứ không phải
+cả trang cuộn. Đây là việc của P5, không phải lỗi cổng.
+
+### Điểm dừng chính xác
+
+P3 đóng. Tiếp theo **P4 — rollout cửa sổ**: áp `DetailDialog` cho danh mục thuốc · khách hàng ·
+nhân viên · tồn kho · đơn mua hàng · đề xuất · kiểm kê · sơ đồ kho · quầy. Không có quyết định
+nghiệp vụ nào cần Chain — trừ khi phát sinh.
+
+Vẫn còn treo từ P1: **CSDL thử `p1etc_thu`** chờ Chain xoá.
