@@ -8473,3 +8473,122 @@ lượt sẽ giết luôn shell — exit 144), rồi `make lan` khi cần bật 
 🔴 **N-4 nên làm đầu phiên sau, trước cả việc quay:** 18 cổng trình duyệt hiện chỉ chạy được
 nếu người gõ lệnh nhớ đúng bốn biến môi trường trong đầu. Đó là **thói quen, không phải cổng**
 — đúng câu mở đầu `ui-gates.sh` tự viết về chính nó.
+
+---
+
+## 7di. 🔑 N-4 — gom cấu hình cổng về MỘT chỗ + vá lỗi phép đo của `check-nhat-ky` (2026-08-02)
+
+**Chain: *"Duyệt tiếp tục"*.** Duyệt ba kỷ luật treo từ 01/08 (#22 chuỗi nối hai thế giới ·
+#23 hai nguồn độc lập · #24 mỗi dòng #22 phải kèm cổng) — 4 chỗ đánh dấu `CHỜ CHAIN DUYỆT`
+trong `CLAUDE.md` nay ghi `Chain DUYỆT 2026-08-02`. Rồi làm tiếp N-4, đúng thứ §7dh xếp là
+*"nên làm đầu phiên sau, trước cả việc quay"*.
+
+### N-4 thật ra lớn hơn mô tả của chính nó
+
+Sổ nợ ghi: *"`ui-gates.sh` để mặc định `trinhthu@nhathuoc650.vn` — không khớp CSDL nào"*.
+Mở ra đếm thì thấy bốn tầng, không phải một:
+
+| # | Lệch | Quy mô | Hỏng ra sao |
+|---|---|---|---|
+| 1 | Địa chỉ ghi cứng trong mã | **30/33** script | **BA** giá trị cùng tồn tại: `192.168.1.10` · `192.168.1.8` · `localhost`. LAN IP đổi theo ngày ⇒ mọi con số là ảnh chụp một ngày đã qua |
+| 2 | Tên biến | **4** quy ước | `BASE_URL`⇄`BERAS_BASE`, `EMAIL`⇄`BERAS_EMAIL` |
+| 3 | Tài khoản mặc định giả | `ui-gates.sh` | Cổng đỏ ở **màn login** — log đọc y hệt lỗi sản phẩm |
+| 4 | 🔴 **Mật khẩu thật ghi cứng trong mã** | **4** script | `KiemThu2026!x`, `NhaThuoc650@2026` — **đã vào git**. Đổi mật khẩu ở CSDL không xoá được nó khỏi lịch sử |
+
+Mục 4 không ai ghi vào sổ nợ vì không ai đi đếm — nó chỉ lộ ra khi gom cả 33 tệp lên một
+màn. Cùng hình dạng với chuyện §7dh phát hiện *"gom 6 cổng lại chạy một lượt thì lộ ra hai
+cổng đã hỏng cùng ngày"*: **thứ nhìn từng cái thì không thấy, xếp cạnh nhau thì hiện ngay.**
+
+### Nay
+
+- `frontend/scripts/lib/moi-truong.mjs` — **chỗ duy nhất** biết địa chỉ và tài khoản. Không
+  con số nào ghi cứng: địa chỉ suy từ **card mạng lúc chạy** (bỏ cầu docker `172.16/12` —
+  máy này có ba cái và chúng đứng trước card thật ở một số lần chạy; trỏ cổng vào cầu docker
+  thì `curl` vẫn nối được, nên nó hỏng **im lặng**), `API` suy từ `BASE` bằng đổi cổng.
+- Tài khoản chỉ đến từ `scripts/ui-gates.env` (gitignore). Thiếu ⇒ **DỪNG kèm chỉ dẫn**,
+  không rơi về tài khoản ma. Mẫu `scripts/ui-gates.env.example` vào git.
+- `ui-gates.sh`: `say`/`die` định nghĩa **trước** khối cấu hình đã gọi chúng — một `die`
+  chưa tồn tại thì bash báo "command not found" rồi **chạy tiếp với cấu hình sai**.
+
+**Cổng của chính việc này** (kỷ luật #24): `frontend/src/shared/cong-moi-truong.test.ts` —
+đọc **thẳng thư mục script** nên script thêm ngày mai cũng bị soi mà không phải sửa gì.
+Bốn mệnh đề: không địa chỉ ghi cứng · không tài khoản ghi cứng · phép quét chạm được tới
+thư mục (tự kiểm, #15) · mẫu cấu hình có trong repo và bản thật thì không.
+
+### 🔴 Bài học — cổng đỏ vì PHÉP ĐO, lần thứ mười một
+
+Chạy cả bộ để nghiệm thu N-4 thì `check-nhat-ky` **tự đỏ** trong lúc sản phẩm không đổi một
+dòng nào. Nguyên nhân:
+
+| | Hỏi ở đâu | Về tập nào |
+|---|---|---|
+| tiền kiểm | **API** `?action=CATALOG_DRUG_PRICE_CHANGED` | **toàn bộ** lịch sử |
+| khẳng định | **màn hình** | **50 dòng mới nhất** |
+
+Cổng ngầm giả định cái trên kéo theo cái dưới. Ngày 01/08 giả định ấy đúng vì dòng đổi giá
+vừa dựng xong nên còn nằm đầu bảng. Hôm nay, **1248 sự kiện sau**, nó đã trôi xuống dưới.
+
+Đây đúng thứ **kỷ luật #23** gọi tên — và ở dạng nặng hơn ca sinh ra #23: hai vế không những
+không độc lập, chúng **không nói về cùng một tập dòng**. Nay lọc cho đúng dòng ấy hiện ra rồi
+mới đo. Log tự in ra bằng chứng chẩn đoán đúng:
+
+```
+⑦ thay đổi cũ→mới (màn đã LỌC đổi giá): 2/2 dòng ✓  ·  (50 dòng mới nhất, tham khảo: 0)
+```
+
+**Không nới lỏng phép kiểm** (#17): vẫn đòi mũi tên VÀ hai con số hai bên, vẫn đòi cột
+**nhìn thấy được** (#21), và **thêm** một nhánh đỏ cho ca *"bản đồ nhãn đổi tên mã hành vi"*.
+
+### Cổng tại điểm dừng
+
+```
+ESLINT=0  TSC=0  VITEST=0  (117 test, từ 113 — +4 cổng N-4)
+RUFF=0  FORMAT=0  IMPORTLINTER=18/18  MYPY=0        (hook pre-commit, 2 lượt)
+PYTEST: KHÔNG chạy — phiên này không đụng một tệp .py nào (kiểm bằng git status).
+        Không ghi con số mình không đo (kỷ luật #8).
+
+ui-gates.sh chạy với ZERO biến môi trường — tự đọc ui-gates.env, tự suy 192.168.1.8:
+  18/20 cổng XANH · 2 đỏ (xem dưới)
+check-nhat-ky sau khi vá:  EXIT=0  (2 khổ)
+```
+
+**Đột biến — 8 lượt (kỷ luật #14), 8/8 ĐỎ đúng lý do, khôi phục xanh cả hai lượt:**
+
+| Đối tượng | Lượt |
+|---|---|
+| `cong-moi-truong.test.ts` | 5/5 đỏ (IP ghi cứng · `localhost` · mật khẩu ghi cứng · đường dẫn quét sai · mất tệp mẫu) |
+| `check-nhat-ky.mjs` | 3/3 đỏ (nhãn đổi tên · không dòng nào có cũ→mới · cột biến mất) |
+
+### Hai cổng đỏ — ĐỎ TỪ TRƯỚC, không phải do phiên này
+
+Chứng minh thay vì lập luận: chạy đúng bản trong git bằng `git show HEAD:…` ra tệp tạm.
+
+| Cổng | Bản trước N-4 | Bản sau N-4 | Kết luận |
+|---|---|---|---|
+| `check-nhat-ky` | EXIT=1, *"⑦ 0 dòng · cột Thay đổi KHÔNG TÌM THẤY"* | **EXIT=0 sau khi vá** | lỗi phép đo, **đã đóng** |
+| `check-rejected-sales` | EXIT=1, cùng thông điệp | EXIT=1 | **N-5, còn nợ** |
+
+### 🚧 Nợ
+
+| # | Nợ | Trạng thái |
+|---|---|---|
+| N-4 | Cấu hình cổng nằm trong trí nhớ người gõ lệnh | ✅ **ĐÓNG** |
+| N-5 | `check-rejected-sales` chưa đo được — cần một đơn offline bị từ chối, phải mô phỏng hàng đợi offline | còn nợ, **không chặn quay video** |
+| N-3 | Rà pháp lý màn Sổ kiểm soát (**Trợ lý Pháp Lý**) | còn nợ — chặn phát hành thương mại |
+| N-1 | Hoá đơn chưa đọc Thông tin cơ sở (cần read-port cross-module) | còn nợ |
+| N-2 | Mẫu số 06 chưa in phần đầu sổ | còn nợ |
+
+🔴 **Mật khẩu cũ vẫn nằm trong lịch sử git.** Gỡ khỏi mã nguồn **không** gỡ khỏi lịch sử.
+`KiemThu2026!x` và `NhaThuoc650@2026` phải coi như **đã lộ** — đổi ở CSDL nào còn dùng
+chúng. Đây là việc ngoài phần mềm, cần Chain quyết, chưa làm.
+
+### Điểm dừng
+
+- App đang chạy trên **`uat650`**: `lan-dev.sh` (nền), LAN IP hôm nay **192.168.1.8**.
+- Tài khoản kiểm thử nay ở **`scripts/ui-gates.env`** — không còn chỉ nằm trong nhật ký này.
+- **`qt650` không bị đụng** trong cả phiên.
+- Dừng sạch: `pkill -f "uvicorn pharmacy_os.main:app"` **ở một lượt shell riêng** (chạy chung
+  lượt sẽ giết luôn shell — exit 144, §7dg bài học 2).
+- **Việc tiếp theo:** quay/xuất bộ video theo `docs/testing/05_KICH_BAN_VIDEO.md` — vẫn cần
+  Cổng 2 của `06_CHECKLIST_NGHIEM_THU.md` (CSDL riêng `qt650_video` · tài khoản thu ngân ·
+  đọc kịch bản thành tiếng · quay theo thứ tự dữ liệu tích luỹ).
