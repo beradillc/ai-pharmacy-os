@@ -158,9 +158,13 @@ class AuthService:
                 await uow.commit()
                 # Two separate facts: the attempt, and the lock it may have caused.
                 # Emitting only the lock would lose the four attempts before it.
-                await self._record(user, AuditAction.LOGIN_FAILED, data.client_ip)
+                await self._record(
+                    user, AuditAction.LOGIN_FAILED, data.client_ip, user_agent=data.user_agent
+                )
                 if locked:
-                    await self._record(user, AuditAction.ACCOUNT_LOCKED, data.client_ip)
+                    await self._record(
+                        user, AuditAction.ACCOUNT_LOCKED, data.client_ip, user_agent=data.user_agent
+                    )
                 raise UnauthenticatedError("Email hoặc mật khẩu không đúng")
 
             access = await self._load_access(repos, user)
@@ -193,7 +197,13 @@ class AuthService:
             output, _ = await self._issue(repos, user, branch, permissions, access, now)
             await uow.commit()
 
-        await self._record(user, AuditAction.LOGIN_SUCCESS, data.client_ip, branch_id=branch.id)
+        await self._record(
+            user,
+            AuditAction.LOGIN_SUCCESS,
+            data.client_ip,
+            user_agent=data.user_agent,
+            branch_id=branch.id,
+        )
         return output
 
     async def complete_two_factor_login(self, data: TwoFactorLoginInput) -> SessionOutput:
@@ -238,6 +248,7 @@ class AuthService:
                     user,
                     AuditAction.TWO_FACTOR_FAILED,
                     data.client_ip,
+                    user_agent=data.user_agent,
                     branch_id=challenge.branch_id,
                 )
                 raise UnauthenticatedError("Mã xác thực không đúng")
@@ -258,9 +269,19 @@ class AuthService:
 
         if verified == _BACKUP_CODE:
             await self._record(
-                user, AuditAction.TWO_FACTOR_BACKUP_CODE_USED, data.client_ip, branch_id=branch.id
+                user,
+                AuditAction.TWO_FACTOR_BACKUP_CODE_USED,
+                data.client_ip,
+                user_agent=data.user_agent,
+                branch_id=branch.id,
             )
-        await self._record(user, AuditAction.LOGIN_SUCCESS, data.client_ip, branch_id=branch.id)
+        await self._record(
+            user,
+            AuditAction.LOGIN_SUCCESS,
+            data.client_ip,
+            user_agent=data.user_agent,
+            branch_id=branch.id,
+        )
         return output
 
     async def refresh(self, refresh_token: str, *, branch_id: UUID | None = None) -> SessionOutput:
@@ -354,7 +375,17 @@ class AuthService:
             await repos.users.update(user)
             await repos.sessions.revoke_all_for_user(user.id, now)
             await uow.commit()
-        await self._record(user, AuditAction.PASSWORD_CHANGED, None, branch_id=ctx.branch_id)
+        # ``ctx.client_ip`` chứ không phải ``None``: đổi mật khẩu là một trong số ít hành
+        # vi mà "từ đâu, bằng máy nào" là câu hỏi đầu tiên khi tài khoản bị chiếm. Trước
+        # 2026-08-01 chỗ này truyền cứng ``None`` — không cổng nào đỏ, dòng audit vẫn ghi
+        # được, chỉ **rỗng đúng chỗ cần nhất**. Lộ ra khi rà M-06.
+        await self._record(
+            user,
+            AuditAction.PASSWORD_CHANGED,
+            ctx.client_ip,
+            branch_id=ctx.branch_id,
+            user_agent=ctx.user_agent,
+        )
 
     async def verify_own_password(self, ctx: RequestContext, plain_password: str) -> bool:
         """Xác minh mật khẩu hiện tại của người đang đăng nhập — đọc-only, không mutate.
@@ -405,7 +436,11 @@ class AuthService:
             await uow.commit()
 
         await self._record(
-            user, AuditAction.TWO_FACTOR_ENROLLED, ctx.client_ip, branch_id=ctx.branch_id
+            user,
+            AuditAction.TWO_FACTOR_ENROLLED,
+            ctx.client_ip,
+            branch_id=ctx.branch_id,
+            user_agent=ctx.user_agent,
         )
         return TwoFactorEnrollmentOutput(
             secret=config.secret,
@@ -450,7 +485,11 @@ class AuthService:
             await uow.commit()
 
         await self._record(
-            user, AuditAction.TWO_FACTOR_ACTIVATED, ctx.client_ip, branch_id=ctx.branch_id
+            user,
+            AuditAction.TWO_FACTOR_ACTIVATED,
+            ctx.client_ip,
+            branch_id=ctx.branch_id,
+            user_agent=ctx.user_agent,
         )
         return TwoFactorActivationOutput(backup_codes=plain_codes)
 
@@ -483,7 +522,11 @@ class AuthService:
             await uow.commit()
 
         await self._record(
-            user, AuditAction.TWO_FACTOR_DISABLED, ctx.client_ip, branch_id=ctx.branch_id
+            user,
+            AuditAction.TWO_FACTOR_DISABLED,
+            ctx.client_ip,
+            branch_id=ctx.branch_id,
+            user_agent=ctx.user_agent,
         )
 
     async def profile(self, ctx: RequestContext) -> ProfileOutput:
@@ -559,7 +602,11 @@ class AuthService:
             if used is None:
                 await uow.commit()
                 await self._record(
-                    user, AuditAction.TWO_FACTOR_FAILED, ctx.client_ip, branch_id=ctx.branch_id
+                    user,
+                    AuditAction.TWO_FACTOR_FAILED,
+                    ctx.client_ip,
+                    branch_id=ctx.branch_id,
+                    user_agent=ctx.user_agent,
                 )
                 return StepUpResult.BAD_CODE
             await uow.commit()
@@ -570,6 +617,7 @@ class AuthService:
                 AuditAction.TWO_FACTOR_BACKUP_CODE_USED,
                 ctx.client_ip,
                 branch_id=ctx.branch_id,
+                user_agent=ctx.user_agent,
             )
         return StepUpResult.OK
 
@@ -590,7 +638,7 @@ class AuthService:
                 action=AuditAction.TWO_FACTOR_RESET,
                 target_type="user",
                 target_id=str(user.id),
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id))
         )
 
     # -- helpers -------------------------------------------------------------
@@ -740,6 +788,7 @@ class AuthService:
         client_ip: str | None,
         *,
         branch_id: UUID | None = None,
+        user_agent: str | None = None,
     ) -> None:
         await self._audit.record(
             AuditEntry(
@@ -750,6 +799,7 @@ class AuthService:
                 target_id=str(user.id),
             ).with_context(
                 client_ip=client_ip,
+                user_agent=user_agent,
                 branch_id=str(branch_id) if branch_id is not None else None,
             )
         )

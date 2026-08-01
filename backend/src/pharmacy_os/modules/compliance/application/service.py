@@ -247,7 +247,7 @@ class ComplianceService:
                 target_type="ledger_daily_closure",
                 target_id=f"{book_type.value}_{day.isoformat()}",
             ).with_context(
-                client_ip=ctx.client_ip,
+                **ctx.audit_meta,
                 branch_id=str(ctx.branch_id),
                 content_sha256=content_sha256,
             )
@@ -343,7 +343,7 @@ class ComplianceService:
                 target_type="ledger_book_signature",
                 target_id=f"{data.book_type.value}_{data.book_date.isoformat()}",
             ).with_context(
-                client_ip=ctx.client_ip,
+                **ctx.audit_meta,
                 branch_id=str(ctx.branch_id),
                 content_sha256=content_sha256,
             )
@@ -383,7 +383,7 @@ class ComplianceService:
                 action=AuditAction.PERIODIC_REPORT_EXPORTED,
                 target_type="periodic_report",
                 target_id=f"{from_date.isoformat()}_{to_date.isoformat()}",
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id))
         )
         return rows
 
@@ -501,5 +501,5 @@ class ComplianceService:
                 action=action,
                 target_type=target_type,
                 target_id=str(target_id),
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id))
         )

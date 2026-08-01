@@ -346,5 +346,5 @@ class CatalogService:
                 action=action,
                 target_type="drug",
                 target_id=str(drug_id),
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id), **extra)
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id), **extra)
         )

@@ -701,7 +701,7 @@ class InventoryService:
                 action=AuditAction.INVENTORY_RECONCILIATION_RESOLVED,
                 target_type="stock_reconciliation_needed",
                 target_id=str(record.id),
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id))
         )
         return ReconciliationOutput.of(record)
 
@@ -716,7 +716,7 @@ class InventoryService:
                 action=action,
                 target_type=target_type,
                 target_id=str(target_id),
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id))
         )
 
     async def stock_report_rows(
@@ -946,7 +946,7 @@ class InventoryService:
                 target_type="batch",
                 target_id=str(batch_id),
             ).with_context(
-                client_ip=ctx.client_ip,
+                **ctx.audit_meta,
                 branch_id=str(ctx.branch_id),
                 location_path=path,
                 quantity=str(quantity),

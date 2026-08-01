@@ -317,7 +317,7 @@ class SalesService:
                 target_type="sale",
                 target_id=str(order_id),
             ).with_context(
-                client_ip=ctx.client_ip,
+                **ctx.audit_meta,
                 branch_id=str(ctx.branch_id),
                 conflict_count=str(risk.conflict_count),
                 worst_severity=risk.worst_severity or "",
@@ -343,7 +343,7 @@ class SalesService:
                 target_type="sale",
                 target_id=str(order_id),
             ).with_context(
-                client_ip=ctx.client_ip,
+                **ctx.audit_meta,
                 branch_id=str(ctx.branch_id),
                 deviation_lines=str(so_dong),
             )
@@ -360,7 +360,7 @@ class SalesService:
                 action=AuditAction.SALE_COMPLETED,
                 target_type="sale",
                 target_id=str(order_id),
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id))
         )
 
     def _resolve_payment_gateway(self) -> PaymentGateway | None:
@@ -587,7 +587,7 @@ class SalesService:
                 action=AuditAction.SALE_VNPAY_INITIATED,
                 target_type="sale",
                 target_id=str(order_id),
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id))
         )
 
     async def _record_vnpay_cancelled(self, ctx: RequestContext, order_id: UUID) -> None:
@@ -600,7 +600,11 @@ class SalesService:
                 action=AuditAction.SALE_VNPAY_CANCELLED,
                 target_type="sale",
                 target_id=str(order_id),
-            ).with_context(branch_id=str(ctx.branch_id))
+                # Không có người thực hiện, nhưng **có** nguồn gọi — và ở đúng đường này nguồn
+                # gọi là thứ đáng ghi nhất: nó trả lời *"lượt huỷ này có thật sự đến từ cổng
+                # thanh toán không"*. Trước 2026-08-01 dòng này không mang cả IP lẫn thiết bị;
+                # cổng `test_audit_carries_device` bắt được (ca thứ ba trong cùng lượt rà M-06).
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id))
         )
 
     async def _verify_prescription_ref(self, order: SalesOrder, ctx: RequestContext) -> None:
@@ -711,7 +715,7 @@ class SalesService:
                 target_type="sale",
                 target_id=str(order_id),
                 context={"return_id": str(return_id)},
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id))
         )
 
     async def _by_client_uuid(self, client_uuid: str, ctx: RequestContext) -> SaleOutput | None:

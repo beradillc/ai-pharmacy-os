@@ -54,3 +54,27 @@ def client_ip_of(request: Request) -> str | None:
     spoofable header parsing today.
     """
     return request.client.host if request.client else None
+
+
+#: Cắt User-Agent ở 200 ký tự. Không phải để tiết kiệm chỗ (``context`` là JSONB) mà vì
+#: chuỗi này **do client gửi** và không có giới hạn nào cả: một client cố tình có thể
+#: nhồi hàng megabyte vào mỗi request và sổ audit — thứ **không xoá được** — sẽ nuốt hết.
+#: 200 dư cho mọi UA thật (UA dài nhất trong bộ chụp màn hình là 138).
+_USER_AGENT_MAX = 200
+
+
+def user_agent_of(request: Request) -> str | None:
+    """Chuỗi ``User-Agent`` của request, ghi vào sổ audit và không dùng vào việc gì khác.
+
+    Trả ``None`` khi không có header hoặc header rỗng, để ``with_context`` bỏ hẳn khoá
+    thay vì lưu một chuỗi rỗng — một dòng audit mang ``user_agent=""`` đọc như *"máy
+    không khai"*, còn không có khoá đọc đúng như *"không biết"*.
+
+    **Không phân tích, không chuẩn hoá ở đây.** Lưu nguyên chuỗi thô rồi để màn hình tự
+    rút ra nhãn dễ đọc: nếu server đoán sẵn *"iPhone"* thì cái đoán sai sẽ nằm vĩnh viễn
+    trong một bảng chỉ-ghi-thêm, còn đoán ở màn hình thì sửa lại lúc nào cũng được.
+    """
+    raw = request.headers.get("User-Agent")
+    if not raw:
+        return None
+    return raw[:_USER_AGENT_MAX]

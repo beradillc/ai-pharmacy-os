@@ -276,5 +276,5 @@ class ClinicalService:
                 action=action,
                 target_type=target_type,
                 target_id=str(target_id),
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id))
         )

@@ -157,5 +157,5 @@ class LocationService:
                 action=action,
                 target_type="location",
                 target_id=str(location_id),
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id), **extra)
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id), **extra)
         )

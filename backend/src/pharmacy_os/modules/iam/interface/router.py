@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 
 from pharmacy_os.core.config import Settings
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.core.http import client_ip_of
+from pharmacy_os.core.http import client_ip_of, user_agent_of
 from pharmacy_os.core.security import RateLimiter, RateLimitRule
 from pharmacy_os.modules.iam.application import AuthService, IamService, StepUpResult
 from pharmacy_os.modules.iam.interface.schemas import (
@@ -99,6 +99,7 @@ def build_auth_router(get_context: ContextDep) -> APIRouter:
         # traceable if the origin cannot be chosen by whoever is causing it.
         data = body.to_input()
         data.client_ip = client_ip_of(request)
+        data.user_agent = user_agent_of(request)
         return SessionResponse.of(await service.login(data))
 
     @router.post("/refresh", response_model=SessionResponse)
@@ -172,6 +173,7 @@ def build_auth_router(get_context: ContextDep) -> APIRouter:
         _throttle(request, "2fa-login")
         data = body.to_input()
         data.client_ip = client_ip_of(request)
+        data.user_agent = user_agent_of(request)
         return SessionResponse.of(await service.complete_two_factor_login(data))
 
     @router.post("/2fa/enroll", response_model=TwoFactorEnrollResponse)

@@ -486,7 +486,7 @@ class CrmService:
                 action=action,
                 target_type="customer",
                 target_id=str(customer_id),
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id), **extra)
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id), **extra)
         )
 
     async def _get_or_404(self, customer_id: UUID, ctx: RequestContext) -> Customer:

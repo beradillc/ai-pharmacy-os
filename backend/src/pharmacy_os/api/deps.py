@@ -25,7 +25,7 @@ from pharmacy_os.core.config import Settings
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.di import Container
 from pharmacy_os.core.errors import UnauthenticatedError
-from pharmacy_os.core.http import client_ip_of
+from pharmacy_os.core.http import client_ip_of, user_agent_of
 from pharmacy_os.core.security import JwtService
 from pharmacy_os.core.security.branch_scope import TokenScopeGuard
 from pharmacy_os.modules.iam.domain import ALL_PERMISSIONS
@@ -86,6 +86,7 @@ async def get_context(request: Request) -> RequestContext:
             user_id=payload.user_id,
             permissions=payload.permissions,
             client_ip=client_ip_of(request),
+            user_agent=user_agent_of(request),
         )
 
     if not settings.security.allow_dev_auth:
@@ -97,6 +98,7 @@ async def get_context(request: Request) -> RequestContext:
         user_id=UUID(request.headers.get("X-User-Id", str(_DEV_USER))),
         permissions=_DEV_PERMISSIONS,
         client_ip=client_ip_of(request),
+        user_agent=user_agent_of(request),
     )
 
 

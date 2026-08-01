@@ -22,6 +22,14 @@ class LoginInput:
     a burst of failed logins can be traced to an origin. Optional so service-level
     callers (tests, CLI) need not fake one."""
 
+    user_agent: str | None = None
+    """Thiết bị đã gửi yêu cầu đăng nhập (UAT M-06).
+
+    Đường đăng nhập là chỗ trường này đáng giá nhất trong cả hệ thống: một chuỗi
+    ``LOGIN_FAILED`` từ **cùng một IP** có thể là dược sĩ gõ nhầm mật khẩu, nhưng cùng
+    một IP với **thiết bị lạ** thì là chuyện khác hẳn — và ``client_ip`` một mình không
+    phân biệt được hai ca đó khi cả quầy đi chung một đường truyền."""
+
 
 @dataclass(slots=True)
 class BranchOutput:
@@ -231,6 +239,7 @@ class TwoFactorLoginInput:
     challenge_token: str
     code: str
     client_ip: str | None = None
+    user_agent: str | None = None
 
 
 @dataclass(slots=True)

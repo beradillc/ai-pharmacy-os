@@ -407,5 +407,5 @@ class IamService:
                 action=action,
                 target_type=target_type,
                 target_id=target_id,
-            ).with_context(client_ip=ctx.client_ip, branch_id=str(ctx.branch_id))
+            ).with_context(**ctx.audit_meta, branch_id=str(ctx.branch_id))
         )
