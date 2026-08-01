@@ -85,6 +85,21 @@ for (const [name, engine] of [
     // cổng: nó dạy người đọc bỏ qua màu đỏ.
     await drawer.locator("tbody tr").first().waitFor({ timeout: 20_000 });
     const rows = await drawer.locator("tbody tr").count();
+
+    // 🔴 CHỜ tên thuốc hiện ra, đừng chụp một lần rồi kết luận. Tên do `GET /drugs?ids=…`
+    // gắn vào SAU khi bảng đã vẽ; đọc ngay thì có lúc kịp có lúc không. Đo thật 01/08: ba
+    // lượt chạy liên tiếp cho Firefox 0/3 · cả hai 3/3 · WebKit 0/3 — **ngẫu nhiên theo
+    // engine**, tức đua thời gian chứ không phải hồi quy.
+    //
+    // Một cổng lúc xanh lúc đỏ vì lý do thời gian là cổng người ta học cách bỏ qua — và
+    // khi nó đỏ vì lý do THẬT thì không ai còn tin nữa. Kỷ luật #14 nói mã thoát phải biết
+    // đổi màu; nó cũng phải đổi màu vì **đúng một** lý do.
+    await drawer
+      .locator("tbody tr td:first-child")
+      .first()
+      .filter({ hasNotText: /^Mã / })
+      .waitFor({ timeout: 20_000 })
+      .catch(() => {});
     const names = await drawer.locator("tbody tr td:first-child").allInnerTexts();
     // Tên thuốc do `GET /drugs?ids=…` gắn vào. Hỏng cái đó thì cột đầu ra
     // "Mã 3f2b1c9d" — chạy được nhưng vô dụng với người đứng dỡ hàng.

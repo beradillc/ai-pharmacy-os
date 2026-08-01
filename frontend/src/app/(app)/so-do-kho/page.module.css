@@ -97,3 +97,106 @@
   font-size: var(--text-sm);
   color: var(--beras-text-muted);
 }
+
+/* --- Sơ đồ trực quan MỨC 1 (BERAS V2 Phase 12) ---------------------------------
+   Lưới ô xếp theo thứ tự đi lấy. Không toạ độ mặt bằng — xem `LOCATION_MAP.md` để
+   biết vì sao mức 2 chờ có người đo thật. */
+.luoiKhoi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.luoi {
+  display: grid;
+  /* `auto-fill` + `minmax` để lưới tự co theo bề ngang màn: 390px cho ~4 ô một hàng,
+     1440px cho ~14. Không đặt số cột cứng — số cột cứng là cách một trong hai khổ hỏng. */
+  grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.oNut {
+  width: 100%;
+  /* `--touch-min` cả hai chiều: ô trên lưới là thứ bấm bằng ngón cái. */
+  min-height: var(--touch-min);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-1);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--beras-font-sans);
+}
+
+.oMa {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  /* Mã ô dài hơn ô thì cắt bằng dấu ba chấm, KHÔNG vỡ chữ từng ký tự — bài học
+     danh mục thuốc 01/08 (P5). */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oSo {
+  font-size: var(--text-xs);
+  color: var(--beras-text-muted);
+}
+
+/* Bốn trạng thái, phân biệt bằng CẢ màu nền LẪN viền — người mù màu đọc được viền.
+   Nhãn `aria-label` nói ra bằng chữ, vì màu là thứ trình đọc màn hình không nghe được. */
+.oTrong {
+  background: var(--beras-surface);
+}
+
+.oDay {
+  background: var(--beras-bg-alt, #eef2ec);
+  border-color: var(--beras-primary, #14532d);
+}
+
+.oCanHan {
+  background: #fdf3e7;
+  border-color: var(--beras-warning, #b54708);
+  border-width: 2px;
+}
+
+.oNgung {
+  background: var(--beras-bg-alt, #f2f2f2);
+  color: var(--beras-text-muted);
+  border-style: dashed;
+}
+
+.chuThich {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}
+
+.cham {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 1px solid var(--beras-border);
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+/* Một cặp (ô màu + chữ) của chú thích — không được tách nhau khi xuống dòng. */
+.cap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}

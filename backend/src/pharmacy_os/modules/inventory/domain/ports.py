@@ -201,6 +201,25 @@ class LocationInfoProvider(Protocol):
         ...
 
 
+@dataclass(frozen=True, slots=True)
+class TomTatO:
+    """Tóm tắt một ô cho **sơ đồ trực quan** (BERAS V2 Phase 12, mức 1).
+
+    Ba con số trả lời ba câu người đứng kho hỏi khi nhìn sơ đồ: *ô này có bận không*
+    (``so_lo``), *bận bao nhiêu* (``tong_so_luong``), *có gì sắp hết hạn không*
+    (``hsd_gan_nhat``).
+
+    Cố ý **không** có "sức chứa" hay "phần trăm đầy": kho chưa khai sức chứa của ô nào, và
+    một phần trăm tính từ con số không có thật là **tệ hơn không hiện gì** — người ta tin
+    vào nó.
+    """
+
+    location_id: UUID
+    so_lo: int
+    tong_so_luong: Decimal
+    hsd_gan_nhat: date
+
+
 class StockAtLocationRepository(Protocol):
     """Sổ **nằm ở đâu** — projection thứ hai, luôn ≤ ``stock_balances``."""
 
@@ -220,6 +239,19 @@ class StockAtLocationRepository(Protocol):
 
     async def rows_for_drug(self, drug_id: UUID) -> Sequence[LocationStockRow]:
         """Mọi (lô, ô) đang giữ hàng của một thuốc. Chỉ trả dòng có ``quantity > 0``."""
+        ...
+
+    async def tom_tat_moi_o(self) -> Sequence[TomTatO]:
+        """Mỗi ô **đang giữ hàng** một dòng tóm tắt — nguồn của sơ đồ trực quan (Phase 12).
+
+        🔴 Vì sao là một truy vấn riêng chứ không gọi :meth:`rows_at_location` cho từng ô:
+        một kho vài trăm ô nghĩa là vài trăm lượt đi-về cho **một** màn hình. Gộp ở tầng
+        CSDL là chỗ duy nhất làm được rẻ.
+
+        Chỉ trả ô **có hàng**. Ô trống không có dòng — màn hình biết chúng trống bằng cách
+        đối chiếu với sơ đồ, và *"không có dòng"* rẻ hơn *"dòng với số 0"* cho một kho mà
+        phần lớn ô trống.
+        """
         ...
 
     async def rows_at_location(self, location_id: UUID) -> Sequence[LocationStockRow]:

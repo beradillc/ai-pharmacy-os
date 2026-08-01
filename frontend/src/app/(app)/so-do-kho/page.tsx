@@ -9,11 +9,13 @@ import {
   TANG_DUOI,
   useCreateLocation,
   useLocations,
+  useTomTatO,
   useStockAtLocation,
   useUpdateLocation,
 } from "@/features/location/use-locations";
 import { ApiError } from "@/shared/api/errors";
 import { formatQty } from "@/shared/format/number";
+import type { TomTatO } from "@/features/location/use-locations";
 import type { StorageLocation } from "@/shared/api/types";
 import { DetailDialog } from "@/components/overlay/DetailDialog";
 
@@ -51,6 +53,12 @@ export default function WarehouseMapPage() {
   const [dangThem, setDangThem] = useState<StorageLocation | "ROOT" | null>(null);
   const [dangMo, setDangMo] = useState<StorageLocation | null>(null);
   const ds = useLocations(hienCaNgung);
+  const tomTat = useTomTatO();
+  /** Chỉ tầng Ô mới lên lưới: Kho/Khu/Kệ là cấu trúc, không phải chỗ đặt hàng. */
+  const dsO = useMemo(
+    () => (ds.data ?? []).filter((l) => l.kind === "BIN").sort((a, b) => a.pick_order - b.pick_order),
+    [ds.data],
+  );
 
   /** Cây dựng từ danh sách phẳng — máy chủ đã sắp sẵn theo thứ tự đi lấy hàng. */
   const theoCha = useMemo(() => {
@@ -93,6 +101,22 @@ export default function WarehouseMapPage() {
           <span>Hiện cả chỗ đã ngừng</span>
         </label>
       </div>
+
+      {/* 🔴 Sơ đồ trực quan MỨC 1 (BERAS V2 Phase 12). Lưới các Ô, xếp theo THỨ TỰ ĐI LẤY —
+          trái sang phải đúng đường chân đi trong kho.
+
+          Cố ý KHÔNG có "phần trăm đầy" và KHÔNG có toạ độ mặt bằng: kho chưa khai sức chứa
+          của ô nào và chưa ai đo toạ độ. Một bản đồ dựng từ con số không có thật thì **tệ
+          hơn không có bản đồ** — người ta tin vào nó. Mức 2 (mặt bằng thật) chờ có người
+          đo, xem `docs/inventory/LOCATION_MAP.md`. */}
+      {soVitri > 0 && (
+        <LuoiO
+          o={dsO}
+          tomTat={tomTat.data ?? []}
+          dangTai={tomTat.isLoading}
+          onMo={setDangMo}
+        />
+      )}
 
       {ds.isLoading ? (
         <p className={styles.hint}>Đang tải…</p>
@@ -343,5 +367,107 @@ function TrongO({ o, onClose }: { o: StorageLocation; onClose: () => void }) {
         </div>
       )}
     </DetailDialog>
+  );
+}
+
+
+/** Ngưỡng "cận hạn" trên lưới: 90 ngày. Cùng con số màn Tồn kho đang dùng — hai màn hai
+ *  ngưỡng nghĩa là hai câu trả lời cho một câu hỏi. */
+const NGAY_CAN_HAN = 90;
+
+/**
+ * Lưới ô — **sơ đồ trực quan mức 1** (BERAS V2 Phase 12).
+ *
+ * Trả lời đúng câu hay hỏi nhất khi đứng trước kệ: **chỗ nào đang trống để xếp hàng mới**.
+ * Cây danh sách phía dưới trả lời *"ô A01 nằm đâu trong cấu trúc"* — hai câu khác nhau, nên
+ * hai cách hiện, không thay thế nhau. Cây vẫn là chỗ **duy nhất sửa** cấu trúc.
+ */
+function LuoiO({
+  o,
+  tomTat,
+  dangTai,
+  onMo,
+}: {
+  o: StorageLocation[];
+  tomTat: TomTatO[];
+  dangTai: boolean;
+  onMo: (o: StorageLocation) => void;
+}) {
+  const theoO = new Map(tomTat.map((t) => [t.location_id, t]));
+  // 🔴 `useState` với khởi tạo lười, KHÔNG gọi `Date.now()` thẳng trong render — eslint bắt
+  // đúng: một hàm không thuần trong render cho kết quả đổi mỗi lần vẽ lại, và ở đây nó
+  // nghĩa là một ô có thể nhảy giữa "cận hạn" và "không" chỉ vì component vẽ lại. Chốt
+  // mốc thời gian MỘT lần khi mở màn; ai để màn mở qua đêm thì tải lại trang.
+  const [homNay] = useState(() => Date.now());
+
+  return (
+    <section className={local.luoiKhoi} aria-label="Sơ đồ ô theo thứ tự đi lấy">
+      <div className={styles.head}>
+        <div>
+          <h2 className={styles.subtitle}>
+            {o.length} ô · xếp theo thứ tự đi lấy
+            {dangTai ? " · đang đọc tồn…" : ""}
+          </h2>
+        </div>
+      </div>
+      <ul className={local.luoi} data-testid="luoi-o">
+        {o.map((l) => {
+          const t = theoO.get(l.id);
+          const conNgay = t
+            ? Math.floor((new Date(t.hsd_gan_nhat).getTime() - homNay) / 86400000)
+            : null;
+          const trang =
+            !l.is_active
+              ? local.oNgung
+              : t === undefined
+                ? local.oTrong
+                : conNgay !== null && conNgay <= NGAY_CAN_HAN
+                  ? local.oCanHan
+                  : local.oDay;
+          return (
+            <li key={l.id}>
+              <button
+                type="button"
+                className={`${local.oNut} ${trang}`}
+                onClick={() => onMo(l)}
+                // Nhãn đọc được cho trình đọc màn hình: màu là thứ họ không nghe được.
+                aria-label={
+                  `${l.path} — ` +
+                  (!l.is_active
+                    ? "đã ngừng"
+                    : t === undefined
+                      ? "trống"
+                      : `${t.so_lo} lô, còn ${formatQty(t.tong_so_luong)}` +
+                        (conNgay !== null && conNgay <= NGAY_CAN_HAN ? `, cận hạn ${conNgay} ngày` : ""))
+                }
+              >
+                <span className={local.oMa}>{l.code}</span>
+                <span className={local.oSo}>
+                  {!l.is_active ? "ngừng" : t === undefined ? "trống" : formatQty(t.tong_so_luong)}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {/* Mỗi cặp (ô màu + chữ) bọc trong MỘT `span` không xuống dòng: bản đầu để chúng
+          trôi tự do và "đã ngừng" rơi xuống dòng dưới, tách khỏi ô màu của nó — chú thích
+          mà chỉ sai màu thì tệ hơn không có chú thích. Thấy trên ảnh chụp, không cổng nào
+          bắt được. */}
+      <p className={local.chuThich}>
+        <span className={local.cap}>
+          <span className={`${local.cham} ${local.oTrong}`} /> trống
+        </span>
+        <span className={local.cap}>
+          <span className={`${local.cham} ${local.oDay}`} /> có hàng
+        </span>
+        <span className={local.cap}>
+          <span className={`${local.cham} ${local.oCanHan}`} /> cận hạn ≤{NGAY_CAN_HAN} ngày
+        </span>
+        <span className={local.cap}>
+          <span className={`${local.cham} ${local.oNgung}`} /> đã ngừng
+        </span>
+      </p>
+    </section>
   );
 }

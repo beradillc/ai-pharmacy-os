@@ -116,3 +116,29 @@ export function usePutAway() {
     },
   });
 }
+
+/** Tóm tắt tồn của một ô — nguồn của sơ đồ trực quan (BERAS V2 Phase 12 mức 1). */
+export interface TomTatO {
+  location_id: string;
+  so_lo: number;
+  tong_so_luong: string;
+  hsd_gan_nhat: string;
+}
+
+/**
+ * Tồn tóm tắt của **mọi ô đang giữ hàng** — MỘT lượt gọi cho cả sơ đồ.
+ *
+ * 🔴 Vì sao không gọi `useStockAtLocation` cho từng ô: một kho vài trăm ô thành vài trăm
+ * lượt đi-về cho một màn hình đang có người đứng chờ. Gộp ở tầng CSDL là chỗ duy nhất làm
+ * được rẻ.
+ *
+ * Ô **trống không có dòng**. Màn hình biết chúng trống bằng cách đối chiếu với sơ đồ
+ * (`useLocations`) — "không có dòng" rẻ hơn "dòng với số 0" cho một kho phần lớn ô trống.
+ */
+export function useTomTatO() {
+  return useQuery({
+    queryKey: ["inventory", "location-summary"],
+    queryFn: () => apiFetch<TomTatO[]>("/inventory/locations/summary"),
+    staleTime: 30_000,
+  });
+}

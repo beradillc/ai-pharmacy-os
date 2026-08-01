@@ -192,3 +192,36 @@ def settings() -> Settings:
         ai=AISettings(api_key="test-key"),  # type: ignore[arg-type]
         security=SecuritySettings(jwt_secret="test-secret-key-0123456789abcdef"),  # type: ignore[arg-type]
     )
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Xoá mọi CSDL tạm đã tạo trong phiên (chỉ khi chạy trên Postgres).
+
+    🔴 SỰ CỐ 2026-08-01, ghi lại vì nó suýt mất dữ liệu thật: bản đầu của `urls_csdl_thu`
+    **tạo CSDL mà không bao giờ xoá**. Sau vài lượt chạy bộ test có **995 CSDL** tồn đọng
+    chiếm **9,8 GB** ⇒ ổ đĩa đầy 100% ⇒ **Postgres crash và vào recovery mode 12 phút**.
+    CSDL demo `nt650v2` của Chain nằm **cùng volume** — lần này nguyên vẹn (597 đơn hàng,
+    đếm lại sau khi phục hồi), nhưng đó là **may chứ không phải thiết kế**.
+
+    Bài học: một hàm **tạo tài nguyên** phải có chỗ **trả tài nguyên**, và chỗ đó phải viết
+    **cùng lúc** — không phải "để sau". Giá của "để sau" ở đây là một CSDL sản xuất-thử
+    suýt mất.
+
+    `pytest_sessionfinish` chứ không phải fixture teardown: CSDL do một **hàm thường** tạo
+    (nhiều tệp gọi), không do fixture — nên chỗ duy nhất biết đủ danh sách là `_CSDL_DA_TAO`,
+    và chỗ duy nhất chạy sau tất cả là hook này.
+    """
+    if not TEST_DB_URL or not _CSDL_DA_TAO:
+        return
+    goc = TEST_DB_URL.rsplit("/", 1)[0]
+    admin = create_engine(f"{goc}/postgres", isolation_level="AUTOCOMMIT")
+    try:
+        with admin.connect() as c:
+            for dong_bo, _ in _CSDL_DA_TAO.values():
+                ten = dong_bo.rsplit("/", 1)[1]
+                # `WITH (FORCE)` vì một engine của test có thể còn giữ kết nối; thiếu nó
+                # thì DROP treo và bộ test không bao giờ kết thúc.
+                c.execute(text(f'DROP DATABASE IF EXISTS "{ten}" WITH (FORCE)'))
+    finally:
+        admin.dispose()
+    _CSDL_DA_TAO.clear()

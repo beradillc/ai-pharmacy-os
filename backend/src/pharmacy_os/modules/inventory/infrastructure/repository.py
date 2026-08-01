@@ -29,6 +29,7 @@ from pharmacy_os.modules.inventory.domain.ports import (
     BatchStockRow,
     DrugOnHandRow,
     LocationStockRow,
+    TomTatO,
 )
 from pharmacy_os.modules.inventory.infrastructure.models import (
     ProductBatchORM,
@@ -518,6 +519,28 @@ class SqlAlchemyStockAtLocationRepository:
 
     async def rows_at_location(self, location_id: UUID) -> Sequence[LocationStockRow]:
         return await self._rows(StockAtLocationORM.location_id == location_id)
+
+    async def tom_tat_moi_o(self) -> Sequence[TomTatO]:
+        """Gộp ở tầng CSDL — xem `StockAtLocationRepository.tom_tat_moi_o`."""
+        stmt = (
+            select(
+                StockAtLocationORM.location_id,
+                func.count(StockAtLocationORM.batch_id),
+                func.sum(StockAtLocationORM.quantity),
+                func.min(ProductBatchORM.expiry_date),
+            )
+            .join(ProductBatchORM, ProductBatchORM.id == StockAtLocationORM.batch_id)
+            .where(
+                StockAtLocationORM.tenant_id == self._ctx.tenant_id,
+                StockAtLocationORM.branch_id == self._ctx.branch_id,
+                StockAtLocationORM.quantity > 0,
+            )
+            .group_by(StockAtLocationORM.location_id)
+        )
+        return [
+            TomTatO(location_id=r[0], so_lo=r[1], tong_so_luong=r[2], hsd_gan_nhat=r[3])
+            for r in (await self._session.execute(stmt)).all()
+        ]
 
 
 class SqlAlchemyStockCountRepository:

@@ -18,7 +18,12 @@ from pharmacy_os.modules.inventory.application.dto import (
     ReconciliationOutput,
     StockReportItem,
 )
-from pharmacy_os.modules.inventory.domain import ChangLay, LocationStockRow, PickCandidate
+from pharmacy_os.modules.inventory.domain import (
+    ChangLay,
+    LocationStockRow,
+    PickCandidate,
+    TomTatO,
+)
 from pharmacy_os.modules.inventory.domain.counting import CountLine, StockCount
 
 
@@ -368,3 +373,25 @@ class LoTrinhResponse(BaseModel):
     #: Mã KHÔNG lấy đủ được từ các ô. Rỗng là bình thường. `where_is` trả rỗng nghĩa là
     #: thuốc chưa được xếp ô — khác hẳn "kho hết hàng", và màn hình phải nói ra khác biệt đó.
     thieu: list[UUID]
+
+
+class TomTatOResponse(BaseModel):
+    """Tóm tắt một ô cho sơ đồ trực quan (BERAS V2 Phase 12 mức 1).
+
+    Cố ý **không** có "phần trăm đầy": kho chưa khai sức chứa của ô nào, và một phần trăm
+    tính từ con số không có thật thì **tệ hơn không hiện gì**.
+    """
+
+    location_id: UUID
+    so_lo: int
+    tong_so_luong: Decimal
+    hsd_gan_nhat: date
+
+    @classmethod
+    def of(cls, t: TomTatO) -> TomTatOResponse:
+        return cls(
+            location_id=t.location_id,
+            so_lo=t.so_lo,
+            tong_so_luong=t.tong_so_luong,
+            hsd_gan_nhat=t.hsd_gan_nhat,
+        )

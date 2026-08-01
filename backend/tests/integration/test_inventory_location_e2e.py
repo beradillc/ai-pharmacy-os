@@ -599,3 +599,83 @@ def test_lo_trinh_MOT_MA_thieu_thi_VAN_tra_phan_lay_duoc(client: TestClient) -> 
 
 def test_lo_trinh_doi_hoi_it_nhat_MOT_dong(client: TestClient) -> None:
     assert _lo_trinh(client, []).status_code == 422
+
+
+# --- tóm tắt tồn MỌI Ô, nguồn của sơ đồ trực quan (BERAS V2 Phase 12 mức 1) ----------
+
+
+def test_tom_tat_gop_NHIEU_LO_trong_mot_o_thanh_MOT_dong(client: TestClient) -> None:
+    """Sơ đồ hỏi *"ô này bận không"*, không hỏi *"ô này có những lô nào"*."""
+    kho = _o(client, code="KHO", pick=0)
+    o = _o(client, code="A01", pick=1, parent=kho)
+    d = _drug(client)
+    _cat(
+        client,
+        _nhan(client, d, qty="10", hsd=date.today() + timedelta(days=100), lot="L1"),
+        o,
+        "10",
+    )
+    _cat(
+        client, _nhan(client, d, qty="5", hsd=date.today() + timedelta(days=300), lot="L2"), o, "5"
+    )
+
+    kq = client.get("/api/v1/inventory/locations/summary").json()
+
+    assert len(kq) == 1
+    assert kq[0]["so_lo"] == 2
+    assert Decimal(kq[0]["tong_so_luong"]) == Decimal("15")
+
+
+def test_tom_tat_lay_HSD_GAN_NHAT_trong_o(client: TestClient) -> None:
+    """🔴 Con số cảnh báo phải là cái SỚM NHẤT. Lấy trung bình hay lấy lô đầu tiên đều cho
+    một ngày muộn hơn thực tế — và một cảnh báo muộn thì bằng không có."""
+    kho = _o(client, code="KHO", pick=0)
+    o = _o(client, code="A01", pick=1, parent=kho)
+    d = _drug(client)
+    gan = date.today() + timedelta(days=20)
+    _cat(
+        client,
+        _nhan(client, d, qty="10", hsd=date.today() + timedelta(days=400), lot="XA"),
+        o,
+        "10",
+    )
+    _cat(client, _nhan(client, d, qty="5", hsd=gan, lot="GAN"), o, "5")
+
+    kq = client.get("/api/v1/inventory/locations/summary").json()
+
+    assert kq[0]["hsd_gan_nhat"] == gan.isoformat()
+
+
+def test_tom_tat_KHONG_tra_o_TRONG(client: TestClient) -> None:
+    """Ô trống không có dòng — màn hình biết chúng trống bằng cách đối chiếu với sơ đồ.
+
+    "Không có dòng" rẻ hơn "dòng với số 0" cho một kho mà phần lớn ô trống.
+    """
+    kho = _o(client, code="KHO", pick=0)
+    co = _o(client, code="A01", pick=1, parent=kho)
+    _o(client, code="A02", pick=2, parent=kho)  # trống
+    d = _drug(client)
+    _cat(
+        client,
+        _nhan(client, d, qty="10", hsd=date.today() + timedelta(days=100), lot="L1"),
+        co,
+        "10",
+    )
+
+    kq = client.get("/api/v1/inventory/locations/summary").json()
+
+    assert [r["location_id"] for r in kq] == [co]
+
+
+def test_tom_tat_MOT_luot_goi_cho_NHIEU_o(client: TestClient) -> None:
+    """Lý do endpoint này tồn tại: một kho vài trăm ô không được thành vài trăm lượt gọi."""
+    kho = _o(client, code="KHO", pick=0)
+    d = _drug(client)
+    for i in range(3):
+        o = _o(client, code=f"A0{i}", pick=i + 1, parent=kho)
+        lo = _nhan(client, d, qty="10", hsd=date.today() + timedelta(days=100 + i), lot=f"L{i}")
+        _cat(client, lo, o, "10")
+
+    kq = client.get("/api/v1/inventory/locations/summary").json()
+
+    assert len(kq) == 3

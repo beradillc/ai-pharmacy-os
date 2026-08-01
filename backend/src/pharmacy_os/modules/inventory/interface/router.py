@@ -29,6 +29,7 @@ from pharmacy_os.modules.inventory.interface.schemas import (
     ReconciliationResponse,
     StockCountResponse,
     StockRowResponse,
+    TomTatOResponse,
 )
 
 ContextDep = Callable[..., Awaitable[RequestContext]]
@@ -180,6 +181,21 @@ def build_router(get_context: ContextDep) -> APIRouter:
         Quyền ``inventory.read``.
         """
         return [PickCandidateResponse.of(c) for c in await service.where_is(drug_id, ctx)]
+
+    @router.get("/locations/summary", response_model=list[TomTatOResponse])
+    async def tom_tat_moi_o(
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> list[TomTatOResponse]:
+        """Tồn tóm tắt của **mọi ô đang giữ hàng** — một lượt gọi cho cả sơ đồ (Phase 12).
+
+        Đặt TRƯỚC `/locations/{location_id}/stock`: FastAPI khớp route theo thứ tự khai báo,
+        đặt sau thì `summary` bị nuốt thành một `location_id` và trả 422 vì không phải UUID.
+        (Đúng cái bẫy `/prescriptions/archive` đã dính ngày 31/07.)
+
+        Chỉ ô **có hàng** mới có dòng. Quyền ``inventory.read``.
+        """
+        return [TomTatOResponse.of(t) for t in await service.tom_tat_moi_o(ctx)]
 
     @router.post("/pick-route", response_model=LoTrinhResponse)
     async def lo_trinh_lay_hang(

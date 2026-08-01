@@ -31,6 +31,7 @@ from pharmacy_os.modules.inventory.domain.ports import (
     StockAtLocationRepository,
     StockCountRepository,
     StockReconciliationRepository,
+    TomTatO,
 )
 from pharmacy_os.modules.inventory.domain.putaway import (
     ChangLay,
@@ -51,6 +52,7 @@ __all__ = [
     "LocationInfoProvider",
     "LocationStockRow",
     "StockAtLocationRepository",
+    "TomTatO",
     "StockCountRepository",
     "ExceedsBatchOnHandError",
     "LocationNotUsableError",

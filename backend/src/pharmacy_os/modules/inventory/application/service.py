@@ -52,6 +52,7 @@ from pharmacy_os.modules.inventory.domain import (
     StockMovement,
     StockReconciliationNeeded,
     StockShortfallDetected,
+    TomTatO,
     allocate_fefo,
     allocate_from_locations,
     chua_xep_o,
@@ -908,6 +909,21 @@ class InventoryService:
             except (InsufficientStockError, ValueError):
                 thieu.append(drug_id)
         return gom_lo_trinh(phan_bo), thieu
+
+    async def tom_tat_moi_o(self, ctx: RequestContext) -> list[TomTatO]:
+        """Tóm tắt tồn của **mọi ô đang giữ hàng** — nguồn của sơ đồ trực quan (Phase 12).
+
+        Chỉ ô **có hàng** mới có dòng. Màn hình biết ô nào trống bằng cách đối chiếu với sơ
+        đồ (`GET /locations`) — *"không có dòng"* rẻ hơn *"dòng với số 0"* cho một kho mà
+        phần lớn ô trống.
+
+        Quyền ``inventory.read``.
+        """
+        require_permission(ctx, "inventory.read")
+        if self._at_location is None:
+            return []
+        async with self._uow_factory() as uow:
+            return list(await self._at_location(uow, ctx).tom_tat_moi_o())
 
     async def stock_at_location(
         self, location_id: UUID, ctx: RequestContext
