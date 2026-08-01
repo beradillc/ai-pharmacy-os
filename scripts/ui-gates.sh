@@ -88,6 +88,7 @@ CONG_DOC=(
   check-pos-rx-photo.mjs    # quầy: nút Chụp đơn thuốc hiện đúng lúc (đọc thuần)
   check-luu-tru.mjs         # Cài đặt → Lưu trữ: ảnh chỉ tải khi bấm (ghi audit khi mở)
   check-nhin-thay.mjs       # kỷ luật #21: nhìn thấy được ≠ có trên trang (mọi màn, 390px)
+  check-cham-toi.mjs        # bậc 3: CHẠM TỚI được ≠ nhìn thấy được (elementFromPoint)
   check-nhat-ky.mjs         # Nhật ký hoạt động: đọc được, lọc được, không lọt mã máy (M-04)
   check-tai-khoan.mjs       # Cài đặt → Tài khoản của tôi: khớp đúng /auth/me (M-03)
   check-don-thuoc.mjs       # Đơn thuốc: tra được cả đơn CHƯA chụp ảnh (M-08)

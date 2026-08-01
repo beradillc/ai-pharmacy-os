@@ -21,6 +21,24 @@
   flex-direction: column;
 }
 
+/* 🔴 CỬA SỔ ĐÃ ĐÓNG PHẢI KHÔNG CHIẾM CHỖ. (02/08)
+   `<dialog>` không có thuộc tính `open` được trình duyệt cho `display: none` theo mặc định.
+   Dòng `display: flex` ở trên **đè mất** mặc định đó ⇒ cửa sổ đã đóng vẫn được VẼ, và thanh
+   đầu `.dau` (`position: sticky`, `pointer-events: auto`) của nó nằm đè lên màn phía sau.
+
+   Hậu quả đo thật trên khổ điện thoại 402px, sau khi từng mở cửa sổ "Lộ trình lấy hàng":
+   ô **"Tìm thuốc" của màn BÁN HÀNG** nằm ở y=89, còn `.dau` phủ dải y=72…141 —
+   `document.elementFromPoint` giữa ô nhập trả về `.dau`, không trả về ô nhập.
+   Tức là **dược sĩ chạm vào ô tìm thuốc thì không có gì xảy ra**, trên đúng màn dùng
+   nhiều nhất cả ngày.
+
+   Không cổng nào trong 21 cổng trình duyệt bắt được: chúng kiểm phần tử **có trên trang**
+   và **nằm trong khung nhìn** (kỷ luật #21) — không kiểm **chạm tới được**. Nó lộ ra vì
+   bản quay video chết đúng chỗ đó với thông điệp `subtree intercepts pointer events`. */
+.hop:not([open]) {
+  display: none;
+}
+
 .hop::backdrop {
   background: rgb(0 0 0 / 45%);
 }

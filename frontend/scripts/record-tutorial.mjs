@@ -306,7 +306,28 @@ try {
 
   // ── 09 · bán hàng: tìm thuốc ─────────────────────────────────────────────
   begin("09");
+  // 🔴 Nhận hàng xong, phần mềm mở hộp thoại **"Lộ trình lấy hàng"** — tính năng thêm SAU khi
+  //    kịch bản quay này được viết. Hộp thoại chặn mọi cú chạm phía sau nó, và bản quay chết ở
+  //    đoạn 09 với thông điệp `subtree intercepts pointer events` — đọc như lỗi sản phẩm, thật
+  //    ra là kịch bản quay đã lạc hậu so với ứng dụng.
+  //    Đóng nó **có chủ đích, và quay cảnh đóng** — người xem cũng sẽ gặp đúng hộp thoại này.
+  //    Gọi HAI LẦN — trước và sau khi chuyển màn. Lượt vá đầu chỉ gọi trước `go("/")` và bản
+  //    quay vẫn chết: hộp thoại được vẽ lại sau điều hướng, nên `waitFor` thấy ô tìm kiếm
+  //    (nó CÓ trong DOM) nhưng `type()` không gõ được vì hộp thoại nằm đè lên. Đúng hình dạng
+  //    kỷ luật #21: "có trong DOM" ≠ "chạm được".
+  const dongHopThoai = async (doi = 0) => {
+    const hop = page.locator("dialog[open]").first();
+    if (!(await hop.isVisible().catch(() => false))) return;
+    if (doi) await page.waitForTimeout(doi); // để người xem kịp đọc trước khi nó đóng
+    const nut = hop.locator('button[aria-label*="Đóng"], button:has-text("Đóng")').first();
+    if (await nut.count()) await tap(nut);
+    else await page.keyboard.press("Escape");
+    await hop.waitFor({ state: "hidden", timeout: 10_000 }).catch(() => {});
+    await page.waitForTimeout(500);
+  };
+  await dongHopThoai(1500);
   await go("/");
+  await dongHopThoai();
   // Thuốc KHÔNG kê đơn. Thuốc ETC bị backend chặn đúng theo quy định
   // ("cần đơn thuốc hợp lệ") — quay cảnh đó vào video hướng dẫn CƠ BẢN thì
   // người mới sẽ tưởng phần mềm hỏng.
@@ -336,7 +357,12 @@ try {
 
   // ── 12 · thanh toán ──────────────────────────────────────────────────────
   begin("12");
-  const pay = page.locator('button:has-text("Thanh toán")');
+  // Đoạn 11 kết thúc bằng `mouse.wheel(0, 700)`. Trang cuộn MƯỢT, nên ngay sau đó nút vẫn
+  // đang trôi và Playwright từ chối bấm với `waiting for element to be stable` — đọc như nút
+  // hỏng, thật ra là bấm quá sớm. Cho nó lắng rồi mới chạm.
+  const pay = page.locator('button:has-text("Thanh toán")').first();
+  await pay.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(1500);
   await tap(pay);
   await page.locator("text=Đã bán thành công").waitFor({ timeout: 25_000 });
   await page.waitForTimeout(1200);
