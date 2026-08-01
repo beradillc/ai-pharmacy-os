@@ -8458,7 +8458,7 @@ lượt sẽ giết luôn shell — exit 144), rồi `make lan` khi cần bật 
 
 **`qt650` (CSDL quầy) KHÔNG bị đụng trong cả phiên.**
 
-**11 commit của phiên:** `6588635` → `922b2e1`.
+**12 commit của phiên:** `6588635` → `a767f2a` (`git log d7d0fda..HEAD`).
 
 **Nợ mở, xếp theo mức chặn:**
 
