@@ -221,6 +221,10 @@ class SqlAlchemyTenantComplianceConfigRepository:
         else:
             row.ma_co_so_ban_le = config.ma_co_so_ban_le
             row.ma_co_so_ban_buon = config.ma_co_so_ban_buon
+            row.ten_co_so = config.ten_co_so
+            row.dia_chi = config.dia_chi
+            row.dien_thoai = config.dien_thoai
+            row.ma_so_thue = config.ma_so_thue
         await self._session.flush()
 
     async def get(self, tenant_id: UUID) -> TenantComplianceConfig | None:

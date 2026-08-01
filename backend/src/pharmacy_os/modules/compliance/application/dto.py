@@ -94,6 +94,10 @@ class ControlledLedgerEntryOutput:
 class SetTenantComplianceConfigInput:
     ma_co_so_ban_le: str
     ma_co_so_ban_buon: str | None = None
+    ten_co_so: str | None = None
+    dia_chi: str | None = None
+    dien_thoai: str | None = None
+    ma_so_thue: str | None = None
 
 
 @dataclass(slots=True)
@@ -101,6 +105,10 @@ class TenantComplianceConfigOutput:
     tenant_id: UUID
     ma_co_so_ban_le: str
     ma_co_so_ban_buon: str | None
+    ten_co_so: str | None
+    dia_chi: str | None
+    dien_thoai: str | None
+    ma_so_thue: str | None
 
     @classmethod
     def of(cls, config: TenantComplianceConfig) -> TenantComplianceConfigOutput:
@@ -108,6 +116,10 @@ class TenantComplianceConfigOutput:
             tenant_id=config.tenant_id,
             ma_co_so_ban_le=config.ma_co_so_ban_le,
             ma_co_so_ban_buon=config.ma_co_so_ban_buon,
+            ten_co_so=config.ten_co_so,
+            dia_chi=config.dia_chi,
+            dien_thoai=config.dien_thoai,
+            ma_so_thue=config.ma_so_thue,
         )
 
 

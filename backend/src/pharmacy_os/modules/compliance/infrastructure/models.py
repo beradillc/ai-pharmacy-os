@@ -85,6 +85,16 @@ class TenantComplianceConfigORM(PkUuidMixin, TimestampMixin, Base):
     ma_co_so_ban_le: Mapped[str] = mapped_column(String(12), nullable=False)
     ma_co_so_ban_buon: Mapped[str | None] = mapped_column(String(12), nullable=True)
 
+    #: Thông tin cơ sở in trên hoá đơn (UAT M-02, 2026-08-01). Cùng bảng vì cùng một tờ
+    #: giấy chứng nhận đủ điều kiện kinh doanh dược — tách ra hai bảng là chia đôi hồ sơ
+    #: pháp lý của cơ sở, và chỗ thứ hai sẽ lệch với chỗ thứ nhất.
+    #: Nullable: tenant đang chạy chưa có dữ liệu, và một cái tên nhà thuốc BỊA RA rồi in
+    #: lên hoá đơn tệ hơn hẳn một ô trống. Ứng dụng rơi về ``OrgSettings`` khi trống.
+    ten_co_so: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    dia_chi: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    dien_thoai: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    ma_so_thue: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
 
 class NationalSyncLogORM(PkUuidMixin, TimestampMixin, Base):
     """Audit truyền nhận lên CSDL Dược Quốc gia (docs/13 mục D.2).

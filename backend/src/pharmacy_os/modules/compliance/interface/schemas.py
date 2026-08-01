@@ -120,10 +120,22 @@ class SetTenantComplianceConfigRequest(BaseModel):
     ma_co_so_ban_le: str = Field(min_length=1, max_length=12)
     ma_co_so_ban_buon: str | None = Field(default=None, max_length=12)
 
+    #: Thông tin cơ sở in trên hoá đơn (UAT M-02). ``max_length`` khớp ĐÚNG độ rộng cột —
+    #: không chặn ở đây thì Postgres ném StringDataRightTruncationError và client nhận 500
+    #: thay vì 422 (PROJECT_STATE §7aq).
+    ten_co_so: str | None = Field(default=None, max_length=255)
+    dia_chi: str | None = Field(default=None, max_length=255)
+    dien_thoai: str | None = Field(default=None, max_length=32)
+    ma_so_thue: str | None = Field(default=None, max_length=20)
+
     def to_input(self) -> SetTenantComplianceConfigInput:
         return SetTenantComplianceConfigInput(
             ma_co_so_ban_le=self.ma_co_so_ban_le,
             ma_co_so_ban_buon=self.ma_co_so_ban_buon,
+            ten_co_so=self.ten_co_so,
+            dia_chi=self.dia_chi,
+            dien_thoai=self.dien_thoai,
+            ma_so_thue=self.ma_so_thue,
         )
 
 
@@ -281,6 +293,10 @@ class TenantComplianceConfigResponse(BaseModel):
     tenant_id: UUID
     ma_co_so_ban_le: str
     ma_co_so_ban_buon: str | None
+    ten_co_so: str | None
+    dia_chi: str | None
+    dien_thoai: str | None
+    ma_so_thue: str | None
 
     @classmethod
     def of(cls, out: TenantComplianceConfigOutput) -> TenantComplianceConfigResponse:
@@ -288,6 +304,10 @@ class TenantComplianceConfigResponse(BaseModel):
             tenant_id=out.tenant_id,
             ma_co_so_ban_le=out.ma_co_so_ban_le,
             ma_co_so_ban_buon=out.ma_co_so_ban_buon,
+            ten_co_so=out.ten_co_so,
+            dia_chi=out.dia_chi,
+            dien_thoai=out.dien_thoai,
+            ma_so_thue=out.ma_so_thue,
         )
 
 

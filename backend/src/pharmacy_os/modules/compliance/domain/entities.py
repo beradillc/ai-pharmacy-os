@@ -253,6 +253,14 @@ class TenantComplianceConfig:
     tenant_id: UUID
     ma_co_so_ban_le: str
     ma_co_so_ban_buon: str | None = None
+
+    #: Thông tin cơ sở in trên hoá đơn (UAT M-02). ``None`` = **chưa khai**, khác hẳn với
+    #: chuỗi rỗng: bên gọi rơi về cấu hình mặc định khi ``None``, còn chuỗi rỗng nghĩa là
+    #: người dùng cố ý xoá đi.
+    ten_co_so: str | None = None
+    dia_chi: str | None = None
+    dien_thoai: str | None = None
+    ma_so_thue: str | None = None
     id: UUID = field(default_factory=uuid4)
 
     def __post_init__(self) -> None:

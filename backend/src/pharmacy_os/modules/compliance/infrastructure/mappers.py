@@ -85,6 +85,10 @@ def tenant_config_to_domain(row: TenantComplianceConfigORM) -> TenantComplianceC
         tenant_id=row.tenant_id,
         ma_co_so_ban_le=row.ma_co_so_ban_le,
         ma_co_so_ban_buon=row.ma_co_so_ban_buon,
+        ten_co_so=row.ten_co_so,
+        dia_chi=row.dia_chi,
+        dien_thoai=row.dien_thoai,
+        ma_so_thue=row.ma_so_thue,
     )
 
 
@@ -94,6 +98,10 @@ def tenant_config_to_orm(config: TenantComplianceConfig) -> TenantComplianceConf
         tenant_id=config.tenant_id,
         ma_co_so_ban_le=config.ma_co_so_ban_le,
         ma_co_so_ban_buon=config.ma_co_so_ban_buon,
+        ten_co_so=config.ten_co_so,
+        dia_chi=config.dia_chi,
+        dien_thoai=config.dien_thoai,
+        ma_so_thue=config.ma_so_thue,
     )
 
 

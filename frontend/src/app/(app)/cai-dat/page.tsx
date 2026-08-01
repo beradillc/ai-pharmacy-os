@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { useTheme } from "@/theme/ThemeProvider";
 import { THEMES } from "@/theme/themes";
+import { ThongTinCoSo } from "@/features/compliance/ThongTinCoSo";
 import { DoiMatKhau } from "@/features/auth/DoiMatKhau";
 import { useMe } from "@/features/auth/use-me";
 import { useAuthStore } from "@/features/auth/auth-store";
@@ -85,6 +86,10 @@ export default function SettingsPage() {
           </p>
         </div>
       </section>
+
+      {/* Thông tin cơ sở — đóng lỗi M-02 (UAT 01/08). Đặt NGAY SAU "Tài khoản của tôi"
+          vì cùng trả lời một câu: *tôi / cơ sở của tôi là ai*. */}
+      <ThongTinCoSo />
 
       {/* Đổi mật khẩu — lối vào TỰ NGUYỆN. Cửa chặn bắt buộc nằm ở `AppShell` khi tài khoản
           còn cờ `must_change_password`; ở đây là chỗ đổi bất cứ lúc nào sau đó. */}

@@ -468,6 +468,10 @@ class ComplianceService:
                 tenant_id=ctx.tenant_id,
                 ma_co_so_ban_le=data.ma_co_so_ban_le,
                 ma_co_so_ban_buon=data.ma_co_so_ban_buon,
+                ten_co_so=data.ten_co_so,
+                dia_chi=data.dia_chi,
+                dien_thoai=data.dien_thoai,
+                ma_so_thue=data.ma_so_thue,
             )
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
