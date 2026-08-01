@@ -12,16 +12,33 @@
 | Nhịp | **Chậm**, như một buổi hướng dẫn trực tiếp tại quầy |
 | Khổ quay | **Điện thoại dọc 390×844** là chính (đúng thứ dược sĩ cầm), chèn khổ laptop khi cần thấy toàn cảnh |
 | Cách dạy | ① giới thiệu → ② làm nhanh một lần → ③ **làm lại thật chậm** → ④ giải thích từng nút → ⑤ lỗi thường gặp → ⑥ tóm tắt |
-| CSDL quay | ⚠️ **Không quay trên `qt650` thật.** Xem cảnh báo dưới |
+| CSDL quay | ✅ **`qt650`** — Chain chốt 2026-08-02. Xem mục dưới |
 
-## 🔴 Cảnh báo trước khi bấm máy
+## Quay trên `qt650` — Chain chốt 2026-08-02
 
-**Quay trên CSDL thật của quầy sẽ để lại dữ liệu rác trong sổ sách thật** — mỗi lần quay lại
-cảnh bán hàng là thêm một hoá đơn không có khách. Sau một buổi quay, doanh thu tuần sẽ sai và
-**không ai tách được đâu là đơn thật**.
+**Chain: *"Không cần đổi, cứ lấy dữ liệu qt650 làm kịch bản."*** Bản trước của mục này cấm
+điều đó. Cấm sai — và sai vì **suy đoán chứ không đếm**.
 
-**Phải dựng một CSDL riêng để quay** (ví dụ `qt650_video`, sao từ mốc sạch). Việc này cũng
-giải quyết luôn vướng mắc UAT ở `01_BAO_CAO_UAT.md` §4.
+Đếm thật ngày 02/08:
+
+| CSDL | Thuốc | Đơn bán | Khách | Lô | Nhà cung cấp |
+|---|---|---|---|---|---|
+| **`qt650`** | **70** (danh mục thật) | **0** | **0** | **0** | **0** |
+| `uat650` | 36 | 250 | 12 | 75 | có |
+
+🔴 **`qt650` chưa từng bán một đơn nào.** Cảnh báo cũ — *"doanh thu tuần sẽ sai, không ai tách
+được đâu là đơn thật"* — nói về một khoản doanh thu **không tồn tại**. Không có gì để lẫn vào.
+
+Và `qt650` không chỉ *chấp nhận được*, nó là **sân khấu đúng**: một nhà thuốc sạch đã nạp sẵn
+70 mã thuốc thật cùng 122 hoạt chất kiểm soát. Thứ tự quay đề nghị (`02→03→04→05→…`) vốn được
+thiết kế để **mỗi video dựng dữ liệu cho video sau** — nó cần đúng một CSDL sạch-có-danh-mục để
+bắt đầu. Dựng thêm `qt650_video` chỉ là chép lại `qt650` rồi đặt tên khác.
+
+⚠️ **Điều còn đúng từ cảnh báo cũ:** sau buổi quay, `qt650` sẽ có hoá đơn của các cảnh quay.
+Kể từ ngày quầy bắt đầu bán thật trên CSDL này, **những đơn đó thành dữ liệu lẫn**. Nên: quay
+xong thì **hoặc** dọn các đơn đã quay, **hoặc** chốt ngày bắt đầu bán thật và coi mọi thứ trước
+ngày đó là dữ liệu dựng. Đây là việc của Chain, không phải của phần mềm — ghi ở đây để phiên
+sau không đọc *"Chain đã duyệt quay trên qt650"* thành *"không còn gì phải nghĩ"*.
 
 ---
 
