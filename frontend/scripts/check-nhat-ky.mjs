@@ -177,7 +177,6 @@ for (const [ten, w, h, mob] of [
   // Hai cột mới cũng phải NHÌN THẤY ĐƯỢC, không chỉ có trong DOM — thêm cột là đúng thao
   // tác đã đẩy cột cuối ra khỏi màn 390px ở 5/5 bảng hôm 29/07 (kỷ luật #21).
   const oThietBi = await trongKhungNhin(p, p.locator('td[data-nhan="Thiết bị"]').first());
-  const oThayDoi = await trongKhungNhin(p, p.locator('td[data-nhan="Thay đổi"]').first());
   const cuon = await cuonNgangTrang(p);
 
   // ⑤ Lọc phải THU HẸP thật. So `total` trước/sau: một `select` gắn vào không đâu cả vẫn
@@ -201,6 +200,48 @@ for (const [ten, w, h, mob] of [
     await p.screenshot({ path: `${OUT}/${ten}-2-loc-dang-nhap.png`, fullPage: true });
   }
 
+  // ⑦ M-05 — đo trên màn ĐÃ LỌC, không trên 50 dòng mới nhất.
+  //
+  // 🔴 LỖI PHÉP ĐO, lộ ra 02/08. Bước tiền kiểm hỏi API *"sổ audit có dòng đổi giá nào
+  //    không"* — tức TOÀN BỘ lịch sử — rồi khẳng định trên MÀN, vốn chỉ vẽ 50 dòng mới
+  //    nhất. Hai nguồn khác nhau, và cổng ngầm giả định cái trước kéo theo cái sau. Ngày
+  //    01/08 giả định ấy đúng vì dòng đổi giá vừa được dựng xong nên còn nằm đầu bảng.
+  //    Hôm sau, 1248 sự kiện sau, nó đã trôi xuống dưới ⇒ cổng ĐỎ vì **phép đo**, không vì
+  //    sản phẩm — mà log đỏ vì phép đo đọc y hệt log đỏ vì sản phẩm. Kỷ luật #23 gọi đúng
+  //    tên chuyện này: hai vế của một phép so phải là hai nguồn ĐỘC LẬP, và ở đây chúng
+  //    không những không độc lập, chúng còn không nói về cùng một tập dòng.
+  //
+  //    Nay: lọc cho đúng dòng ấy HIỆN RA rồi mới đo. Mệnh đề không đổi (*"cột Thay đổi hiện
+  //    cũ → mới, và nhìn thấy được"*) — chỗ đo mới đúng thứ mệnh đề nói tới.
+  let doiGia = { soDong: 0, coThayDoi: 0, chonDuoc: false };
+  let oThayDoi = { dat: false, ly_do: "chưa đo" };
+  if (d.soDong > 0) {
+    // `selectOption` NÉM khi không có lựa chọn khớp (§7dg bài học 4). Bắt lấy và nói rõ, vì
+    // "bản đồ nhãn đổi tên mã hành vi" là một kết luận khác hẳn "cột Thay đổi hỏng".
+    try {
+      await p.selectOption('select[aria-label="Loại hoạt động"]', "CATALOG_DRUG_PRICE_CHANGED");
+      doiGia.chonDuoc = true;
+    } catch {
+      doiGia.chonDuoc = false;
+    }
+    if (doiGia.chonDuoc) {
+      await p.waitForTimeout(3000);
+      const sau = await p.evaluate(() => {
+        const rows = [...document.querySelectorAll('[data-testid="ds-nhat-ky"] tbody tr')];
+        const cot = (r) => r.querySelector('td[data-nhan="Thay đổi"]')?.innerText.trim() ?? "";
+        return {
+          soDong: rows.length,
+          // Vẫn đòi mũi tên VÀ hai con số hai bên: `→ 25000` là đúng ca mà sản phẩm cố ý từ
+          // chối hiện, nên nó không được tính là đạt.
+          coThayDoi: rows.filter((r) => /\d[\d.,]*\s*→\s*\d/.test(cot(r))).length,
+        };
+      });
+      doiGia = { ...doiGia, ...sau };
+      oThayDoi = await trongKhungNhin(p, p.locator('td[data-nhan="Thay đổi"]').first());
+      await p.screenshot({ path: `${OUT}/${ten}-3-loc-doi-gia.png`, fullPage: true });
+    }
+  }
+
   const datLoc =
     locHoatDong === null ||
     (locHoatDong.dungLoai && Number(locHoatDong.tong) <= Number(locHoatDong.truoc));
@@ -219,7 +260,7 @@ for (const [ten, w, h, mob] of [
     d.maHeThong === 0 &&
     // Bỏ qua bước dựng dữ liệu ⇒ mệnh đề ⑦ **chưa đo được**, và cổng KHÔNG tính là đạt
     // bằng cách lờ nó đi. Nó chỉ được miễn khi người chạy tự nói là mình bỏ qua.
-    (SKIP_GHI || d.coThayDoi > 0) &&
+    (SKIP_GHI || (doiGia.chonDuoc && doiGia.coThayDoi > 0)) &&
     oNguoi.dat &&
     oHoatDong.dat &&
     oThietBi.dat &&
@@ -237,9 +278,15 @@ for (const [ten, w, h, mob] of [
     `  ⑥ thiết bị đọc được: ${d.coThietBi}/${d.soDong} dòng ${d.coThietBi > 0 ? "✓" : "🔴 (User-Agent không tới được sổ audit)"}`,
   );
   console.log(
-    `  ⑦ thay đổi cũ→mới: ${d.coThayDoi} dòng ${
-      d.coThayDoi > 0 ? "✓" : SKIP_GHI ? "⏭️ CHƯA ĐO ĐƯỢC (SKIP_GHI=1) — không tính là đạt" : "🔴"
-    }`,
+    `  ⑦ thay đổi cũ→mới (màn đã LỌC đổi giá): ${doiGia.coThayDoi}/${doiGia.soDong} dòng ${
+      !doiGia.chonDuoc
+        ? '🔴 không chọn được "Đổi giá" trong bộ lọc — bản đồ nhãn đổi tên mã hành vi?'
+        : doiGia.coThayDoi > 0
+          ? "✓"
+          : SKIP_GHI
+            ? "⏭️ CHƯA ĐO ĐƯỢC (SKIP_GHI=1) — không tính là đạt"
+            : "🔴"
+    }   ·   (50 dòng mới nhất, chỉ để tham khảo: ${d.coThayDoi})`,
   );
   console.log(
     `  cảnh báo cũ đã gỡ: ${d.conCanhBaoCu ? '🔴 vẫn còn "chưa ghi giá trị cũ" — nay là câu SAI' : "✓"}`,
