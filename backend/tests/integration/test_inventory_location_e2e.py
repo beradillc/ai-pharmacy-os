@@ -496,3 +496,94 @@ def test_danh_sach_loc_theo_trang_thai(client: TestClient) -> None:
     assert [p["id"] for p in client.get("/api/v1/inventory/counts?status=CHO_DUYET").json()] == [
         pid
     ]
+
+
+# --- lộ trình lấy hàng cho CẢ GIỎ, qua dây thật (BERAS V2 Phase 4) -------------------
+
+
+def _lo_trinh(client: TestClient, dong: list[dict[str, Any]]) -> Any:
+    return client.post("/api/v1/inventory/pick-route", json={"dong": dong})
+
+
+def test_lo_trinh_gop_HAI_MA_cung_o_thanh_MOT_chang(client: TestClient) -> None:
+    """Cái tốn công là *đi tới ô*. Hai mã cùng ô ⇒ một chặng, hai dòng."""
+    kho = _o(client, code="KHO", pick=0)
+    o = _o(client, code="A01", pick=1, parent=kho)
+    d1, d2 = _drug(client), _drug(client)
+    _cat(
+        client,
+        _nhan(client, d1, qty="10", hsd=date.today() + timedelta(days=300), lot="L1"),
+        o,
+        "10",
+    )
+    _cat(
+        client,
+        _nhan(client, d2, qty="10", hsd=date.today() + timedelta(days=300), lot="L2"),
+        o,
+        "10",
+    )
+
+    kq = _lo_trinh(
+        client, [{"drug_id": d1, "quantity": "2"}, {"drug_id": d2, "quantity": "3"}]
+    ).json()
+
+    assert len(kq["chang"]) == 1
+    assert len(kq["chang"][0]["dong"]) == 2
+    assert kq["thieu"] == []
+
+
+def test_lo_trinh_sap_theo_DUONG_DI(client: TestClient) -> None:
+    """🔴 FEFO đã quyết xong ở bước chọn lô; lộ trình thì đi từ ô gần tới ô xa."""
+    kho = _o(client, code="KHO", pick=0)
+    o_gan = _o(client, code="A01", pick=1, parent=kho)
+    o_xa = _o(client, code="Z99", pick=99, parent=kho)
+    d_xa, d_gan = _drug(client), _drug(client)
+    # Mã ở ô XA có hạn GẦN hơn — nếu sắp theo HSD thì nó phải đứng đầu, và đó là sai.
+    _cat(
+        client,
+        _nhan(client, d_xa, qty="10", hsd=date.today() + timedelta(days=30), lot="G"),
+        o_xa,
+        "10",
+    )
+    _cat(
+        client,
+        _nhan(client, d_gan, qty="10", hsd=date.today() + timedelta(days=400), lot="X"),
+        o_gan,
+        "10",
+    )
+
+    kq = _lo_trinh(
+        client, [{"drug_id": d_xa, "quantity": "1"}, {"drug_id": d_gan, "quantity": "1"}]
+    ).json()
+
+    assert [c["location_path"] for c in kq["chang"]] == ["KHO/A01", "KHO/Z99"]
+
+
+def test_lo_trinh_MOT_MA_thieu_thi_VAN_tra_phan_lay_duoc(client: TestClient) -> None:
+    """🔴 Một giỏ mười mã mà một mã chưa xếp ô thì người đi lấy VẪN CẦN chín mã kia.
+
+    Khác `allocate_from_locations` (toàn-vẹn-hoặc-không, phục vụ một lượt xuất kho): ở đây
+    bỏ trắng cả tờ vì một dòng là làm hỏng công việc của người đang đứng chờ.
+    """
+    kho = _o(client, code="KHO", pick=0)
+    o = _o(client, code="A01", pick=1, parent=kho)
+    co = _drug(client)
+    khong = _drug(client)  # nhận hàng nhưng KHÔNG xếp ô
+    _cat(
+        client,
+        _nhan(client, co, qty="10", hsd=date.today() + timedelta(days=300), lot="L1"),
+        o,
+        "10",
+    )
+    _nhan(client, khong, qty="10", hsd=date.today() + timedelta(days=300), lot="L2")
+
+    kq = _lo_trinh(
+        client, [{"drug_id": co, "quantity": "1"}, {"drug_id": khong, "quantity": "1"}]
+    ).json()
+
+    assert len(kq["chang"]) == 1
+    assert kq["thieu"] == [khong]
+
+
+def test_lo_trinh_doi_hoi_it_nhat_MOT_dong(client: TestClient) -> None:
+    assert _lo_trinh(client, []).status_code == 422

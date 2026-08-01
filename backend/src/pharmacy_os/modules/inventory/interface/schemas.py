@@ -18,7 +18,7 @@ from pharmacy_os.modules.inventory.application.dto import (
     ReconciliationOutput,
     StockReportItem,
 )
-from pharmacy_os.modules.inventory.domain import LocationStockRow, PickCandidate
+from pharmacy_os.modules.inventory.domain import ChangLay, LocationStockRow, PickCandidate
 from pharmacy_os.modules.inventory.domain.counting import CountLine, StockCount
 
 
@@ -318,3 +318,53 @@ class StockCountResponse(BaseModel):
             decided_at=p.decided_at,
             lines=[CountLineResponse.of(d) for d in p.lines],
         )
+
+
+class DongLoTrinhResponse(BaseModel):
+    """Một dòng cần nhặt tại một ô."""
+
+    drug_id: UUID
+    lot_no: str
+    expiry_date: date
+    quantity: Decimal
+
+
+class ChangLayResponse(BaseModel):
+    """Một chặng: tới **một ô**, nhặt những gì cần ở đó (BERAS V2 Phase 4)."""
+
+    location_id: UUID
+    location_path: str
+    pick_order: int
+    dong: list[DongLoTrinhResponse]
+
+    @classmethod
+    def of(cls, c: ChangLay) -> ChangLayResponse:
+        return cls(
+            location_id=c.location_id,
+            location_path=c.location_path,
+            pick_order=c.pick_order,
+            dong=[
+                DongLoTrinhResponse(drug_id=d, lot_no=lo, expiry_date=hsd, quantity=sl)
+                for d, lo, hsd, sl in c.dong
+            ],
+        )
+
+
+class DongYeuCauRequest(BaseModel):
+    drug_id: UUID
+    quantity: Decimal = Field(gt=0)
+
+
+class LoTrinhRequest(BaseModel):
+    """Giỏ cần lấy. `POST` chứ không `GET`: một giỏ hai chục mã nhét vào query string sẽ
+    chạm giới hạn độ dài URL của proxy, và hỏng ở đó thì hiện ra dưới dạng lỗi mạng khó
+    hiểu chứ không phải một thông báo đọc được."""
+
+    dong: list[DongYeuCauRequest] = Field(min_length=1)
+
+
+class LoTrinhResponse(BaseModel):
+    chang: list[ChangLayResponse]
+    #: Mã KHÔNG lấy đủ được từ các ô. Rỗng là bình thường. `where_is` trả rỗng nghĩa là
+    #: thuốc chưa được xếp ô — khác hẳn "kho hết hàng", và màn hình phải nói ra khác biệt đó.
+    thieu: list[UUID]

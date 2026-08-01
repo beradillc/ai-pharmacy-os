@@ -11,10 +11,13 @@ from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.inventory.application import InventoryService
 from pharmacy_os.modules.inventory.domain.counting import CountStatus
 from pharmacy_os.modules.inventory.interface.schemas import (
+    ChangLayResponse,
     CountLineRequest,
     DispenseRequest,
     DispenseResponse,
     LocationStockResponse,
+    LoTrinhRequest,
+    LoTrinhResponse,
     NearExpiryResponse,
     OnHandResponse,
     OpenCountRequest,
@@ -177,6 +180,28 @@ def build_router(get_context: ContextDep) -> APIRouter:
         Quyền ``inventory.read``.
         """
         return [PickCandidateResponse.of(c) for c in await service.where_is(drug_id, ctx)]
+
+    @router.post("/pick-route", response_model=LoTrinhResponse)
+    async def lo_trinh_lay_hang(
+        body: LoTrinhRequest,
+        service: InventoryService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> LoTrinhResponse:
+        """Lộ trình đi lấy hàng cho **cả giỏ** — gộp theo ô, sắp theo đường đi (V2 Phase 4).
+
+        Khác `GET /where` ở chỗ: `/where` trả lời *"một mã nằm ở đâu"*, cái này trả lời
+        *"đi một vòng thì đi thế nào"*. Gộp theo **ô** chứ không theo mặt hàng — cái tốn
+        công là đi tới ô.
+
+        Mã không lấy đủ được nằm ở `thieu`, và lộ trình **vẫn trả về** cho phần lấy được:
+        một giỏ mười mã mà một mã chưa xếp ô thì người đi lấy vẫn cần chín mã kia.
+
+        Quyền ``inventory.read``.
+        """
+        chang, thieu = await service.lo_trinh_lay_hang(
+            [(d.drug_id, d.quantity) for d in body.dong], ctx
+        )
+        return LoTrinhResponse(chang=[ChangLayResponse.of(c) for c in chang], thieu=thieu)
 
     # ── BERAS V2 Phase 11: kiểm kê theo ô ────────────────────────────────────────
 

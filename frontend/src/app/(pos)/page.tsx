@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/overlay/ConfirmDialog";
+import { DetailDialog } from "@/components/overlay/DetailDialog";
 
 import { useAuthStore } from "@/features/auth/auth-store";
 import { severityLabel } from "@/features/crm/use-health";
@@ -11,9 +12,10 @@ import { cartTotal, countPriceDeviations, useCartStore } from "@/features/sales/
 import { useCheckout } from "@/features/sales/use-checkout";
 import { useDrugs } from "@/features/sales/use-drugs";
 import { useWhereIs } from "@/features/location/use-locations";
+import { usePickRoute } from "@/features/inventory/use-pick-route";
 import { useRxApprove } from "@/features/prescription/use-rx-approve";
 import { useRxPhoto } from "@/features/prescription/use-rx-photo";
-import { ApiError } from "@/shared/api/errors";
+import { ApiError, thongDiepLoi } from "@/shared/api/errors";
 import type { Customer, Drug } from "@/shared/api/types";
 import { formatMoney, formatQty, money } from "@/shared/format/number";
 import { useOfflineSync } from "@/shared/offline/use-offline-sync";
@@ -82,6 +84,10 @@ export default function PosPage() {
   const [tenBacSi, setTenBacSi] = useState("");
   const [rxLoi, setRxLoi] = useState<string | null>(null);
   const chupDon = useRxPhoto();
+  // Lộ trình lấy hàng cho cả giỏ (V2 Phase 4). Chỉ có ý nghĩa khi giỏ đủ nhiều mã để có
+  // đường mà đi — một mã thì `ViTriLay` ngay dưới dòng hàng đã trả lời xong.
+  const loTrinh = usePickRoute();
+  const [moLoTrinh, setMoLoTrinh] = useState(false);
   const duyetDon = useRxApprove();
 
   /**
@@ -96,6 +102,9 @@ export default function PosPage() {
    * lực, phải chụp lại. Suy ra từ trạng thái chứ không dùng `useEffect`: một hiệu ứng chạy
    * sau khi vẽ sẽ có đúng một nhịp mà nút Thanh toán tin vào tờ đơn đã cũ.
    */
+  /** Tên thuốc theo mã, lấy từ chính giỏ — lộ trình chỉ trả `drug_id`, và người đi lấy
+   *  không đọc UUID. Không gọi thêm mạng: mọi mã trong lộ trình đều đến TỪ giỏ. */
+  const tenTrongGio = new Map(lines.map((l) => [l.drugId, l.name]));
   const chuKyETC = dongETC.map((l) => `${l.drugId}:${l.quantity}`).join("|");
   const [rx, setRx] = useState<{ id: string; chuKy: string; daDuyet: boolean } | null>(null);
   const rxConHieuLuc = rx !== null && rx.chuKy === chuKyETC;
@@ -300,6 +309,24 @@ export default function PosPage() {
                 </li>
               ))}
             </ul>
+          )}
+
+          {/* Lộ trình lấy hàng — chỉ hiện khi giỏ có TỪ HAI mã. Một mã thì dòng "📍 …" ngay
+              dưới tên thuốc đã nói đủ, và thêm một nút nữa chỉ là nhiễu. */}
+          {lines.length >= 2 && (
+            <button
+              type="button"
+              className={styles.ghost}
+              disabled={loTrinh.isPending}
+              onClick={() => {
+                setMoLoTrinh(true);
+                loTrinh.mutate(
+                  lines.map((l) => ({ drug_id: l.drugId, quantity: l.quantity })),
+                );
+              }}
+            >
+              {loTrinh.isPending ? "Đang tính…" : "🧭 Lộ trình lấy hàng"}
+            </button>
           )}
 
           {/* 🔴 Cảnh báo dị ứng — Đ-7. Đặt NGAY TRÊN tổng tiền và nút thanh toán, không
@@ -609,6 +636,44 @@ export default function PosPage() {
           </button>
         </section>
       </div>
+
+      <DetailDialog
+        open={moLoTrinh}
+        title="Lộ trình lấy hàng"
+        subtitle={
+          loTrinh.data ? `${loTrinh.data.chang.length} ô — đi theo thứ tự dưới đây` : undefined
+        }
+        onClose={() => setMoLoTrinh(false)}
+      >
+        <>
+          {loTrinh.isPending && <p className={styles.hint}>Đang tính lộ trình…</p>}
+          {loTrinh.error && <p className={styles.error}>{thongDiepLoi(loTrinh.error)}</p>}
+          {loTrinh.data?.chang.map((c, i) => (
+            <div key={c.location_id} className={styles.tienKhoi}>
+              <strong>
+                {i + 1}. 📍 {c.location_path}
+              </strong>
+              <ul className={styles.cartList}>
+                {c.dong.map((d) => (
+                  <li key={`${d.lot_no}-${d.drug_id}`} className={styles.drugMeta}>
+                    {tenTrongGio.get(d.drug_id) ?? d.drug_id.slice(0, 8)} · lô {d.lot_no} · lấy{" "}
+                    <strong>{formatQty(d.quantity)}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          {loTrinh.data && loTrinh.data.chang.length === 0 && (
+            <p className={styles.hint}>Chưa mã nào trong giỏ được xếp vào ô.</p>
+          )}
+          {loTrinh.data && loTrinh.data.thieu.length > 0 && (
+            <p className={styles.error}>
+              🔴 {loTrinh.data.thieu.length} mã chưa xếp ô hoặc không đủ trong ô — hỏi kho:{" "}
+              {loTrinh.data.thieu.map((id) => tenTrongGio.get(id) ?? id.slice(0, 8)).join(", ")}
+            </p>
+          )}
+        </>
+      </DetailDialog>
 
       <ConfirmDialog
         open={priceAsk !== null}

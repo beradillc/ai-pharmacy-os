@@ -33,6 +33,7 @@ from pharmacy_os.modules.inventory.application.dto import (
     StockReportItem,
 )
 from pharmacy_os.modules.inventory.domain import (
+    ChangLay,
     DuplicateMovementError,
     InsufficientStockError,
     LocationInfoProvider,
@@ -52,8 +53,10 @@ from pharmacy_os.modules.inventory.domain import (
     StockReconciliationNeeded,
     StockShortfallDetected,
     allocate_fefo,
+    allocate_from_locations,
     chua_xep_o,
     ensure_can_put_away,
+    gom_lo_trinh,
     sort_pick_candidates,
 )
 from pharmacy_os.modules.inventory.domain.counting import (
@@ -875,6 +878,36 @@ class InventoryService:
             if r.location_id in info
         ]
         return sort_pick_candidates(ung_vien)
+
+    async def lo_trinh_lay_hang(
+        self, yeu_cau: list[tuple[UUID, Decimal]], ctx: RequestContext
+    ) -> tuple[list[ChangLay], list[UUID]]:
+        """Lộ trình đi lấy hàng cho **cả giỏ** (BERAS V2 Phase 4).
+
+        Vào: ``[(drug_id, số lượng cần)]``. Ra: ``(các chặng đã gộp theo ô, mã thiếu hàng)``.
+
+        🔴 **Không ném lỗi khi thiếu.** Một giỏ mười mã mà một mã chưa xếp ô thì người đi lấy
+        vẫn cần chín mã kia — trả về lộ trình cho cái lấy được và **nói ra** cái không lấy
+        được, chứ không bỏ trắng cả tờ. Đây là khác biệt với `allocate_from_locations`, vốn
+        ném `InsufficientStockError` vì nó phục vụ một lượt xuất kho phải toàn-vẹn-hoặc-không.
+
+        Thiếu ở đây **không** đồng nghĩa kho hết hàng — có thể hàng còn nhưng chưa ai xếp vào
+        ô. Màn hình phải nói ra sự khác biệt đó, y như `where_is`.
+
+        Quyền ``inventory.read``: ai đứng quầy cũng cần biết đi lấy ở đâu.
+        """
+        require_permission(ctx, "inventory.read")
+        phan_bo: list[tuple[UUID, list[tuple[PickCandidate, Decimal]]]] = []
+        thieu: list[UUID] = []
+        for drug_id, can in yeu_cau:
+            if can <= 0:
+                continue
+            ung_vien = await self.where_is(drug_id, ctx)
+            try:
+                phan_bo.append((drug_id, allocate_from_locations(ung_vien, can)))
+            except (InsufficientStockError, ValueError):
+                thieu.append(drug_id)
+        return gom_lo_trinh(phan_bo), thieu
 
     async def stock_at_location(
         self, location_id: UUID, ctx: RequestContext
