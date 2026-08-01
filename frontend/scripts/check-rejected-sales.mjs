@@ -16,13 +16,80 @@
  * **200** cho đơn ấy. Kết quả tự mâu thuẫn (cổng đỏ nhưng cả hai bảng đều rỗng) — và kỷ
  * luật #15 nói kết quả tự mâu thuẫn LUÔN là lỗi phép đo. Ghi lại ở đây để không ai dựng
  * lại theo cách đó.
+ *
+ * 🔴🔴 **VÀ ĐÓ MỚI LÀ NỬA ĐẦU CỦA CÂU CHUYỆN — nửa sau phát hiện 02/08.**
+ *
+ * Khi máy chủ trả **200** thay vì 422, nó không chỉ làm cổng đỏ oan: nó **GHI MỘT ĐƠN BÁN
+ * THẬT**. Cổng này nằm trong nhóm **ĐỌC-THUẦN** của `ui-gates.sh` — nhóm tự mô tả là *"chạy
+ * được lên bất kỳ CSDL nào, kể cả `nt650v2` của Chain"*. Nó đã ghi thật:
+ *
+ *   `qt650`  ← CSDL của quầy · `gate-rejected-0001` · COMPLETED · 12.000đ · 01/08
+ *   `uat650` ← cùng một đơn, cùng ngày
+ *
+ * Trong `qt650`, đơn đó là **toàn bộ doanh thu** mà màn Báo cáo hiển thị. Không ai phát
+ * hiện suốt một ngày; nó lộ ra vì một **ảnh chụp** màn Báo cáo mâu thuẫn với một phép đếm
+ * (kỷ luật #20 — ảnh thấy thứ phép đo không được dặn tìm).
+ *
+ * Gốc rễ: cổng ngầm giả định *"đơn này chắc chắn bị từ chối"*. Giả định ấy chỉ đúng khi
+ * khách VÀ thuốc tồn tại trong đúng CSDL đang chạy và thật sự xung đột dị ứng. Sai giả
+ * định ⇒ đơn được chấp nhận ⇒ cổng ghi vào sổ sách thứ nó tưởng mình chỉ đang đọc.
+ *
+ * Nay: **kiểm điều kiện TRƯỚC KHI bơm**, và thiếu điều kiện thì DỪNG với *"chưa đo được"*.
+ * Một cổng nói thẳng nó chưa đo được thì vô hại; một cổng đỏ mà im lặng ghi vào sổ thì
+ * không (§7dg bài học 4).
  */
 const KHACH_DI_UNG = process.env.KHACH_DI_UNG ?? "feaedcb0-93f0-478f-b00b-5e31205e14a0";
 const THUOC_XUNG_DOT = process.env.THUOC_XUNG_DOT ?? "3744d1ca-50bd-45fc-969a-0320dca454e1";
 import { firefox } from "playwright-core";
-import { BASE, EMAIL, PASSWORD } from "./lib/moi-truong.mjs";
+import { API, BASE, EMAIL, PASSWORD } from "./lib/moi-truong.mjs";
 
 if (!EMAIL || !PASSWORD) { console.error("Thiếu EMAIL / PASSWORD."); process.exit(2); }
+
+// ─── Điều kiện bắt buộc: đơn sắp bơm PHẢI chắc chắn bị từ chối ────────────────────────
+// Hỏi thẳng máy chủ xem cặp (khách, thuốc) này có sinh cảnh báo dị ứng không. Đây là nguồn
+// độc lập với thứ cổng sắp đo (kỷ luật #23) — và là thứ duy nhất phân biệt được "sản phẩm
+// hỏng" với "CSDL này không có dữ liệu để dựng tình huống".
+const phien = await (
+  await fetch(`${API}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+  })
+).json();
+if (!phien.access_token) {
+  console.error("🔴 Đăng nhập API thất bại — không kiểm được điều kiện dữ liệu.");
+  process.exit(2);
+}
+const canhBao = await (
+  await fetch(`${API}/sales/allergy-check`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${phien.access_token}`,
+    },
+    body: JSON.stringify({ customer_id: KHACH_DI_UNG, drug_ids: [THUOC_XUNG_DOT] }),
+  })
+).json();
+const soCanhBao = Array.isArray(canhBao) ? canhBao.length : (canhBao?.alerts?.length ?? 0);
+if (soCanhBao < 1) {
+  console.error(
+    [
+      "⏭️  CHƯA ĐO ĐƯỢC — CSDL này không dựng được tình huống, và cổng DỪNG thay vì bơm.",
+      "",
+      `   khách ${KHACH_DI_UNG}`,
+      `   thuốc ${THUOC_XUNG_DOT}`,
+      "   → máy chủ báo 0 cảnh báo dị ứng cho cặp này.",
+      "",
+      "   🔴 Nếu vẫn bơm, máy chủ sẽ CHẤP NHẬN đơn và ghi một đơn bán THẬT vào CSDL —",
+      "      đúng chuyện đã xảy ra với qt650 và uat650 ngày 01/08 (xem đầu tệp).",
+      "",
+      "   Muốn đo thật: đặt KHACH_DI_UNG / THUOC_XUNG_DOT trỏ tới một cặp CÓ xung đột",
+      "   dị ứng trong CSDL đang chạy.",
+    ].join("\n"),
+  );
+  process.exit(2);
+}
+console.log(`điều kiện: cặp khách/thuốc sinh ${soCanhBao} cảnh báo dị ứng ✓ — đơn chắc chắn bị từ chối`);
 
 const b = await firefox.launch();
 let hong = 0;

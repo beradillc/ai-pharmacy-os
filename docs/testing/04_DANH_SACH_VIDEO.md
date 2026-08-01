@@ -19,15 +19,27 @@
 **Chain: *"Không cần đổi, cứ lấy dữ liệu qt650 làm kịch bản."*** Bản trước của mục này cấm
 điều đó. Cấm sai — và sai vì **suy đoán chứ không đếm**.
 
-Đếm thật ngày 02/08:
+Đếm thật ngày 02/08 (bằng `count(*)`, xem cảnh báo dưới):
 
 | CSDL | Thuốc | Đơn bán | Khách | Lô | Nhà cung cấp |
 |---|---|---|---|---|---|
-| **`qt650`** | **70** (danh mục thật) | **0** | **0** | **0** | **0** |
+| **`qt650`** | **70** (danh mục thật) | **1** — rác của cổng, xem dưới | **0** | **0** | **0** |
 | `uat650` | 36 | 250 | 12 | 75 | có |
 
-🔴 **`qt650` chưa từng bán một đơn nào.** Cảnh báo cũ — *"doanh thu tuần sẽ sai, không ai tách
-được đâu là đơn thật"* — nói về một khoản doanh thu **không tồn tại**. Không có gì để lẫn vào.
+🔴 **`qt650` chưa có một đơn bán THẬT nào.** Đơn duy nhất là
+`client_uuid = "gate-rejected-0001"` · COMPLETED · 12.000đ · 01/08 — do cổng
+`check-rejected-sales` ghi vào, không phải do ai bán. Cảnh báo cũ — *"doanh thu tuần sẽ sai,
+không ai tách được đâu là đơn thật"* — nói về một khoản doanh thu **không tồn tại**.
+
+⚠️ **Đơn rác này ĐANG là toàn bộ doanh thu màn Báo cáo hiển thị** (đỉnh 12.000đ ngày 01/08).
+Quay video 11 mà không dọn thì người xem thấy một con số không giải thích được. Xem `PROJECT_STATE`
+§7dj — cổng đã vá để không ghi nữa, còn dòng đã ghi thì **chờ Chain quyết** có xoá không.
+
+🔴 **Lần đếm đầu tôi báo "0 đơn" — SAI.** Tôi đọc `pg_stat_user_tables.n_live_tup`, một con số
+**ước lượng** do autovacuum cập nhật, chứ không phải `count(*)`. Bảng một dòng mới chèn có thể
+hiện `0`. Thứ vạch ra sai số này không phải một phép đo nào — mà là **ảnh chụp** màn Báo cáo hiện
+`12.000 đ` trong lúc tôi vừa khẳng định CSDL rỗng (kỷ luật #20). **Đếm sổ sách thì dùng
+`count(*)`, không dùng số liệu thống kê.**
 
 Và `qt650` không chỉ *chấp nhận được*, nó là **sân khấu đúng**: một nhà thuốc sạch đã nạp sẵn
 70 mã thuốc thật cùng 122 hoạt chất kiểm soát. Thứ tự quay đề nghị (`02→03→04→05→…`) vốn được

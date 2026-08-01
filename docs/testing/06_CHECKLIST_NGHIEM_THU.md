@@ -34,9 +34,9 @@
 
 | ✔ | Mục | Vì sao |
 |---|---|---|
-| ☑ | ~~Dựng CSDL **riêng để quay** (`qt650_video`)~~ → **quay thẳng trên `qt650`** | ✅ **Chain chốt 2026-08-02.** Lý do cũ dựa trên suy đoán: đếm thật thì `qt650` có **0 đơn bán**, không có doanh thu nào để hoá đơn quay lẫn vào. Nó lại đúng là CSDL sạch-có-danh-mục mà thứ tự quay `02→03→…` cần. Xem `04_DANH_SACH_VIDEO.md` |
+| ☑ | ~~Dựng CSDL **riêng để quay** (`qt650_video`)~~ → **quay thẳng trên `qt650`** | ✅ **Chain chốt 2026-08-02.** Lý do cũ dựa trên suy đoán: `qt650` có **1 đơn duy nhất và đó là rác của cổng** (`gate-rejected-0001`), không có doanh thu THẬT nào để hoá đơn quay lẫn vào. Nó lại đúng là CSDL sạch-có-danh-mục mà thứ tự quay `02→03→…` cần. Xem `04_DANH_SACH_VIDEO.md` |
 | ☐ | Nút **Thêm** đã nâng lên ≥44px | Quay cận cảnh sẽ lộ nút nhỏ; sửa trước rẻ hơn quay lại |
-| ☐ | Sáu màn đã có trạng thái rỗng | Video 11 (Báo cáo) quay trên màn trống không giải thích được |
+| ☑ | Sáu màn đã có trạng thái rỗng | ✅ **Đo thật 2026-08-02 trên `qt650` rỗng** — `check-man-rong.mjs`, 12/12 (6 màn × 2 khổ) XANH: câu giải thích có VÀ nhìn thấy được, không màn nào trắng, không cuộn ngang. Sổ U-05 ghi *"ĐÃ ĐÓNG (Báo cáo · Đề xuất)"* — đọc như mới đóng 2/6; thực tế **đủ 6/6** |
 | ☐ | Màn **Đổi mật khẩu** có | Video 02 không quay được nếu thiếu |
 | ☐ | Tài khoản thu ngân đã tạo | Video 07 — cảnh quan trọng nhất — không quay được nếu thiếu |
 | ☐ | Kịch bản đã đọc thử thành tiếng | Lời viết ra và lời nói ra khác nhau; đọc thử mới biết chỗ nào vấp |
