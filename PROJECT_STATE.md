@@ -7273,3 +7273,90 @@ lại `make lan`, **hâm bằng `curl` `/login` và `/` trước khi chạy cổ
 P1 đóng. Tiếp theo là **P2**: `"Cất vào ô"` → **Sắp xếp** · `/kiem-ke` + `/so-do-kho` hiện
 **tên thuốc** thay số lô · gộp *Nhập nhanh + Khởi tạo tồn* · gộp *Kiểm kê + Sơ đồ kho*.
 Chain quyết một lượt: **tên hai mục gộp trên menu**.
+
+---
+
+## 7cx. 🔒 ĐÓNG PHIÊN P2 — nhãn Sắp xếp · tên thuốc thay số lô · gộp 4 màn thành 2 mục (2026-08-01)
+
+Phiên 2/6 của kế hoạch §7cv. Chain duyệt bằng đúng một chữ *"Duyệt"*, không nêu tên hai mục
+gộp — GĐ chốt tên và ghi ra để Chain đổi sau nếu muốn, thay vì hỏi lại lần hai (ràng buộc
+*"Chain chỉ duyệt mỗi phiên 1 lần"*).
+
+### Bốn lệnh, làm gì
+
+| Lệnh | Làm gì |
+|---|---|
+| #3 | `"Cất vào ô"` → **Sắp xếp** (5 chỗ) + câu xác nhận `"Đã cất N vào…"` → `"Đã sắp xếp N vào…"` |
+| #4 | `/kiem-ke` · `/so-do-kho` hiện **tên thuốc**, số lô xuống dòng phụ |
+| #5 | Nhập hàng nhanh + Khởi tạo tồn kho → **Nhập hàng** |
+| #6 | Kiểm kê + Sơ đồ kho → **Sơ đồ & Kiểm kê** |
+
+Menu **15 → 13 mục**.
+
+### 🔴 Gộp ở tầng MENU, không dựng route mới
+
+Kỷ luật #17 cấm đổi tên route cũ, và bốn đường dẫn `/nhap-nhanh` `/khoi-tao-ton` `/kiem-ke`
+`/so-do-kho` đang nằm trong dấu trang, tài liệu và **tám cổng trình duyệt**. Cơ chế: thêm
+`NavItem.alsoActiveFor` (mục menu sáng lên ở cả hai màn) + component `TabManGop` (dải tab
+dưới tiêu đề). Hai màn vẫn là hai màn, chỉ vào chung một cửa.
+
+Bốn câu của kỷ luật #17:
+
+| Câu hỏi | Trả lời |
+|---|---|
+| Frontend cũ còn chạy? | **có** — 4 URL cũ trả 200, kiểm bằng curl |
+| API cũ còn chạy? | **có** — P2 không đụng backend một dòng nào |
+| CSDL cũ còn chạy? | **có** — không migration |
+| Migration lùi lại được? | không có migration |
+
+### Kỷ luật #14
+
+| Đột biến | Kết quả |
+|---|---|
+| bỏ `alsoActiveFor: ["/kiem-ke"]` khỏi `nav.ts` | `VITEST_EXIT=1`, đỏ đúng 2 test mới |
+
+Test đáng giữ nhất là **"KHÔNG màn nào mất lối vào khi gộp"**: gộp menu là xoá bớt dòng khỏi
+`NAV`, và một dòng xoá nhầm nghĩa là một màn **còn sống nhưng không còn cửa nào vào** —
+`tsc` không bắt được, `build` không bắt được, và không ai nhận ra cho tới lúc cần dùng.
+
+### 📌 Một cổng đỏ KHÔNG phải hồi quy — và cách chứng minh thay vì đoán
+
+`check-vi-tri-lay-hang` đỏ ở khổ desktop. Thay vì suy luận, chạy lại trên cây **trước P2**
+bằng `git stash push --include-untracked`: **`BASELINE_EXIT=1`, hỏng y hệt**.
+
+Nguyên nhân: cổng chọn dòng bằng `nth(0)` mù. Trên CSDL đã chạy vài lượt, dòng đầu là lô
+**đã xếp hết vào ô** — FEFO đẩy lô sắp hết hạn lên đầu, mà lô đó chính là lô các lượt trước
+vừa cất ⇒ không còn gì để sắp xếp, máy chủ từ chối **đúng**, cổng đỏ vì **kỳ vọng sai**. Nay
+chọn theo tên mặt hàng, mỗi khổ một mặt hàng riêng.
+
+Đây là tiền lệ nên dùng lại: *"đỏ này có phải của tôi không"* trả lời được bằng **một lượt
+stash + một lượt chạy**, rẻ hơn nhiều so với tranh luận — và kết luận thì chắc chắn.
+
+### ⚠️ Ghi đúng như đã làm (kỷ luật #9)
+
+Ba lệnh gộp vào **một commit** vì cả ba thuần giao diện và đụng cùng bốn tệp màn hình. **Cổng
+trình duyệt chạy trên CÂY CUỐI của P2**, không chạy riêng từng lệnh. Bốn cổng nhanh thì có
+chạy trên mọi cây qua pre-commit hook.
+
+### Cổng tại điểm dừng
+
+```
+MAKE_CHECK_EXIT=0 — 1439 passed (5:27) · RUFF/FORMAT/IMPORTLINTER/MYPY = 0
+TSC=0  ESLINT=0  VITEST=0 (73 passed, +3 test mới)  BUILD=0
+UIGATES_EXIT=0 — 12/12 đọc-thuần
+GHI: check-so-do-kho · check-nhap-nhanh · check-khoi-tao-ton · check-kiem-ke ·
+     check-vi-tri-lay-hang = 0 hết, mỗi cổng cả 2 khổ
+```
+
+### Ảnh nghiệm thu
+
+`docs/ui-history/2026-08-01-kho-gop-menu/` — 10 ảnh, 2 khổ × 5 cảnh, kèm `README.md`.
+
+### Điểm dừng chính xác
+
+P2 đóng. Tiếp theo **P3 — Hoá đơn**: dựng `DetailDialog` dùng chung (✕, ESC, khoá cuộn nền)
+· hoá đơn xem bằng cửa sổ trên mobile · nút **In** gọi `GET /sales/{id}/receipt` thay
+`window.print()` · thêm **người bán** vào `ReceiptSummaryDTO` + 2 bộ render.
+Chain quyết một lượt: **khổ in mặc định** — K80 máy in nhiệt / PDF A5 / PDF A4.
+
+Vẫn còn treo từ P1: **CSDL thử `p1etc_thu`** chờ Chain xoá.
