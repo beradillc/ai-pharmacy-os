@@ -165,9 +165,9 @@ describe("người thực hiện", () => {
       )) {
         that.add(m[1].toLowerCase());
       }
-      for (const _ of src.matchAll(
-        /^_?[A-Z][A-Z0-9_]*(?:USER|ACTOR)[A-Z0-9_]*\s*(?::[^=]+)?=\s*UUID\(int=0\)/gm,
-      )) {
+      if (
+        /^_?[A-Z][A-Z0-9_]*(?:USER|ACTOR)[A-Z0-9_]*\s*(?::[^=]+)?=\s*UUID\(int=0\)/m.test(src)
+      ) {
         that.add("00000000-0000-0000-0000-000000000000");
       }
     }

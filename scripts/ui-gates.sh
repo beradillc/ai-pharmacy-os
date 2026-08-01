@@ -58,6 +58,7 @@ CONG_DOC=(
   check-nhat-ky.mjs         # Nhật ký hoạt động: đọc được, lọc được, không lọt mã máy (M-04)
   check-tai-khoan.mjs       # Cài đặt → Tài khoản của tôi: khớp đúng /auth/me (M-03)
   check-don-thuoc.mjs       # Đơn thuốc: tra được cả đơn CHƯA chụp ảnh (M-08)
+  check-so-kiem-soat.mjs    # Sổ thuốc kiểm soát đặc biệt: cộng đúng + tự nói chưa rà PL (C-03)
   measure-mobile.mjs        # thanh điều hướng che gì · cột định danh có khuất
   shot-desktop-mobile.mjs   # 6 màn × 2 khổ: trắng · cuộn ngang · phần tử tràn
 )

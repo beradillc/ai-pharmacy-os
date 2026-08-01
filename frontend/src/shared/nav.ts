@@ -66,6 +66,7 @@ export type NavIconName =
   | "staff"
   | "journal"
   | "prescription"
+  | "controlled-book"
   | "more";
 
 export const NAV_GROUP_LABEL: Record<NavGroup, string> = {
@@ -208,6 +209,22 @@ export const NAV: readonly NavItem[] = [
     primary: false,
     quickAction: false,
     icon: "prescription",
+  },
+  {
+    href: "/so-kiem-soat",
+    label: "Sổ kiểm soát đặc biệt",
+    short: "Sổ KSĐB",
+    // `compliance.ledger.read` — quyền RIÊNG, không mượn `inventory.read`. Sổ này ghi ai
+    // bán thuốc gây nghiện/hướng thần cho ai; xem được nó là một thẩm quyền khác hẳn với
+    // xem tồn kho. Nút "Ký xác nhận" bên trong đòi thêm `compliance.ledger.sign`.
+    permission: "compliance.ledger.read",
+    group: "kho",
+    primary: false,
+    // Không phải việc hằng ngày của người đứng quầy — nó là việc **cuối ngày** của dược sĩ
+    // phụ trách. Để trong lưới hành động nhanh sẽ đẩy một nghĩa vụ pháp lý xuống ngang hàng
+    // với "bán một đơn", và làm loãng đúng cái lưới đó.
+    quickAction: false,
+    icon: "controlled-book",
   },
   {
     href: "/nhat-ky",

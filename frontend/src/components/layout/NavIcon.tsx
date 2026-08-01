@@ -138,6 +138,18 @@ export function NavIcon({ name, filled = false }: { name: NavIconName; filled?: 
           <path d="M8 7.5h6M8 11h6" />
         </svg>
       );
+    // Sổ có KHOÁ — sổ thuốc kiểm soát đặc biệt. Ổ khoá là thứ phân biệt nó với `journal`
+    // ngay từ hình dáng, không cần đọc nhãn: đây là quyển sổ có nghĩa vụ pháp lý.
+    case "controlled-book":
+      return (
+        <svg {...common}>
+          <path d="M6 3.5h11a1 1 0 0 1 1 1v6" />
+          <path d="M4 6.5v11a2 2 0 0 0 2 2h5" />
+          <path d="M6 3.5a2 2 0 0 0-2 2" />
+          <rect x="13.5" y="14" width="7" height="5.5" rx="1" />
+          <path d="M15.5 14v-1.75a1.75 1.75 0 0 1 3.5 0V14" />
+        </svg>
+      );
     case "settings":
       return (
         <svg {...common}>
