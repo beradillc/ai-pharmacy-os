@@ -8418,3 +8418,58 @@ Cổng trình duyệt chạy tay trong phiên — desktop + mobile, LAN IP thậ
 - Tài khoản kiểm thử `uat650`: `uat@bera.vn` / `UatBera650@2026`.
 - Dừng sạch: `pkill -f "uvicorn pharmacy_os.main:app"` **ở một lượt shell riêng** (chạy chung
   lượt sẽ giết luôn shell, exit 144 — §7dg bài học 2 vẫn đúng), rồi `make lan`.
+
+### ⏸️ ĐÓNG PHIÊN 2026-08-01 — chờ đủ hạn mức để XUẤT VIDEO
+
+Chain: *"Ghi nhận, đóng phiên, đợi đủ hạn mức xuất video."*
+
+**Việc tiếp theo khi mở lại:** **quay/xuất bộ video hướng dẫn** theo
+`docs/testing/05_KICH_BAN_VIDEO.md`. Không phải viết thêm mã.
+
+**Điều kiện phải làm TRƯỚC khi bấm máy** (từ `06_CHECKLIST_NGHIEM_THU.md` Cổng 2):
+
+| # | Việc | Vì sao không bỏ qua được |
+|---|---|---|
+| 1 | 🔴 Dựng **CSDL riêng để quay** (`qt650_video`) | Quay trên CSDL đang dùng để lại hoá đơn rác **không tách được** khỏi doanh thu thật |
+| 2 | Tạo **tài khoản thu ngân** (vai khác dược sĩ) | Video 07 — cảnh quan trọng nhất — không quay được nếu thiếu |
+| 3 | Đọc kịch bản **thành tiếng** một lượt | Vừa cắt câu pháp lý giữa nhiều đoạn; đọc mới biết chỗ nào hụt mạch |
+| 4 | Quay theo **thứ tự dữ liệu tích luỹ**, không theo số | `02→03→04→05→01→08→06→07→09→10→13→11→12` — mỗi video dùng dữ liệu video trước tạo ra |
+
+**Kịch bản: 13/13 video.** Video 14 (Sổ kiểm soát) **đã rút** theo chỉ đạo Chain — nội dung
+pháp lý bỏ khỏi kịch bản; bản nháp giữ ở `docs/testing/07_CHO_PHAP_LY_kich-ban-so-kiem-soat.md`.
+
+🔴 **Chỉ đạo cắt pháp lý KHÔNG đóng nợ N-3.** Nó dời nhu cầu rà pháp lý ra khỏi đường găng quay
+video, không xoá nhu cầu đó. Màn Sổ kiểm soát vẫn chạy trong phần mềm và vẫn mang nhãn đỏ tự
+khai *"Chưa được rà pháp lý"*. Ai đọc dòng này ở phiên sau: **đừng đọc "đã cắt khỏi kịch bản"
+thành "đã xử lý xong"** — đúng loại nhầm mà §7dg bài học 4 cảnh báo.
+
+**Hạ tầng — CỐ Ý ĐỂ NGUYÊN** (Chain có thể muốn bấm thử):
+
+```
+Postgres (docker)  ai_pharmacy_os-postgres-1        · CSDL đang phục vụ: uat650
+uvicorn  :8000     pid 62381  (setsid nohup, KHÔNG --reload)
+next dev :3000     pid 16785
+LAN IP hôm nay     192.168.1.8      → http://192.168.1.8:3000
+Đăng nhập          uat@bera.vn / UatBera650@2026
+```
+
+Dừng sạch: `pkill -f "uvicorn pharmacy_os.main:app"` **ở một lượt shell RIÊNG** (chạy chung
+lượt sẽ giết luôn shell — exit 144), rồi `make lan` khi cần bật lại.
+
+**`qt650` (CSDL quầy) KHÔNG bị đụng trong cả phiên.**
+
+**11 commit của phiên:** `6588635` → `922b2e1`.
+
+**Nợ mở, xếp theo mức chặn:**
+
+| # | Nợ | Chặn gì |
+|---|---|---|
+| N-3 | Rà pháp lý màn Sổ kiểm soát (**Trợ lý Pháp Lý**) | Không còn chặn quay video; vẫn chặn phát hành thương mại |
+| N-1 | Hoá đơn chưa đọc Thông tin cơ sở (cần read-port cross-module) | Không chặn quay |
+| N-4 | Mật khẩu CSDL thử không ghi ở chỗ dùng chung; `ui-gates.sh` để mặc định **không khớp CSDL nào** | Chặn người khác chạy được cổng |
+| N-5 | `check-rejected-sales` vẫn **chưa đo được** | Không chặn |
+| N-2 | Mẫu số 06 chưa in phần đầu sổ | Không chặn |
+
+🔴 **N-4 nên làm đầu phiên sau, trước cả việc quay:** 18 cổng trình duyệt hiện chỉ chạy được
+nếu người gõ lệnh nhớ đúng bốn biến môi trường trong đầu. Đó là **thói quen, không phải cổng**
+— đúng câu mở đầu `ui-gates.sh` tự viết về chính nó.
