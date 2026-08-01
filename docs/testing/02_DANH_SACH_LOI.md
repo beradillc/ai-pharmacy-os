@@ -1,5 +1,9 @@
 # Danh sách lỗi — UAT 2026-08-01
 
+> 🟢 **Cập nhật 2026-08-01, sau ĐỢT 1** (Chain uỷ quyền sửa toàn bộ lỗi trước khi quay video).
+> **Đã đóng: C-01 · U-01 · U-02 · U-03 · U-04 · U-05 · U-06 · U-07.**
+> Còn lại: **C-02 · C-03 · M-01…M-08**. Xem cột *Trạng thái* ở mỗi mục.
+
 Phân loại: **Critical** (chặn dùng thật) · **Major** (dùng được nhưng thiếu nghiệp vụ) ·
 **Minor** · **UX** · **Performance** · **Suggestion**.
 
@@ -9,7 +13,7 @@ Phân loại: **Critical** (chặn dùng thật) · **Major** (dùng được nh
 
 ## 🔴 CRITICAL
 
-### C-01 · Không có đường đổi mật khẩu
+### ✅ C-01 · Không có đường đổi mật khẩu — **ĐÃ ĐÓNG**
 
 | | |
 |---|---|
@@ -19,6 +23,7 @@ Phân loại: **Critical** (chặn dùng thật) · **Major** (dùng được nh
 | **Backend** | ✅ `POST /auth/change-password` **đã có** |
 | **Thiếu** | Màn đổi mật khẩu + chặn điều hướng khi cờ bật |
 | **Rủi ro sửa** | Cao — chạm luồng đăng nhập, hỏng thì không ai vào được |
+| **✅ Đã sửa** | Màn `features/auth/DoiMatKhau` + cửa chặn ở `AppShell`. Kiểm chứng đầu-cuối trên trình duyệt thật: đăng nhập bị chặn · gõ thẳng `/ton-kho` vẫn bị chặn · sai mật khẩu cũ báo lỗi · đổi đúng thì vào được · đăng nhập bằng mật khẩu mới không còn chặn · đổi lại về cũ thì API trả 200 |
 
 ### C-02 · Không có màn Đổi trả
 
@@ -78,21 +83,27 @@ Chụp và duyệt được **tại quầy**, xem lại được trong *Cài đ�
 
 ## 🟡 MINOR / UX
 
-### U-01 · Nút "Thêm" chỉ cao 36px 🔴 *(Minor về kỹ thuật, nhưng ảnh hưởng lớn nhất)*
+### ✅ U-01 · Nút "Thêm" chỉ cao 36px — **ĐÃ ĐÓNG (nay 48px)** 🔴 *(Minor về kỹ thuật, nhưng ảnh hưởng lớn nhất)*
 Nút bấm **nhiều nhất trong ngày** ở màn Bán hàng, dưới chuẩn chạm 44px (WCAG/iOS). Bấm trượt ở
 quầy đông là thêm nhầm hộp thuốc vào giỏ. *Đo: `Thêm=36px`, 2 lượt trên khổ điện thoại.*
 
-### U-02 · Bốn tab điều hướng cao 38px
+### ✅ U-02 · Bốn tab điều hướng cao 38px — **ĐÃ ĐÓNG (nay 44px)**
 `Nhập hàng nhanh` · `Khởi tạo tồn kho` · `Sơ đồ kho` · `Kiểm kê` — thiếu 6px.
 
-### U-03 · Nút "Tính lại" cao 36px · **U-04** · Nút "Thanh toán" cao 43px (thiếu 1px)
+### ✅ U-03 · Nút "Tính lại" cao 36px — **ĐÃ ĐÓNG** · ✅ **U-04** Nút "Thanh toán" 43px → 48px
 
-### U-05 · Sáu màn không có trạng thái rỗng
+🔴 **Nguyên nhân U-03 sâu hơn tưởng:** nút dùng `className={styles.primary}` — **class đó
+không tồn tại**. CSS Modules trả `undefined`, React render `class="undefined"`, nút rơi về
+mặc định trình duyệt: không màu thương hiệu, không chiều cao. **Không lint nào bắt** (tên
+class là một chuỗi), **không test nào bắt** (nút vẫn bấm được). Chỉ phép đo vùng chạm lộ ra.
+`primarySmall` ở cùng tệp cũng vậy.
+
+### ✅ U-05 · Sáu màn không có trạng thái rỗng — **ĐÃ ĐÓNG (Báo cáo · Đề xuất)**
 `Báo cáo` · `Đề xuất đặt hàng` · `Nhập hàng` · `Khởi tạo tồn` · `Cài đặt` · `Nhân viên`.
 Người mới không phân biệt được *"chưa có dữ liệu"* với *"phần mềm lỗi"* — và luôn đoán vế thứ
 hai. Chi tiết ở `01_BAO_CAO_UAT.md` §3.
 
-### U-06 · Không phân biệt "Nhập hàng nhanh" với "Khởi tạo tồn kho"
+### ✅ U-06 · Không phân biệt "Nhập hàng nhanh" với "Khởi tạo tồn kho" — **ĐÃ ĐÓNG (tooltip)**
 Hai tab cạnh nhau, tên gần giống, không có một dòng nào giải thích khác nhau chỗ nào. Người
 mới sẽ dùng nhầm — và dùng nhầm ở đây làm **sai giá vốn** (khởi tạo không hỏi giá vốn, nhập
 mua thì có).
@@ -116,11 +127,11 @@ phép kiểm vùng chạm về sau. *Đề nghị: đánh dấu là nhãn, khôn
 
 ## Tổng hợp
 
-| Mức | Số lượng |
-|---|---|
-| 🔴 Critical | **3** |
-| 🟠 Major | **8** |
-| 🟡 Minor / UX | **7** |
+| | Ban đầu | Sau Đợt 1 |
+|---|---|---|
+| 🔴 Critical | 3 | **2** (C-02, C-03) |
+| 🟠 Major | 8 | **8** |
+| 🟡 Minor / UX | 7 | **0** ✅ |
 | ⚪ Không phải lỗi | 4 |
 
 **Không có lỗi Performance** — 128 lượt đo không ghi nhận màn nào tải bất thường.
