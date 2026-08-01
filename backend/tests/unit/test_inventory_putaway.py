@@ -24,6 +24,7 @@ from pharmacy_os.modules.inventory.domain import (
     allocate_from_locations,
     chua_xep_o,
     ensure_can_put_away,
+    gom_lo_trinh,
     sort_pick_candidates,
 )
 
@@ -157,3 +158,80 @@ def test_khong_co_cho_nao_thi_bao_thieu(  # noqa: D103
 ) -> None:
     with pytest.raises(InsufficientStockError):
         allocate_from_locations([], D("1"))
+
+
+# --- lộ trình lấy hàng cho CẢ GIỎ (BERAS V2 Phase 4) --------------------------------
+
+
+def _uv(path: str, thu_tu: int, hsd: date, sl: str, lo: str = "L1") -> PickCandidate:
+    return PickCandidate(
+        location_id=uuid4(),
+        location_path=path,
+        pick_order=thu_tu,
+        batch_id=uuid4(),
+        lot_no=lo,
+        expiry_date=hsd,
+        quantity=D(sl),
+    )
+
+
+def test_lo_trinh_gop_theo_O_khong_theo_mat_hang() -> None:
+    """Hai mã cùng nằm ở một ô ⇒ MỘT chặng, không phải hai.
+
+    Đơn vị của lộ trình là **ô**: cái tốn công là đi tới ô, nhặt thêm một hộp khi đã đứng
+    trước ô thì gần như không tốn gì. Gộp sai ở đây nghĩa là người đi lấy tới ô A, sang ô B,
+    rồi **quay lại ô A** cho mã thứ ba.
+    """
+    o_a = _uv("KHO/A01", 1, date(2027, 1, 1), "10")
+    # Cùng ô ⇒ dùng lại `location_id` của `o_a`.
+    o_a2 = PickCandidate(
+        location_id=o_a.location_id,
+        location_path=o_a.location_path,
+        pick_order=o_a.pick_order,
+        batch_id=uuid4(),
+        lot_no="L2",
+        expiry_date=date(2027, 2, 1),
+        quantity=D("5"),
+    )
+    thuoc1, thuoc2 = uuid4(), uuid4()
+
+    lo_trinh = gom_lo_trinh([(thuoc1, [(o_a, D("3"))]), (thuoc2, [(o_a2, D("2"))])])
+
+    assert len(lo_trinh) == 1
+    assert len(lo_trinh[0].dong) == 2
+
+
+def test_lo_trinh_sap_theo_DUONG_DI_khong_theo_han_dung() -> None:
+    """🔴 FEFO đã quyết xong ở bước CHỌN LÔ; việc còn lại là đi đường nào cho ngắn.
+
+    Sắp lại theo hạn dùng ở đây cho ra một lộ trình nhảy cóc giữa các kệ mà **không đổi được
+    một hộp thuốc nào** — tốn chân, không thêm an toàn.
+    """
+    xa_nhung_han_gan = _uv("KHO/Z99", 9, date(2026, 1, 1), "10")
+    gan_nhung_han_xa = _uv("KHO/A01", 1, date(2030, 1, 1), "10")
+    t1, t2 = uuid4(), uuid4()
+
+    lo_trinh = gom_lo_trinh(
+        [(t1, [(xa_nhung_han_gan, D("1"))]), (t2, [(gan_nhung_han_xa, D("1"))])]
+    )
+
+    assert [c.location_path for c in lo_trinh] == ["KHO/A01", "KHO/Z99"]
+
+
+def test_lo_trinh_hai_luot_goi_cho_CUNG_mot_thu_tu() -> None:
+    """Cùng `pick_order` thì so tiếp `location_path` — người đi lấy không được in ra hai tờ
+    khác nhau cho cùng một đơn."""
+    b = _uv("KHO/B01", 5, date(2027, 1, 1), "10")
+    a = _uv("KHO/A01", 5, date(2027, 1, 1), "10")
+    t1, t2 = uuid4(), uuid4()
+
+    lan1 = gom_lo_trinh([(t1, [(b, D("1"))]), (t2, [(a, D("1"))])])
+    lan2 = gom_lo_trinh([(t2, [(a, D("1"))]), (t1, [(b, D("1"))])])
+
+    assert (
+        [c.location_path for c in lan1] == [c.location_path for c in lan2] == ["KHO/A01", "KHO/B01"]
+    )
+
+
+def test_lo_trinh_rong_khi_khong_co_gi_de_lay() -> None:
+    assert gom_lo_trinh([]) == []

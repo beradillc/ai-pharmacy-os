@@ -140,3 +140,56 @@ def allocate_from_locations(
         ket_qua.append((c, lay))
         con_lai -= lay
     return ket_qua
+
+
+@dataclass(frozen=True, slots=True)
+class ChangLay:
+    """Một chặng của lộ trình lấy hàng: tới **một ô**, lấy những gì cần ở đó.
+
+    Đơn vị của lộ trình là **Ô**, không phải mặt hàng — vì cái tốn công là *đi tới ô*, còn
+    nhặt thêm một hộp khi đã đứng trước ô thì gần như không tốn gì. Một lộ trình liệt kê
+    theo mặt hàng sẽ bắt người ta đi tới ô A, sang ô B, rồi **quay lại ô A** cho mã thứ ba.
+    """
+
+    location_id: UUID
+    location_path: str
+    pick_order: int
+    #: ``(drug_id, lot_no, expiry_date, số lượng lấy)`` — mọi thứ cần để nhặt đúng hộp.
+    dong: tuple[tuple[UUID, str, date, Decimal], ...]
+
+
+def gom_lo_trinh(
+    phan_bo: list[tuple[UUID, list[tuple[PickCandidate, Decimal]]]],
+) -> list[ChangLay]:
+    """Gộp phân bổ của **nhiều mã** thành một lộ trình đi **một vòng**.
+
+    Vào: danh sách ``(drug_id, kết quả allocate_from_locations)``. Ra: các chặng đã gộp theo
+    ô và **sắp theo ``pick_order``** — thứ tự đi thật trong kho.
+
+    🔴 Vì sao sắp theo ``pick_order`` chứ không theo FEFO như :func:`sort_pick_candidates`:
+    FEFO đã quyết xong ở bước **chọn lô** (ai được lấy), việc còn lại là **đi đường nào cho
+    ngắn**. Sắp lại theo hạn dùng ở đây sẽ cho ra một lộ trình nhảy cóc qua lại giữa các kệ
+    mà không đổi được một hộp thuốc nào — tốn chân, không thêm an toàn.
+
+    Ô có ``pick_order`` bằng nhau thì so tiếp ``location_path``: hai lượt gọi phải cho cùng
+    một thứ tự, nếu không người đi lấy in ra hai tờ khác nhau cho cùng một đơn.
+    """
+    theo_o: dict[UUID, list[tuple[UUID, str, date, Decimal]]] = {}
+    dau_o: dict[UUID, PickCandidate] = {}
+    for drug_id, cap in phan_bo:
+        for ung_vien, so_luong in cap:
+            theo_o.setdefault(ung_vien.location_id, []).append(
+                (drug_id, ung_vien.lot_no, ung_vien.expiry_date, so_luong)
+            )
+            dau_o.setdefault(ung_vien.location_id, ung_vien)
+
+    chang = [
+        ChangLay(
+            location_id=loc,
+            location_path=dau_o[loc].location_path,
+            pick_order=dau_o[loc].pick_order,
+            dong=tuple(dong),
+        )
+        for loc, dong in theo_o.items()
+    ]
+    return sorted(chang, key=lambda c: (c.pick_order, c.location_path))
