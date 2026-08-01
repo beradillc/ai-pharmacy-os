@@ -41,7 +41,7 @@
 | ☐ | Tài khoản thu ngân đã tạo | Video 07 — cảnh quan trọng nhất — không quay được nếu thiếu |
 | ☐ | Kịch bản đã đọc thử thành tiếng | Lời viết ra và lời nói ra khác nhau; đọc thử mới biết chỗ nào vấp |
 | ☐ | Thư mục `docs/testing/videos/` đã tạo | ✅ đã có |
-| ☑ | **Kịch bản đủ 13/13 video** | ✅ **xong 2026-08-01** — `05_KICH_BAN_VIDEO.md`, trước đó chỉ có 01·06·07 |
+| ☑ | **Kịch bản đủ 14/14 video** | ✅ **xong 2026-08-01** — `05_KICH_BAN_VIDEO.md`, trước đó chỉ có 01·06·07. **+ video 14 "Định hướng phát triển" thêm 02/08** theo yêu cầu Chain — 🔴 video này **phải qua Trợ lý Pháp Lý trước khi phát hành** |
 | ☑ | 5 lỗi UAT còn treo đã đóng | ✅ **xong 2026-08-01** — C-03 · M-02 · M-05 · M-06 · M-07 |
 | ☑ | **Nội dung nhạy cảm/pháp lý đã cắt khỏi kịch bản** | ✅ **xong 2026-08-01**, Chain chốt. Trích dẫn văn bản · khẳng định nghĩa vụ · nhắc cơ quan quản lý — cắt hết. Video 14 rút hẳn sang `07_CHO_PHAP_LY_…` |
 | ☐ | Kịch bản đọc lại sau khi cắt, còn trôi chảy | Cắt câu giữa đoạn hay để lại chỗ hụt — đọc thành tiếng mới biết |

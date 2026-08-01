@@ -989,6 +989,148 @@ không phải dựng dữ liệu giả lần nào.
 
 ---
 
+---
+
+# VIDEO 14 — Định hướng phát triển: phần mềm sẽ làm thêm gì ⭐
+
+**Thời lượng:** 4 phút · **Màn:** không quay màn nào — slide + vài cảnh màn đã quay ở video trước
+
+> ⚠️ **Đây KHÔNG phải video 14 cũ.** Video 14 cũ (Sổ thuốc kiểm soát đặc biệt) đã rút sang
+> `07_CHO_PHAP_LY_kich-ban-so-kiem-soat.md` và **không quay**. Số 14 nay dùng lại cho video này.
+>
+> 🔴 **Video này là ngoại lệ có chủ đích của Nguyên tắc nội dung ở cuối tệp** (Chain yêu cầu
+> 2026-08-02). Nó vẫn tuân thủ nguyên tắc gốc — **nói phần mềm SẼ LÀM GÌ, không nói luật buộc
+> gì**, không trích một số hiệu văn bản nào, không nhắc tên cơ quan nào. Nhưng vì nó là video
+> duy nhất chạm tới chủ đề tuân thủ, **phải để Trợ lý Pháp Lý đọc trước khi phát hành** — cùng
+> điều kiện với N-3.
+
+## Vì sao có video này
+
+Mười ba video trước dạy **bấm nút**. Video này trả lời câu mà người xem nào cũng sẽ hỏi sau
+khi dùng được: *"còn thiếu gì không?"*
+
+Trả lời thẳng, kể cả phần chưa xong. Một bộ video chỉ khoe cái chạy được sẽ **mất uy tín ngay
+lần đầu** khách hỏi một câu mình né. Nói trước thì là **lộ trình**; để khách phát hiện thì là
+**giấu**.
+
+## Storyboard
+
+| # | Thời điểm | Hình | Nội dung |
+|---|---|---|---|
+| 1 | 0:00–0:35 | Slide: 13 video vừa xem | Hôm nay phần mềm làm được gì |
+| 2 | 0:35–1:30 | Slide 3 cột | Ba nhóm việc **đang làm tiếp** |
+| 3 | 1:30–2:40 | Slide | Hai việc **chưa hứa được ngày** — và vì sao |
+| 4 | 2:40–3:30 | Cảnh nhãn đỏ trên màn Sổ kiểm soát | Phần mềm tự nói chỗ nó chưa chắc |
+| 5 | 3:30–4:00 | Slide đóng | Cách gửi góp ý |
+
+## Kịch bản
+
+### Cảnh 1 — Hôm nay làm được gì `0:00`
+
+**NAM:** Mười ba video vừa rồi, mình đi hết từ đăng nhập tới báo cáo. Giờ tổng lại: phần mềm
+làm được tới đâu rồi?
+
+**NỮ:** Làm được trọn một ngày ở quầy. Nhập hàng, xếp vào ô, bán thường, bán kê đơn có dược sĩ
+duyệt, in hoá đơn, kiểm kê, xem báo cáo. `[CẢNH: lướt nhanh 6 màn đã quay]` ⏸
+
+**NAM:** Vậy là xong rồi?
+
+**NỮ:** Xong phần **quầy dùng hằng ngày**. Chưa xong phần mình đang làm tiếp — và mình muốn nói
+rõ ở đây, để chị không phải đoán.
+
+### Cảnh 2 — Ba nhóm đang làm tiếp `0:35`
+
+`[CẢNH: slide ba cột]` ⏸
+
+**NỮ:** Nhóm một: **an toàn dữ liệu**. Thông tin sức khoẻ của khách — dị ứng, bệnh nền — hiện
+đã có khoá theo vai và có ghi nhật ký mỗi lượt xem. Bước tiếp là **mã hoá ngay trong cơ sở dữ
+liệu**, để cả người có quyền vào máy chủ cũng không đọc thẳng được.
+
+**NAM:** Nghĩa là bây giờ đọc được à?
+
+**NỮ:** Nếu ai đó vào được máy chủ thì có. Đó chính là lý do nó nằm trong nhóm làm ngay, không
+phải nhóm để sau.
+
+**NỮ:** Nhóm hai: **chống dò mật khẩu**. Hiện phần mềm khoá tài khoản sau nhiều lần sai, nhưng
+chưa hạn chế theo đường truyền. Đang bổ sung.
+
+**NỮ:** Nhóm ba: **theo dõi tình trạng máy chủ**. Hôm nay nếu có trục trặc ở quầy, mình biết khi
+chị gọi. Mục tiêu là mình biết **trước khi** chị gọi.
+
+**NAM:** Ba cái này bao giờ có?
+
+**NỮ:** Cả ba nằm trong đợt trước khi phần mềm bán ra chính thức. Quầy mình đang dùng bản chạy
+thử, nên sẽ nhận sớm hơn.
+
+### Cảnh 3 — Hai việc chưa hứa được ngày `1:30`
+
+**NỮ:** Còn hai việc mình **chưa hứa được ngày**, và mình nói luôn vì sao.
+
+`[CẢNH: slide — "Kết nối dữ liệu dược quốc gia"]` ⏸
+
+**NỮ:** Thứ nhất: **gửi dữ liệu lên hệ thống dược quốc gia**. Phần mềm đã dựng sẵn toàn bộ đường
+đi — gom dữ liệu, xếp hàng, gửi lại nếu rớt mạng. Nhưng **đầu bên kia chưa mở**: bọn mình chưa
+có tài liệu kỹ thuật để nối vào thật.
+
+**NAM:** Vậy hiện tại nó đang làm gì?
+
+**NỮ:** Đang chạy vào một đầu nối **thử**, và trong phần mềm ghi rõ là thử. Mình **không** nói
+với chị là đã kết nối, vì chưa. Khi nào nối thật được, mình báo và làm giúp chị.
+
+`[CẢNH: slide — "Gợi ý chuyên môn bằng AI"]` ⏸
+
+**NỮ:** Thứ hai: **gợi ý chuyên môn**. Hiện phần mềm đã cảnh báo dị ứng và tương tác thuốc,
+nhưng bằng **bộ quy tắc bọn mình tự dựng**, không phải bằng một nguồn tra cứu dược có bản quyền.
+
+**NAM:** Khác nhau thế nào?
+
+**NỮ:** Khác ở chỗ **tin tới đâu**. Cảnh báo hiện tại đáng để chị dừng lại kiểm tra — nó không
+thay chuyên môn của chị. Bọn mình đang tìm nguồn dữ liệu chuẩn để nâng lên. Trước khi có, phần
+mềm sẽ **không** nói câu nào chắc hơn mức nó biết.
+
+### Cảnh 4 — Chỗ phần mềm tự nói nó chưa chắc `2:40`
+
+`[CẢNH: mở màn Sổ thuốc kiểm soát đặc biệt, dừng ở nhãn đỏ trên đầu màn]` ⏸
+
+**NAM:** Cái nhãn đỏ này là gì?
+
+**NỮ:** Đó là phần mềm **tự khai**. Màn này ghi sổ thuốc kiểm soát đặc biệt, và nó đang chờ
+người có chuyên môn rà lại trước khi bọn mình dám nói nó dùng được cho việc chính thức.
+
+**NAM:** Sao không gỡ nhãn cho đẹp?
+
+**NỮ:** Vì gỡ ra thì chị hết biết. `[nhấn]` Nguyên tắc của bọn mình: **chỗ nào chưa chắc thì phần
+mềm phải tự nói ra**, chứ không im lặng cho gọn màn hình. Chị thấy nhãn nào như thế thì cứ đọc
+đúng nghĩa đen: phần đó đang chờ.
+
+**NAM:** Thế phần còn lại thì sao?
+
+**NỮ:** Không có nhãn thì tức là bọn mình đã kiểm và đứng sau nó.
+
+### Cảnh 5 — Góp ý `3:30`
+
+**NAM:** Nếu quầy thấy thiếu gì thì báo ai?
+
+**NỮ:** Báo thẳng cho bọn mình. Và nói thật là **góp ý từ quầy đổi thứ tự làm việc nhiều hơn
+kế hoạch bọn mình ngồi bàn với nhau** — vì chị là người dùng nó tám tiếng một ngày, còn bọn
+mình thì không.
+
+**NAM:** Tóm lại: hôm nay dùng được trọn một ngày ở quầy; ba việc đang làm tiếp; hai việc chưa
+hứa được ngày và đã nói rõ vì sao; chỗ nào chưa chắc thì phần mềm tự dán nhãn.
+
+**NỮ:** Đúng. Và cái cuối cùng là cái quan trọng nhất — **chị không phải đoán xem tin được tới
+đâu.**
+
+## ⛔ Ba câu KHÔNG được nói trong video này
+
+Ghi riêng vì đây là video dễ trượt nhất cả bộ:
+
+| ❌ Không nói | ✅ Nói thay |
+|---|---|
+| *"Phần mềm đã tuân thủ đầy đủ quy định"* | *"Phần mềm làm được A, B, C; phần D đang chờ rà"* |
+| *"Liên thông đã xong"* | *"Đường đi dựng xong, đầu bên kia chưa mở"* |
+| Bất kỳ số hiệu văn bản, tên cơ quan, hạn nộp nào | Mô tả **việc phần mềm làm**, không mô tả nghĩa vụ |
+
 ## ⛔ Nguyên tắc nội dung — Chain chốt 2026-08-01
 
 *"Cái nào nhạy cảm, pháp lý thì bỏ ra khỏi kịch bản."*
@@ -1010,6 +1152,20 @@ Bộ kịch bản này **chỉ hướng dẫn dùng phần mềm**. Cụ thể, 
 🔴 Vì sao gắt: một video hướng dẫn phát ra ngoài **là phát ngôn của BeraLLC**. Nói sai một
 nghĩa vụ tuân thủ thì người xem làm sai theo, và họ làm sai **vì tin mình**. Phần mềm hiện
 chưa qua rà soát pháp lý nào — nên chưa có gì để đứng sau những câu như vậy.
+
+### 🔴 Ngoại lệ Chain cho phép 2026-08-02 — video 14 (Định hướng phát triển)
+
+Chain yêu cầu *"thêm một video cuối về định hướng bổ sung thêm các tính năng đó / đáp ứng điều
+kiện pháp lý đó"*. Video 14 vì vậy **được phép** nói tới chủ đề tuân thủ — nhưng vẫn giữ nguyên
+lằn ranh gốc:
+
+- ✅ được nói **phần mềm sẽ làm thêm gì**, và **cái gì chưa xong**;
+- ❌ vẫn KHÔNG trích số hiệu văn bản, KHÔNG nêu tên cơ quan, KHÔNG khẳng định nghĩa vụ của quầy;
+- 🔴 và vì là video duy nhất chạm chủ đề này, **phải để Trợ lý Pháp Lý đọc trước khi phát hành**
+  — cùng điều kiện với N-3, không phát hành trước.
+
+Nói cách khác: nguyên tắc không đổi, chỉ **chủ đề** được mở. Rủi ro không nằm ở việc nhắc tới
+tuân thủ — nó nằm ở việc **khẳng định** thay cho người có chuyên môn.
 
 Phần **đồng ý của khách** (video 08) được **giữ lại** theo đúng chỉ đạo, nhưng nói theo kiểu
 thao tác: *"phần mềm khoá ô dị ứng cho tới khi bật nhãn Đã đồng ý"* — không giải thích vì sao

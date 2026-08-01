@@ -31,9 +31,9 @@
 `check-rejected-sales` ghi vào, không phải do ai bán. Cảnh báo cũ — *"doanh thu tuần sẽ sai,
 không ai tách được đâu là đơn thật"* — nói về một khoản doanh thu **không tồn tại**.
 
-⚠️ **Đơn rác này ĐANG là toàn bộ doanh thu màn Báo cáo hiển thị** (đỉnh 12.000đ ngày 01/08).
-Quay video 11 mà không dọn thì người xem thấy một con số không giải thích được. Xem `PROJECT_STATE`
-§7dj — cổng đã vá để không ghi nữa, còn dòng đã ghi thì **chờ Chain quyết** có xoá không.
+✅ **Đã dọn 2026-08-02** (Chain duyệt): đơn rác + dòng bán + thanh toán của nó đã xoá khỏi
+`qt650`; xác nhận bằng ảnh màn Báo cáo — `0 đ`, đường phẳng. Cổng cũng đã vá để không ghi nữa.
+Xem `PROJECT_STATE` §7dj. **`qt650` nay: 0 đơn / 0 dòng bán / 0 thanh toán.**
 
 🔴 **Lần đếm đầu tôi báo "0 đơn" — SAI.** Tôi đọc `pg_stat_user_tables.n_live_tup`, một con số
 **ước lượng** do autovacuum cập nhật, chứ không phải `count(*)`. Bảng một dòng mới chèn có thể
@@ -71,9 +71,10 @@ sau không đọc *"Chain đã duyệt quay trên qt650"* thành *"không còn g
 | **11** | Báo cáo · Đề xuất đặt hàng | 4' | ⚠️ cần ~30 ngày dữ liệu | 🟡 Sau |
 | **12** | Dashboard chủ chuỗi | 3' | ⚠️ cần **2 chi nhánh** | 🟡 Sau |
 | **13** | Nhật ký hoạt động | 3' | ⚠️ **chờ màn** (lỗi M-04) | 🟡 Sau |
-| **14** | Sổ thuốc kiểm soát đặc biệt | 4' | ⚠️ **chờ màn** (lỗi C-03) | 🟠 Sau |
+| ~~**14**~~ | ~~Sổ thuốc kiểm soát đặc biệt~~ **RÚT** → `07_CHO_PHAP_LY_…` | — | Chain chốt 01/08 | — |
+| **14** ⭐ | **Định hướng phát triển** — phần mềm sẽ làm thêm gì (MỚI 02/08, Chain yêu cầu) | 4' | Không cần dữ liệu; slide + cảnh đã quay | 🔴 Cao |
 
-**Tổng: 14 video · ~55 phút.**
+**Tổng: 14 video · ~57 phút** (13 hướng dẫn thao tác + 1 định hướng).
 
 ## Quay được ngay bao nhiêu
 
@@ -81,7 +82,7 @@ sau không đọc *"Chain đã duyệt quay trên qt650"* thành *"không còn g
 |---|---|---|
 | ✅ **Quay được ngay** | 01 · 03 | Không cần thêm gì |
 | 🟠 **Quay được sau khi dựng dữ liệu** | 04 · 05 · 06 · 07 · 08 · 09 · 10 | Dữ liệu dựng trong chính video 04–05 |
-| 🔴 **Chờ sửa lỗi** | 02 (C-01) · 13 (M-04) · 14 (C-03) | Không quay được vì màn chưa có |
+| ✅ ~~Chờ sửa lỗi~~ | ~~02 (C-01) · 13 (M-04)~~ | **5 lỗi UAT đóng hết 2026-08-01** — cả hai màn nay đã có, quay được |
 | 🟡 **Chờ dữ liệu tích luỹ** | 11 (30 ngày) · 12 (2 chi nhánh) | |
 
 ## Thứ tự quay đề nghị
@@ -96,4 +97,6 @@ sau không đọc *"Chain đã duyệt quay trên qt650"* thành *"không còn g
 Chín video trên quay **liên tục trong một buổi**, dữ liệu chảy tự nhiên từ video này sang
 video kia — không phải dựng lại giữa chừng, và người xem thấy đúng thứ tự họ sẽ làm thật.
 
-Năm video còn lại (02 · 11 · 12 · 13 · 14) quay đợt sau.
+Năm video còn lại (**02 · 11 · 12 · 13 · 14**) quay đợt sau — 02 và 13 nay đã hết chặn (màn có
+rồi); 11 chờ dữ liệu tích luỹ từ chính buổi quay; 12 cần tenant hai chi nhánh; 14 là video định
+hướng, quay bằng slide, **nhưng phải qua Trợ lý Pháp Lý trước khi phát hành**.

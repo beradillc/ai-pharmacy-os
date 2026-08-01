@@ -52,7 +52,13 @@ def test_catalog_and_inventory_flow(client: TestClient) -> None:
     drug_id = drug["id"]
 
     # 2) Receive two batches (near + far expiry).
-    for lot, expiry in (("FAR", "2027-01-01"), ("NEAR", "2026-08-01")):
+    # 🔴 Hai ngày này từng ghi CỨNG. Lô "NEAR" hết hạn 2026-08-01 ⇒ **từ 2026-08-02 test tự
+    #    đỏ** vì `dispense` lọc lô hết hạn. Sản phẩm đúng, phép kiểm sai. Tính tương đối như
+    #    chỗ khác trong chính tệp này (dòng ~145) đã làm.
+    for lot, expiry in (
+        ("FAR", (date.today() + timedelta(days=365)).isoformat()),
+        ("NEAR", (date.today() + timedelta(days=30)).isoformat()),
+    ):
         r = client.post(
             "/api/v1/inventory/receive",
             json={

@@ -49,13 +49,21 @@ async def test_fefo_dispense_picks_nearest_expiry(
     inventory_service: InventoryService, ctx: RequestContext
 ) -> None:
     drug_id = uuid4()
+    # 🔴 Hai hạn dùng này từng ghi CỨNG `date(2027,1,1)` và `date(2026,8,1)`. Lô "NEAR" hết
+    #    hạn ngày 2026-08-01, nên **từ 2026-08-02 test tự đỏ**: `dispense_stock` lọc lô hết
+    #    hạn (`not_expired_on=date.today()`) ⇒ chỉ còn 10 đơn vị ⇒ xuất 12 trả 409.
+    #    Sản phẩm ĐÚNG (không được xuất lô hết hạn); phép kiểm sai vì ghim ngày tuyệt đối.
+    #    Nay tính tương đối như `_receive_with_expiry` cuối tệp này vẫn làm — cùng tệp đã có
+    #    sẵn mẫu đúng, chỗ này chỉ là chỗ quên dùng nó.
+    xa = date.today() + timedelta(days=365)
+    gan = date.today() + timedelta(days=30)
     # Far-expiry batch received FIRST; near-expiry batch received SECOND.
     await inventory_service.receive_stock(
-        ReceiveStockInput(drug_id, "FAR", date(2027, 1, 1), Decimal("10"), Decimal("1000")),
+        ReceiveStockInput(drug_id, "FAR", xa, Decimal("10"), Decimal("1000")),
         ctx,
     )
     near = await inventory_service.receive_stock(
-        ReceiveStockInput(drug_id, "NEAR", date(2026, 8, 1), Decimal("10"), Decimal("1000")),
+        ReceiveStockInput(drug_id, "NEAR", gan, Decimal("10"), Decimal("1000")),
         ctx,
     )
 
