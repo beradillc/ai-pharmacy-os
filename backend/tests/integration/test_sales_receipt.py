@@ -31,10 +31,21 @@ class FakeDrugDisplay:
         return DrugInfo(drug_id=drug_id, requires_prescription=False, name=name, unit=unit)
 
 
+class FakeNguoiBan:
+    """Cổng tra tên người bán, dựng sẵn theo `user_id`. `None` = không tra được."""
+
+    def __init__(self, ten_theo_id: dict[UUID, str | None]) -> None:
+        self._ten = ten_theo_id
+
+    async def name_of(self, user_id: UUID, tenant_id: UUID) -> str | None:
+        return self._ten.get(user_id)
+
+
 def _service(
     session_factory: async_sessionmaker[AsyncSession],
     event_bus: InMemoryEventBus,
     provider: FakeDrugDisplay | None,
+    nguoi_ban: FakeNguoiBan | None = None,
 ) -> SalesService:
     def uow_factory() -> UnitOfWork:
         return SqlAlchemyUnitOfWork(session_factory, event_bus)
@@ -43,6 +54,7 @@ def _service(
         uow_factory,
         lambda uow, c: SqlAlchemySalesRepository(uow.session, c),
         provider,
+        salesperson_info=nguoi_ban,
     )
 
 
@@ -136,3 +148,62 @@ async def test_get_receipt_unknown_order_raises_not_found(
     svc = _service(session_factory, event_bus, None)
     with pytest.raises(NotFoundError):
         await svc.get_receipt(uuid4(), ctx)
+
+
+async def test_receipt_mang_ten_nguoi_ban(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    """Chain giao 2026-08-01: hoá đơn in ra phải có người bán."""
+    drug = uuid4()
+    svc = _service(
+        session_factory,
+        event_bus,
+        FakeDrugDisplay({drug: ("Paracetamol 500mg", "viên")}),
+        FakeNguoiBan({ctx.user_id: "Trịnh Thư"}),
+    )
+    sale = await svc.complete_sale(
+        CreateSaleInput(
+            client_uuid="receipt-nguoi-ban",
+            lines=[SaleLineInput(drug_id=drug, quantity=Decimal("1"), unit_price=Decimal("10000"))],
+            payments=[PaymentInput(method=PaymentMethod.CASH, amount=Decimal("10000"))],
+        ),
+        ctx,
+    )
+
+    receipt = await svc.get_receipt(sale.id, ctx)
+
+    assert receipt.sold_by_name == "Trịnh Thư"
+
+
+async def test_receipt_khong_tra_duoc_ten_thi_bo_han_dong(
+    session_factory: async_sessionmaker[AsyncSession],
+    event_bus: InMemoryEventBus,
+    ctx: RequestContext,
+) -> None:
+    """Không tra được ⇒ `None`, KHÔNG phải chuỗi rỗng hay mã UUID cụt.
+
+    Ba nhánh cùng về `None` và cùng một hệ quả — hoá đơn bỏ hẳn dòng đó: cổng chưa nối,
+    người bán đã bị xoá, đơn cũ hơn cột `sold_by_user_id`. Test này canh nhánh "đã xoá";
+    nhánh "chưa nối" là mọi test khác trong tệp (dựng `SalesService` không có cổng).
+    """
+    drug = uuid4()
+    svc = _service(
+        session_factory,
+        event_bus,
+        FakeDrugDisplay({drug: ("Paracetamol 500mg", "viên")}),
+        FakeNguoiBan({}),  # iam không còn người này
+    )
+    sale = await svc.complete_sale(
+        CreateSaleInput(
+            client_uuid="receipt-khong-ten",
+            lines=[SaleLineInput(drug_id=drug, quantity=Decimal("1"), unit_price=Decimal("10000"))],
+            payments=[PaymentInput(method=PaymentMethod.CASH, amount=Decimal("10000"))],
+        ),
+        ctx,
+    )
+
+    receipt = await svc.get_receipt(sale.id, ctx)
+
+    assert receipt.sold_by_name is None

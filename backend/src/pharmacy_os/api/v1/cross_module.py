@@ -31,7 +31,7 @@ from pharmacy_os.modules.compliance.domain import DrugMasterFacts
 from pharmacy_os.modules.compliance.domain.ports import SigningReauthOutcome
 from pharmacy_os.modules.crm.application import CrmService, MedicationHistoryItemInput
 from pharmacy_os.modules.crm.domain import MedicationHistorySource
-from pharmacy_os.modules.iam.application import AuthService, StepUpResult
+from pharmacy_os.modules.iam.application import AuthService, IamService, StepUpResult
 from pharmacy_os.modules.inventory.application import (
     GoodsReceiptLine,
     InventoryService,
@@ -608,6 +608,41 @@ class PrescriptionInfoAdapter:
         except NotFoundError:
             return None
         return PrescriptionInfo(prescription_id=prescription_id, status=rx.status)
+
+
+class SalespersonNameAdapter:
+    """Nối `iam` → `sales` để hoá đơn in ra có **tên người bán** (Chain giao 2026-08-01).
+
+    Adapter thuần, không logic: `sales` giữ `sold_by_user_id`, `iam` giữ cái tên, chỗ này
+    chỉ ráp hai thứ lại — kỷ luật #16.
+
+    🔴 Chạy dưới **danh tính hệ thống** với đúng một quyền `iam.user.read`. Vì sao không
+    dùng quyền của người đang gọi: in hoá đơn chỉ cần `sales.read`, và thu ngân **không**
+    có `iam.user.read` (xem `_CASHIER_PERMISSIONS`). Bắt họ có quyền đọc danh sách nhân sự
+    chỉ để in một cái tên lên tờ giấy là cấp thừa quyền cho một việc rất nhỏ — đúng thứ
+    `SalesLoyaltyAccrualReader` bên dưới đã tránh vì cùng lý do.
+
+    Không tra được thì trả ``None``, hoá đơn bỏ hẳn dòng đó. Nuốt `NotFoundError` là có
+    chủ đích: **không bao giờ để việc in một tờ hoá đơn hỏng vì một cái tên**. Tiền đã thu,
+    hàng đã giao — người bán cầm tờ giấy thiếu một dòng vẫn hơn là không có tờ nào.
+    """
+
+    def __init__(self, iam: IamService) -> None:
+        self._iam = iam
+
+    async def name_of(self, user_id: UUID, tenant_id: UUID) -> str | None:
+        ctx = RequestContext(
+            tenant_id=tenant_id,
+            branch_id=tenant_id,
+            user_id=_SYSTEM_USER,
+            permissions=frozenset({"iam.user.read"}),
+        )
+        try:
+            user = await self._iam.get_user(user_id, ctx)
+        except NotFoundError:
+            return None
+        ten = user.full_name.strip()
+        return ten or None
 
 
 class SalesLoyaltyAccrualReader:

@@ -61,6 +61,7 @@ from pharmacy_os.modules.sales.domain.ports import (
     OrderRevenueRow,
     PrescriptionInfoProvider,
     SalesOrderListRow,
+    SalespersonInfoProvider,
     SalesRepository,
 )
 from pharmacy_os.shared.value_objects import Money
@@ -101,11 +102,19 @@ class SalesService:
         allergy_risk: AllergyRiskProvider | None = None,
         hook_registry: HookRegistry | None = None,
         gateway_timeout_seconds: float = 10.0,
+        # 🔴 Đặt Ở CUỐI, không chèn giữa. `register()` và các test dựng `SalesService`
+        # truyền THEO VỊ TRÍ: chèn một tham số vào giữa sẽ đẩy `audit` sang
+        # `salesperson_info` cho mọi bên gọi cũ — một thay đổi phá tương thích mà chữ ký
+        # vẫn "trông đúng". Kỷ luật #17: hình dạng không đổi KHÔNG có nghĩa là không phá vỡ.
+        salesperson_info: SalespersonInfoProvider | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._repo_factory = repo_factory
         self._drug_info = drug_info
         self._prescription_info = prescription_info
+        #: `None` ⇒ hoá đơn không có dòng người bán. Giữ tuỳ chọn để mọi bên dựng
+        #: `SalesService` trong test không phải nối thêm một cổng chỉ để in một cái tên.
+        self._salesperson_info = salesperson_info
         self._audit = audit
         self._allergy_risk = allergy_risk
         self._hook_registry = hook_registry
@@ -762,7 +771,18 @@ class SalesService:
             paid_total=paid_total,
             change_amount=change_amount,
             prescription_ref=order.prescription_ref,
+            sold_by_name=await self._resolve_salesperson(order.sold_by_user_id, ctx),
         )
+
+    async def _resolve_salesperson(self, user_id: UUID | None, ctx: RequestContext) -> str | None:
+        """Tên người bán cho hoá đơn, hoặc ``None`` khi không tra được.
+
+        Ba nhánh cùng trả ``None`` và cùng một hệ quả — hoá đơn bỏ dòng đó: đơn không mang
+        người bán (cũ hơn cột), cổng chưa được nối, hoặc `iam` không còn người đó.
+        """
+        if user_id is None or self._salesperson_info is None:
+            return None
+        return await self._salesperson_info.name_of(user_id, ctx.tenant_id)
 
     async def _resolve_drug_display(self, drug_id: UUID, ctx: RequestContext) -> tuple[str, str]:
         """Display name/unit for a receipt line; falls back to the raw id."""

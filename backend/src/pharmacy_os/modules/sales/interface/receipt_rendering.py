@@ -93,6 +93,10 @@ def render_thermal_k80(receipt: ReceiptSummaryDTO, org: OrgSettings) -> str:
     out.append(_rule("="))
     out.append(f"Mã đơn: {receipt.order_id}")
     out.append(f"Ngày: {receipt.created_at.strftime('%d/%m/%Y %H:%M')}")
+    # Bỏ HẲN dòng khi không tra được tên, không in "Người bán: —": một dòng trống trên tờ
+    # hoá đơn đưa khách trông như lỗi hệ thống. Xem `SalespersonInfoProvider`.
+    if receipt.sold_by_name:
+        out.append(f"Người bán: {receipt.sold_by_name}")
     out.append(_rule())
     for item in receipt.lines:
         out.append(item.name[:K80_WIDTH])
@@ -113,20 +117,57 @@ def render_thermal_k80(receipt: ReceiptSummaryDTO, org: OrgSettings) -> str:
     return "\n".join(out) + "\n"
 
 
+#: Bề ngang giấy in nhiệt K80 (80mm). Chiều dài tính theo số dòng — giấy cuộn không có
+#: "trang", cắt tới đâu hết tới đó, nên một khổ cố định sẽ hoặc cắt cụt hoá đơn dài hoặc
+#: nhả thừa cả gang giấy cho hoá đơn hai món.
+_K80_PAGE_WIDTH = 80 * mm
+_K80_MARGIN = 4 * mm
+#: Chiều cao ước cho mỗi dòng khi tính chiều dài cuộn. Rộng tay hơn thực tế một chút: thà
+#: thừa vài milimet giấy còn hơn cụt mất dòng "Tiền thối".
+_K80_LINE_HEIGHT = 15
+_K80_FIXED_LINES = 16
+
+
+def _k80_page_height(receipt: ReceiptSummaryDTO, org: OrgSettings) -> float:
+    """Chiều dài cuộn đủ chứa hoá đơn này."""
+    so_dong = _K80_FIXED_LINES + 2 * len(receipt.lines) + len(receipt.payments)
+    so_dong += sum(1 for x in (org.address, org.phone, org.tax_code, receipt.sold_by_name) if x)
+    return so_dong * _K80_LINE_HEIGHT + 2 * _K80_MARGIN
+
+
 def render_pdf(
-    receipt: ReceiptSummaryDTO, org: OrgSettings, page_size: Literal["A5", "A4"] = "A5"
+    receipt: ReceiptSummaryDTO,
+    org: OrgSettings,
+    page_size: Literal["A5", "A4", "K80"] = "A5",
 ) -> bytes:
-    """A5/A4 PDF of the same content as :func:`render_thermal_k80`."""
-    size = A5 if page_size == "A5" else A4
+    """PDF cùng nội dung với :func:`render_thermal_k80`, khổ A5 · A4 · **K80 (80mm)**.
+
+    🔴 Vì sao có khổ K80 dạng PDF (Chain chốt 2026-08-01 — *"K80 nếu có kết nối, không thì
+    PDF khổ K80"*): trình duyệt **không dò được** máy in nhiệt có đang cắm hay không —
+    không có API nào cho phép, và mọi cách "đoán" đều là đoán. Một tệp PDF rộng đúng 80mm
+    thì phục vụ được **cả hai** trường hợp: có máy in nhiệt thì hộp thoại in chọn đúng nó
+    và ra tờ bill chuẩn; không có thì vẫn in được ra giấy thường hoặc lưu lại. Bản text
+    K80 thô vẫn giữ (`format=thermal_k80`) cho ai đẩy thẳng vào phần mềm in nhiệt.
+    """
+    if page_size == "K80":
+        size = (_K80_PAGE_WIDTH, _k80_page_height(receipt, org))
+        margin = _K80_MARGIN
+    else:
+        size = A5 if page_size == "A5" else A4
+        margin = 12 * mm
     width, height = size
+    # Giấy 80mm chỉ rộng ~227pt; cỡ chữ của A5 sẽ tràn ra ngoài mép và bị máy in cắt —
+    # đúng loại lỗi "có trên trang nhưng không nhìn thấy được" mà kỷ luật #21 canh, chỉ là
+    # trên giấy thay vì trên màn hình.
+    co = 0.78 if page_size == "K80" else 1.0
     font = _unicode_font()
     buf = BytesIO()
     canvas = Canvas(buf, pagesize=size)
-    margin = 12 * mm
     y = height - margin
 
     def line(text: str, *, size_pt: float = 10, center: bool = False) -> None:
         nonlocal y
+        size_pt *= co
         canvas.setFont(font, size_pt)
         if center:
             canvas.drawCentredString(width / 2, y, text)
@@ -136,6 +177,7 @@ def render_pdf(
 
     def two_col(left: str, right: str, size_pt: float = 10) -> None:
         nonlocal y
+        size_pt *= co
         canvas.setFont(font, size_pt)
         canvas.drawString(margin, y, left)
         canvas.drawRightString(width - margin, y, right)
@@ -156,6 +198,8 @@ def render_pdf(
     rule()
     line(f"Mã đơn: {receipt.order_id}")
     line(f"Ngày: {receipt.created_at.strftime('%d/%m/%Y %H:%M')}")
+    if receipt.sold_by_name:
+        line(f"Người bán: {receipt.sold_by_name}")
     rule()
     for item in receipt.lines:
         line(item.name)

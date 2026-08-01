@@ -214,3 +214,7 @@ class ReceiptSummaryDTO:
     paid_total: Decimal
     change_amount: Decimal
     prescription_ref: UUID | None
+    #: Tên người bán, hoặc ``None`` khi không tra được (đơn cũ hơn cột
+    #: ``sold_by_user_id``, hoặc người bán đã bị xoá). ``None`` ⇒ hoá đơn BỎ HẲN dòng đó,
+    #: không in mã UUID cụt — xem ``SalespersonInfoProvider``.
+    sold_by_name: str | None = None

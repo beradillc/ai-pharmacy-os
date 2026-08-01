@@ -270,6 +270,23 @@ class DrugInfoProvider(Protocol):
     async def get(self, drug_id: UUID, tenant_id: UUID) -> DrugInfo | None: ...
 
 
+class SalespersonInfoProvider(Protocol):
+    """Read-port for the *name* behind ``SalesOrder.sold_by_user_id``.
+
+    Chain giao 2026-08-01: hoá đơn in ra phải có **người bán**. Tên người sống trong
+    ``iam``, và ``sales`` không được import ``iam`` — nên đây là một cổng đọc, cài đặt ở
+    composition root, đúng khuôn :class:`DrugInfoProvider` và :class:`PrescriptionInfoProvider`
+    đã có.
+
+    Trả ``None`` khi không tra được: đơn cũ hơn cột ``sold_by_user_id`` không mang người bán
+    nào, và người bán có thể đã nghỉ việc và bị xoá. Hoá đơn khi đó **bỏ hẳn dòng đó** chứ
+    không in một mã UUID cụt — một dãy hex trên tờ hoá đơn đưa khách không nói được gì với
+    ai, và làm tờ giấy trông như lỗi hệ thống.
+    """
+
+    async def name_of(self, user_id: UUID, tenant_id: UUID) -> str | None: ...
+
+
 @dataclass(frozen=True, slots=True)
 class PrescriptionInfo:
     """The authoritative Rx facts sales needs to authorise a prescription sale.

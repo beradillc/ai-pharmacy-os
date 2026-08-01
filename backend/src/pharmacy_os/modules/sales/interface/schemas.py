@@ -206,6 +206,10 @@ class ReceiptFormat(StrEnum):
     THERMAL_K80 = "thermal_k80"
     PDF_A5 = "pdf_a5"
     PDF_A4 = "pdf_a4"
+    #: PDF rộng đúng 80mm, dài theo nội dung — đường in MẶC ĐỊNH của quầy từ 2026-08-01
+    #: (Chain chốt). Trình duyệt không dò được máy in nhiệt, và tệp 80mm phục vụ được cả
+    #: hai trường hợp — xem `render_pdf`.
+    PDF_K80 = "pdf_k80"
 
 
 class ReceiptLineResponse(BaseModel):
@@ -236,6 +240,8 @@ class ReceiptResponse(BaseModel):
     paid_total: Decimal
     change_amount: Decimal
     prescription_ref: UUID | None
+    #: `None` = không tra được người bán (đơn cũ, hoặc người bán đã bị xoá).
+    sold_by_name: str | None = None
 
     @classmethod
     def of(cls, receipt: ReceiptSummaryDTO) -> ReceiptResponse:
@@ -265,4 +271,5 @@ class ReceiptResponse(BaseModel):
             paid_total=receipt.paid_total,
             change_amount=receipt.change_amount,
             prescription_ref=receipt.prescription_ref,
+            sold_by_name=receipt.sold_by_name,
         )

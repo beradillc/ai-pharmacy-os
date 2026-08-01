@@ -22,6 +22,7 @@ from pharmacy_os.api.v1.cross_module import (
     LocationServiceInfoProvider,
     PrescriptionInfoAdapter,
     SalesLoyaltyAccrualReader,
+    SalespersonNameAdapter,
     wire_goods_receipt_stock_in,
     wire_medication_history,
     wire_safety_checks,
@@ -41,7 +42,7 @@ from pharmacy_os.modules.clinical.interface import register as register_clinical
 from pharmacy_os.modules.compliance.interface import register as register_compliance
 from pharmacy_os.modules.crm.application import CrmService
 from pharmacy_os.modules.crm.interface import register as register_crm
-from pharmacy_os.modules.iam.application import AuthService
+from pharmacy_os.modules.iam.application import AuthService, IamService
 from pharmacy_os.modules.iam.interface import register as register_iam
 from pharmacy_os.modules.inventory.interface import register as register_inventory
 from pharmacy_os.modules.location.application import LocationService
@@ -113,7 +114,12 @@ def build_api_router(container: Container) -> APIRouter:
         container.resolve(ClinicalService),
     )
     rx_info = PrescriptionInfoAdapter(container.resolve(PrescriptionService))
-    api.include_router(register_sales(container, get_context, drug_info, rx_info, allergy_risk))
+    nguoi_ban = SalespersonNameAdapter(container.resolve(IamService))
+    api.include_router(
+        register_sales(
+            container, get_context, drug_info, rx_info, allergy_risk, salesperson_info=nguoi_ban
+        )
+    )
 
     # Cột "Điểm" trên màn Khách hàng: crm đọc tổng đã mua trong năm từ sales. Nối ở ĐÂY,
     # sau khi sales đã dựng — thứ tự đăng ký có vòng (sales cần CrmService cho cổng dị

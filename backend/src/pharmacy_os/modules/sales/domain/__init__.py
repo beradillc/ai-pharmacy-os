@@ -30,6 +30,7 @@ from pharmacy_os.modules.sales.domain.ports import (
     PrescriptionInfo,
     PrescriptionInfoProvider,
     SalesOrderListRow,
+    SalespersonInfoProvider,
     SalesRepository,
 )
 from pharmacy_os.modules.sales.domain.rules import (
@@ -68,6 +69,7 @@ __all__ = [
     "DrugInfoProvider",
     "PrescriptionInfo",
     "PrescriptionInfoProvider",
+    "SalespersonInfoProvider",
     "ensure_allergy_acknowledged",
     "ensure_price_override_acknowledged",
     "ensure_prescription_valid_for_sale",

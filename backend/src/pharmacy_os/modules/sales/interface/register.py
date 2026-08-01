@@ -19,6 +19,7 @@ from pharmacy_os.modules.sales.domain import (
     AllergyRiskProvider,
     DrugInfoProvider,
     PrescriptionInfoProvider,
+    SalespersonInfoProvider,
 )
 from pharmacy_os.modules.sales.infrastructure import SqlAlchemySalesRepository
 from pharmacy_os.modules.sales.interface.router import ContextDep, build_router
@@ -30,6 +31,7 @@ def register(
     drug_info: DrugInfoProvider | None = None,
     prescription_info: PrescriptionInfoProvider | None = None,
     allergy_risk: AllergyRiskProvider | None = None,
+    salesperson_info: SalespersonInfoProvider | None = None,
 ) -> APIRouter:
     uow_factory = container.resolve(UnitOfWorkFactory)
 
@@ -45,6 +47,9 @@ def register(
         allergy_risk,
         container.resolve(HookRegistry),
         container.resolve(Settings).plugins.call_timeout_seconds,
+        # BẰNG TÊN, không theo vị trí: chuỗi trên đã dài tám tham số và ai đọc cũng phải
+        # đếm để biết cái nào vào đâu. Tham số mới thì đừng làm chuỗi đó dài thêm.
+        salesperson_info=salesperson_info,
     )
     container.register_instance(SalesService, service)
     return build_router(get_context)

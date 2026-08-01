@@ -174,6 +174,8 @@ def build_router(get_context: ContextDep) -> APIRouter:
             return Response(content=render_pdf(receipt, org, "A5"), media_type="application/pdf")
         if fmt is ReceiptFormat.PDF_A4:
             return Response(content=render_pdf(receipt, org, "A4"), media_type="application/pdf")
+        if fmt is ReceiptFormat.PDF_K80:
+            return Response(content=render_pdf(receipt, org, "K80"), media_type="application/pdf")
         return JSONResponse(content=ReceiptResponse.of(receipt).model_dump(mode="json"))
 
     # Offline-first sync entrypoint: idempotent on client_uuid, so replaying a
