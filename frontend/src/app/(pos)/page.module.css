@@ -75,6 +75,10 @@
 }
 
 .addButton {
+  /* 🔴 48px, RỘNG TAY HƠN chuẩn 44px (UAT 01/08, lỗi U-01). Đây là nút bấm nhiều nhất trong
+     ngày — mỗi món khách mua là một lần bấm — và bấm trượt ở quầy đông khách nghĩa là thêm
+     nhầm một hộp thuốc vào giỏ. Đo trước bản vá: 36px. */
+  min-height: 48px;
   background: var(--beras-bg-alt);
   border: 1px solid var(--beras-icon-border);
   border-radius: var(--radius-sm);
@@ -120,6 +124,9 @@
 }
 
 .checkoutButton {
+  /* 48px — nút chốt đơn, đụng tiền và tồn kho. Đo trước bản vá: 43px, thiếu đúng 1px so với
+     chuẩn (lỗi U-04). */
+  min-height: 48px;
   width: 100%;
   padding: var(--space-3);
   border: none;

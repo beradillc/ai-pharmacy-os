@@ -19,6 +19,12 @@ import styles from "./TabManGop.module.css";
 export interface TabMan {
   href: string;
   nhan: string;
+  /** Một câu nói rõ tab này khác tab kia chỗ nào — hiện thành tooltip khi rê chuột.
+   *  🔴 UAT 01/08 (lỗi U-06): hai tab "Nhập hàng nhanh" và "Khởi tạo tồn kho" tên gần giống
+   *  nhau nhưng **hệ quả kế toán khác hẳn** — khởi tạo KHÔNG hỏi giá vốn, nhập mua thì có.
+   *  Dùng nhầm ⇒ sai giá vốn bình quân ⇒ sai lãi gộp. Mô tả nằm trong màn thì chỉ ai đã vào
+   *  mới đọc được; người đang chọn tab thì chưa. */
+  moTa?: string;
 }
 
 export function TabManGop({ tabs }: { tabs: readonly TabMan[] }) {
@@ -35,6 +41,7 @@ export function TabManGop({ tabs }: { tabs: readonly TabMan[] }) {
             // `aria-current="page"` chứ không chỉ đổi màu: người dùng trình đọc màn hình
             // cũng phải biết mình đang ở tab nào, và màu thì họ không nghe được.
             aria-current={dangO ? "page" : undefined}
+            title={t.moTa}
           >
             {t.nhan}
           </Link>

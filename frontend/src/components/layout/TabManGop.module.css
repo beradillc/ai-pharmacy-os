@@ -8,6 +8,12 @@
 }
 
 .tab {
+  /* 44px chuẩn chạm (UAT 01/08, lỗi U-02). Đo trước bản vá: 38px — bốn tab điều hướng nhóm
+     đều thiếu 6px. Dùng flex để chữ căn giữa theo chiều dọc mà không cần padding tính tay. */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 1 1 0;
   /* Đủ rộng để chạm bằng ngón cái, và `min-width: 0` để hai tab CHIA ĐỀU thay vì tab có
      nhãn dài hơn đẩy tab kia ra ngoài màn 390px. */

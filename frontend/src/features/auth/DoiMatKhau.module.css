@@ -1,0 +1,43 @@
+/* Màn đổi mật khẩu — dùng cả ở cửa chặn (bắt buộc) lẫn trong Cài đặt (tự nguyện). */
+
+.khoi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  /* Hẹp có chủ đích: một biểu mẫu ba ô kéo hết bề ngang 1440px thì mắt phải quét cả gang
+     tay giữa nhãn và ô nhập. */
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* 🔴 KHÔNG dùng `flex-basis` px trong hộp dọc — bẫy đã dính BA LẦN (ô nhập cao 260px,
+   31/07 và 01/08). Ô nhập ở đây để tự nhiên theo `min-height` của `.input`. */
+.o {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.nhan {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}
+
+.nhac {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}
+
+.nut {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}

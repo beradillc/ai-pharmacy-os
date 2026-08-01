@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { useAuthStore } from "@/features/auth/auth-store";
 import { RejectedSalesBanner } from "@/components/layout/RejectedSalesBanner";
+import { DoiMatKhau } from "@/features/auth/DoiMatKhau";
 import { useOfflineSync } from "@/shared/offline/use-offline-sync";
 
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -74,6 +75,35 @@ export function AppShell({
   // lượt render phía máy chủ không có `window` — chuyển hướng sớm hơn sẽ đá văng
   // người đang đăng nhập mỗi lần F5.
   if (!hydrated || !session) return null;
+
+  // 🔴 CỬA CHẶN — lỗi C-01 (UAT 01/08). Backend đặt `must_change_password` cho mọi tài khoản
+  // mới và trả cờ đó ngay trong phản hồi đăng nhập, nhưng trước bản vá **không ai đọc nó**:
+  // người dùng vào thẳng màn Bán hàng và dùng vĩnh viễn mật khẩu do người tạo tài khoản đặt.
+  //
+  // Chặn ở ĐÂY chứ không ở màn đăng nhập: `AppShell` là chỗ **mọi màn của khu quản lý đều đi
+  // qua**, kể cả khi người dùng gõ thẳng một URL. Chặn ở màn đăng nhập thì gõ thẳng
+  // `/ton-kho` là đi vòng được.
+  //
+  // Giữ nguyên thanh đầu (thương hiệu, nút Đăng xuất) — người vào nhầm tài khoản phải thoát
+  // ra được mà không cần đổi mật khẩu của người khác.
+  if (session.must_change_password) {
+    return (
+      <div className={styles.shell}>
+        <AppHeader
+          branchName={
+            session.accessible_branches.find((b) => b.id === session.branch_id)?.name ?? ""
+          }
+          pendingCount={pendingCount}
+          onLogout={logout}
+        />
+        <div className={styles.body}>
+          <main className={styles.main}>
+            <DoiMatKhau batBuoc />
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   const branchName =
     session.accessible_branches.find((b) => b.id === session.branch_id)?.name ??

@@ -118,7 +118,12 @@ export default function ReorderPage() {
           {canAct && (
             <button
               type="button"
-              className={styles.primary}
+              // 🔴 `styles.primary` KHÔNG TỒN TẠI trong `screen.module.css` — CSS Modules trả
+              // `undefined`, React render `class="undefined"`, và nút rơi về mặc định trình
+              // duyệt: cao 36px, không màu thương hiệu. Không lint nào bắt được (tên class là
+              // một chuỗi), không test nào bắt được (nút vẫn bấm được). Chỉ phép đo vùng chạm
+              // của UAT 01/08 lộ ra. Xem thêm dòng dưới: `primarySmall` cũng vậy.
+              className={styles.button}
               onClick={() => run.mutate()}
               disabled={run.isPending}
             >
@@ -190,9 +195,20 @@ export default function ReorderPage() {
 
       {!isLoading && !error && rows.length === 0 && (
         <p className={styles.empty}>
-          {tab === "PENDING"
-            ? "Không mặt hàng nào cần đặt thêm."
-            : "Chưa bỏ qua đề xuất nào."}
+          {/* 🔴 UAT 01/08 (lỗi U-05): câu cũ là *"Không mặt hàng nào cần đặt thêm."* — một
+              KHẲNG ĐỊNH, và nó SAI khi quầy vừa bắt đầu: lúc đó sự thật là *chưa đủ dữ liệu
+              để biết*, không phải *đã kiểm và không cần*. Một khẳng định sai tệ hơn im lặng,
+              vì người dùng tin nó và không đặt hàng. */}
+          {tab === "PENDING" ? (
+            <>
+              Không mặt hàng nào cần đặt thêm.
+              <br />
+              Nếu quầy mới bắt đầu bán thì đây là điều bình thường — đề xuất cần khoảng{" "}
+              <strong>30 ngày dữ liệu bán hàng</strong> mới có cơ sở dự báo.
+            </>
+          ) : (
+            "Chưa bỏ qua đề xuất nào."
+          )}
         </p>
       )}
 
@@ -231,7 +247,7 @@ export default function ReorderPage() {
                     <span className={styles.actions}>
                       <button
                         type="button"
-                        className={styles.primarySmall}
+                        className={styles.ghost}
                         onClick={() => handleMaterialize(s)}
                         disabled={!s.can_materialize || materialize.isPending}
                         title={

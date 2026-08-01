@@ -26,8 +26,16 @@ import local from "./page.module.css";
  * dùng trên điện thoại, đứng cạnh thùng hàng.
  */
 const TAB_NHAP = [
-  { href: "/nhap-nhanh", nhan: "Nhập hàng nhanh" },
-  { href: "/khoi-tao-ton", nhan: "Khởi tạo tồn kho" },
+  {
+    href: "/nhap-nhanh",
+    nhan: "Nhập hàng nhanh",
+    moTa: "Hàng MỚI MUA về từ nhà cung cấp — có hoá đơn, có giá vốn.",
+  },
+  {
+    href: "/khoi-tao-ton",
+    nhan: "Khởi tạo tồn kho",
+    moTa: "Hàng ĐÃ CÓ SẴN trên kệ từ trước — dùng một lần khi bắt đầu, không hỏi giá vốn.",
+  },
 ] as const;
 
 export default function QuickReceivePage() {

@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
+
 import Link from "next/link";
 
 import { useTheme } from "@/theme/ThemeProvider";
 import { THEMES } from "@/theme/themes";
+import { DoiMatKhau } from "@/features/auth/DoiMatKhau";
 import styles from "@/shared/ui/screen.module.css";
 
 import local from "./page.module.css";
@@ -20,6 +23,7 @@ import local from "./page.module.css";
  * bàn phím phải chọn được theme.
  */
 export default function SettingsPage() {
+  const [moDoiMatKhau, setMoDoiMatKhau] = useState(false);
   const { theme, setTheme } = useTheme();
 
   return (
@@ -30,6 +34,29 @@ export default function SettingsPage() {
           <p className={styles.subtitle}>Tuỳ chọn hiển thị, lưu trên máy này</p>
         </div>
       </div>
+
+      {/* Đổi mật khẩu — lối vào TỰ NGUYỆN. Cửa chặn bắt buộc nằm ở `AppShell` khi tài khoản
+          còn cờ `must_change_password`; ở đây là chỗ đổi bất cứ lúc nào sau đó. */}
+      <section className={styles.panel}>
+        <div className={local.section}>
+          <h2 className={local.sectionTitle}>Mật khẩu</h2>
+          <p className={local.sectionText}>
+            Đổi mật khẩu của tài khoản đang đăng nhập. Nên đổi ngay khi nghi có người khác
+            biết — tài khoản này ký vào sổ bán thuốc.
+          </p>
+          {moDoiMatKhau ? (
+            <DoiMatKhau batBuoc={false} onXong={() => setMoDoiMatKhau(false)} />
+          ) : (
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => setMoDoiMatKhau(true)}
+            >
+              Đổi mật khẩu
+            </button>
+          )}
+        </div>
+      </section>
 
       <section className={styles.panel}>
         <div className={local.section}>

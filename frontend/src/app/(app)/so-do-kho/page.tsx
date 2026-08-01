@@ -41,8 +41,8 @@ import local from "./page.module.css";
  *    nằm ở máy chủ.
  */
 const TAB_KHO = [
-  { href: "/so-do-kho", nhan: "Sơ đồ kho" },
-  { href: "/kiem-ke", nhan: "Kiểm kê" },
+  { href: "/so-do-kho", nhan: "Sơ đồ kho", moTa: "Dựng và xem cấu trúc kho: Kho → Khu → Kệ → Ô." },
+  { href: "/kiem-ke", nhan: "Kiểm kê", moTa: "Đếm lại hàng trong một ô, so với sổ. Chênh lệch chờ duyệt." },
 ] as const;
 
 export default function WarehouseMapPage() {

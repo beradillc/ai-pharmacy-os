@@ -65,6 +65,15 @@ export default function ReportsPage() {
           <LoadingState rows={2} label="Đang tải biểu đồ" />
         ) : series.error ? (
           <ErrorState message="Không tải được biểu đồ." onRetry={() => series.refetch()} />
+        ) : (series.data?.points ?? []).length === 0 ? (
+          /* 🔴 UAT 01/08 (lỗi U-05): trước bản vá màn này vẽ một biểu đồ RỖNG và không nói
+             gì. Người dùng lần đầu — mở phần mềm ngày đầu tiên, chưa bán gì — nhìn thấy một
+             khung trắng và kết luận phần mềm hỏng. Màn hình trống phải phân biệt được
+             *chưa có dữ liệu* với *lỗi*, và người mới luôn đoán vế thứ hai. */
+          <p className={styles.empty}>
+            Chưa có dữ liệu bán hàng trong {DASHBOARD_WINDOW_DAYS} ngày qua. Biểu đồ sẽ hiện
+            sau đơn hàng đầu tiên.
+          </p>
         ) : (
           <RevenueChart points={series.data?.points ?? []} height={200} />
         )}
