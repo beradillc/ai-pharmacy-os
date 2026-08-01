@@ -310,8 +310,8 @@ trong quầy**.
 
 **NAM:** Quầy mình có hai người thôi, cần phân quyền không?
 
-**NỮ:** Cần. Không phải vì không tin nhau, mà vì **luật quy định** việc bán thuốc kê đơn phải
-do dược sĩ chịu trách nhiệm. Phần mềm giữ đúng chỗ đó cho mình.
+**NỮ:** Cần. Không phải vì không tin nhau, mà vì hai người làm hai việc khác nhau — và phần
+mềm giữ đúng ranh giới đó giúp mình, kể cả những hôm bận nhất.
 
 `[CẢNH: Nhân viên → Thêm nhân viên → chọn vai "Nhân viên bán thuốc / thu ngân"]` ⏸
 
@@ -334,7 +334,8 @@ duyệt, tài khoản này không có quyền đó.
 **NAM:** Tóm lại: thu ngân bán được thuốc thường, nhưng thuốc kê đơn thì phải có dược sĩ duyệt.
 Phần mềm không cho đi tắt.
 
-**NỮ:** Chính xác. Và khi có đoàn kiểm tra, cái sổ đó là thứ chứng minh quầy mình làm đúng.
+**NỮ:** Chính xác. Và mỗi lượt duyệt đều ghi **đúng tên người duyệt** vào nhật ký — không ai
+phải nhớ hộ ai.
 
 ---
 
@@ -366,7 +367,6 @@ phần khác nhau:
 | **11** Báo cáo | Báo cáo tính theo **đơn đã hoàn tất**, không tính đơn huỷ |
 | **12** Dashboard | Con số ở đây là **để quyết định**, không phải để đối chiếu sổ sách |
 | **13** Nhật ký | Ai làm gì, lúc nào — **không xoá được** |
-| **14** Sổ kiểm soát đặc biệt | Đây là **nghĩa vụ pháp lý**, không phải tính năng tiện ích |
 
 ## Danh sách cảnh quay chung (Output 06)
 
@@ -401,8 +401,8 @@ nhà thuốc, và đổi mật khẩu của mình.
 
 **NAM:** Khai thông tin nhà thuốc để làm gì? Mình biết mình là ai rồi mà.
 
-**NỮ:** Mình biết, nhưng **phần mềm chưa biết**. Khi mình xuất báo cáo gửi Sở Y tế, tên và mã
-cơ sở phải in lên đó. Không khai thì lúc cần xuất báo cáo mình phải ngồi điền tay từng tờ.
+**NỮ:** Mình biết, nhưng **phần mềm chưa biết**. Những chỗ cần in tên và mã cơ sở ra, phần
+mềm lấy từ đây. Không khai thì tới lúc cần, mình phải ngồi điền tay từng tờ.
 
 ### Cảnh 2 — Làm nhanh `0:25`
 
@@ -414,18 +414,18 @@ Không giải thích. Chỉ cho thấy nó nhanh.
 
 `[CẢNH: 🔍 từng ô]`
 
-**NỮ:** **Tên cơ sở** — chép **đúng như trên giấy chứng nhận đủ điều kiện kinh doanh dược**,
-không phải tên mình hay gọi ở nhà. Nếu giấy ghi *"Quầy thuốc Trịnh Thu"* thì gõ đúng vậy.
+**NỮ:** **Tên cơ sở** — chép **đúng như trên hồ sơ đăng ký của quầy**, không phải tên mình
+hay gọi ở nhà. Hồ sơ ghi sao thì gõ đúng vậy.
 
 **NAM:** Ghi tên ngắn cho đẹp thì sao?
 
-**NỮ:** Tên trên báo cáo lệch với tên trên giấy phép là chuyện phải giải thích với đoàn kiểm
-tra. Không đáng để đẹp hơn một chút.
+**NỮ:** Tên phần mềm in ra lệch với tên trong hồ sơ là chuyện phải đi giải thích. Không đáng
+để đẹp hơn một chút.
 
-**NỮ:** **Địa chỉ**, **Điện thoại**, **Mã số thuế** — cũng từ tờ giấy đó. ⏸
+**NỮ:** **Địa chỉ**, **Điện thoại**, **Mã số thuế** — cũng chép từ hồ sơ đó. ⏸
 
-**NỮ:** **Mã cơ sở bán lẻ** là mã do **Cục Quản lý Dược** cấp, không phải mã số thuế. Hai cái
-khác nhau. Ô này **bắt buộc**, không điền thì nút Lưu không bấm được.
+**NỮ:** **Mã cơ sở bán lẻ** là một mã riêng, **không phải mã số thuế** — hai cái khác nhau,
+lấy trong hồ sơ của quầy. Ô này **bắt buộc**, không điền thì nút Lưu không bấm được.
 
 **NAM:** Còn ô **bán buôn**?
 
@@ -438,8 +438,8 @@ khác nhau. Ô này **bắt buộc**, không điền thì nút Lưu không bấm
 
 **NAM:** Vậy khai ở đây có tác dụng gì?
 
-**NỮ:** Có — cho **báo cáo gửi cơ quan quản lý**. Còn phần hoá đơn thì bên kỹ thuật còn nợ,
-và họ ghi thẳng lên màn hình thay vì để mình tự phát hiện sau khi in 200 tờ sai tên.
+**NỮ:** Có — cho các bản kết xuất khác của phần mềm. Còn phần hoá đơn thì bên kỹ thuật còn
+nợ, và họ ghi thẳng lên màn hình thay vì để mình tự phát hiện sau khi in 200 tờ sai tên.
 
 ### Cảnh 4 — Tài khoản của tôi `2:20`
 
@@ -470,8 +470,8 @@ Ai đăng nhập bằng tài khoản của mình mà bán thuốc thì sổ ghi 
 
 ### Cảnh 7 — Tóm tắt `3:45`
 
-**NAM:** Khai thông tin cơ sở theo **giấy phép**, không theo trí nhớ. Mã cơ sở bán lẻ bắt
-buộc. Đổi mật khẩu ngay hôm nhận máy.
+**NAM:** Khai thông tin cơ sở theo **hồ sơ**, không theo trí nhớ. Mã cơ sở bán lẻ bắt buộc.
+Đổi mật khẩu ngay hôm nhận máy.
 
 ---
 
@@ -499,25 +499,26 @@ quyết định việc phần mềm có cứu được khách hàng hay không.
 
 `[CẢNH: 🔍 cột phân loại]`
 
-**NỮ:** Mỗi thuốc có một phân loại: **OTC** bán không cần đơn, **ETC** bắt buộc có đơn thuốc,
-**kiểm soát đặc biệt** thì còn chặt hơn nữa.
+**NỮ:** Mỗi thuốc có một phân loại. Phần mềm xử lý ba nhóm khác nhau: **OTC** bán bình
+thường, **ETC** thì màn bán hàng sẽ **đòi đơn thuốc** trước khi cho thanh toán, và nhóm
+**kiểm soát đặc biệt** thì phần mềm còn ghi thêm sổ riêng.
 
 **NAM:** Nếu mình phân loại nhầm một thuốc ETC thành OTC?
 
-**NỮ:** Thì quầy sẽ **bán được nó mà không đòi đơn**. Phần mềm tin vào phân loại này, nên
-phân loại sai là mở một cửa mà lẽ ra phải đóng.
+**NỮ:** Thì màn bán hàng sẽ **không đòi đơn nữa**. Phần mềm tin hoàn toàn vào ô phân loại
+này — nó không tự biết thuốc nào là thuốc gì.
 
 ### Cảnh 4 — Giá niêm yết `2:15`
 
 `[CẢNH: bấm sửa giá → 🔍 ô "Giá niêm yết mới" và ô "Lý do đổi giá"]`
 
-**NỮ:** Đổi giá thì phải ghi **lý do**. Không phải thủ tục hành chính: Luật Dược buộc nhà
-thuốc **niêm yết giá** và **cấm bán cao hơn giá niêm yết**.
+**NỮ:** Đổi giá thì **phần mềm bắt ghi lý do** — không ghi thì nút Lưu không bấm được.
 
 **NAM:** Ghi lý do gì cho đúng?
 
 **NỮ:** Đúng lý do thật. *"Nhà phân phối tăng giá"*, *"khuyến mãi tháng 8"*. Sáu tháng sau khi
-có người hỏi vì sao thuốc này tháng đó bán giá đó, câu trả lời nằm ở đây.
+có người hỏi vì sao thuốc này tháng đó bán giá đó, câu trả lời nằm ở đây — và đó là lý do duy
+nhất ô này tồn tại.
 
 `[CẢNH: bấm "Biến động giá"]`
 
@@ -547,14 +548,14 @@ không có nghĩa là *không có nguy cơ* — nó có nghĩa là *phần mềm
 
 | Gặp | Vì sao | Cách xử |
 |---|---|---|
-| Bán thuốc kê đơn mà không bị đòi đơn | Phân loại sai thành OTC | Sửa phân loại trong Danh mục |
+| Màn bán hàng không đòi đơn như mong đợi | Phân loại đang để OTC | Sửa phân loại trong Danh mục |
 | Khách dị ứng mà không có cảnh báo | Thuốc **chưa khai hoạt chất** | Mở thuốc, thêm hoạt chất |
 | Bấm Lưu giá không được | Chưa ghi lý do | Ghi lý do thật, không ghi dấu chấm |
 
 ### Cảnh 7 — Tóm tắt `5:35`
 
-**NAM:** Phân loại quyết định có đòi đơn hay không. Hoạt chất quyết định cảnh báo dị ứng có
-kêu hay không. Đổi giá phải ghi lý do.
+**NAM:** Phân loại quyết định phần mềm có đòi đơn hay không. Hoạt chất quyết định cảnh báo
+dị ứng có kêu hay không. Đổi giá thì phần mềm bắt ghi lý do.
 
 ---
 
@@ -659,32 +660,33 @@ trước khi đóng màn, đừng tin trí nhớ.
 
 ### Cảnh 1 — Mở đầu `0:00`
 
-**NỮ:** Lưu thông tin khách để làm hai việc: **nhận ra khách quen**, và **cảnh báo khi thuốc
-sắp bán có thể gây dị ứng**.
+**NỮ:** Lưu thông tin khách để phần mềm làm được hai việc: **nhận ra khách quen**, và **cảnh
+báo khi thuốc sắp bán có thể gây dị ứng cho đúng người đó**.
 
 ### Cảnh 3 — Làm lại thật chậm `0:50`
 
 `[CẢNH: "Thêm khách hàng" → điền tên, số điện thoại → "Tạo khách hàng"]`
 
-**NỮ:** 🔍 Số điện thoại trong danh sách hiện dạng che, chỉ thấy ba số cuối.
+**NỮ:** 🔍 Số điện thoại trong danh sách hiện dạng che, chỉ thấy ba số cuối. Cần xem đủ thì
+**bấm vào để hiện**.
 
-**NAM:** Sao lại giấu? Mình tự nhập vào mà.
+**NAM:** Sao lại che? Mình tự nhập vào mà.
 
-**NỮ:** Vì số điện thoại của khách là **dữ liệu cá nhân**. Ai cần xem đủ thì bấm xem, và
-**việc bấm đó được ghi lại**. Không phải để làm khó — để khi số của khách rò ra ngoài thì trả
-lời được câu *"ai đã lấy nó"*.
+**NỮ:** Vì mỗi lần bấm xem đủ số, phần mềm **ghi lại một dòng nhật ký**. Để sau này nếu số của
+khách lọt ra ngoài thì tra được *"ai đã mở xem"*. Che rồi mà không ghi lại thì che vô nghĩa.
 
 ### Cảnh 4 — Đồng ý lưu dữ liệu sức khoẻ ⭐ `2:00`
 
 `[CẢNH: 🔍 nhãn "Đã đồng ý" / "Chưa đồng ý"]`
 
-**NỮ:** Muốn ghi **dị ứng** của khách thì khách phải **đồng ý** trước. Đây là quy định về dữ
-liệu cá nhân nhạy cảm, không phải tuỳ chọn của phần mềm.
+**NỮ:** Phần mềm **khoá ô dị ứng** cho tới khi nhãn này bật sang *"Đã đồng ý"*. Nghĩa là phải
+hỏi khách trước, rồi mới bật nhãn, rồi mới ghi được.
 
 **NAM:** Hỏi khách thế nào cho gọn?
 
 **NỮ:** *"Em lưu lại thuốc anh/chị dị ứng để lần sau máy nhắc, anh/chị đồng ý không ạ?"* —
-đồng ý thì bật nhãn, không thì thôi.
+đồng ý thì bật nhãn, không thì thôi. Khách đổi ý lúc nào cũng **rút lại được**, và lúc đó phần
+mềm khoá ô dị ứng lại.
 
 **NỮ:** 🔴 Và **khai dị ứng theo HOẠT CHẤT**, không theo tên thuốc — đúng như đã nói ở video 03.
 Khách bảo *"tôi dị ứng Augmentin"* thì mình ghi **Acid clavulanic**.
@@ -693,13 +695,14 @@ Khách bảo *"tôi dị ứng Augmentin"* thì mình ghi **Acid clavulanic**.
 
 | Gặp | Vì sao |
 |---|---|
-| Không ghi được dị ứng | Khách **chưa đồng ý** cho lưu dữ liệu sức khoẻ |
+| Ô dị ứng bị khoá, không gõ được | Nhãn đồng ý đang ở **"Chưa đồng ý"** — bật lên trước |
 | Đã khai dị ứng mà bán vẫn không cảnh báo | Thuốc đó **chưa khai hoạt chất** (video 03) |
-| Không thấy số điện thoại đầy đủ | Thiếu quyền xem — quyền này chỉ cấp cho một số người |
+| Bấm xem số đầy đủ mà không hiện | Tài khoản này không được cấp quyền xem đủ số |
 
 ### Cảnh 6 — Tóm tắt `4:30`
 
-**NAM:** Xin đồng ý trước. Khai dị ứng theo hoạt chất. Số điện thoại che là cố ý.
+**NAM:** Bật nhãn đồng ý thì mới ghi được dị ứng. Khai dị ứng theo **hoạt chất**. Số điện
+thoại che là cố ý, và mỗi lần mở xem đều để lại vết.
 
 ---
 
@@ -727,9 +730,9 @@ nhưng đây là lỗi đã từng có và đã sửa, nên mình nói ra để 
 
 **NAM:** Ghi trả rồi thì hàng tự về kho luôn à?
 
-**NỮ:** 🔴 **Không.** Cố ý không. Thuốc khách mang về rồi thì phải có **dược sĩ xem lại** mới
-biết còn bán được hay không — bảo quản thế nào, còn nguyên vỏ không, còn hạn không. Muốn đưa
-lại lên kệ thì **nhập lại bằng tay**, như một quyết định riêng.
+**NỮ:** 🔴 **Không.** Cố ý không. Thuốc khách mang về rồi thì phải có người **xem lại tận
+tay** mới biết còn bán được hay không — bảo quản thế nào, còn nguyên vỏ không, còn hạn không.
+Muốn đưa lại lên kệ thì **nhập lại bằng tay**, như một quyết định riêng của mình.
 
 ### Cảnh 5 — Lỗi thường gặp `3:00`
 
@@ -932,8 +935,8 @@ gì đổi. Màn hình nói rõ điều này ở dòng cảnh báo phía trên.
 **NAM:** Có chắc không? Nhỡ ai đó giả?
 
 **NỮ:** 🔴 Câu hỏi đúng. Màn hình cũng nói thẳng: đây là **manh mối, không phải bằng chứng** —
-chuỗi này do máy khách tự khai. Nó dùng để phân biệt *máy quầy* với *điện thoại của ai đó ở
-nhà*, không dùng để buộc tội ai.
+chuỗi này do máy khách tự khai nên giả được. Nó giúp phân biệt *máy quầy* với *điện thoại của
+ai đó ở nhà*, chỉ vậy thôi.
 
 ### Cảnh 4 — Điều quan trọng nhất `2:40`
 
@@ -958,116 +961,6 @@ nhà*, không dùng để buộc tội ai.
 
 ---
 
-# VIDEO 14 — Sổ thuốc kiểm soát đặc biệt ⭐🔴
-
-**Thời lượng:** 6 phút · **Màn:** `Sổ kiểm soát đặc biệt`
-
-> 🆕 Toàn bộ màn này mới có từ 2026-08-01 (UAT C-03).
->
-> 🔴 **TRƯỚC KHI QUAY:** màn này hiện một nhãn đỏ *"Chưa được rà pháp lý"*. **Không cắt nhãn
-> đó ra khỏi khung hình, không quay góc tránh nó.** Nếu tới ngày quay mà nhãn đã gỡ, phải hỏi
-> lại — vì việc rà pháp lý phải xong trước, không phải nhãn bị xoá đi.
-
-### Cảnh 1 — Mở đầu `0:00`
-
-**NỮ:** Video cuối, và là video **duy nhất** trong bộ nói về một thứ **luật bắt buộc phải có**,
-không phải một tính năng cho tiện.
-
-**NAM:** Sổ này là sổ gì?
-
-**NỮ:** Sổ theo dõi xuất, nhập, tồn kho thuốc **kiểm soát đặc biệt** — gây nghiện, hướng thần,
-tiền chất, thuốc độc. Thông tư 18, Phụ lục VIII và XVI.
-
-### Cảnh 2 — Nói ngay về nhãn đỏ ⭐ `0:40`
-
-`[CẢNH: 🔍 nhãn đỏ trên đầu màn, giữ 3 giây]` ⏸
-
-**NỮ:** Trước khi đi tiếp, đọc dòng này cùng nhau: *"Chưa được rà pháp lý"*.
-
-**NỮ:** 🔴 Nghĩa là: bố cục và cách tính đã theo mẫu Thông tư 18, **nhưng chưa có ai đối chiếu
-với văn bản gốc**. Dùng để theo dõi nội bộ thì tốt. **Bản in ra vẫn phải đối chiếu mẫu giấy
-trước khi ký.**
-
-**NAM:** Sao lại để nguyên câu đó trên màn?
-
-**NỮ:** Vì giấu đi thì mình sẽ tin nó nhiều hơn thực tế — và mình chỉ phát hiện ra đúng lúc
-cần nó nhất.
-
-### Cảnh 3 — Làm lại thật chậm `1:40`
-
-**NỮ:** Chọn **Mẫu sổ**: *Phụ lục VIII* cho gây nghiện, hướng thần, tiền chất. *Phụ lục XVI*
-cho thuốc dạng phối hợp, thuốc độc, chất thuộc danh mục cấm.
-
-**NỮ:** Chọn kỳ bằng **Từ ngày / Đến ngày**.
-
-`[CẢNH: 🔍 các cột]`
-
-**NỮ:** Mỗi dòng là một **bút toán**: thời gian, tên thuốc, số chứng từ, nơi nhập hoặc nơi
-nhận, **Nhập**, **Xuất**, **Còn lại**, số lô và hạn dùng.
-
-**NỮ:** 🔍 Cột **Còn lại** là tồn **lũy kế** — nó cộng tiếp từ **tồn đầu kỳ**, không bắt đầu
-lại từ 0 mỗi lần đổi khoảng ngày.
-
-**NAM:** Nếu nó bắt đầu lại từ 0 thì sao?
-
-**NỮ:** Thì sổ sẽ hiện tồn **âm** — đọc như *"đã bán thuốc gây nghiện chưa từng nhập"*. Đó
-đúng là một lỗi đã có và đã sửa ngày 01/08.
-
-**NỮ:** 🔴 Và mỗi dòng ở đây **không sửa, không xoá được**.
-
-### Cảnh 4 — Kết xuất và nghĩa vụ in hằng ngày ⭐ `3:20`
-
-`[CẢNH: 🔍 dòng chữ nhỏ dưới các nút]`
-
-**NỮ:** Đọc kỹ dòng này: *"Mẫu sổ điện tử chỉ hợp lệ khi được trích xuất và in vào cuối MỖI
-ngày"*. Thông tư 18 Điều 15.1.
-
-**NAM:** **Mỗi ngày** thật à? Cuối tháng in một lượt không được?
-
-**NỮ:** Không. Đây là chỗ dễ mất điểm nhất khi có đoàn kiểm tra, và cũng là lý do mình để hẳn
-một nút riêng.
-
-`[CẢNH: bấm "Kết xuất cuối ngày"]`
-
-**NỮ:** Nút này xuất **đúng một ngày**, kèm một mã kiểm tra toàn vẹn — để sau này nếu có ai
-hỏi *"tờ này có bị sửa sau khi in không"*, mình đối chiếu được.
-
-`[CẢNH: bấm "Kết xuất sổ (CSV)"]`
-
-**NỮ:** Còn nút này xuất **cả kỳ**, để soát hoặc gửi kế toán.
-
-### Cảnh 5 — Ký xác nhận sổ ngày `4:40`
-
-`[CẢNH: bấm "Ký xác nhận sổ ngày"]`
-
-**NỮ:** Chữ ký điện tử thay cho việc ký tay từng trang. Phải **nhập lại mật khẩu** ngay tại đây.
-
-**NAM:** Đang đăng nhập rồi mà còn nhập lại?
-
-**NỮ:** 🔴 Vì ký rồi thì **không ký lại được ngày đó**, và **không ghi thêm bút toán nào vào
-ngày đó** được nữa. Một cú bấm nhầm trên máy để quên đăng nhập là đủ để khoá vĩnh viễn một
-ngày trong sổ. Nhập lại mật khẩu là cái phanh cuối cùng.
-
-**NỮ:** Chưa ký thì **vẫn phải in ra và ký tay** — màn hình cũng nói vậy.
-
-### Cảnh 6 — Lỗi thường gặp `5:20`
-
-| Gặp | Vì sao |
-|---|---|
-| Sổ trống dù quầy có bán | Thuốc **chưa được đánh dấu** kiểm soát đặc biệt trong Danh mục |
-| Ký báo lỗi 409 | Ngày đó **đã ký rồi** — không ký lại được |
-| Ghi bút toán báo lỗi 409 | Ngày đó đã ký, sổ đã khoá |
-| Không thấy mục trong menu | Thiếu quyền `compliance.ledger.read` |
-
-### Cảnh 7 — Tóm tắt `5:45`
-
-**NAM:** Đây là **nghĩa vụ pháp lý**, không phải tính năng tiện ích. In cuối **mỗi** ngày. Ký
-rồi là khoá. Và nhãn đỏ trên màn vẫn còn — phần mềm chưa được rà pháp lý.
-
-**NỮ:** Hết bộ hướng dẫn. Cảm ơn mình đã xem tới đây.
-
----
-
 # Trạng thái bộ kịch bản
 
 | Video | Kịch bản | Quay được ngay? | Ghi chú |
@@ -1085,11 +978,39 @@ rồi là khoá. Và nhãn đỏ trên màn vẫn còn — phần mềm chưa đ
 | 11 Báo cáo | ✅ đầy đủ | ⚠️ | Cần vài ngày dữ liệu bán |
 | 12 Tổng quan | ✅ đầy đủ | ⚠️ | Như 11 |
 | 13 Nhật ký | ✅ đầy đủ | ✅ | Màn mới 01/08 |
-| 14 Sổ kiểm soát ⭐🔴 | ✅ đầy đủ | 🔴 | **Chờ Trợ lý Pháp Lý rà** — xem cảnh 2 |
+| ~~14 Sổ kiểm soát~~ | ⛔ **ĐÃ RÚT** | ⛔ | Chain chốt 01/08: nội dung pháp lý bỏ khỏi kịch bản. Xem `07_CHO_PHAP_LY_…` |
 
 **Thứ tự quay đề nghị** (theo dữ liệu tích luỹ, không theo số thứ tự):
 
-`02 → 03 → 04 → 05 → 01 → 08 → 06 → 07 → 09 → 10 → 13 → 11 → 12 → 14`
+`02 → 03 → 04 → 05 → 01 → 08 → 06 → 07 → 09 → 10 → 13 → 11 → 12`
 
 Lý do: mỗi video sau **dùng dữ liệu video trước vừa tạo ra**, nên quay theo thứ tự này thì
-không phải dựng dữ liệu giả lần nào. Video 14 để cuối vì nó còn chờ rà pháp lý.
+không phải dựng dữ liệu giả lần nào.
+
+---
+
+## ⛔ Nguyên tắc nội dung — Chain chốt 2026-08-01
+
+*"Cái nào nhạy cảm, pháp lý thì bỏ ra khỏi kịch bản."*
+
+Bộ kịch bản này **chỉ hướng dẫn dùng phần mềm**. Cụ thể, KHÔNG được đưa vào lời thoại:
+
+| Loại | Ví dụ đã cắt |
+|---|---|
+| Trích dẫn văn bản | *"Thông tư 18 Điều 15.1"*, *"Luật Dược Điều 107.4"*, *"Phụ lục VIII/XVI"* |
+| Khẳng định nghĩa vụ | *"bắt buộc in cuối mỗi ngày"*, *"đây là nghĩa vụ pháp lý"*, *"luật quy định…"* |
+| Nhắc cơ quan quản lý | *"gửi Sở Y tế"*, *"khi có đoàn kiểm tra"*, *"Cục Quản lý Dược cấp"* |
+| Cả một video về màn pháp lý | Video 14 — rút hẳn sang `07_CHO_PHAP_LY_…` |
+
+**Cách nói thay thế:** mô tả **phần mềm làm gì**, không mô tả **luật buộc gì**.
+
+> ❌ *"Luật Dược cấm bán cao hơn giá niêm yết, nên phải ghi lý do."*
+> ✅ *"Phần mềm bắt ghi lý do — không ghi thì nút Lưu không bấm được."*
+
+🔴 Vì sao gắt: một video hướng dẫn phát ra ngoài **là phát ngôn của BeraLLC**. Nói sai một
+nghĩa vụ tuân thủ thì người xem làm sai theo, và họ làm sai **vì tin mình**. Phần mềm hiện
+chưa qua rà soát pháp lý nào — nên chưa có gì để đứng sau những câu như vậy.
+
+Phần **đồng ý của khách** (video 08) được **giữ lại** theo đúng chỉ đạo, nhưng nói theo kiểu
+thao tác: *"phần mềm khoá ô dị ứng cho tới khi bật nhãn Đã đồng ý"* — không giải thích vì sao
+quy định bắt thế.
