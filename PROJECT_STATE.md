@@ -8592,3 +8592,101 @@ chúng. Đây là việc ngoài phần mềm, cần Chain quyết, chưa làm.
 - **Việc tiếp theo:** quay/xuất bộ video theo `docs/testing/05_KICH_BAN_VIDEO.md` — vẫn cần
   Cổng 2 của `06_CHECKLIST_NGHIEM_THU.md` (CSDL riêng `qt650_video` · tài khoản thu ngân ·
   đọc kịch bản thành tiếng · quay theo thứ tự dữ liệu tích luỹ).
+
+---
+
+## 7dj. 🎬 Chuẩn bị quay video trên `qt650` — và một cổng ĐỌC-THUẦN đã ghi vào sổ quầy (2026-08-02)
+
+**Chain: *"Không cần đổi, cứ lấy dữ liệu qt650 làm kịch bản. Duyệt tiếp"*.** Bỏ yêu cầu dựng
+`qt650_video` (Cổng 2 mục 1). Đã: migrate `qt650` 0045→0046 (pg_dump trước), đặt lại mật khẩu
+quản trị theo Chain duyệt, chuyển app sang `qt650`, đóng thêm 2 mục Cổng 2.
+
+### 🔴 Phát hiện nặng nhất phiên: một cổng nhóm ĐỌC-THUẦN ghi ĐƠN BÁN THẬT
+
+`check-rejected-sales` bơm một đơn vào hàng chờ offline và **ngầm giả định máy chủ sẽ từ chối**
+(thiếu xác nhận dị ứng ⇒ 422). Giả định ấy chỉ đúng khi khách VÀ thuốc **tồn tại trong đúng CSDL
+đang chạy** và thật sự xung đột. Sai giả định ⇒ máy chủ trả **200** ⇒ đơn được **GHI**.
+
+| CSDL | Dòng đã ghi |
+|---|---|
+| **`qt650`** — CSDL của quầy | `gate-rejected-0001` · COMPLETED · 12.000đ · 01/08 |
+| `uat650` | cùng đơn, cùng ngày |
+
+Trong `qt650` đơn đó là **toàn bộ doanh thu** màn Báo cáo hiển thị. Và `ui-gates.sh` tự mô tả
+nhóm này là *"chạy được lên bất kỳ CSDL nào, **kể cả `nt650v2` của Chain**"*.
+
+**Thiệt hại có giới hạn** ở 1 đơn/CSDL chứ không phải 1 đơn/lượt chạy — `client_uuid` cố định
+nên máy chủ khử trùng lặp. Đã kiểm: lượt chạy hôm nay không thêm dòng nào vào `uat650`.
+
+**Đã vá:** hỏi `/sales/allergy-check` **trước khi bơm** — nguồn độc lập với thứ cổng sắp đo
+(kỷ luật #23). Không có cảnh báo ⇒ **DỪNG** với *"chưa đo được"* kèm chỉ dẫn. Đo thật:
+`REJECTED_EXIT=2`, `sales_orders` **trước=1 sau=1** — cổng không ghi gì.
+Nhánh *"điều kiện thoả thì chạy tiếp"* **chưa đo được** (qt650 có 0 khách) ⇒ **N-5 vẫn mở, nhưng
+nay AN TOÀN**.
+
+**Đã dọn:** Chain duyệt xoá. `gate-rejected-0001` + 1 `sale_line` + 1 `sale_payment` xoá khỏi
+`qt650` trong một giao dịch (pg_dump trước: `~/backup_qt650_pre_xoa_rac_20260802_0547.sql`).
+Xác nhận bằng **ảnh màn Báo cáo**: `0 đ`, đường phẳng — không bằng câu SQL.
+
+### 🔴 Bài học — tôi báo cáo sai một con số, và ẢNH là thứ vạch ra
+
+Tôi khẳng định *"`qt650` có 0 đơn bán"*, ghi vào **hai tài liệu và một commit**, rồi dùng nó làm
+căn cứ nói Chain chọn đúng. Sai: tôi đọc `pg_stat_user_tables.n_live_tup` — con số **ước lượng**
+do autovacuum cập nhật — chứ không phải `count(*)`. Bảng một dòng mới chèn hiện `0`.
+
+Thứ vạch ra không phải phép đo nào: **ảnh chụp** màn Báo cáo hiện `12.000 đ` ngay cạnh lời khẳng
+định CSDL rỗng. Kỷ luật #20 nói *ảnh là thứ Chain duyệt*; ca này nói thêm: **ảnh cũng là thứ bắt
+được lời khai sai của chính tôi.**
+
+⇒ **Đếm sổ sách thì dùng `count(*)`, không dùng số liệu thống kê.** Và một khẳng định về dữ liệu
+đem đặt vào tài liệu thì phải đo bằng nguồn có thẩm quyền, không phải nguồn tiện tay.
+
+### Bài học 2 — kết quả ĐỒNG LOẠT là dấu hiệu thước đo hỏng
+
+`check-man-rong` lượt đầu ra **12/12 đỏ, cùng một lý do**. Hai lỗi trong chính phép đo:
+`hasText: /\S{25,}/` đòi **25 ký tự liền không dấu cách** (mọi câu tiếng Việt đều có dấu cách ⇒
+không khớp gì, `.first()` rơi vào phần tử khác); và nút đo bằng `locator("button")` toàn trang ⇒
+bắt trúng nút **Thêm của thanh điều hướng** (60px), không phải nút của màn. Sửa: đo **một** phần
+tử, ngay trong `evaluate`, kèm hình học của chính nó. Sau đó **12/12 xanh**.
+
+Cùng họ với 11 ca đã ghi ở §7di và kỷ luật #15. Bổ sung một dấu hiệu nhận biết mới:
+**kết quả đồng loạt giống hệt nhau trên mọi đối tượng gần như luôn là lỗi thước đo, không phải
+lỗi đồng loạt của sản phẩm.**
+
+### Cổng 2 — tiến độ
+
+| Mục | Trạng thái |
+|---|---|
+| ~~Dựng `qt650_video`~~ | ✅ **bỏ** — Chain chốt quay thẳng trên `qt650` |
+| Sáu màn có trạng thái rỗng | ✅ **12/12 xanh** (`check-man-rong.mjs`, mới). Sổ U-05 ghi *"ĐÃ ĐÓNG (Báo cáo · Đề xuất)"* — đọc như 2/6; thực tế **6/6** |
+| Nút Thêm ≥44px | 🟠 đo được 44px ở màn Nhân viên; các màn khác **không có** nút Thêm ⇒ chưa kết luận cả bộ |
+| Màn Đổi mật khẩu | 🟠 **có trong mã** (`cai-dat/page.tsx` + `AppShell`), **chưa mở trình duyệt bấm thử** — không tick |
+| Tài khoản thu ngân | 🟠 **cố ý chưa tạo** — storyboard video 07 cảnh 2 **là** cảnh tạo nó. Tạo trước sẽ làm cảnh đó quay không được (trùng email) |
+| Kịch bản đọc thành tiếng | ⏸️ việc của Chain |
+
+**Kịch bản — cắt pháp lý KHÔNG để lại lỗ.** 7 cảnh bị xoá đều thuộc video 14, xoá trọn video.
+Đánh số cảnh có khoảng trống ở **9/13 video** (thiếu *"Cảnh 2 — làm nhanh một lần"*), nhưng đó là
+**có trước** lần cắt và có vẻ cố ý: mục *"Khuôn chung — sáu bước, dùng cho MỌI video"* cấp phần
+đó một lần. Người đọc to sẽ vấp ở chỗ số nhảy `1 → 3` — đáng chỉnh, không gấp.
+
+### Cổng tại điểm dừng
+
+```
+RUFF=0 FORMAT=0 IMPORTLINTER=18/18 MYPY=0   (hook, 3 lượt)
+check-man-rong        EXIT=0  12/12 (6 màn × 2 khổ) — 3 đột biến: 2 đỏ đúng lý do
+                              + 1 lượt kiểm chính phép tự-kiểm (EXIT=2)
+check-rejected-sales  EXIT=2  "chưa đo được" — và ĐẾM CHỨNG MINH không ghi gì (1→1)
+PYTEST: không chạy — phiên này không đụng tệp .py nào.
+```
+
+🔴 **Lượt đột biến M3 đầu tiên ĐỎ VÌ LÝ DO SAI** (chết ở cổng đăng nhập vì tài khoản `uat650`
+không tồn tại trong `qt650`) — **không tính**, đã làm lại cho đúng. Ghi ra đây vì đúng cái bẫy
+kỷ luật #14 sinh ra để chặn, và lần này nó suýt lọt qua tay chính tôi.
+
+### Điểm dừng
+
+- App chạy trên **`qt650`** · `http://192.168.1.8:3000` · `trinhthu@quaythuoc650.vn`
+  (mật khẩu mới ở `scripts/ui-gates.env`, không vào git).
+- **`qt650` nay sạch: 0 đơn bán, 0 dòng bán, 0 thanh toán.** 70 thuốc, thông tin cơ sở giữ nguyên.
+- `uat650` **vẫn còn** `gate-rejected-0001` — CSDL kiểm thử, không dọn, không ảnh hưởng ai.
+- **Việc tiếp theo:** quay theo thứ tự `02→03→04→05→01→08→06→07→09→10→13→11→12`.
