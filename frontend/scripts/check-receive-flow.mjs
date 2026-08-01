@@ -18,10 +18,8 @@
  * không phải là một phép kiểm đã qua.
  */
 import { firefox, webkit } from "playwright-core";
+import { BASE, EMAIL, PASSWORD } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BERAS_BASE ?? "http://192.168.1.10:3000";
-const EMAIL = process.env.BERAS_EMAIL;
-const PASSWORD = process.env.BERAS_PASSWORD;
 
 if (!EMAIL || !PASSWORD) {
   console.error("Thiếu BERAS_EMAIL / BERAS_PASSWORD trong biến môi trường.");

@@ -18,10 +18,8 @@
  * Chạy:  cd frontend && BERAS_EMAIL=… BERAS_PASSWORD=… npm run check:pos-customer
  */
 import { webkit } from "playwright-core";
+import { BASE, EMAIL, PASSWORD } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BERAS_BASE ?? "http://192.168.1.10:3000";
-const EMAIL = process.env.BERAS_EMAIL;
-const PASSWORD = process.env.BERAS_PASSWORD;
 /** Số điện thoại CÓ THẬT trong CSDL đã seed — cổng cần một ca "tra ra". */
 const KNOWN_PHONE = process.env.BERAS_KNOWN_PHONE ?? "0932567890";
 

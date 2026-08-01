@@ -19,8 +19,8 @@
  * Chạy:  cd frontend && npm run check:browsers
  */
 import { webkit, firefox, devices } from "playwright-core";
+import { BASE } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BASE_URL ?? "http://192.168.1.10:3000";
 /** Màn trong ứng dụng: chưa đăng nhập thì PHẢI bị đẩy về /login, không được trắng. */
 const GUARDED = ["/", "/ton-kho", "/bang-dieu-hanh"];
 

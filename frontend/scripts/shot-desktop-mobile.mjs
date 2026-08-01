@@ -15,10 +15,10 @@
  */
 import { firefox } from "playwright-core";
 import { mkdirSync } from "node:fs";
+import { BASE, EMAIL, PASSWORD, doiDangNhap } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BASE_URL ?? "http://localhost:3000";
-const EMAIL = process.env.EMAIL ?? "kiemthu@bera.vn";
-const PASSWORD = process.env.PASSWORD ?? "KiemThu2026!x";
+doiDangNhap();
+
 const OUT = process.env.OUT_DIR ?? "/tmp/shots";
 
 /** Khổ desktop thật + khung iPhone 13. Không dùng `devices[]` để hai lượt chỉ khác đúng

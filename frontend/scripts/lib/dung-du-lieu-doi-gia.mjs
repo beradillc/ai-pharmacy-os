@@ -15,9 +15,8 @@
  *
  * Dùng:  EMAIL=… PASSWORD=… node scripts/lib/dung-du-lieu-doi-gia.mjs
  */
-const API = process.env.API_URL ?? "http://192.168.1.10:8000/api/v1";
-const EMAIL = process.env.EMAIL ?? process.env.BERAS_EMAIL;
-const PASSWORD = process.env.PASSWORD ?? process.env.BERAS_PASSWORD;
+
+import { API, EMAIL, PASSWORD } from "./moi-truong.mjs";
 
 if (!EMAIL || !PASSWORD) {
   console.error("Thiếu EMAIL / PASSWORD.");

@@ -27,10 +27,8 @@
  * Cần:   máy chủ LAN đang chạy, CSDL đã seed, có ít nhất một thuốc OTC.
  */
 import { webkit } from "playwright-core";
+import { BASE, EMAIL, PASSWORD } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BERAS_BASE ?? "http://192.168.1.10:3000";
-const EMAIL = process.env.BERAS_EMAIL;
-const PASSWORD = process.env.BERAS_PASSWORD;
 const DRUG = process.env.BERAS_DRUG ?? "Berberin";
 
 if (!EMAIL || !PASSWORD) {

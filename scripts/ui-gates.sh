@@ -21,28 +21,54 @@
 #              rác, và không ai nhận ra cho tới lúc đối chiếu doanh thu.
 #
 # Dùng:
+#   cp scripts/ui-gates.env.example scripts/ui-gates.env   # MỘT LẦN — điền tài khoản
 #   ./scripts/ui-gates.sh                  # nhóm đọc-thuần (mặc định, an toàn)
 #   ./scripts/ui-gates.sh --all            # + nhóm ghi, ĐÒI xác nhận CSDL dùng-một-lần
-#   BASE_URL=http://localhost:3000 ./scripts/ui-gates.sh
+#   BASE_URL=http://localhost:3000 ./scripts/ui-gates.sh   # ép địa chỉ khác
 set -uo pipefail
 
-BASE_URL="${BASE_URL:-http://192.168.1.10:3000}"
+GOC="$(cd "$(dirname "$0")/.." && pwd)"
 
-# 🔴 HAI QUY ƯỚC TÊN BIẾN cùng tồn tại — phát hiện ngay lần chạy đầu của chính tệp này
-# (31/07): cổng viết trước dùng `BERAS_EMAIL/BERAS_PASSWORD`, cổng viết sau dùng
-# `EMAIL/PASSWORD`. Chạy tay từng cái thì không ai thấy; gom lại một lệnh thì lộ ngay.
-# Xuất CẢ HAI ở đây thay vì sửa 8 script: chỗ biết thông tin đăng nhập nên có đúng một.
-# Thống nhất tên là việc dọn riêng, không gộp vào lần thay đổi này.
-EMAIL="${EMAIL:-${BERAS_EMAIL:-trinhthu@nhathuoc650.vn}}"
-PASSWORD="${PASSWORD:-${BERAS_PASSWORD:-NhaThuoc650@2026}}"
+# Định nghĩa TRƯỚC mọi lệnh gọi — khối cấu hình bên dưới đã dùng `die`, và một `die` chưa
+# tồn tại thì bash báo "command not found" rồi CHẠY TIẾP với cấu hình sai.
+say() { printf '\n\033[1m▶ %s\033[0m\n' "$1"; }
+die() { printf '\033[31m🔴 %s\033[0m\n' "$1" >&2; exit 2; }
+
+# --- N-4 (02/08): thông tin đăng nhập đọc từ MỘT tệp, không nằm trong mã ------------------
+# Trước hôm nay tệp này mặc định về `trinhthu@nhathuoc650.vn` — một tài khoản **không khớp
+# CSDL nào đang chạy**. Cổng vẫn "chạy": nó đỏ ở màn login, và log đọc y hệt lỗi sản phẩm.
+# Bốn script khác thì ghi cứng mật khẩu THẬT vào mã nguồn, đã vào git.
+# Nay: mật khẩu chỉ đến từ `scripts/ui-gates.env` (gitignore), thiếu thì DỪNG có chỉ dẫn.
+CAU_HINH="$GOC/scripts/ui-gates.env"
+# shellcheck source=/dev/null
+[ -f "$CAU_HINH" ] && set -a && . "$CAU_HINH" && set +a
+
+# 🔴 BỐN QUY ƯỚC TÊN BIẾN cùng tồn tại, gom dần qua ba lần vấp:
+#   31/07 — `BERAS_EMAIL/BERAS_PASSWORD` (cổng viết trước) ⇄ `EMAIL/PASSWORD` (viết sau);
+#   01/08 — `BERAS_BASE` (2 cổng) ⇄ `BASE_URL` (còn lại), và `API_URL` tính ra nhưng KHÔNG
+#           export ⇒ ba cổng âm thầm chạy vào IP cũ, đỏ vì HẠ TẦNG chứ không vì sản phẩm;
+#   02/08 — 30/33 script còn ghi cứng IP mặc định của một ngày đã qua (ba giá trị khác nhau).
+# Nay `frontend/scripts/lib/moi-truong.mjs` là chỗ duy nhất biết; ở đây chỉ xuất ra cho nó.
+EMAIL="${EMAIL:-${BERAS_EMAIL:-}}"
+PASSWORD="${PASSWORD:-${BERAS_PASSWORD:-}}"
+if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ]; then
+  printf '\033[31m🔴 Chưa có tài khoản chạy cổng.\033[0m\n' >&2
+  printf '   cp scripts/ui-gates.env.example scripts/ui-gates.env   (rồi điền tài khoản)\n' >&2
+  exit 2
+fi
 export EMAIL PASSWORD
 export BERAS_EMAIL="$EMAIL" BERAS_PASSWORD="$PASSWORD"
+
+# Địa chỉ: để trống thì suy LAN IP từ card mạng LÚC CHẠY. Một con số ghi cứng chỉ đúng cho
+# cái ngày người ta gõ nó vào — LAN IP đổi theo ngày (§7dg ghi .10, hôm sau đã là .8).
+if [ -z "${BASE_URL:-}" ]; then
+  IP=$(ip -4 -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 \
+       | grep -Ev '^172\.(1[6-9]|2[0-9]|3[01])\.' | sort -r | head -1)
+  [ -n "$IP" ] || die "Không tìm được LAN IP. Đặt tay: BASE_URL=http://<ip>:3000 $0"
+  BASE_URL="http://$IP:3000"
+fi
+BASE_URL="${BASE_URL%/}"
 API_URL="${API_URL:-${BASE_URL%:*}:8000/api/v1}"
-# 🔴 QUY ƯỚC TÊN BIẾN THỨ BA, phát hiện 2026-08-01 khi chạy gom cả bộ: `check-customers` và
-# `check-receive-flow` đọc `BERAS_BASE`, các cổng khác đọc `BASE_URL`, và `API_URL` thì tính
-# ra ở đây nhưng **không hề export**. Hệ quả: ba cổng đó âm thầm chạy vào IP mặc định cũ
-# (192.168.1.10) và đỏ vì HẠ TẦNG, không phải vì sản phẩm — mà đọc log thì trông y hệt nhau.
-# Cùng cách xử đã dùng cho EMAIL/BERAS_EMAIL: xuất CẢ HAI ở đây, chỗ biết địa chỉ có đúng một.
 export BASE_URL API_URL
 export BERAS_BASE="$BASE_URL"
 CHAY_CA_NHOM_GHI=0
@@ -81,9 +107,6 @@ CONG_GHI=(
   check-khoi-tao-ton.mjs    # 🔴 KHỞI TẠO tồn thật, nhập theo kệ (V2 Phase 9-10)
   check-kiem-ke.mjs         # 🔴 KIỂM KÊ: nộp không đụng tồn, duyệt mới đụng (V2 Phase 11)
 )
-
-say() { printf '\n\033[1m▶ %s\033[0m\n' "$1"; }
-die() { printf '\033[31m🔴 %s\033[0m\n' "$1" >&2; exit 2; }
 
 # --- điều kiện cần: ứng dụng phải đang chạy -----------------------------------
 # Hỏng ở đây phải nói rõ PHẢI LÀM GÌ. Một cổng báo lỗi khó hiểu thì lần sau người ta bỏ qua.

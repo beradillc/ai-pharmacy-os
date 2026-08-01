@@ -12,10 +12,8 @@
  * /prescriptions` → `PUT /image`. Bốn lớp đó không lớp nào chứng minh được ba lớp kia.
  */
 import { firefox } from "playwright-core";
+import { BASE, EMAIL, PASSWORD } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BASE_URL ?? "http://192.168.1.10:3000";
-const EMAIL = process.env.EMAIL ?? process.env.BERAS_EMAIL;
-const PASSWORD = process.env.PASSWORD ?? process.env.BERAS_PASSWORD;
 if (!EMAIL || !PASSWORD) { console.error("Thiếu EMAIL / PASSWORD."); process.exit(2); }
 
 /** PNG 2×2 thật (chữ ký `\x89PNG`), không phải chuỗi rác — `createImageBitmap` sẽ từ chối rác. */

@@ -20,10 +20,8 @@ import { firefox } from "playwright-core";
 import { mkdirSync } from "node:fs";
 
 import { cuonNgangTrang, inDong, trongKhungNhin } from "./lib/nhin-thay.mjs";
+import { BASE, EMAIL, PASSWORD } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BASE_URL ?? "http://192.168.1.8:3000";
-const EMAIL = process.env.EMAIL ?? process.env.BERAS_EMAIL;
-const PASSWORD = process.env.PASSWORD ?? process.env.BERAS_PASSWORD;
 const OUT = process.env.OUT_DIR ?? "/tmp/thong-tin-co-so";
 if (!EMAIL || !PASSWORD) {
   console.error("Thiếu EMAIL / PASSWORD.");

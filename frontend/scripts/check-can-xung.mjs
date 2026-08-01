@@ -19,10 +19,8 @@
  *      màn một kiểu.
  */
 import { firefox } from "playwright-core";
+import { BASE, EMAIL, PASSWORD } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BASE_URL ?? "http://192.168.1.10:3000";
-const EMAIL = process.env.EMAIL ?? process.env.BERAS_EMAIL;
-const PASSWORD = process.env.PASSWORD ?? process.env.BERAS_PASSWORD;
 if (!EMAIL || !PASSWORD) {
   console.error("Thiếu EMAIL / PASSWORD.");
   process.exit(2);

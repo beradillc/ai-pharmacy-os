@@ -15,10 +15,10 @@
  *     ở 5/5 bảng; bảng cuộn ngang được là chấp nhận được, cột TÊN bị đẩy khuất thì không.
  */
 import { firefox } from "playwright-core";
+import { BASE, EMAIL, PASSWORD, doiDangNhap } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BASE_URL ?? "http://localhost:3000";
-const EMAIL = process.env.EMAIL ?? "kiemthu@bera.vn";
-const PASSWORD = process.env.PASSWORD ?? "KiemThu2026!x";
+doiDangNhap();
+
 
 const MAN = [
   ["/khach-hang", "Khach-hang"],

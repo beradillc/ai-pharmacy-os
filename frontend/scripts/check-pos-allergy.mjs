@@ -18,10 +18,10 @@
  */
 import { firefox } from "playwright-core";
 import { mkdirSync } from "node:fs";
+import { BASE, EMAIL, PASSWORD, doiDangNhap } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BASE_URL ?? "http://192.168.1.10:3000";
-const EMAIL = process.env.EMAIL ?? "trinhthu@nhathuoc650.vn";
-const PASSWORD = process.env.PASSWORD ?? "NhaThuoc650@2026";
+doiDangNhap();
+
 const OUT = process.env.OUT_DIR ?? "/tmp/pos-allergy";
 
 /** Khách + thuốc CÓ THẬT trên `nt650v2`: hai người khai dị ứng Acid clavulanic, và

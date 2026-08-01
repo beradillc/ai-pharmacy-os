@@ -17,10 +17,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 import { webkit } from "playwright-core";
+import { BASE, EMAIL, PASSWORD } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BERAS_BASE ?? "http://192.168.1.10:3000";
-const EMAIL = process.env.BERAS_EMAIL;
-const PASSWORD = process.env.BERAS_PASSWORD;
 const OUT = process.env.BERAS_OUT;
 const DUR = JSON.parse(readFileSync(process.env.BERAS_DURATIONS, "utf8"));
 

@@ -20,10 +20,8 @@
 const KHACH_DI_UNG = process.env.KHACH_DI_UNG ?? "feaedcb0-93f0-478f-b00b-5e31205e14a0";
 const THUOC_XUNG_DOT = process.env.THUOC_XUNG_DOT ?? "3744d1ca-50bd-45fc-969a-0320dca454e1";
 import { firefox } from "playwright-core";
+import { BASE, EMAIL, PASSWORD } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BASE_URL ?? "http://192.168.1.10:3000";
-const EMAIL = process.env.EMAIL ?? process.env.BERAS_EMAIL;
-const PASSWORD = process.env.PASSWORD ?? process.env.BERAS_PASSWORD;
 if (!EMAIL || !PASSWORD) { console.error("Thiếu EMAIL / PASSWORD."); process.exit(2); }
 
 const b = await firefox.launch();

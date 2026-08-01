@@ -6,9 +6,10 @@
  */
 import { firefox, webkit } from "playwright-core";
 import { writeFileSync, mkdirSync } from "node:fs";
+import { BASE, EMAIL, PASSWORD, doiDangNhap } from "./lib/moi-truong.mjs";
 
-const BASE = process.env.BASE_URL ?? "http://192.168.1.10:3000";
-const EMAIL = process.env.EMAIL, PASSWORD = process.env.PASSWORD;
+doiDangNhap();
+
 const OUT = process.env.OUT_DIR ?? "../docs/testing";
 mkdirSync(`${OUT}/anh`, { recursive: true });
 

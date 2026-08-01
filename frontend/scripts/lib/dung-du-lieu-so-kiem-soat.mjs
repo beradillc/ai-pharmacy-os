@@ -14,9 +14,6 @@
  *
  * Dùng:  EMAIL=… PASSWORD=… node scripts/lib/dung-du-lieu-so-kiem-soat.mjs
  */
-const API = process.env.API_URL ?? "http://192.168.1.8:8000/api/v1";
-const EMAIL = process.env.EMAIL ?? process.env.BERAS_EMAIL;
-const PASSWORD = process.env.PASSWORD ?? process.env.BERAS_PASSWORD;
 
 if (!EMAIL || !PASSWORD) {
   console.error("Thiếu EMAIL / PASSWORD.");
@@ -56,6 +53,8 @@ const luc = (soGioTruoc) =>
  * chứ không phải phiền hà: bán thuốc gây nghiện mà không ghi ai mua là thứ thanh tra hỏi
  * đầu tiên.
  */
+
+import { API, EMAIL, PASSWORD } from "./moi-truong.mjs";
 const BUT_TOAN = [
   {
     drug_id: thuoc[0].id,
