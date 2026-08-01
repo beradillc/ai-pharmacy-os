@@ -48,6 +48,7 @@ CONG_DOC=(
   check-pos-allergy.mjs     # cảnh báo dị ứng ở quầy (Đ-7)
   check-rejected-sales.mjs  # đơn offline bị từ chối KHÔNG được biến mất
   check-danh-muc-thuoc.mjs  # danh mục thuốc + hoạt chất + giá niêm yết
+  check-hoa-don.mjs         # hoá đơn: cửa sổ có ✕ · In gọi mẫu K80 · không in cả trang (P3)
   check-pos-tien.mjs        # quầy: thành tiền · khách đưa · thối lại (đọc thuần)
   check-pos-rx-photo.mjs    # quầy: nút Chụp đơn thuốc hiện đúng lúc (đọc thuần)
   check-luu-tru.mjs         # Cài đặt → Lưu trữ: ảnh chỉ tải khi bấm (ghi audit khi mở)

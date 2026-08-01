@@ -1,0 +1,91 @@
+/* Cửa sổ xem/nhập/sửa chi tiết. Xem `DetailDialog.tsx` để biết vì sao dùng `<dialog>`. */
+
+.hop {
+  /* Bề ngang: vừa màn điện thoại có chừa mép, và không quá rộng trên laptop — một bảng
+     kéo ngang hết màn 1440px thì mắt phải quét cả gang tay để nối đầu dòng với cuối dòng. */
+  width: min(100% - 2 * var(--space-3), 56rem);
+  max-height: 88vh;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--beras-surface);
+  color: var(--beras-text);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.hop::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.dau {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--beras-border);
+  /* Đầu cửa sổ DÍNH lại khi thân cuộn: nút ✕ phải luôn chạm tới được. Một cửa sổ dài mà
+     nút thoát trôi lên trên là cửa sổ người dùng phải cuộn ngược mới ra được — kỷ luật
+     #21, thứ bắt buộc phải chạm tới thì phải nằm trong khung nhìn. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--beras-surface);
+}
+
+.tieuDe {
+  min-width: 0;
+}
+
+.ten {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: 1.3;
+}
+
+.phu {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}
+
+.nut {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.dong {
+  /* `--touch-min` để ngón cái bấm trúng — nút ✕ nhỏ hơn thế là nút bấm ba lần mới trúng. */
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  border: 1px solid var(--beras-border);
+  border-radius: var(--radius-sm);
+  background: var(--beras-surface);
+  color: var(--beras-text);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.than {
+  padding: var(--space-3);
+  overflow-y: auto;
+  /* Chừa mép dưới cho vùng an toàn của iPhone, nếu không dòng cuối nằm dưới thanh cử chỉ. */
+  padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0));
+}
+
+@media (width < 900px) {
+  .hop {
+    /* Trên điện thoại: tấm phủ từ đáy lên, giống giỏ hàng ở quầy — cùng một ngôn ngữ cử
+       chỉ trong cả ứng dụng, không mỗi màn một kiểu. */
+    width: 100%;
+    max-width: 100%;
+    max-height: 92vh;
+    margin: auto auto 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+}

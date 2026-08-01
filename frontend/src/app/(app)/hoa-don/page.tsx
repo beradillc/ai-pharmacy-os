@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { DetailDialog } from "@/components/overlay/DetailDialog";
 import { useDrugNames } from "@/features/catalog/use-drug-names";
 import {
   SALES_PAGE_SIZE,
@@ -9,7 +10,8 @@ import {
   useSaleDetail,
   useSalesList,
 } from "@/features/sales/use-sales-list";
-import { ApiError } from "@/shared/api/errors";
+import { useReceiptPrint } from "@/features/sales/use-receipt-print";
+import { ApiError, thongDiepLoi } from "@/shared/api/errors";
 import { formatMoney, formatQty, formatTime } from "@/shared/format/number";
 import styles from "@/shared/ui/screen.module.css";
 
@@ -46,6 +48,8 @@ export default function InvoicesPage() {
   const rows = data ?? [];
   const detail = useSaleDetail(openId);
   const names = useDrugNames((detail.data?.lines ?? []).map((l) => l.drug_id));
+  const inHoaDon = useReceiptPrint();
+  const [inLoi, setInLoi] = useState<string | null>(null);
 
   const dayTotal = rows
     .filter((r) => r.status !== "CANCELLED")
@@ -181,14 +185,39 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      {openId && (
-        <section className={styles.drawer} aria-label="Chi tiết hoá đơn">
-          <div className={styles.drawerHead}>
-            <h2 className={styles.drawerTitle}>Chi tiết đơn {openId.slice(0, 8)}</h2>
-            <button type="button" className={styles.ghost} onClick={() => window.print()}>
-              In
-            </button>
-          </div>
+      {/* 🔴 Cửa sổ, không phải dải trượt ở CUỐI TRANG (Chain giao 01/08). Bản cũ vẽ chi
+          tiết thành một `section` nằm dưới bảng ⇒ trên điện thoại bấm "Xem" xong phải cuộn
+          hết bảng mới thấy — và không có gì báo là có thứ để cuộn tới. */}
+      <DetailDialog
+        open={openId !== null}
+        title={`Chi tiết đơn ${openId?.slice(0, 8) ?? ""}`}
+        subtitle={detail.data ? `${detail.data.lines.length} dòng` : undefined}
+        onClose={() => {
+          setOpenId(null);
+          setInLoi(null);
+        }}
+        actions={
+          <button
+            type="button"
+            className={styles.ghost}
+            disabled={openId === null || inHoaDon.isPending}
+            onClick={() => {
+              if (openId === null) return;
+              setInLoi(null);
+              inHoaDon.mutate(
+                { saleId: openId },
+                {
+                  onError: (err) => setInLoi(`Không in được — ${thongDiepLoi(err)}`),
+                },
+              );
+            }}
+          >
+            {inHoaDon.isPending ? "Đang tạo…" : "🖨 In"}
+          </button>
+        }
+      >
+        <>
+          {inLoi && <p className={styles.muted}>{inLoi}</p>}
           {detail.isLoading && <div className={styles.skeleton} />}
           {detail.error && (
             <p className={styles.muted}>
@@ -225,8 +254,8 @@ export default function InvoicesPage() {
               </table>
             </div>
           )}
-        </section>
-      )}
+        </>
+      </DetailDialog>
     </div>
   );
 }
