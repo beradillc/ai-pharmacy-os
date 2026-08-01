@@ -69,18 +69,35 @@ def ledger_book_row_to_csv(row: LedgerBookRow) -> list[str]:
     ]
 
 
-def to_book_rows(entries: Iterable[ControlledLedgerEntry]) -> Iterator[LedgerBookRow]:
+def to_book_rows(
+    entries: Iterable[ControlledLedgerEntry],
+    opening: Mapping[UUID, Decimal] | None = None,
+) -> Iterator[LedgerBookRow]:
     """Tính cột (6) "Còn lại" — tồn lũy kế, **cộng dồn riêng cho từng thuốc**.
 
     Mẫu sổ bắt mỗi thuốc một sổ riêng nên tồn lũy kế reset khi sang thuốc khác. Đầu vào
     phải đã sắp theo (thuốc, thời điểm) — đúng thứ tự ``list_for_book`` trả về.
+
+    ``opening`` là **tồn đầu kỳ** từng thuốc (Σ mọi bút toán trước ngày bắt đầu kỳ). Thiếu
+    nó thì mỗi thuốc bắt đầu từ 0.
+
+    🔴 **Bỏ ``opening`` là một lỗi, không phải một lựa chọn** — phát hiện 2026-08-01 khi
+    dựng màn C-03. Bản đầu của hàm này luôn khởi động từ 0, nên kết xuất sổ cho bất kỳ kỳ
+    nào **không bắt đầu từ bút toán đầu tiên** đều cho cột "Còn lại" sai. Màn hình lộ ra
+    ngay ở lượt chạy đầu: một kỳ chỉ chứa một dòng XUẤT 5 hiện **`Còn lại: −5`**. Trên tệp
+    CSV đem trình thanh tra, một sổ thuốc gây nghiện tồn âm đọc như *"đã bán thuốc chưa
+    từng nhập"*.
+
+    Tham số **tuỳ chọn** chứ không bắt buộc (kỷ luật #17): bên gọi cũ và các test đã có giữ
+    nguyên hành vi. Đường thật — ``ComplianceService.ledger_book_rows`` — luôn truyền.
     """
+    opening = opening or {}
     balance = Decimal(0)
     current_drug = None
     for entry in entries:
         if entry.drug_id != current_drug:
             current_drug = entry.drug_id
-            balance = Decimal(0)
+            balance = opening.get(entry.drug_id, Decimal(0))
         is_in = entry.direction is LedgerDirection.NHAP
         balance += entry.quantity if is_in else -entry.quantity
         yield LedgerBookRow(

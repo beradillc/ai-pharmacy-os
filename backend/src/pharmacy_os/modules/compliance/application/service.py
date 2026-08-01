@@ -219,7 +219,12 @@ class ComplianceService:
             entries = await repo.list_for_book(
                 book_type, from_date=from_date, to_date=to_date, drug_id=drug_id
             )
-        return list(to_book_rows(entries))
+            # 🔴 Tồn ĐẦU KỲ, không phải 0. Không có nó thì cột "Còn lại" của mọi kỳ không
+            # bắt đầu từ bút toán đầu tiên đều sai — và ÂM ngay khi kỳ mở đầu bằng một dòng
+            # xuất. Phát hiện 2026-08-01 khi màn C-03 hiện `Còn lại: −5`; cổng cũ không
+            # thấy vì nó so API với API, cả hai cùng sai một kiểu.
+            opening = await repo.opening_balances(book_type, before_date=from_date, drug_id=drug_id)
+        return list(to_book_rows(entries, opening))
 
     async def export_daily_closure(
         self, book_type: LedgerBookType, *, day: date, ctx: RequestContext

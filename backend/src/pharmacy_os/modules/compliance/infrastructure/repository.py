@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -105,6 +105,47 @@ class SqlAlchemyControlledLedgerRepository:
             stmt = stmt.where(ControlledLedgerEntryORM.drug_id == drug_id)
         rows = (await self._session.execute(stmt)).scalars().all()
         return [ledger_entry_to_domain(row) for row in rows]
+
+    async def opening_balances(
+        self,
+        book_type: LedgerBookType,
+        *,
+        before_date: date,
+        drug_id: UUID | None = None,
+    ) -> Mapping[UUID, Decimal]:
+        """Tồn đầu kỳ từng thuốc, tính bằng **SQL** (SUM/CASE + GROUP BY).
+
+        Không load từng dòng lịch sử vào Python: một quầy chạy vài năm có thể có hàng chục
+        nghìn bút toán trước kỳ, và việc duy nhất cần từ chúng là một con số.
+
+        Dùng lại đúng khuôn ``opening_balance`` của :meth:`aggregate_for_period` — cùng ý
+        nghĩa "tồn kỳ trước chuyển sang", chỉ khác cách chia nhóm (theo mẫu sổ TT18 thay vì
+        theo danh mục NĐ163).
+        """
+        categories = [c.value for c in ControlledSubstanceCategory if _book_of(c) is book_type]
+        entry_date = func.date(ControlledLedgerEntryORM.transaction_at)
+        is_nhap = ControlledLedgerEntryORM.direction == LedgerDirection.NHAP.value
+        stmt = (
+            select(
+                ControlledLedgerEntryORM.drug_id,
+                func.sum(
+                    case(
+                        (is_nhap, ControlledLedgerEntryORM.quantity),
+                        else_=-ControlledLedgerEntryORM.quantity,
+                    )
+                ),
+            )
+            .where(
+                ControlledLedgerEntryORM.tenant_id == self._ctx.tenant_id,
+                ControlledLedgerEntryORM.category.in_(categories),
+                entry_date < before_date,
+            )
+            .group_by(ControlledLedgerEntryORM.drug_id)
+        )
+        if drug_id is not None:
+            stmt = stmt.where(ControlledLedgerEntryORM.drug_id == drug_id)
+        rows = (await self._session.execute(stmt)).all()
+        return {r[0]: Decimal(r[1] or 0) for r in rows}
 
     async def aggregate_for_period(
         self,

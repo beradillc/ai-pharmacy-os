@@ -17,6 +17,7 @@ from pharmacy_os.modules.compliance.application.dto import (
     ControlledLedgerEntryOutput,
     CustomerDetailInput,
     DrugReturnRecordOutput,
+    LedgerBookRow,
     LedgerBookSignatureOutput,
     NationalSyncLogOutput,
     PushSyncInput,
@@ -316,6 +317,46 @@ class SignLedgerBookRequest(BaseModel):
             book_date=self.book_date,
             current_password=self.current_password,
             totp_code=self.totp_code,
+        )
+
+
+class LedgerBookRowResponse(BaseModel):
+    """Một dòng mẫu sổ Phụ lục VIII/XVI, dạng JSON — cho **màn hình đọc trên máy**.
+
+    Song song với ``GET …/export`` (CSV) chứ không thay nó, và hai cái phục vụ hai việc
+    khác nhau: CSV là thứ **in ra ký tay** theo mẫu pháp lý, JSON là thứ dược sĩ **soát
+    trước khi in**. Nếu chỉ có CSV thì màn hình phải tự phân tích lại nó — mà thứ tự cột
+    CSV là một chuỗi nối hai thế giới không trình biên dịch nào canh được (kỷ luật #22),
+    và một cột bị chèn thêm sẽ làm cả bảng lệch **im lặng**.
+
+    Không mang tên thuốc: ``compliance`` không được biết lược đồ của ``catalog``. Màn hình
+    tra tên qua ``GET /drugs?ids=…``, cùng khuôn màn Nhật ký tra tên nhân viên.
+    """
+
+    drug_id: UUID
+    transaction_at: datetime
+    source_or_destination: str
+    document_no: str
+    quantity_in: Decimal | None
+    quantity_out: Decimal | None
+    balance: Decimal
+    lot_no: str
+    expiry_date: date
+    note: str | None
+
+    @classmethod
+    def of(cls, row: LedgerBookRow) -> LedgerBookRowResponse:
+        return cls(
+            drug_id=row.drug_id,
+            transaction_at=row.transaction_at,
+            source_or_destination=row.source_or_destination,
+            document_no=row.document_no,
+            quantity_in=row.quantity_in,
+            quantity_out=row.quantity_out,
+            balance=row.balance,
+            lot_no=row.lot_no,
+            expiry_date=row.expiry_date,
+            note=row.note,
         )
 
 

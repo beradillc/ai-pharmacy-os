@@ -23,6 +23,7 @@ from pharmacy_os.modules.compliance.domain import LedgerBookType
 from pharmacy_os.modules.compliance.interface.schemas import (
     ControlledLedgerEntryResponse,
     DrugReturnRecordResponse,
+    LedgerBookRowResponse,
     LedgerBookSignatureResponse,
     NationalSyncLogResponse,
     PushSyncRequest,
@@ -63,6 +64,33 @@ def build_router(get_context: ContextDep) -> APIRouter:
     ) -> ControlledLedgerEntryResponse:
         out = await service.record_controlled_entry(body.to_input(), ctx)
         return ControlledLedgerEntryResponse.of(out)
+
+    @router.get(
+        "/controlled-ledger/books/{book_type}",
+        response_model=list[LedgerBookRowResponse],
+    )
+    async def list_ledger_book(
+        book_type: LedgerBookType,
+        date_from: date = Query(..., description="Từ ngày (bao gồm)"),
+        date_to: date = Query(..., description="Đến ngày (bao gồm)"),
+        drug_id: UUID | None = Query(None, description="Lọc 1 thuốc"),
+        service: ComplianceService = Depends(_compliance_service),
+        ctx: RequestContext = Depends(get_context),
+    ) -> list[LedgerBookRowResponse]:
+        """Sổ theo dõi xuất, nhập, tồn kho dạng **JSON** — cho màn hình đọc (UAT C-03).
+
+        Cùng dữ liệu, cùng quyền ``compliance.ledger.read`` và cùng lời gọi service với
+        ``…/export``; khác ở chỗ ``export`` trả CSV để **in ra ký tay** theo mẫu pháp lý,
+        còn đường này để dược sĩ **soát trên máy trước khi in**.
+
+        🔴 Thêm route mới thay vì đổi ``…/export`` sang trả JSON theo ``Accept``: kỷ luật
+        #17 — ``export`` đã có bên gọi, và đổi kiểu trả về của nó là phá vỡ tương thích
+        theo đúng cách khó thấy nhất (đường dẫn không đổi, mã trạng thái không đổi).
+        """
+        rows = await service.ledger_book_rows(
+            book_type, from_date=date_from, to_date=date_to, drug_id=drug_id, ctx=ctx
+        )
+        return [LedgerBookRowResponse.of(r) for r in rows]
 
     @router.get("/controlled-ledger/books/{book_type}/export")
     async def export_ledger_book(

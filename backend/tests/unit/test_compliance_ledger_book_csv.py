@@ -155,3 +155,64 @@ class TestRenderLedgerBookCsvText:
         rows = list(to_book_rows([_entry(drug, LedgerDirection.NHAP, "5", 4, note="A")]))
         rows_khac = list(to_book_rows([_entry(drug, LedgerDirection.NHAP, "5", 4, note="B")]))
         assert render_ledger_book_csv_text(rows) != render_ledger_book_csv_text(rows_khac)
+
+
+class TestTonDauKy:
+    """Cột "Còn lại" phải cộng tiếp từ **tồn đầu kỳ**, không khởi động lại từ 0.
+
+    🔴 Lỗi thật, phát hiện 2026-08-01 khi dựng màn C-03 (UAT). Bản cũ của
+    :func:`to_book_rows` luôn bắt đầu từ 0 cho mỗi thuốc, nên **mọi** lần kết xuất sổ cho
+    một kỳ không bắt đầu từ bút toán đầu tiên đều cho cột tồn lũy kế sai — và ÂM ngay khi
+    kỳ mở đầu bằng một dòng xuất.
+
+    Vì sao nặng: tệp CSV này là thứ **đem trình thanh tra**. Một sổ thuốc gây nghiện hiện
+    tồn âm đọc như *"đã bán thuốc chưa từng nhập"*. Lỗi im lặng từ Sprint 7 vì không cổng
+    nào so con số ấy với thực tế — cổng đầu tiên tôi viết cho màn C-03 cũng suýt bỏ qua,
+    vì nó so API với API và **cả hai cùng sai một kiểu**.
+    """
+
+    def test_khong_co_ton_dau_ky_thi_am(self) -> None:
+        """Chính là hành vi cũ — giữ lại làm chứng cho vì sao tham số này phải tồn tại."""
+        drug = uuid4()
+        (row,) = to_book_rows([_entry(drug, LedgerDirection.XUAT, "5", 4)])
+        assert row.balance == Decimal("-5")
+
+    def test_ton_dau_ky_duoc_cong_tiep(self) -> None:
+        drug = uuid4()
+        (row,) = to_book_rows([_entry(drug, LedgerDirection.XUAT, "5", 4)], {drug: Decimal("100")})
+        assert row.balance == Decimal("95")
+
+    def test_moi_thuoc_dung_ton_dau_ky_cua_rieng_no(self) -> None:
+        """Mẫu sổ bắt mỗi thuốc một sổ riêng — tồn đầu kỳ cũng phải riêng, không cộng lẫn."""
+        a, b = uuid4(), uuid4()
+        rows = list(
+            to_book_rows(
+                [
+                    _entry(a, LedgerDirection.XUAT, "5", 4),
+                    _entry(b, LedgerDirection.NHAP, "3", 4),
+                ],
+                {a: Decimal("100"), b: Decimal("20")},
+            )
+        )
+        assert [r.balance for r in rows] == [Decimal("95"), Decimal("23")]
+
+    def test_thuoc_khong_co_trong_ton_dau_ky_bat_dau_tu_0(self) -> None:
+        """Thuốc chưa từng có bút toán nào trước kỳ — bắt đầu từ 0, không nổ."""
+        a, b = uuid4(), uuid4()
+        rows = list(
+            to_book_rows(
+                [
+                    _entry(a, LedgerDirection.NHAP, "5", 4),
+                    _entry(b, LedgerDirection.NHAP, "3", 4),
+                ],
+                {a: Decimal("100")},
+            )
+        )
+        assert [r.balance for r in rows] == [Decimal("105"), Decimal("3")]
+
+    def test_ton_dau_ky_rong_giu_nguyen_hanh_vi_cu(self) -> None:
+        """Tham số tuỳ chọn (kỷ luật #17): bên gọi cũ không truyền gì thì không đổi gì."""
+        drug = uuid4()
+        (a,) = to_book_rows([_entry(drug, LedgerDirection.NHAP, "5", 4)])
+        (b,) = to_book_rows([_entry(drug, LedgerDirection.NHAP, "5", 4)], {})
+        assert a.balance == b.balance == Decimal("5")

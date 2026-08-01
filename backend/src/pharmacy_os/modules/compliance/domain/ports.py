@@ -6,7 +6,7 @@ catalog/inventory/sales/prescription directly).
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
@@ -67,6 +67,28 @@ class ControlledLedgerRepository(Protocol):
 
         Sắp theo thuốc trước vì mẫu sổ pháp lý yêu cầu **mỗi thuốc một sổ riêng**
         (ghi chú Phụ lục VIII), và cột "Còn lại" là tồn lũy kế trong phạm vi từng thuốc.
+        """
+        ...
+
+    async def opening_balances(
+        self,
+        book_type: LedgerBookType,
+        *,
+        before_date: date,
+        drug_id: UUID | None = None,
+    ) -> Mapping[UUID, Decimal]:
+        """Tồn **đầu kỳ** của từng thuốc: Σnhập − Σxuất của mọi bút toán TRƯỚC ``before_date``.
+
+        🔴 Vì sao bắt buộc phải có (phát hiện 2026-08-01 khi dựng màn C-03): cột "Còn lại"
+        vốn được tính bằng cách cộng dồn **chỉ những dòng trong kỳ đã lọc**, khởi động từ 0.
+        Nghĩa là mọi lần kết xuất sổ cho một kỳ không bắt đầu từ bút toán đầu tiên đều cho
+        ra một cột tồn lũy kế **sai**, và có thể **ÂM** — trên tệp CSV đem trình thanh tra,
+        một sổ thuốc gây nghiện tồn âm đọc như *"đã bán thuốc chưa từng nhập"*.
+
+        Mẫu sổ giấy vốn luôn có dòng *tồn đầu kỳ*; bản điện tử thiếu đúng dòng đó.
+
+        Thuốc không có bút toán nào trước kỳ thì **không có mặt** trong kết quả — khác với
+        có mặt với giá trị 0, và bên gọi không cần phân biệt (cả hai đều bắt đầu từ 0).
         """
         ...
 
