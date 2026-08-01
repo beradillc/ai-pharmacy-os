@@ -90,3 +90,10 @@
   justify-content: flex-end;
   margin-top: var(--space-4);
 }
+
+/* Số lô là thông tin PHỤ dưới tên thuốc (Chain giao 01/08) — xem ghi chú cùng tên ở
+   `kiem-ke/page.module.css`. */
+.soLo {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}

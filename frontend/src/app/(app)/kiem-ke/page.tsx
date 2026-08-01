@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { useAuthStore } from "@/features/auth/auth-store";
+import { useDrugNames } from "@/features/catalog/use-drug-names";
 import {
   NHAN_TRANG_THAI,
   useApproveCount,
@@ -17,6 +18,8 @@ import { useLocations, useStockAtLocation } from "@/features/location/use-locati
 import { ApiError } from "@/shared/api/errors";
 import type { StockCount } from "@/shared/api/types";
 import styles from "@/shared/ui/screen.module.css";
+
+import { TabManGop } from "@/components/layout/TabManGop";
 
 import local from "./page.module.css";
 
@@ -37,6 +40,11 @@ import local from "./page.module.css";
  *    với nhóm khách hàng đông nhất. Thay vào đó hiện **cả hai tên** để trùng nhau thì
  *    nhìn ra được.
  */
+const TAB_KHO = [
+  { href: "/so-do-kho", nhan: "Sơ đồ kho" },
+  { href: "/kiem-ke", nhan: "Kiểm kê" },
+] as const;
+
 export default function StockCountPage() {
   const quyen = new Set(useAuthStore((s) => s.session)?.permissions ?? []);
   const demDuoc = quyen.has("inventory.receive");
@@ -69,6 +77,7 @@ export default function StockCountPage() {
           </p>
         </div>
       </div>
+      <TabManGop tabs={TAB_KHO} />
 
       {demDuoc && <MoPhien onMo={setDangMo} />}
 
@@ -202,6 +211,10 @@ function ChiTietPhien({
   const o = (locs.data ?? []).find((l) => l.id === p?.location_id);
   // Nạp sẵn lô đang nằm trong ô — người đếm không phải nhớ ô có gì.
   const trongO = useStockAtLocation(p?.location_id ?? null);
+  // `inventory` không được import `catalog`, nên dòng tồn chỉ có `drug_id`. Tên thuốc gắn
+  // ở tầng màn hình bằng hook đã có sẵn (màn Hoá đơn dùng từ Sprint 10) — không dựng hook
+  // thứ hai cho cùng một việc.
+  const tenThuoc = useDrugNames((trongO.data ?? []).map((r) => r.drug_id));
 
   if (!p) {
     return (
@@ -245,7 +258,10 @@ function ChiTietPhien({
         <table className={`${styles.table} ${local.bangThe}`} data-testid="bang-dem">
           <thead>
             <tr>
-              <th>Số lô</th>
+              {/* 🔴 Chain giao 01/08: xem hàng phải là TÊN THUỐC, không phải số lô. Người
+                  đếm cầm hộp thuốc trên tay và đối chiếu bằng tên — số lô chỉ để phân biệt
+                  hai hộp cùng tên, nên nó là thông tin PHỤ, đặt dưới tên. */}
+              <th>Thuốc</th>
               <th>Hạn dùng</th>
               <th className={styles.num}>Đếm được</th>
               <th className={styles.num}>Sổ ghi</th>
@@ -256,6 +272,7 @@ function ChiTietPhien({
             {(trongO.data ?? []).map((r) => (
               <DongDem
                 key={r.batch_id}
+                ten={tenThuoc.nameOf(r.drug_id)}
                 lot={r.lot_no}
                 hsd={r.expiry_date}
                 dong={daDem.get(r.batch_id) ?? null}
@@ -325,12 +342,16 @@ function ChiTietPhien({
 }
 
 function DongDem({
+  ten,
   lot,
   hsd,
   dong,
   doiDuoc,
   onGhi,
 }: {
+  /** `null` khi danh mục chưa tải xong hoặc mặt hàng đã bị xoá — hiện mã rút gọn thay vì
+   *  một ô trống, để người đếm còn biết mình đang đối chiếu cái gì. */
+  ten: string | null;
   lot: string;
   hsd: string;
   dong: { counted_qty: string; system_qty: string | null; lech: string | null } | null;
@@ -342,7 +363,10 @@ function DongDem({
 
   return (
     <tr>
-      <td data-nhan="Số lô" className={styles.mono}>{lot}</td>
+      <td data-nhan="Thuốc">
+        <div>{ten ?? "—"}</div>
+        <div className={`${styles.mono} ${local.soLo}`}>Lô {lot}</div>
+      </td>
       <td data-nhan="Hạn dùng">{new Date(hsd).toLocaleDateString("vi-VN")}</td>
       <td data-nhan="Đếm được" className={styles.num}>
         {doiDuoc ? (

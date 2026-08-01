@@ -80,6 +80,52 @@ describe("mục đang chọn", () => {
   });
 });
 
+describe("hai màn gộp một mục menu (Chain giao 2026-08-01)", () => {
+  it("mục gộp SÁNG LÊN ở cả hai màn của nó", () => {
+    // Không thì người dùng đang ở /kiem-ke mà menu không tô sáng gì — họ mất dấu mình
+    // đang đứng ở đâu, đúng thứ mô hình điều hướng này sinh ra để tránh.
+    const kho = NAV.find((i) => i.href === "/so-do-kho")!;
+    expect(isActive(kho, "/so-do-kho")).toBe(true);
+    expect(isActive(kho, "/kiem-ke")).toBe(true);
+    expect(isActive(kho, "/ton-kho")).toBe(false);
+
+    const nhap = NAV.find((i) => i.href === "/nhap-nhanh")!;
+    expect(isActive(nhap, "/khoi-tao-ton")).toBe(true);
+    expect(isActive(nhap, "/")).toBe(false);
+  });
+
+  it("KHÔNG màn nào mất lối vào khi gộp", () => {
+    // 🔴 Tính chất thật sự đáng canh. Gộp menu là xoá bớt dòng khỏi NAV, và một dòng bị
+    // xoá nhầm nghĩa là một màn còn sống nhưng KHÔNG CÒN CỬA NÀO VÀO — `tsc` không bắt
+    // được, `build` không bắt được, và không ai nhận ra cho tới lúc cần dùng màn đó.
+    const coLoiVao = new Set(NAV.flatMap((i) => [i.href, ...(i.alsoActiveFor ?? [])]));
+    for (const man of [
+      "/",
+      "/bang-dieu-hanh",
+      "/hoa-don",
+      "/khach-hang",
+      "/ton-kho",
+      "/danh-muc-thuoc",
+      "/nhap-nhanh",
+      "/khoi-tao-ton",
+      "/kiem-ke",
+      "/so-do-kho",
+      "/don-mua-hang",
+      "/de-xuat-dat-hang",
+      "/bao-cao",
+      "/nhan-vien",
+      "/cai-dat",
+    ]) {
+      expect(coLoiVao).toContain(man);
+    }
+  });
+
+  it("màn gộp KHÔNG xuất hiện hai lần trên menu", () => {
+    const hrefs = new Set(NAV.map((i) => i.href));
+    for (const i of NAV) for (const p of i.alsoActiveFor ?? []) expect(hrefs).not.toContain(p);
+  });
+});
+
 describe("tính toàn vẹn của bảng NAV", () => {
   it("không trùng href", () => {
     const hrefs = NAV.map((i) => i.href);

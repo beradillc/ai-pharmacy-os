@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { useAuthStore } from "@/features/auth/auth-store";
+import { useDrugNames } from "@/features/catalog/use-drug-names";
 import {
   NHAN_TANG,
   TANG_DUOI,
@@ -14,6 +15,8 @@ import {
 import { ApiError } from "@/shared/api/errors";
 import type { StorageLocation } from "@/shared/api/types";
 import styles from "@/shared/ui/screen.module.css";
+
+import { TabManGop } from "@/components/layout/TabManGop";
 
 import local from "./page.module.css";
 
@@ -32,6 +35,11 @@ import local from "./page.module.css";
  *    không. Chặn ở đây chỉ để đỡ một lượt đi mạng chắc chắn bị từ chối — cưỡng chế thật
  *    nằm ở máy chủ.
  */
+const TAB_KHO = [
+  { href: "/so-do-kho", nhan: "Sơ đồ kho" },
+  { href: "/kiem-ke", nhan: "Kiểm kê" },
+] as const;
+
 export default function WarehouseMapPage() {
   const quyen = new Set(useAuthStore((s) => s.session)?.permissions ?? []);
   const coQuyenSua = quyen.has("location.write");
@@ -64,6 +72,7 @@ export default function WarehouseMapPage() {
           </p>
         </div>
       </div>
+      <TabManGop tabs={TAB_KHO} />
 
       <div className={styles.controls}>
         {coQuyenSua && (
@@ -298,6 +307,9 @@ function ThemViTri({ cha, onClose }: { cha: StorageLocation | null; onClose: () 
 function TrongO({ o, onClose }: { o: StorageLocation; onClose: () => void }) {
   const ds = useStockAtLocation(o.id);
   const rows = ds.data ?? [];
+  // Chain giao 01/08: xem trong ô phải thấy TÊN THUỐC. `location` không import `catalog`,
+  // nên tên gắn ở tầng màn hình — cùng hook màn Hoá đơn và màn Kiểm kê đang dùng.
+  const tenThuoc = useDrugNames(rows.map((r) => r.drug_id));
 
   return (
     <section className={styles.drawer} aria-label={`Hàng trong ${o.path}`}>
@@ -313,14 +325,14 @@ function TrongO({ o, onClose }: { o: StorageLocation; onClose: () => void }) {
       ) : rows.length === 0 ? (
         <p className={styles.hint}>
           Chỗ này chưa có hàng. Cất hàng vào từ màn <strong>Kho</strong> — mỗi lô có nút
-          &ldquo;Cất vào ô&rdquo;.
+          &ldquo;Sắp xếp&rdquo;.
         </p>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Số lô</th>
+                <th>Thuốc</th>
                 <th>Hạn dùng</th>
                 <th className={styles.num}>Số lượng</th>
               </tr>
@@ -328,7 +340,10 @@ function TrongO({ o, onClose }: { o: StorageLocation; onClose: () => void }) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.batch_id}>
-                  <td className={styles.mono}>{r.lot_no}</td>
+                  <td>
+                    <div>{tenThuoc.nameOf(r.drug_id) ?? "—"}</div>
+                    <div className={`${styles.mono} ${local.soLo}`}>Lô {r.lot_no}</div>
+                  </td>
                   <td>{new Date(r.expiry_date).toLocaleDateString("vi-VN")}</td>
                   <td className={styles.num}>{Number(r.quantity).toLocaleString("vi-VN")}</td>
                 </tr>

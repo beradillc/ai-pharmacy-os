@@ -9,6 +9,8 @@ import { apiFetch } from "@/shared/api/client";
 import { ApiError } from "@/shared/api/errors";
 import styles from "@/shared/ui/screen.module.css";
 
+import { TabManGop } from "@/components/layout/TabManGop";
+
 import local from "./page.module.css";
 
 /**
@@ -32,6 +34,11 @@ import local from "./page.module.css";
  * 🔴 Và nó gọi `POST /inventory/initialize`, KHÔNG phải `/receive`: xem
  * `ReceiveStockInput.is_initial` về việc vì sao trộn hai thứ làm hỏng giá vốn bình quân.
  */
+const TAB_NHAP = [
+  { href: "/nhap-nhanh", nhan: "Nhập hàng nhanh" },
+  { href: "/khoi-tao-ton", nhan: "Khởi tạo tồn kho" },
+] as const;
+
 export default function StockInitPage() {
   const quyen = new Set(useAuthStore((s) => s.session)?.permissions ?? []);
   const coQuyen = quyen.has("inventory.receive");
@@ -79,6 +86,7 @@ export default function StockInitPage() {
           </p>
         </div>
       </div>
+      <TabManGop tabs={TAB_NHAP} />
 
       {loi && (
         <div className={styles.error} role="alert">

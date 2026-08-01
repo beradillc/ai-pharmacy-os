@@ -155,7 +155,7 @@ export default function StockPage() {
                             className={styles.ghost}
                             onClick={() => setDangCat(row)}
                           >
-                            Cất vào ô
+                            Sắp xếp
                           </button>
                         )}
                       </td>
@@ -258,7 +258,7 @@ function CatVaoO({ row, onClose }: { row: StockRow; onClose: () => void }) {
               value={qty}
               onChange={(e) => setQty(e.target.value)}
               placeholder={`Số lượng (tồn ${formatQty(row.quantity)})`}
-              aria-label="Số lượng cất vào ô"
+              aria-label="Số lượng sắp xếp vào ô"
             />
             <button
               type="button"
@@ -276,7 +276,7 @@ function CatVaoO({ row, onClose }: { row: StockRow; onClose: () => void }) {
                   // Hiện số CHƯA XẾP ngay tại chỗ: người vừa cất cần biết còn bao nhiêu
                   // nữa, và giấu con số đó là để họ tưởng đã xong.
                   setXong(
-                    `Đã cất ${formatQty(kq.quantity)} vào ${kq.location_path}. ` +
+                    `Đã sắp xếp ${formatQty(kq.quantity)} vào ${kq.location_path}. ` +
                       `Còn ${formatQty(kq.chua_xep_o)} chưa xếp ô.`,
                   );
                   setQty("");
@@ -289,7 +289,7 @@ function CatVaoO({ row, onClose }: { row: StockRow; onClose: () => void }) {
                 }
               }}
             >
-              {cat.isPending ? "Đang cất…" : "Cất vào ô"}
+              {cat.isPending ? "Đang sắp xếp…" : "Sắp xếp"}
             </button>
           </label>
         </>

@@ -7,7 +7,7 @@
  *   1. màn có đủ ô nhập, KHÔNG đòi đơn mua hàng nào;
  *   2. nhận xong hiện lại dòng vừa nhận (người đứng nhập cần thấy mình vừa làm gì,
  *      nếu không họ nhập một lô hai lần mà không biết);
- *   3. ô "Thuốc" và "Cất vào ô" GIỮ NGUYÊN sau khi lưu — nhận nhiều lô cùng mặt hàng vào
+ *   3. ô "Thuốc" và "Sắp xếp" GIỮ NGUYÊN sau khi lưu — nhận nhiều lô cùng mặt hàng vào
  *      cùng một ô là ca thường gặp nhất;
  *   4. ra quầy thấy chỗ lấy NGAY, không phải qua bước cất hàng riêng.
  */
@@ -59,9 +59,9 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   await p.locator('input[aria-label="Số lượng nhập"]').fill("7");
   await p.locator('input[aria-label="Số lô"]').fill(`NN${N}`);
   await p.locator('input[aria-label="Hạn dùng"]').fill("2027-06-30");
-  const vO = await p.locator('select[aria-label="Cất vào ô"] option')
+  const vO = await p.locator('select[aria-label="Sắp xếp vào ô"] option')
     .filter({ hasText: `${khoMa}/${oMa}` }).first().getAttribute("value");
-  await p.selectOption('select[aria-label="Cất vào ô"]', vO);
+  await p.selectOption('select[aria-label="Sắp xếp vào ô"]', vO);
   await p.locator("button", { hasText: /^Nhận vào kho$/ }).click();
   await p.waitForTimeout(3000);
 
@@ -69,7 +69,7 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   const daNhan = await p.locator('[data-testid="da-nhan"]').innerText().catch(() => "");
   const hienDaNhan = daNhan.includes(`${khoMa}/${oMa}`);
   const giuThuoc = (await p.locator('select[aria-label="Chọn thuốc"]').inputValue()) === vThuoc;
-  const giuO = (await p.locator('select[aria-label="Cất vào ô"]').inputValue()) === vO;
+  const giuO = (await p.locator('select[aria-label="Sắp xếp vào ô"]').inputValue()) === vO;
 
   await p.screenshot({ path: `${OUT}/${ten}-1-nhap-nhanh.png`, fullPage: true });
 

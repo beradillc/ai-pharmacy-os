@@ -35,6 +35,17 @@ export interface NavItem {
    * Giữ nó nguyên vẹn cũng là cách thêm màn mới mà màn Tổng quan không đổi.
    */
   quickAction?: boolean;
+  /**
+   * Đường dẫn KHÁC cũng làm mục này sáng lên — dùng cho hai màn được gộp thành một mục
+   * menu (Chain giao 01/08).
+   *
+   * 🔴 Vì sao gộp bằng cách này chứ không dựng một route mới `/nhap-hang` chứa hai tab:
+   * kỷ luật #17 cấm đổi tên route cũ, và bốn đường dẫn `/nhap-nhanh` `/khoi-tao-ton`
+   * `/kiem-ke` `/so-do-kho` đang nằm trong dấu trang, trong tài liệu, và trong **tám cổng
+   * trình duyệt**. Gộp là việc của MENU — hai màn vẫn là hai màn, chỉ vào chung một cửa và
+   * có dải tab chuyển qua lại. Không có route nào chết, không có gì phải chuyển hướng.
+   */
+  alsoActiveFor?: readonly string[];
   /** Tên icon — xem `components/layout/NavIcon.tsx`. */
   icon: NavIconName;
 }
@@ -134,42 +145,32 @@ export const NAV: readonly NavItem[] = [
   },
   {
     href: "/nhap-nhanh",
-    label: "Nhập hàng nhanh",
-    short: "Nhập nhanh",
+    label: "Nhập hàng",
+    short: "Nhập",
     permission: "inventory.receive",
     group: "kho",
     primary: false,
+    // Gộp với `/khoi-tao-ton` (Chain giao 01/08): hai màn cùng một việc — đưa hàng vào ô —
+    // khác nhau ở chỗ hàng đến từ nhà cung cấp hay đã nằm sẵn trên kệ từ trước.
+    alsoActiveFor: ["/khoi-tao-ton"],
     icon: "receive",
-  },
-  {
-    href: "/khoi-tao-ton",
-    label: "Khởi tạo tồn kho",
-    short: "Khởi tạo",
-    permission: "inventory.receive",
-    group: "kho",
-    primary: false,
-    icon: "receive",
-  },
-  {
-    href: "/kiem-ke",
-    label: "Kiểm kê",
-    short: "Kiểm kê",
-    // `inventory.read` chứ không `inventory.reconcile`: người đếm và người duyệt là hai
-    // vai khác nhau, và người đếm phải vào được màn này. Nút Duyệt bên trong mới gác quyền.
-    permission: "inventory.read",
-    group: "kho",
-    primary: false,
-    icon: "warehouse-map",
   },
   {
     href: "/so-do-kho",
-    label: "Sơ đồ kho",
+    label: "Sơ đồ & Kiểm kê",
     short: "Sơ đồ",
     // `location.read` chứ không `location.write`: ai đứng quầy cũng cần biết thuốc nằm ở
     // đâu. Nút dựng sơ đồ bên trong mới cần `location.write`.
+    //
+    // 🔴 Gác quyền theo màn ĐƯỢC VÀO ĐẦU TIÊN. `/so-do-kho` đứng trước vì nó là màn
+    // ĐỌC — biết thuốc nằm ở đâu — còn kiểm kê là một việc phải mở phiên. Ai chỉ có
+    // `inventory.read` mà thiếu `location.read` sẽ KHÔNG thấy mục này; đó là mất mát
+    // thật, nhưng mọi vai chạm tới kho trong `system_roles.py` đều có cả hai, và một
+    // mục menu dẫn tới màn sẽ-403 còn tệ hơn. Ghi ra đây để phiên sau không phải đoán.
     permission: "location.read",
     group: "kho",
     primary: false,
+    alsoActiveFor: ["/kiem-ke"],
     icon: "warehouse-map",
   },
   {
@@ -254,5 +255,5 @@ export function overflowNavItems(permissions: readonly string[]): NavItem[] {
  * bằng `"/"` ⇒ `startsWith` sẽ tô sáng "Bán hàng" ở mọi màn.
  */
 export function isActive(item: NavItem, pathname: string): boolean {
-  return item.href === pathname;
+  return item.href === pathname || (item.alsoActiveFor?.includes(pathname) ?? false);
 }

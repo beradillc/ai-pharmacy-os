@@ -67,20 +67,29 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   // bằng nhau, thứ tự do đường đi rồi tới đường dẫn quyết. Cái sai là kỳ vọng "ô của lượt
   // này phải đứng đầu". Tách lô ra là cách sửa đúng: mỗi khổ đo trên dữ liệu của chính nó.
   await p.goto(`${BASE}/ton-kho`, { waitUntil: "load" }); await p.waitForTimeout(3000);
-  const hangDau = p.locator("tbody tr").nth(mob ? 1 : 0);
+  // 🔴 KHÔNG chọn dòng bằng `nth(0)`/`nth(1)`. Cách cũ chọn mù theo vị trí, và trên một CSDL
+  // đã chạy vài lượt thì dòng đầu là lô **đã xếp hết vào ô** (FEFO đẩy lô sắp hết hạn lên
+  // đầu, mà lô đó chính là lô các lượt trước vừa cất) ⇒ không còn gì để sắp xếp, máy chủ từ
+  // chối ĐÚNG, và cổng đỏ vì **kỳ vọng sai** chứ không vì sản phẩm hỏng. Đã kiểm chứng bằng
+  // cách chạy lại trên cây trước P2: `BASELINE_EXIT=1`, hỏng y hệt.
+  //
+  // Chọn theo TÊN, mỗi khổ một mặt hàng riêng — vẫn giữ được điều kiện "hai khổ hai lô khác
+  // nhau" mà chú thích trên đòi, nhưng nay là lựa chọn xác định, không phụ thuộc thứ tự.
+  const matHang = mob ? "Berberin 100mg" : "Paracetamol 500mg";
+  const hangDau = p.locator("tbody tr").filter({ hasText: matHang }).first();
   const tenThuoc = (await hangDau.locator("td").first().innerText()).trim();
-  await hangDau.locator("button", { hasText: /^Cất vào ô$/ }).click();
+  await hangDau.locator("button", { hasText: /^Sắp xếp$/ }).click();
   await p.waitForTimeout(1500);
 
   // `selectOption` không nhận RegExp cho label — chọn theo VALUE lấy từ DOM.
   const oValue = await p.locator('select[aria-label="Chọn ô"] option')
     .filter({ hasText: `${khoMa}/${oMa}` }).first().getAttribute("value");
   await p.selectOption('select[aria-label="Chọn ô"]', oValue);
-  await p.locator('input[aria-label="Số lượng cất vào ô"]').fill("2");
-  await p.locator("button", { hasText: /^Cất vào ô$/ }).last().click();
+  await p.locator('input[aria-label="Số lượng sắp xếp vào ô"]').fill("2");
+  await p.locator("button", { hasText: /^Sắp xếp$/ }).last().click();
   await p.waitForTimeout(2500);
 
-  const thongBao = await p.locator("text=/Đã cất/").first().innerText().catch(() => "");
+  const thongBao = await p.locator("text=/Đã sắp xếp/").first().innerText().catch(() => "");
   // Mệnh đề ①: màn hình phải NÓI RA số chưa xếp ô.
   const noiChuaXep = /chưa xếp ô/i.test(thongBao);
 

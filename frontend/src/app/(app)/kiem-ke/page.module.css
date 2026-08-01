@@ -21,6 +21,13 @@
   color: var(--beras-danger, #b42318);
 }
 
+/* Số lô là thông tin PHỤ dưới tên thuốc (Chain giao 01/08): nó chỉ dùng để phân biệt hai
+   hộp cùng tên, còn thứ người đếm cầm trên tay và đối chiếu là cái TÊN. */
+.soLo {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}
+
 .aiLam {
   font-size: var(--text-sm);
   color: var(--beras-text-muted);

@@ -1,0 +1,30 @@
+/* Dải tab của hai màn gộp chung một mục menu. Cố ý KHÔNG cuộn ngang: chỉ có hai tab, và
+   kỷ luật #21 nói thứ người dùng phải nhìn thấy mới làm việc được thì phải nằm trong khung
+   nhìn — một tab phải vuốt mới thấy là một tab không tồn tại. */
+.dai {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.tab {
+  flex: 1 1 0;
+  /* Đủ rộng để chạm bằng ngón cái, và `min-width: 0` để hai tab CHIA ĐỀU thay vì tab có
+     nhãn dài hơn đẩy tab kia ra ngoài màn 390px. */
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  text-align: center;
+  border: 1px solid var(--beras-border);
+  border-radius: var(--radius-sm);
+  background: var(--beras-surface);
+  color: var(--beras-text-muted);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.tabDangO {
+  border-color: var(--beras-primary, #14532d);
+  color: var(--beras-text);
+  font-weight: 600;
+}
