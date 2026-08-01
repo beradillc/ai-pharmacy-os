@@ -1,0 +1,3612 @@
+[
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/",
+    "ten": "Bán hàng",
+    "soNut": 73,
+    "nut": [
+      "Đăng xuất",
+      "Thêm",
+      "✕"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc theo tên hoặc quét mã vạch..."
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 2558,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/bang-dieu-hanh",
+    "ten": "Tổng quan",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Xuất CSV",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 619,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/hoa-don",
+    "ten": "Hoá đơn",
+    "soNut": 7,
+    "nut": [
+      "Đăng xuất",
+      "Hôm nay",
+      "Trước",
+      "Sau",
+      "🖨 In",
+      "✕",
+      "Thêm"
+    ],
+    "soONhap": 2,
+    "oNhap": [
+      "Từ ngày",
+      "Đến ngày"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 235,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/khach-hang",
+    "ten": "Khách hàng",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Thêm khách",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm khách theo số điện thoại, hoặc lọc theo tên"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 244,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/ton-kho",
+    "ten": "Kho",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Chỉ lô cận hạn",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo tên thuốc hoặc số lô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 243,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/danh-muc-thuoc",
+    "ten": "Danh mục thuốc",
+    "soNut": 142,
+    "nut": [
+      "Đăng xuất",
+      "Sửa giá",
+      "Hoạt chất",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc"
+    ],
+    "soDongBang": 70,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 4437,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/nhap-nhanh",
+    "ten": "Nhập hàng",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Nhận vào kho",
+      "Thêm"
+    ],
+    "soONhap": 6,
+    "oNhap": [
+      "Chọn thuốc",
+      "Số lượng nhập",
+      "Số lô",
+      "Hạn dùng",
+      "Giá vốn",
+      "Sắp xếp vào ô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 351,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/khoi-tao-ton",
+    "ten": "Khởi tạo tồn",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu đếm ô này",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô đang đếm"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 330,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/kiem-ke",
+    "ten": "Kiểm kê",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu kiểm ô này",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô để kiểm kê"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 304,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/so-do-kho",
+    "ten": "Sơ đồ kho",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "+ Thêm kho",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Hiện cả vị trí đã ngừng"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 397,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/don-mua-hang",
+    "ten": "Đơn mua hàng",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo trạng thái"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 212,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/de-xuat-dat-hang",
+    "ten": "Đề xuất đặt hàng",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Tính lại",
+      "Đang mở",
+      "Đã bỏ qua",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Tính lại=36px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 171,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/bao-cao",
+    "ten": "Báo cáo",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Tải CSV",
+      "Thêm"
+    ],
+    "soONhap": 3,
+    "oNhap": [
+      "date",
+      "select-one"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 578,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/nhan-vien",
+    "ten": "Nhân viên",
+    "soNut": 7,
+    "nut": [
+      "Đăng xuất",
+      "Thêm nhân viên",
+      "Vai trò",
+      "Tắt",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 1,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 329,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/cai-dat",
+    "ten": "Cài đặt",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "BERAS Classic\nĐang dùng\nGiao diện gốc — xanh rừng, nền giấy tái sinh.",
+      "BERAS Warm\nTông ấm — coral, hổ phách, nền trắng ngà.",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 568,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-doc",
+    "duong": "/cai-dat/luu-tru",
+    "ten": "Lưu trữ",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 392,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/",
+    "ten": "Bán hàng",
+    "soNut": 73,
+    "nut": [
+      "Đăng xuất",
+      "Thêm",
+      "✕"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc theo tên hoặc quét mã vạch..."
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 2558,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/bang-dieu-hanh",
+    "ten": "Tổng quan",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Xuất CSV",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 619,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/hoa-don",
+    "ten": "Hoá đơn",
+    "soNut": 7,
+    "nut": [
+      "Đăng xuất",
+      "Hôm nay",
+      "Trước",
+      "Sau",
+      "🖨 In",
+      "✕",
+      "Thêm"
+    ],
+    "soONhap": 2,
+    "oNhap": [
+      "Từ ngày",
+      "Đến ngày"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 235,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/khach-hang",
+    "ten": "Khách hàng",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Thêm khách",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm khách theo số điện thoại, hoặc lọc theo tên"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 244,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/ton-kho",
+    "ten": "Kho",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Chỉ lô cận hạn",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo tên thuốc hoặc số lô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 243,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/danh-muc-thuoc",
+    "ten": "Danh mục thuốc",
+    "soNut": 142,
+    "nut": [
+      "Đăng xuất",
+      "Sửa giá",
+      "Hoạt chất",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc"
+    ],
+    "soDongBang": 70,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 4412,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/nhap-nhanh",
+    "ten": "Nhập hàng",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Nhận vào kho",
+      "Thêm"
+    ],
+    "soONhap": 6,
+    "oNhap": [
+      "Chọn thuốc",
+      "Số lượng nhập",
+      "Số lô",
+      "Hạn dùng",
+      "Giá vốn",
+      "Sắp xếp vào ô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 351,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/khoi-tao-ton",
+    "ten": "Khởi tạo tồn",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu đếm ô này",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô đang đếm"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 330,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/kiem-ke",
+    "ten": "Kiểm kê",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu kiểm ô này",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô để kiểm kê"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 304,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/so-do-kho",
+    "ten": "Sơ đồ kho",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "+ Thêm kho",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Hiện cả vị trí đã ngừng"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 397,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/don-mua-hang",
+    "ten": "Đơn mua hàng",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo trạng thái"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 212,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/de-xuat-dat-hang",
+    "ten": "Đề xuất đặt hàng",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Tính lại",
+      "Đang mở",
+      "Đã bỏ qua",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Tính lại=36px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 171,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/bao-cao",
+    "ten": "Báo cáo",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Tải CSV",
+      "Thêm"
+    ],
+    "soONhap": 3,
+    "oNhap": [
+      "date",
+      "select-one"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 578,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/nhan-vien",
+    "ten": "Nhân viên",
+    "soNut": 7,
+    "nut": [
+      "Đăng xuất",
+      "Thêm nhân viên",
+      "Vai trò",
+      "Tắt",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 1,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 329,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/cai-dat",
+    "ten": "Cài đặt",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "BERAS Classic\nĐang dùng\nGiao diện gốc — xanh rừng, nền giấy tái sinh.",
+      "BERAS Warm\nTông ấm — coral, hổ phách, nền trắng ngà.",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 568,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "dt-ngang",
+    "duong": "/cai-dat/luu-tru",
+    "ten": "Lưu trữ",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 392,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/",
+    "ten": "Bán hàng",
+    "soNut": 73,
+    "nut": [
+      "Đăng xuất",
+      "Thêm",
+      "✕"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc theo tên hoặc quét mã vạch..."
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 2558,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/bang-dieu-hanh",
+    "ten": "Tổng quan",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Xuất CSV",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 619,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/hoa-don",
+    "ten": "Hoá đơn",
+    "soNut": 7,
+    "nut": [
+      "Đăng xuất",
+      "Hôm nay",
+      "Trước",
+      "Sau",
+      "🖨 In",
+      "✕",
+      "Thêm"
+    ],
+    "soONhap": 2,
+    "oNhap": [
+      "Từ ngày",
+      "Đến ngày"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 235,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/khach-hang",
+    "ten": "Khách hàng",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Thêm khách",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm khách theo số điện thoại, hoặc lọc theo tên"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 244,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/ton-kho",
+    "ten": "Kho",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Chỉ lô cận hạn",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo tên thuốc hoặc số lô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 243,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/danh-muc-thuoc",
+    "ten": "Danh mục thuốc",
+    "soNut": 142,
+    "nut": [
+      "Đăng xuất",
+      "Sửa giá",
+      "Hoạt chất",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc"
+    ],
+    "soDongBang": 70,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 4412,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/nhap-nhanh",
+    "ten": "Nhập hàng",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Nhận vào kho",
+      "Thêm"
+    ],
+    "soONhap": 6,
+    "oNhap": [
+      "Chọn thuốc",
+      "Số lượng nhập",
+      "Số lô",
+      "Hạn dùng",
+      "Giá vốn",
+      "Sắp xếp vào ô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 351,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/khoi-tao-ton",
+    "ten": "Khởi tạo tồn",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu đếm ô này",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô đang đếm"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 330,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/kiem-ke",
+    "ten": "Kiểm kê",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu kiểm ô này",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô để kiểm kê"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 304,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/so-do-kho",
+    "ten": "Sơ đồ kho",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "+ Thêm kho",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Hiện cả vị trí đã ngừng"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 397,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/don-mua-hang",
+    "ten": "Đơn mua hàng",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo trạng thái"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 212,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/de-xuat-dat-hang",
+    "ten": "Đề xuất đặt hàng",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Tính lại",
+      "Đang mở",
+      "Đã bỏ qua",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Tính lại=36px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 171,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/bao-cao",
+    "ten": "Báo cáo",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Tải CSV",
+      "Thêm"
+    ],
+    "soONhap": 3,
+    "oNhap": [
+      "date",
+      "select-one"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 578,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/nhan-vien",
+    "ten": "Nhân viên",
+    "soNut": 7,
+    "nut": [
+      "Đăng xuất",
+      "Thêm nhân viên",
+      "Vai trò",
+      "Tắt",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 1,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 329,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/cai-dat",
+    "ten": "Cài đặt",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "BERAS Classic\nĐang dùng\nGiao diện gốc — xanh rừng, nền giấy tái sinh.",
+      "BERAS Warm\nTông ấm — coral, hổ phách, nền trắng ngà.",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 568,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "tablet",
+    "duong": "/cai-dat/luu-tru",
+    "ten": "Lưu trữ",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 392,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/",
+    "ten": "Bán hàng",
+    "soNut": 73,
+    "nut": [
+      "Đăng xuất",
+      "Thêm",
+      "Thanh toán",
+      "✕"
+    ],
+    "soONhap": 2,
+    "oNhap": [
+      "Tìm thuốc theo tên hoặc quét mã vạch...",
+      "Số điện thoại khách hàng"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Thêm=36px",
+      "Thanh toán=43px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 2788,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/bang-dieu-hanh",
+    "ten": "Tổng quan",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Xuất CSV"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 749,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/hoa-don",
+    "ten": "Hoá đơn",
+    "soNut": 6,
+    "nut": [
+      "Đăng xuất",
+      "Hôm nay",
+      "Trước",
+      "Sau",
+      "🖨 In",
+      "✕"
+    ],
+    "soONhap": 2,
+    "oNhap": [
+      "Từ ngày",
+      "Đến ngày"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 366,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/khach-hang",
+    "ten": "Khách hàng",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Thêm khách",
+      "Trước",
+      "Sau"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm khách theo số điện thoại, hoặc lọc theo tên"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 375,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/ton-kho",
+    "ten": "Kho",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Chỉ lô cận hạn",
+      "Trước",
+      "Sau"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo tên thuốc hoặc số lô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 374,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/danh-muc-thuoc",
+    "ten": "Danh mục thuốc",
+    "soNut": 141,
+    "nut": [
+      "Đăng xuất",
+      "Sửa giá",
+      "Hoạt chất"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc"
+    ],
+    "soDongBang": 70,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 4543,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/nhap-nhanh",
+    "ten": "Nhập hàng",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Nhận vào kho"
+    ],
+    "soONhap": 6,
+    "oNhap": [
+      "Chọn thuốc",
+      "Số lượng nhập",
+      "Số lô",
+      "Hạn dùng",
+      "Giá vốn",
+      "Sắp xếp vào ô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 482,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/khoi-tao-ton",
+    "ten": "Khởi tạo tồn",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu đếm ô này"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô đang đếm"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 461,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/kiem-ke",
+    "ten": "Kiểm kê",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu kiểm ô này"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô để kiểm kê"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 434,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/so-do-kho",
+    "ten": "Sơ đồ kho",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "+ Thêm kho"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Hiện cả vị trí đã ngừng"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 527,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/don-mua-hang",
+    "ten": "Đơn mua hàng",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Trước",
+      "Sau"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo trạng thái"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 343,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/de-xuat-dat-hang",
+    "ten": "Đề xuất đặt hàng",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Tính lại",
+      "Đang mở",
+      "Đã bỏ qua"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Tính lại=36px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 301,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/bao-cao",
+    "ten": "Báo cáo",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Tải CSV"
+    ],
+    "soONhap": 3,
+    "oNhap": [
+      "date",
+      "select-one"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 709,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/nhan-vien",
+    "ten": "Nhân viên",
+    "soNut": 6,
+    "nut": [
+      "Đăng xuất",
+      "Thêm nhân viên",
+      "Vai trò",
+      "Tắt",
+      "Trước",
+      "Sau"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 1,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 460,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/cai-dat",
+    "ten": "Cài đặt",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "BERAS Classic\nĐang dùng\nGiao diện gốc — xanh rừng, nền giấy tái sinh.",
+      "BERAS Warm\nTông ấm — coral, hổ phách, nền trắng ngà."
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 699,
+    "loiJS": 0
+  },
+  {
+    "engine": "webkit",
+    "kho": "laptop",
+    "duong": "/cai-dat/luu-tru",
+    "ten": "Lưu trữ",
+    "soNut": 1,
+    "nut": [
+      "Đăng xuất"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 522,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/",
+    "ten": "Bán hàng",
+    "soNut": 73,
+    "nut": [
+      "Đăng xuất",
+      "Thêm",
+      "✕"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc theo tên hoặc quét mã vạch..."
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 2557,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/bang-dieu-hanh",
+    "ten": "Tổng quan",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Xuất CSV",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 619,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/hoa-don",
+    "ten": "Hoá đơn",
+    "soNut": 7,
+    "nut": [
+      "Đăng xuất",
+      "Hôm nay",
+      "Trước",
+      "Sau",
+      "🖨 In",
+      "✕",
+      "Thêm"
+    ],
+    "soONhap": 2,
+    "oNhap": [
+      "Từ ngày",
+      "Đến ngày"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 235,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/khach-hang",
+    "ten": "Khách hàng",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Thêm khách",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm khách theo số điện thoại, hoặc lọc theo tên"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 244,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/ton-kho",
+    "ten": "Kho",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Chỉ lô cận hạn",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo tên thuốc hoặc số lô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 243,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/danh-muc-thuoc",
+    "ten": "Danh mục thuốc",
+    "soNut": 142,
+    "nut": [
+      "Đăng xuất",
+      "Sửa giá",
+      "Hoạt chất",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc"
+    ],
+    "soDongBang": 70,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 4437,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/nhap-nhanh",
+    "ten": "Nhập hàng",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Nhận vào kho",
+      "Thêm"
+    ],
+    "soONhap": 6,
+    "oNhap": [
+      "Chọn thuốc",
+      "Số lượng nhập",
+      "Số lô",
+      "Hạn dùng",
+      "Giá vốn",
+      "Sắp xếp vào ô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 351,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/khoi-tao-ton",
+    "ten": "Khởi tạo tồn",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu đếm ô này",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô đang đếm"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 330,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/kiem-ke",
+    "ten": "Kiểm kê",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu kiểm ô này",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô để kiểm kê"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 304,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/so-do-kho",
+    "ten": "Sơ đồ kho",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "+ Thêm kho",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Hiện cả vị trí đã ngừng"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 397,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/don-mua-hang",
+    "ten": "Đơn mua hàng",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo trạng thái"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 212,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/de-xuat-dat-hang",
+    "ten": "Đề xuất đặt hàng",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Tính lại",
+      "Đang mở",
+      "Đã bỏ qua",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Tính lại=36px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 171,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/bao-cao",
+    "ten": "Báo cáo",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Tải CSV",
+      "Thêm"
+    ],
+    "soONhap": 3,
+    "oNhap": [
+      "date",
+      "select-one"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 578,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/nhan-vien",
+    "ten": "Nhân viên",
+    "soNut": 7,
+    "nut": [
+      "Đăng xuất",
+      "Thêm nhân viên",
+      "Vai trò",
+      "Tắt",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 1,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 329,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/cai-dat",
+    "ten": "Cài đặt",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "BERAS Classic\nĐang dùng\nGiao diện gốc — xanh rừng, nền giấy tái sinh.",
+      "BERAS Warm\nTông ấm — coral, hổ phách, nền trắng ngà.",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 568,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-doc",
+    "duong": "/cai-dat/luu-tru",
+    "ten": "Lưu trữ",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 392,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/",
+    "ten": "Bán hàng",
+    "soNut": 73,
+    "nut": [
+      "Đăng xuất",
+      "Thêm",
+      "✕"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc theo tên hoặc quét mã vạch..."
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 2557,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/bang-dieu-hanh",
+    "ten": "Tổng quan",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Xuất CSV",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 619,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/hoa-don",
+    "ten": "Hoá đơn",
+    "soNut": 7,
+    "nut": [
+      "Đăng xuất",
+      "Hôm nay",
+      "Trước",
+      "Sau",
+      "🖨 In",
+      "✕",
+      "Thêm"
+    ],
+    "soONhap": 2,
+    "oNhap": [
+      "Từ ngày",
+      "Đến ngày"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 235,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/khach-hang",
+    "ten": "Khách hàng",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Thêm khách",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm khách theo số điện thoại, hoặc lọc theo tên"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 244,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/ton-kho",
+    "ten": "Kho",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Chỉ lô cận hạn",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo tên thuốc hoặc số lô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 243,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/danh-muc-thuoc",
+    "ten": "Danh mục thuốc",
+    "soNut": 142,
+    "nut": [
+      "Đăng xuất",
+      "Sửa giá",
+      "Hoạt chất",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc"
+    ],
+    "soDongBang": 70,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 4412,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/nhap-nhanh",
+    "ten": "Nhập hàng",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Nhận vào kho",
+      "Thêm"
+    ],
+    "soONhap": 6,
+    "oNhap": [
+      "Chọn thuốc",
+      "Số lượng nhập",
+      "Số lô",
+      "Hạn dùng",
+      "Giá vốn",
+      "Sắp xếp vào ô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 351,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/khoi-tao-ton",
+    "ten": "Khởi tạo tồn",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu đếm ô này",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô đang đếm"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 330,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/kiem-ke",
+    "ten": "Kiểm kê",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu kiểm ô này",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô để kiểm kê"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 304,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/so-do-kho",
+    "ten": "Sơ đồ kho",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "+ Thêm kho",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Hiện cả vị trí đã ngừng"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 397,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/don-mua-hang",
+    "ten": "Đơn mua hàng",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo trạng thái"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 212,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/de-xuat-dat-hang",
+    "ten": "Đề xuất đặt hàng",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Tính lại",
+      "Đang mở",
+      "Đã bỏ qua",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Tính lại=36px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 171,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/bao-cao",
+    "ten": "Báo cáo",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Tải CSV",
+      "Thêm"
+    ],
+    "soONhap": 3,
+    "oNhap": [
+      "date",
+      "select-one"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 578,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/nhan-vien",
+    "ten": "Nhân viên",
+    "soNut": 7,
+    "nut": [
+      "Đăng xuất",
+      "Thêm nhân viên",
+      "Vai trò",
+      "Tắt",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 1,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 329,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/cai-dat",
+    "ten": "Cài đặt",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "BERAS Classic\nĐang dùng\nGiao diện gốc — xanh rừng, nền giấy tái sinh.",
+      "BERAS Warm\nTông ấm — coral, hổ phách, nền trắng ngà.",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 568,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "dt-ngang",
+    "duong": "/cai-dat/luu-tru",
+    "ten": "Lưu trữ",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 392,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/",
+    "ten": "Bán hàng",
+    "soNut": 73,
+    "nut": [
+      "Đăng xuất",
+      "Thêm",
+      "✕"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc theo tên hoặc quét mã vạch..."
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 2557,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/bang-dieu-hanh",
+    "ten": "Tổng quan",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Xuất CSV",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 588,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/hoa-don",
+    "ten": "Hoá đơn",
+    "soNut": 7,
+    "nut": [
+      "Đăng xuất",
+      "Hôm nay",
+      "Trước",
+      "Sau",
+      "🖨 In",
+      "✕",
+      "Thêm"
+    ],
+    "soONhap": 2,
+    "oNhap": [
+      "Từ ngày",
+      "Đến ngày"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 235,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/khach-hang",
+    "ten": "Khách hàng",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Thêm khách",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm khách theo số điện thoại, hoặc lọc theo tên"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 244,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/ton-kho",
+    "ten": "Kho",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Chỉ lô cận hạn",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo tên thuốc hoặc số lô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 243,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/danh-muc-thuoc",
+    "ten": "Danh mục thuốc",
+    "soNut": 142,
+    "nut": [
+      "Đăng xuất",
+      "Sửa giá",
+      "Hoạt chất",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc"
+    ],
+    "soDongBang": 70,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 4412,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/nhap-nhanh",
+    "ten": "Nhập hàng",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Nhận vào kho",
+      "Thêm"
+    ],
+    "soONhap": 6,
+    "oNhap": [
+      "Chọn thuốc",
+      "Số lượng nhập",
+      "Số lô",
+      "Hạn dùng",
+      "Giá vốn",
+      "Sắp xếp vào ô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 351,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/khoi-tao-ton",
+    "ten": "Khởi tạo tồn",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu đếm ô này",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô đang đếm"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 330,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/kiem-ke",
+    "ten": "Kiểm kê",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu kiểm ô này",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô để kiểm kê"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 304,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/so-do-kho",
+    "ten": "Sơ đồ kho",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "+ Thêm kho",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Hiện cả vị trí đã ngừng"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 397,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/don-mua-hang",
+    "ten": "Đơn mua hàng",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo trạng thái"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 212,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/de-xuat-dat-hang",
+    "ten": "Đề xuất đặt hàng",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Tính lại",
+      "Đang mở",
+      "Đã bỏ qua",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Tính lại=36px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 171,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/bao-cao",
+    "ten": "Báo cáo",
+    "soNut": 5,
+    "nut": [
+      "Đăng xuất",
+      "Tải CSV",
+      "Thêm"
+    ],
+    "soONhap": 3,
+    "oNhap": [
+      "date",
+      "select-one"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 578,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/nhan-vien",
+    "ten": "Nhân viên",
+    "soNut": 7,
+    "nut": [
+      "Đăng xuất",
+      "Thêm nhân viên",
+      "Vai trò",
+      "Tắt",
+      "Trước",
+      "Sau",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 1,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 329,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/cai-dat",
+    "ten": "Cài đặt",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "BERAS Classic\nĐang dùng\nGiao diện gốc — xanh rừng, nền giấy tái sinh.",
+      "BERAS Warm\nTông ấm — coral, hổ phách, nền trắng ngà.",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 568,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "tablet",
+    "duong": "/cai-dat/luu-tru",
+    "ten": "Lưu trữ",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Thêm"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 392,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/",
+    "ten": "Bán hàng",
+    "soNut": 73,
+    "nut": [
+      "Đăng xuất",
+      "Thêm",
+      "Thanh toán",
+      "✕"
+    ],
+    "soONhap": 2,
+    "oNhap": [
+      "Tìm thuốc theo tên hoặc quét mã vạch...",
+      "Số điện thoại khách hàng"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Thêm=36px",
+      "Thanh toán=43px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 2787,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/bang-dieu-hanh",
+    "ten": "Tổng quan",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Xuất CSV"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 749,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/hoa-don",
+    "ten": "Hoá đơn",
+    "soNut": 6,
+    "nut": [
+      "Đăng xuất",
+      "Hôm nay",
+      "Trước",
+      "Sau",
+      "🖨 In",
+      "✕"
+    ],
+    "soONhap": 2,
+    "oNhap": [
+      "Từ ngày",
+      "Đến ngày"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 366,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/khach-hang",
+    "ten": "Khách hàng",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Thêm khách",
+      "Trước",
+      "Sau"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm khách theo số điện thoại, hoặc lọc theo tên"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 375,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/ton-kho",
+    "ten": "Kho",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Chỉ lô cận hạn",
+      "Trước",
+      "Sau"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo tên thuốc hoặc số lô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 374,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/danh-muc-thuoc",
+    "ten": "Danh mục thuốc",
+    "soNut": 141,
+    "nut": [
+      "Đăng xuất",
+      "Sửa giá",
+      "Hoạt chất"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Tìm thuốc"
+    ],
+    "soDongBang": 70,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 4543,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/nhap-nhanh",
+    "ten": "Nhập hàng",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Nhận vào kho"
+    ],
+    "soONhap": 6,
+    "oNhap": [
+      "Chọn thuốc",
+      "Số lượng nhập",
+      "Số lô",
+      "Hạn dùng",
+      "Giá vốn",
+      "Sắp xếp vào ô"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 482,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/khoi-tao-ton",
+    "ten": "Khởi tạo tồn",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu đếm ô này"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô đang đếm"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Nhập hàng nhanh=38px",
+      "Khởi tạo tồn kho=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 461,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/kiem-ke",
+    "ten": "Kiểm kê",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "Bắt đầu kiểm ô này"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Chọn ô để kiểm kê"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 434,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/so-do-kho",
+    "ten": "Sơ đồ kho",
+    "soNut": 2,
+    "nut": [
+      "Đăng xuất",
+      "+ Thêm kho"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Hiện cả vị trí đã ngừng"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Sơ đồ kho=38px",
+      "Kiểm kê=38px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 527,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/don-mua-hang",
+    "ten": "Đơn mua hàng",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "Trước",
+      "Sau"
+    ],
+    "soONhap": 1,
+    "oNhap": [
+      "Lọc theo trạng thái"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 343,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/de-xuat-dat-hang",
+    "ten": "Đề xuất đặt hàng",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Tính lại",
+      "Đang mở",
+      "Đã bỏ qua"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px",
+      "Tính lại=36px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 301,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/bao-cao",
+    "ten": "Báo cáo",
+    "soNut": 4,
+    "nut": [
+      "Đăng xuất",
+      "Tải CSV"
+    ],
+    "soONhap": 3,
+    "oNhap": [
+      "date",
+      "select-one"
+    ],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 709,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/nhan-vien",
+    "ten": "Nhân viên",
+    "soNut": 6,
+    "nut": [
+      "Đăng xuất",
+      "Thêm nhân viên",
+      "Vai trò",
+      "Tắt",
+      "Trước",
+      "Sau"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 1,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 460,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/cai-dat",
+    "ten": "Cài đặt",
+    "soNut": 3,
+    "nut": [
+      "Đăng xuất",
+      "BERAS Classic\nĐang dùng\nGiao diện gốc — xanh rừng, nền giấy tái sinh.",
+      "BERAS Warm\nTông ấm — coral, hổ phách, nền trắng ngà."
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": false,
+    "coLoading": false,
+    "chuDai": 699,
+    "loiJS": 0
+  },
+  {
+    "engine": "firefox",
+    "kho": "laptop",
+    "duong": "/cai-dat/luu-tru",
+    "ten": "Lưu trữ",
+    "soNut": 1,
+    "nut": [
+      "Đăng xuất"
+    ],
+    "soONhap": 0,
+    "oNhap": [],
+    "soDongBang": 0,
+    "oNhapCao": [],
+    "chamNhoHon44": [
+      "BERAS=23px"
+    ],
+    "tranKhungNhin": [],
+    "cuonNgangTrang": false,
+    "rong": true,
+    "coLoading": false,
+    "chuDai": 522,
+    "loiJS": 0
+  }
+]

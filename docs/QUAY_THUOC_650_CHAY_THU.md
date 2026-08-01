@@ -110,6 +110,44 @@ rà**, trước khi tuần chạy thử phát sinh giao dịch thật.
 Việc rà rẻ: xem Giấy chứng nhận đủ điều kiện kinh doanh dược của cơ sở ghi loại hình gì, rồi
 đối chiếu danh mục 25 mã ETC. Sửa danh mục thì chỉ là đổi phân loại hoặc bỏ mã — vài phút.
 
+## 🔴 Kết quả nghiệm thu UAT (2026-08-01) — đọc trước khi bán đơn đầu tiên
+
+Đợt UAT chạy cùng ngày, **128 lượt đo** (16 màn × 4 khổ × 2 engine). Báo cáo đầy đủ ở
+`docs/testing/`.
+
+**Phần mềm ổn định:** 0 lỗi JavaScript · 0 màn cuộn ngang · 0 phần tử tràn khung nhìn.
+
+**Nhưng có ba mục CHẶN, xếp theo mức độ:**
+
+| # | Vấn đề | Ảnh hưởng tới quầy |
+|---|---|---|
+| **C-01** | **Không có màn đổi mật khẩu** — hệ thống đặt cờ *"phải đổi"* nhưng không có chỗ đổi, và không chặn đăng nhập | Dược sĩ Thư dùng **vĩnh viễn** mật khẩu kỹ thuật đặt. Mọi nhân viên tạo sau cũng vậy |
+| **C-02** | **Không có màn Đổi trả** (backend đã có) | Khách trả thuốc ⇒ **không thao tác được** ⇒ tồn kho và doanh thu sai. Trong một tuần bán lẻ, gần như chắc chắn xảy ra |
+| **C-03** | **Không có màn Sổ thuốc kiểm soát đặc biệt** (backend đã có, 122 hoạt chất đã nạp) | **Nghĩa vụ pháp lý TT18** không thực hiện được qua phần mềm |
+
+Thêm **8 mục Major** — trong đó **không có màn Nhà cung cấp** khiến màn Đơn mua hàng hiện có
+nhưng **dùng không được**.
+
+⚠️ **Bảy nghiệp vụ thiếu màn đều ĐÃ CÓ BACKEND và đã có test.** Đây là khoảng cách **giao
+diện**, không phải khoảng cách năng lực — loại việc rẻ nhất, và cũng dễ bị hoãn nhất vì nhìn
+từ phía backend thì "đã xong rồi".
+
+### Chạy thử được không?
+
+**Được, có điều kiện.** Ba việc ở mục trên cộng thêm:
+
+- Đổi mật khẩu **bằng tay qua kỹ thuật** cho tới khi có màn (C-01);
+- **Ghi tay sổ đổi trả** trong tuần thử (C-02);
+- **Chưa bán thuốc kiểm soát đặc biệt** qua phần mềm cho tới khi có màn (C-03).
+
+Checklist đầy đủ: `docs/testing/06_CHECKLIST_NGHIEM_THU.md`.
+
+### 🔴 Trước khi quay video
+
+**Không quay trên CSDL này.** Mỗi lần quay lại cảnh bán hàng để lại một hoá đơn không có
+khách; sau một buổi quay, doanh thu tuần sai và **không ai tách được đâu là đơn thật**. Dựng
+`qt650_video` từ mốc sạch để quay.
+
 ## Lịch sử dữ liệu cũ
 
 Toàn bộ 8 CSDL cũ (`nhathuoc650`, `nt650`, `nt650v2`, `pharmacy_os`, `pharmacy_os_demo`,
