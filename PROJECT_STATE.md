@@ -8169,3 +8169,120 @@ phẩm (kỷ luật #15). Nguyên nhân: lượt shell này không có `backend/
 ### Điểm dừng
 
 App vẫn chạy trên **`uat650`**; CSDL quầy **`qt650`** không bị đụng.
+
+---
+
+## 7dg. 🧾 ĐỢT 3 sửa lỗi UAT — Tài khoản của tôi · Tra cứu đơn thuốc (2026-08-01)
+
+Chain chỉ đạo: *"Chỗ quầy thuốc và nhà thuốc bỏ qua đi. Các mục khác cũng chạy demo xong
+tính tới pháp lý. Duyệt GĐ chỉ đạo toàn bộ."* ⇒ **bỏ cờ pháp lý *quầy vs nhà thuốc***, hoãn
+phần pháp lý tới sau video, GĐ tự điều phối thứ tự.
+
+### Quyết định tự chốt (full-auto #3)
+
+| # | Quyết định | Vì sao |
+|---|---|---|
+| 1 | Chốt **6 bước**, không để mẫu số mở | Kỷ luật #12 — mục 3/4 mã hoá at-rest từng hỏng vì "bước 5/N" |
+| 2 | **Sửa backend** `/auth/me` thay vì đi vòng qua `GET /users` | Đường vòng đòi `iam.user.read` ⇒ **thu ngân không xem được tên của chính mình** |
+| 3 | M-03 đặt trong **Cài đặt**, không thành mục menu thứ 15 | Chain đã yêu cầu gộp menu (lệnh ⑤⑥); người ta tìm "tôi là ai" ở Cài đặt |
+| 4 | `GET /prescriptions` **route mới**, `/archive` giữ nguyên | Kỷ luật #17 — không đổi ngữ nghĩa endpoint đang có bên gọi |
+| 5 | `search()` **bắt buộc** `branch_id`, không nhận `None` | Nới phạm vi toàn chuỗi là đặc quyền của Lưu trữ; đường thứ hai là chỗ có thể quên gác |
+| 6 | Tạo **3 đơn thuốc thử trong `uat650`** | Không có đơn nào ⇒ cổng chỉ thấy màn rỗng, không chứng minh được gì. `qt650` không đụng |
+| 7 | Sửa luôn màn **Lưu trữ** đang hiện `DRAFT` nguyên xi | Cùng lỗi mã máy vừa sửa ở Nhật ký; để lại là biết mà không sửa |
+| 8 | C-03 (bước 3/6) sẽ **tự nói trên màn** là chưa rà pháp lý | Điều kiện GĐ kèm theo việc Chain gác pháp lý — chặn việc ảnh chụp từ video bị dùng như cam kết |
+
+### 🔴 Bài học 1 — thứ ĐANG CHẠY TỐT trả lời một câu hỏi KHÁC
+
+M-08 suýt không được làm. Màn *Cài đặt → Lưu trữ* đã tồn tại, chạy tốt, hiện đúng đơn thuốc
+— nhìn vào là kết luận được *"tra cứu đơn thuốc có rồi"*. Nhưng nó lọc `image_data IS NOT
+NULL`: **chỉ đơn đã chụp ảnh**. Một đơn nhập tay không ảnh vẫn là đơn thật, và biến mất khỏi
+đó **không báo gì** — đúng lúc thanh tra hỏi *"đơn thuốc của khách X"*.
+
+Đây là kỷ luật **#16 soi ngược**: #16 dạy *đừng tin sổ nợ, hãy grep*. Ở đây grep tìm thấy
+`/prescriptions/archive` và **cả sổ nợ lẫn grep đều dẫn tới kết luận sai** — thứ tồn tại trả
+lời một câu hỏi khác. Câu hỏi phải hỏi thêm: *nó trả lời đúng câu mình đang hỏi không, hay
+chỉ trông giống?*
+
+**Cách cổng canh chuyện đó:** `check-don-thuoc.mjs` gọi **cả hai API** và khẳng định màn mới
+trả *nhiều hơn*. Nếu ai đó "tối ưu" màn về dùng lại `useArchive`, màn vẫn chạy, vẫn có dòng,
+chỉ im lặng giấu mất đơn — và cổng đỏ. Mẫu đáng dùng lại: **đo Ý NGHĨA của màn bằng cách so
+hai nguồn, không đếm dòng trên màn.**
+
+### 🔴 Bài học 2 — kỷ luật #5 bắt được HAI lần trong một phiên
+
+`uvicorn` ở `lan-dev.sh` chạy **không có `--reload`**. Cả hai lần sửa backend (`/auth/me`,
+`GET /prescriptions`), gọi API kiểm thì vẫn thấy **bản cũ**. Tin vào mã vừa viết thay vì gọi
+lệnh thật ⇒ đã dựng cả hai màn lên một API ma, và chỉ lộ khi Chain mở máy.
+
+Khởi động lại: `pkill -f "uvicorn pharmacy_os.main:app"` trong cùng một lượt shell **giết
+luôn tiến trình vừa khởi động** (shell nhận SIGTERM, exit 144). Phải `setsid nohup … &
+disown` mới sống sót.
+
+### 🔴 Bài học 3 — bảng nhãn mã máy là lỗi HỆ THỐNG, không phải một lần lỡ tay
+
+Sau khi sửa bảng nhãn nhật ký sáng nay, chiều lại gặp **cùng lỗi ở màn Lưu trữ**: `<td>{d.
+status}</td>` ⇒ `DRAFT` nguyên xi. Không ai viết sai gì — chỉ là **chưa ai từng nhìn kỹ**.
+
+Đó là bằng chứng cho kỷ luật **#22** (đang chờ Chain duyệt): chuỗi nối hai thế giới không
+gãy, nó **im lặng làm sai**, nên nó tích tụ. Nay `nhan-don-thuoc.ts` dùng chung cho hai màn,
+kèm test bắt chéo Python↔TS.
+
+### Cổng tại điểm dừng
+
+```
+CHECK_EXIT=0     1464 passed (5:41)   ← 1459 → 1461 → 1464
+RUFF=0  FORMAT=0  MYPY=0  IMPORTLINTER=19/19 contract
+TSC=0  ESLINT=0  VITEST=85 (76 → 85)  BUILD=0 (20 route)
+```
+
+**Đột biến — 11 lượt, 11 lần đỏ vì đúng lý do, khôi phục xanh** (kỷ luật #14):
+
+| Đối tượng | Đột biến | Kết quả |
+|---|---|---|
+| nhãn hành vi audit | xoá nhãn · đoán sai mã · lọc trỏ mã ma | 1 · 1 · 1 |
+| nhãn `target_type` | xoá nhãn · trỏ loại ma | 1 · 1 |
+| `/auth/me` | bỏ `email`+`full_name` | 2 failed |
+| màn Tài khoản | hiện email thay họ tên | GATE=1 |
+| `search()` backend | quên `customer_id` · quên `status` · quên cận trên ngày · bắt chước `/archive` | 1 · 1 · 1 · 3 |
+| nhãn đơn thuốc | thiếu `REJECTED` · nhãn ma · lọc ma | 1 · 1 · 1 |
+
+### 🚧 CÒN LẠI — 5 mục (kế hoạch 6 bước, đã xong 2)
+
+| Bước | Mục | Ghi chú |
+|---|---|---|
+| 3/6 | **C-03** Sổ thuốc kiểm soát đặc biệt | Backend **đã đủ** (`export` · `daily-closure` · `sign`) — chỉ thiếu màn. Đọc CSV về và dựng bảng ở frontend, **không cần backend mới**. Kèm nhãn *chưa rà pháp lý* |
+| 4/6 | M-07 Điều chỉnh tồn trực tiếp | Chưa kiểm backend |
+| 5/6 | M-02 Thông tin cơ sở | **Cần backend mới** — `OrgSettings` nay là biến môi trường |
+| 6/6 | M-05 + M-06 audit cũ→mới + thiết bị | **Đổi lược đồ `audit_logs`** — nên làm ĐẦU một phiên còn nhiều hạn mức, không cuối |
+
+### 🔴 Bài học 4 — "đỏ do thiếu dữ liệu" là một cổng MÙ, không phải một cổng đã biết
+
+`check-pos-allergy` và `check-rejected-sales` đỏ suốt nhiều phiên, và mỗi phiên đều ghi cùng
+một câu: *"đã chứng minh do thiếu dữ liệu, không phải sản phẩm"*. Câu đó **đúng về nguyên
+nhân và sai về hệ quả**: nó có nghĩa là suốt thời gian ấy **không ai biết cảnh báo dị ứng
+còn chạy hay không** trên bản dựng hiện tại. Một cổng an toàn thuốc ở trạng thái *chưa đo
+được* đọc y hệt một cổng ở trạng thái *đã đo và tốt*, nếu người đọc chỉ lướt qua dòng tổng.
+
+Phiên này dựng dữ liệu cho nó (khách + đồng ý HEALTH + dị ứng Acid clavulanic, tất cả **qua
+API thật**, không `INSERT` tay — để đi đúng cửa quyền và ghi đúng vết audit). Kết quả:
+**xanh thật**, cả hai khổ, cả ba trạng thái. Tính năng vẫn chạy — nhưng đó là điều ta vừa
+mới *biết*, không phải điều ta vẫn *tin*.
+
+Cùng một lý lẽ đã dùng cho 3 đơn thuốc thử ở M-08. Nguyên tắc rút ra: **một cổng không chạy
+được vì thiếu dữ liệu thì việc phải làm là dựng dữ liệu, không phải ghi chú thích.**
+
+### Điểm dừng
+
+- App chạy trên **`uat650`**: frontend pid từ `lan-dev.sh` (cổng 3000), backend **tôi khởi
+  động lại thủ công** (cổng 8000, `setsid nohup`) — `lan-dev.sh` không còn quản backend nữa.
+  Dừng sạch: `pkill -f "uvicorn pharmacy_os.main:app"` rồi chạy lại `make lan`.
+- **`qt650` (CSDL quầy) không bị đụng**: 70 thuốc · 0 lô · 0 khách · 0 đơn thuốc · 1 đơn bán
+  (đã có từ trước phiên này, phiên này chạy hoàn toàn trên `uat650`).
+- `uat650` nay có **3 đơn thuốc thử** (1 đã duyệt) và **1 khách khai dị ứng** (Lê Thị Dị Ứng,
+  SĐT `0357205494`, dị ứng Acid clavulanic mức SEVERE) — **cố ý giữ**, vì hai cổng cần chúng.
+  `check-don-thuoc.mjs` tự thoát mã 2 nếu không có đơn nào, không xanh giả.
+- **Cổng trình duyệt: 17/18 xanh.** Còn đúng **`check-rejected-sales`** đỏ — cần một đơn
+  offline **bị từ chối**, phải mô phỏng hàng đợi offline nên không dựng nhanh được. Đây là
+  cổng duy nhất còn ở trạng thái *chưa đo được*; đừng đọc nó là *đã đo và tốt*.
+- Còn một CSDL **`pharmacy_os_test` (10 MB)** không thuộc phiên này — chưa rõ nguồn, **không
+  xoá** vì chưa hiểu nó dùng làm gì.
