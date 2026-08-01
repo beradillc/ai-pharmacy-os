@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -34,6 +35,32 @@ class PrescriptionRepository(Protocol):
         ...
 
     async def get(self, prescription_id: UUID) -> Prescription | None: ...
+
+    async def search(
+        self,
+        *,
+        branch_id: UUID,
+        customer_id: UUID | None = None,
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Sequence[Prescription]:
+        """Tra cứu đơn thuốc theo khách / khoảng ngày / trạng thái (M-08).
+
+        Khác :meth:`list_archive` ở hai điểm, và cả hai đều có chủ đích:
+
+        * **Không** đòi đơn phải có ảnh. Lưu trữ là nơi tra *chứng từ ảnh*; tra cứu là nơi
+          trả lời *"khách X đã mua theo đơn nào"* — một đơn nhập tay không ảnh vẫn là một
+          đơn thật và vẫn phải tìm ra.
+        * ``branch_id`` **bắt buộc**, không nhận ``None``. Nới phạm vi toàn chuỗi là đặc
+          quyền của Lưu trữ (``archive.read.chain``); ở đây không có nhu cầu đó, nên không
+          mở một đường thứ hai có thể quên gác.
+
+        Bộ lọc rỗng ⇒ trả mọi đơn của chi nhánh, mới nhất trước.
+        """
+        ...
 
     async def list_archive(
         self, *, branch_id: UUID | None, limit: int = 50, offset: int = 0

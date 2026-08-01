@@ -1,8 +1,8 @@
 # Danh sách lỗi — UAT 2026-08-01
 
 > 🟢 **Cập nhật 2026-08-01, sau ĐỢT 2** (Chain uỷ quyền sửa toàn bộ lỗi trước khi quay video).
-> **Đã đóng: C-01 · C-02 · U-01…U-07 · M-01 · M-03 · M-04.**
-> Còn lại: **C-03 · M-02 · M-05 · M-06 · M-07 · M-08**. Xem cột *Trạng thái* ở mỗi mục.
+> **Đã đóng: C-01 · C-02 · U-01…U-07 · M-01 · M-03 · M-04 · M-08.**
+> Còn lại: **C-03 · M-02 · M-05 · M-06 · M-07**. Xem cột *Trạng thái* ở mỗi mục.
 
 Phân loại: **Critical** (chặn dùng thật) · **Major** (dùng được nhưng thiếu nghiệp vụ) ·
 **Minor** · **UX** · **Performance** · **Suggestion**.
@@ -114,9 +114,26 @@ Chỉ có `client_ip`, không có user-agent ⇒ không phân biệt được th
 Chỉ điều chỉnh được qua **kiểm kê**. Đúng về kiểm soát, nhưng khi cần sửa nhanh một lô nhập
 sai số thì phải mở cả một phiên kiểm kê.
 
-### M-08 · Không có màn tra cứu Đơn thuốc
+### ✅ M-08 · Không có màn tra cứu Đơn thuốc — **ĐÃ ĐÓNG**
 Chụp và duyệt được **tại quầy**, xem lại được trong *Cài đặt → Lưu trữ*, nhưng không tra cứu
-được theo khách/theo ngày. Khi thanh tra hỏi *"đơn thuốc của khách X"* thì không tìm nhanh được.
+được theo khách/theo ngày.
+
+**✅ Đã sửa:** màn `/don-thuoc` (nhóm Bán hàng), lọc khách · khoảng ngày · trạng thái, gác
+quyền `rx.read`. Backend thêm `GET /prescriptions` với bộ lọc (route mới, `/archive` giữ
+nguyên).
+
+🔴 **Bẫy suýt dính:** màn *Lưu trữ* đã tồn tại và chạy tốt ⇒ rất dễ kết luận *"tra cứu đơn
+thuốc có rồi"*. Nhưng nó lọc `image_data IS NOT NULL` — **chỉ đơn đã chụp ảnh**. Một đơn nhập
+tay không ảnh vẫn là đơn thật và biến mất khỏi Lưu trữ **mà không báo gì**. Cổng
+`check-don-thuoc.mjs` gọi cả hai API và khẳng định màn mới trả *nhiều hơn* — nếu ai đó "tối
+ưu" về dùng lại `useArchive` thì màn vẫn chạy, vẫn có dòng, chỉ im lặng giấu mất đơn.
+
+🔴 **Cùng lỗi mã máy, lần thứ hai trong ngày:** màn *Lưu trữ* hiện thẳng `{d.status}` ⇒
+`DRAFT` nguyên xi giữa tiếng Việt. Nay hai màn dùng chung `nhan-don-thuoc.ts`, có test bắt
+chéo Python↔TS (4 test, đột biến 3 lượt đều đỏ đúng lý do).
+
+Bốn đột biến ở backend — bỏ từng bộ lọc và bắt chước `/archive` — **đỏ cả bốn**, khôi phục
+xanh.
 
 ---
 

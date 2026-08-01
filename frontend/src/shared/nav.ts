@@ -65,6 +65,7 @@ export type NavIconName =
   | "settings"
   | "staff"
   | "journal"
+  | "prescription"
   | "more";
 
 export const NAV_GROUP_LABEL: Record<NavGroup, string> = {
@@ -195,6 +196,18 @@ export const NAV: readonly NavItem[] = [
     primary: false,
     quickAction: false,
     icon: "staff",
+  },
+  {
+    href: "/don-thuoc",
+    label: "Đơn thuốc",
+    short: "Đơn thuốc",
+    // `rx.read` — cùng quyền đã dùng để mở một đơn. Xem được một đơn thì xem được danh
+    // sách đơn; không đẻ thêm bậc quyền cho một màn tra cứu.
+    permission: "rx.read",
+    group: "ban-hang",
+    primary: false,
+    quickAction: false,
+    icon: "prescription",
   },
   {
     href: "/nhat-ky",

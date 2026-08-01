@@ -9,6 +9,7 @@ import {
 } from "@/features/prescription/use-archive";
 import { DetailDialog } from "@/components/overlay/DetailDialog";
 
+import { TRANG_THAI_DON } from "@/features/prescription/nhan-don-thuoc";
 import styles from "@/shared/ui/screen.module.css";
 
 import local from "./page.module.css";
@@ -120,7 +121,9 @@ export default function ArchivePage() {
                       d.customer_id.slice(0, 8)
                     )}
                   </td>
-                  <td>{d.status}</td>
+                  {/* Trước 01/08 hiện thẳng `d.status` ⇒ `DRAFT` nguyên xi giữa tiếng Việt.
+                      Cùng lỗi với bảng nhãn nhật ký; nay hai màn dùng chung một bảng. */}
+                  <td>{TRANG_THAI_DON[d.status] ?? d.status}</td>
                   <td className={styles.num}>
                     <button
                       type="button"

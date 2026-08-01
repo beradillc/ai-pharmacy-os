@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -43,6 +44,40 @@ class SqlAlchemyPrescriptionRepository:
         row.image_data = prescription.image_data
         row.image_content_type = prescription.image_content_type
         await self._session.flush()
+
+    async def search(
+        self,
+        *,
+        branch_id: UUID,
+        customer_id: UUID | None = None,
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Sequence[Prescription]:
+        stmt = select(PrescriptionORM).where(
+            PrescriptionORM.tenant_id == self._ctx.tenant_id,
+            PrescriptionORM.branch_id == branch_id,
+        )
+        if customer_id is not None:
+            stmt = stmt.where(PrescriptionORM.customer_id == customer_id)
+        if created_from is not None:
+            stmt = stmt.where(PrescriptionORM.created_at >= created_from)
+        if created_to is not None:
+            stmt = stmt.where(PrescriptionORM.created_at <= created_to)
+        if status is not None:
+            stmt = stmt.where(PrescriptionORM.status == status)
+        stmt = (
+            # Cùng khoá phụ `id` với `list_archive`: hai lượt gọi liên tiếp không được cho
+            # hai thứ tự khác nhau khi nhiều đơn trùng dấu thời gian — nếu không, phân
+            # trang sẽ bỏ sót và lặp dòng mà không ai nhận ra.
+            stmt.order_by(PrescriptionORM.created_at.desc(), PrescriptionORM.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [to_domain(r) for r in rows]
 
     async def list_archive(
         self, *, branch_id: UUID | None, limit: int = 50, offset: int = 0

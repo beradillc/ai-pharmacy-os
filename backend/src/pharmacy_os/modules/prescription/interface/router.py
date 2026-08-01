@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -37,6 +38,39 @@ def build_router(get_context: ContextDep) -> APIRouter:
         ctx: RequestContext = Depends(get_context),
     ) -> PrescriptionResponse:
         return PrescriptionResponse.of(await service.create_prescription(body.to_input(), ctx))
+
+    @root.get("", response_model=list[PrescriptionResponse])
+    async def search_prescriptions(
+        service: PrescriptionService = Depends(_service),
+        ctx: RequestContext = Depends(get_context),
+        customer_id: UUID | None = Query(None, description="Lọc theo khách hàng"),
+        created_from: datetime | None = Query(None, description="Từ thời điểm (bao gồm)"),
+        created_to: datetime | None = Query(None, description="Đến thời điểm (bao gồm)"),
+        status_filter: str | None = Query(None, alias="status", description="Trạng thái đơn"),
+        limit: int = Query(50, ge=1, le=200),
+        offset: int = Query(0, ge=0),
+    ) -> list[PrescriptionResponse]:
+        """Tra cứu đơn thuốc của chi nhánh đang đăng nhập — nguồn màn *Đơn thuốc* (M-08).
+
+        Khác ``/archive``: **không** đòi đơn phải có ảnh. Khi thanh tra hỏi *"đơn thuốc của
+        khách X"* thì một đơn nhập tay không ảnh vẫn phải tìm ra.
+
+        Khai **trước** ``/{prescription_id}`` cho nhất quán với ``/archive`` — ở đây đường
+        dẫn rỗng nên không có nguy cơ bị nuốt, nhưng đặt lẫn vào giữa thì lần sau thêm
+        route mới lại phải nghĩ lại từ đầu.
+        """
+        return [
+            PrescriptionResponse.of(o)
+            for o in await service.search_prescriptions(
+                ctx,
+                customer_id=customer_id,
+                created_from=created_from,
+                created_to=created_to,
+                status=status_filter,
+                limit=limit,
+                offset=offset,
+            )
+        ]
 
     @root.get("/archive", response_model=list[PrescriptionResponse])
     async def list_archive(

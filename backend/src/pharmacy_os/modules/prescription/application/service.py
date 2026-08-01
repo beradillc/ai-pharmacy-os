@@ -7,6 +7,7 @@ injected as factories at composition time (see the module ``register``).
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from uuid import UUID
 
 from pharmacy_os.core.audit import AuditAction, AuditEntry, AuditLogger
@@ -212,6 +213,43 @@ class PrescriptionService:
             image_data=rx.image_data,
             content_type=rx.image_content_type,
         )
+
+    async def search_prescriptions(
+        self,
+        ctx: RequestContext,
+        *,
+        customer_id: UUID | None = None,
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[PrescriptionOutput]:
+        """Tra cứu đơn thuốc của **chi nhánh đang đăng nhập** (M-08, UAT 01/08).
+
+        Quyền ``rx.read`` — cùng quyền đã dùng để mở một đơn. Xem được một đơn thì xem
+        được danh sách đơn; không mở thêm bậc quyền nào cho một màn tra cứu.
+
+        Phạm vi khoá cứng ở ``ctx.branch_id``, **không** nhận tham số chi nhánh: nới phạm
+        vi là đặc quyền của Lưu trữ (``archive.read.chain``), và một tham số chi nhánh ở
+        đây là một đường thứ hai có thể quên gác.
+
+        **Không** ghi ``RX_IMAGE_VIEWED``: danh sách không mang nội dung ảnh. Ghi vết mỗi
+        lần mở màn sẽ chôn vùi đúng những dòng đáng đọc — cùng lý lẽ ở :meth:`list_archive`.
+        """
+        require_permission(ctx, "rx.read")
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            rows = await repo.search(
+                branch_id=ctx.branch_id,
+                customer_id=customer_id,
+                created_from=created_from,
+                created_to=created_to,
+                status=status,
+                limit=limit,
+                offset=offset,
+            )
+        return [PrescriptionOutput.of(rx) for rx in rows]
 
     async def list_archive(
         self, ctx: RequestContext, *, limit: int = 50, offset: int = 0

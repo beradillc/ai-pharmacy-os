@@ -123,6 +123,13 @@ export function NavIcon({ name, filled = false }: { name: NavIconName; filled?: 
           <path d="M16 5.5a3 3 0 0 1 0 5.5M18 20a6.5 6.5 0 0 0-2.2-4.9" />
         </svg>
       );
+    case "prescription":
+      return (
+        <svg {...common}>
+          <path d="M7 3.5h10a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z" />
+          <path d="M9.5 8h5M9.5 11.5h5M9.5 15h3" />
+        </svg>
+      );
     case "journal":
       return (
         <svg {...common}>
