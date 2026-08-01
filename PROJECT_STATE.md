@@ -8085,3 +8085,87 @@ dài sẽ cho ra thứ chưa được kiểm tử tế — cùng lý lẽ đã d
 
 App đang chạy trên **`uat650`** (CSDL kiểm thử). CSDL của quầy là **`qt650`**, không bị đụng.
 Đổi lại bằng `DB__URL=…/qt650 ./scripts/lan-dev.sh`.
+
+---
+
+## 7df. 🧾 ĐỢT 2 sửa lỗi UAT — Nhà cung cấp · Nhật ký hoạt động (2026-08-01)
+
+Tiếp §7de. Chain uỷ quyền *"sửa toàn bộ lỗi trước khi quay video"*. Đợt này đóng **M-01** và
+**M-04**; C-02 đã đóng cuối đợt trước, nay ghi đúng vào sổ lỗi (trước đó sổ còn để mở).
+
+### Đã đóng
+
+| Mã | Màn | Quyền gác | Cưỡng chế thêm |
+|---|---|---|---|
+| M-01 | `/nha-cung-cap` — gộp cùng cửa với `/don-mua-hang` | `procurement.supplier.create` | — |
+| M-04 | `/nhat-ky` — lọc ngày + loại, phân trang 50 | `audit.dashboard.read` (riêng, **không** mượn `iam.user.read`) | `check-nhat-ky.mjs` · `nhan-hanh-vi.test.ts` |
+
+### 🔴 Bài học 1 — tôi ĐOÁN mã thay vì ĐỌC mã, và không cổng nào cản được
+
+Dựng bảng nhãn tiếng Việt cho nhật ký, tôi viết `STOCK_RECEIVED`, `ROLE_ASSIGNED`,
+`CATALOG_PRICE_SET`… **từ trí nhớ**. Mã thật là `INVENTORY_STOCK_RECEIVED`, `ROLE_GRANTED`,
+`CATALOG_DRUG_PRICE_CHANGED`. Sai gần hết bảng.
+
+`tsc` xanh · `eslint` xanh · `pytest` xanh — **mọi chuỗi đều là chuỗi hợp lệ**. Đây là lần
+thứ **ba** cùng một họ trong hai ngày: `styles.primary` (class không tồn tại → nút rơi về
+36px), `sales.refund` (quyền không tồn tại → cột không bao giờ hiện), nay là mã hành vi.
+Hình dạng chung: **một chuỗi sai không làm đỏ cổng nào**, vì không ngôn ngữ nào ở hai đầu
+biết đầu kia tồn tại.
+
+Nay có `nhan-hanh-vi.test.ts` **bắt chéo hai ngôn ngữ**: đọc `AuditAction` từ Python, quét
+mọi `target_type` trong mã nguồn, đòi đủ nhãn **cả hai chiều** (thiếu nhãn ⇒ mã máy lọt ra
+màn; thừa nhãn ⇒ backend đã đổi tên mà frontend chưa biết). Kiểm bằng **5 đột biến, đỏ cả 5
+vì đúng lý do**, khôi phục xanh (kỷ luật #14). Chi phí: ~3 phút.
+
+> **Đề nghị nâng thành kỷ luật (kỷ luật #18: lặp từ 3 lần):** mọi bảng ánh xạ *chuỗi của
+> ngôn ngữ này → nhãn/hành vi ở ngôn ngữ kia* phải có một test đọc thẳng nguồn bên kia. Ba
+> ca đã có; ca thứ tư sẽ tới. **Chờ Chain duyệt.**
+
+### 🔴 Bài học 2 — ẢNH CHỤP lại thắng phép đo, lần thứ tư
+
+Cổng trình duyệt báo xanh trọn vẹn cho cột *Hoạt động*. **Ảnh** cho thấy cột *Đối tượng* hiện
+`user · 40977c62` — cùng lỗi, khác cột. Phép đo không thấy vì **nó chỉ được dặn nhìn một
+cột**. Kỷ luật #20 nói *luôn phải có ảnh*; đây là lý do: phép đo tìm thứ nó được dặn tìm,
+ảnh thấy cả thứ không ai dặn.
+
+Đã mở rộng cổng sang cột *Đối tượng*, và dịch 18 `target_type` sang tiếng Việt.
+
+### 🔴 Bài học 3 — bẫy `flex-basis` lần thứ TƯ, xuyên qua chính bản vá của nó
+
+Hai ô ngày cao **260px** (đo thật: `INPUT h=260 flex=0 1 260px`). Ghi chú trong
+`screen.module.css` viết ngày 01/08 khẳng định *"lần này sửa ở chỗ KHAI, nên nó không quay
+lại được nữa"* — **sai**. Bản vá thu hẹp về `.controls .input`, nhưng đó là bộ chọn **hậu
+duệ**: một `<label>` dọc đặt **bên trong** `.controls` vẫn dính nguyên.
+
+Sửa: khai `.field` / `.fieldLabel` **dùng chung** trong `screen.module.css`, kèm
+`.controls .field > .input { flex: none }` (độ đặc hiệu 0,3,0 luôn thắng). Màn sau dùng lại,
+không phải tự khai bản riêng và tự dẫm lại.
+
+> Bài học chung: **phạm vi** quyết định một bản vá có kín không, không phải **vị trí** dòng
+> CSS. "Sửa ở chỗ khai" vẫn để lọt nếu bộ chọn của nó là hậu duệ.
+
+### Cổng tại điểm dừng
+
+```
+CHECK_FE_EXIT=0   TSC=0 ESLINT=0 VITEST=81 (76→81, +5 bắt chéo) BUILD=0
+GATE_NHAT_KY_EXIT=0   desktop + mobile, 0 mã máy lọt ra màn cả hai cột
+MUTANT 1-3 (mã hành vi) = 1,1,1  ·  MUTANT A-B (loại đối tượng) = 1,1  ·  RESTORED = 0
+```
+
+Lần chạy `make check` đầu trả **EXIT=2 vì `ruff: not found`** — phép đo hỏng, không phải sản
+phẩm (kỷ luật #15). Nguyên nhân: lượt shell này không có `backend/.venv/bin` trên `PATH`.
+
+### 🚧 CÒN LẠI — 7 mục
+
+| Mục | Nội dung |
+|---|---|
+| **C-03** | Màn Sổ thuốc kiểm soát đặc biệt — **cần Trợ lý Pháp Lý rà cờ *quầy thuốc vs nhà thuốc* trước** |
+| M-02 | Màn Thông tin cơ sở — cần backend mới (`OrgSettings` nay là biến môi trường) |
+| M-03 | Màn Thông tin người dùng (`/auth/me`) |
+| M-05 | Audit log: giá trị cũ → mới — **đổi lược đồ `audit_logs`** |
+| M-06 | Audit log: thiết bị (user-agent) |
+| M-07 · M-08 | Điều chỉnh tồn trực tiếp · Tra cứu đơn thuốc |
+
+### Điểm dừng
+
+App vẫn chạy trên **`uat650`**; CSDL quầy **`qt650`** không bị đụng.

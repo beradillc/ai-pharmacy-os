@@ -26,6 +26,7 @@
 | Kỷ luật bắt buộc **19** (đóng mục giao diện phải chạy cổng trình duyệt) | **2026-07-31** — gom 6 cổng vào `make ui-gates` thì lộ ra 2 cổng đã hỏng cùng ngày mà không ai biết |
 | Kỷ luật bắt buộc **20** (Chain nghiệm thu bằng ảnh chụp) | **2026-07-31** — Chain chốt: *"mở trình duyệt test, chụp màn hình lại là coi như xong; xem trên ảnh là đủ"* |
 | Kỷ luật bắt buộc **21** (cổng đo *nhìn thấy được*, không chỉ *có trên trang*) | **2026-08-01** — GĐ đề nghị sau lần thứ **ba** cùng một hình dạng: cổng xanh vì `innerText` đọc được cả phần tràn ngoài khung nhìn. **Chain DUYỆT cùng ngày** |
+| Kỷ luật bắt buộc **22** (chuỗi nối hai thế giới phải có cổng đọc thẳng nguồn bên kia) | **2026-08-01** — GĐ đề nghị sau lần thứ **tư** cùng một hình dạng trong ba ngày: class CSS · mã quyền · mã hành vi audit · `target_type`, cả bốn xanh qua `tsc`/`eslint`/`pytest`. **CHỜ CHAIN DUYỆT** |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -444,3 +445,41 @@ máy này, khác với văn bản ủy quyền (file này) nay đã có lịch s
     - **Quy tắc lỗi thời thì đánh dấu `Deprecated` kèm lý do, KHÔNG xoá.** Người đọc sau
       cần biết quy tắc từng tồn tại và vì sao thôi áp dụng.
     - Cùng một vấn đề lặp **từ 3 lần** ⇒ đề xuất nâng thành kỷ luật chính thức ở file này.
+
+22. **Mọi CHUỖI nối hai thế giới phải có một cổng đọc thẳng nguồn bên kia.** (2026-08-01, GĐ
+    đề nghị — **CHỜ CHAIN DUYỆT**; ghi ở đây ngay từ lúc đề nghị vì kỷ luật #13 đòi bài học
+    phương pháp vào FILE NÀY chứ không vào nhật ký)
+
+    Khi một chuỗi ký tự ở phía này phải khớp một thứ được khai ở phía kia — và **không trình
+    biên dịch nào nối được hai đầu** — thì viết sai chuỗi đó **không làm đỏ cổng nào**. Nó
+    không gãy; nó **im lặng làm sai**.
+
+    | Chuỗi | Khai ở đâu | Dùng ở đâu | Sai thì thấy gì |
+    |---|---|---|---|
+    | tên class CSS Modules | `*.module.css` | `styles.X` trong TSX | `class="undefined"` → nút rơi về mặc định 36px |
+    | mã quyền | Python `system_roles.py` | `permissions.has("…")` | cột/nút **không bao giờ hiện** |
+    | mã hành vi audit | Python `AuditAction` | bảng nhãn TS | màn **đầy chữ không ai đọc được** |
+    | `target_type` | rải rác trong Python | bảng nhãn TS | mã máy lọt ra giữa tiếng Việt |
+
+    Bốn ca trên đều thật, đều trong **ba ngày** (30/07–01/08), và **cả bốn** đều xanh qua
+    `tsc` · `eslint` · `pytest`: mọi chuỗi đều là chuỗi hợp lệ.
+
+    - **Cổng phải ĐỌC nguồn bên kia**, không phải chép lại nó. Chép lại chỉ dời chỗ sai.
+      Đọc `AuditAction` từ tệp Python, `grep` `target_type` trong mã nguồn, đọc danh sách
+      class từ `*.module.css`.
+    - **Kiểm CẢ HAI CHIỀU.** Thiếu nhãn ⇒ mã máy lọt ra màn. Thừa nhãn ⇒ bên kia đã đổi tên
+      mà bên này chưa biết — và dòng dùng tên **mới** đang hỏng lặng lẽ.
+    - **Tự kiểm chính phép quét** trước khi tin nó: khẳng định `số mã tìm được > N`. Một
+      danh sách rỗng (đường dẫn sai, cú pháp khai đổi) làm **mọi** khẳng định phía sau thành
+      đúng vô nghĩa — kỷ luật #15, "phải đo cả chính phép đo".
+    - Chi phí đo thật: **~3 phút** cho một bảng 63 mã, gồm cả 5 lượt đột biến theo #14.
+    - Bổ sung cho #16: #16 nói *grep composition root trước khi code* (tính năng đã có
+      chưa); #22 nói *grep nguồn bên kia sau khi code* (chuỗi mình vừa viết có thật không).
+
+    🔴 **Hệ luận — "sửa ở chỗ KHAI" KHÔNG tự động là kín.** Cùng ngày, bẫy `flex-basis` trong
+    hộp dọc quay lại **lần thứ tư**, xuyên qua chính bản vá mà ghi chú của nó tuyên bố *"lần
+    này sửa ở chỗ KHAI, nên nó không quay lại được nữa"*. Bản vá thu hẹp về `.controls
+    .input` — nhưng đó là bộ chọn **hậu duệ**, nên một hộp dọc đặt **bên trong** `.controls`
+    vẫn dính nguyên (ô nhập ngày cao **260px**, đo thật `flex=0 1 260px`).
+    **Phạm vi** quyết định một bản vá có kín không, không phải **vị trí** dòng sửa. Sau khi
+    vá "ở chỗ khai", hỏi tiếp: *bộ chọn/điều kiện của bản vá có bỏ sót cách dùng nào không?*

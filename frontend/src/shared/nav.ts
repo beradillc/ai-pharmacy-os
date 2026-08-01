@@ -64,6 +64,7 @@ export type NavIconName =
   | "report"
   | "settings"
   | "staff"
+  | "journal"
   | "more";
 
 export const NAV_GROUP_LABEL: Record<NavGroup, string> = {
@@ -194,6 +195,19 @@ export const NAV: readonly NavItem[] = [
     primary: false,
     quickAction: false,
     icon: "staff",
+  },
+  {
+    href: "/nhat-ky",
+    label: "Nhật ký hoạt động",
+    short: "Nhật ký",
+    // Quyền RIÊNG, không mượn `iam.user.read` (UAT 01/08, lỗi M-04): xem *ai đã làm gì* và
+    // *ai được làm việc gì* là hai thẩm quyền khác nhau. Gắn chung thì người có quyền tra
+    // nhật ký mà không quản lý nhân sự sẽ không thấy mục này ở đâu cả.
+    permission: "audit.dashboard.read",
+    group: "quan-tri",
+    primary: false,
+    quickAction: false,
+    icon: "journal",
   },
   {
     href: "/cai-dat",

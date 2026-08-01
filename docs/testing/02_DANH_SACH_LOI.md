@@ -1,8 +1,8 @@
 # Danh sách lỗi — UAT 2026-08-01
 
-> 🟢 **Cập nhật 2026-08-01, sau ĐỢT 1** (Chain uỷ quyền sửa toàn bộ lỗi trước khi quay video).
-> **Đã đóng: C-01 · U-01 · U-02 · U-03 · U-04 · U-05 · U-06 · U-07.**
-> Còn lại: **C-02 · C-03 · M-01…M-08**. Xem cột *Trạng thái* ở mỗi mục.
+> 🟢 **Cập nhật 2026-08-01, sau ĐỢT 2** (Chain uỷ quyền sửa toàn bộ lỗi trước khi quay video).
+> **Đã đóng: C-01 · C-02 · U-01…U-07 · M-01 · M-04.**
+> Còn lại: **C-03 · M-02 · M-03 · M-05 · M-06 · M-07 · M-08**. Xem cột *Trạng thái* ở mỗi mục.
 
 Phân loại: **Critical** (chặn dùng thật) · **Major** (dùng được nhưng thiếu nghiệp vụ) ·
 **Minor** · **UX** · **Performance** · **Suggestion**.
@@ -25,7 +25,7 @@ Phân loại: **Critical** (chặn dùng thật) · **Major** (dùng được nh
 | **Rủi ro sửa** | Cao — chạm luồng đăng nhập, hỏng thì không ai vào được |
 | **✅ Đã sửa** | Màn `features/auth/DoiMatKhau` + cửa chặn ở `AppShell`. Kiểm chứng đầu-cuối trên trình duyệt thật: đăng nhập bị chặn · gõ thẳng `/ton-kho` vẫn bị chặn · sai mật khẩu cũ báo lỗi · đổi đúng thì vào được · đăng nhập bằng mật khẩu mới không còn chặn · đổi lại về cũ thì API trả 200 |
 
-### C-02 · Không có màn Đổi trả
+### ✅ C-02 · Không có màn Đổi trả — **ĐÃ ĐÓNG**
 
 | | |
 |---|---|
@@ -33,6 +33,8 @@ Phân loại: **Critical** (chặn dùng thật) · **Major** (dùng được nh
 | **Hệ quả** | Tồn kho và doanh thu **sai** ngay lần đầu có khách trả hàng. Trong một tuần bán lẻ, đây là chuyện gần như chắc chắn xảy ra |
 | **Bằng chứng** | `grep "/returns" frontend/src` → **0 tệp**; backend có `POST /sales/{id}/returns` + test |
 | **Backend** | ✅ đã có, đã test |
+| **✅ Đã sửa** | Cột **Khách trả** + hộp thoại trả hàng ở màn Hoá đơn, gác quyền `sales.return` |
+| 🔴 **Suýt hứa sai** | Bản đầu của hộp thoại viết *"hàng sẽ quay lại kho"*. SQL chứng minh ngược lại: `stock_movements` **không có dòng nào** — `register_return` cố ý **không** trả hàng về kho (thuốc đã ra khỏi quầy không nhập lại được). Câu chữ nay nói đúng việc phần mềm thật sự làm: ghi nhận **tiền trả lại**, không đụng tồn |
 
 ### C-03 · Không có màn Sổ thuốc kiểm soát đặc biệt
 
@@ -47,10 +49,11 @@ Phân loại: **Critical** (chặn dùng thật) · **Major** (dùng được nh
 
 ## 🟠 MAJOR
 
-### M-01 · Không có màn Nhà cung cấp
+### ✅ M-01 · Không có màn Nhà cung cấp — **ĐÃ ĐÓNG**
 Backend có `/suppliers` đầy đủ. Không tạo được NCC ⇒ **không tạo được đơn mua hàng** ⇒ màn Đơn
 mua hàng hiện có nhưng dùng không được. *Bằng chứng: `suppliers` → 0 tệp FE; `select count(*)
 from suppliers` → 0.*
+**✅ Đã sửa:** màn `/nha-cung-cap`, gộp cùng cửa với `/don-mua-hang` (`alsoActiveFor`).
 
 ### M-02 · Không có màn Thông tin cơ sở
 Tên/địa chỉ/ĐT/MST in trên hoá đơn nằm trong **biến môi trường** (`backend/.env`). Dược sĩ
@@ -59,9 +62,31 @@ Tên/địa chỉ/ĐT/MST in trên hoá đơn nằm trong **biến môi trườn
 ### M-03 · Không có màn Thông tin người dùng
 `GET /auth/me` có. Người dùng không xem/sửa được tên, không đổi mật khẩu (xem C-01).
 
-### M-04 · Không có màn Nhật ký hoạt động
-`/audit/dashboard` có backend. Chủ quầy **không tra được ai đã làm gì** — mà đây đúng là thứ
-chủ quầy cần khi có chênh lệch tiền hoặc hàng.
+### ✅ M-04 · Không có màn Nhật ký hoạt động — **ĐÃ ĐÓNG**
+`GET /audit-dashboard` có backend. Chủ quầy **không tra được ai đã làm gì** — mà đây đúng là
+thứ chủ quầy cần khi có chênh lệch tiền hoặc hàng.
+
+**✅ Đã sửa:** màn `/nhat-ky` (Quản trị), lọc theo ngày + loại hoạt động, phân trang 50 dòng,
+gác quyền riêng `audit.dashboard.read`. Màn **nói thẳng giới hạn của chính nó** — chưa ghi giá
+trị cũ → mới (M-05 còn mở) — thay vì để người dùng phát hiện đúng lúc cần nó nhất.
+
+🔴 **Hai lỗi cùng một họ, cùng bị bắt trong lúc dựng màn này** — và cả hai đều là *một chuỗi
+sai không làm đỏ cổng nào*, đúng họ với `styles.primary` (U-03) và `sales.refund`:
+
+| | Tôi viết | Sự thật ở backend | Ai bắt được |
+|---|---|---|---|
+| Mã hành vi | `STOCK_RECEIVED`, `ROLE_ASSIGNED` | `INVENTORY_STOCK_RECEIVED`, `ROLE_GRANTED` | cổng trình duyệt (đếm mã máy lọt ra màn) |
+| Loại đối tượng | *(không dịch)* | `user`, `customer`… hiện nguyên xi | **ảnh chụp** — cổng khi đó chỉ nhìn cột *Hoạt động* |
+
+Nay có `nhan-hanh-vi.test.ts` **bắt chéo hai ngôn ngữ**: quét `AuditAction` (Python) và mọi
+`target_type` trong mã nguồn, đòi đủ nhãn cả hai chiều. Đã kiểm bằng 5 đột biến — đỏ cả 5 vì
+đúng lý do, khôi phục xanh (kỷ luật #14).
+
+🔴 **Ô ngày cao 260px — bẫy `flex-basis` lần thứ TƯ**, và lần này nó quay lại *xuyên qua chính
+bản vá đã thu hẹp về `.controls .input`*: đó là bộ chọn **hậu duệ**, nên một hộp dọc đặt bên
+trong `.controls` vẫn dính nguyên. Nay khai `.field` / `.fieldLabel` dùng chung trong
+`screen.module.css` kèm `.controls .field > .input { flex: none }`. Bài học: *phạm vi* mới
+quyết định một bản vá có kín không, không phải *vị trí* dòng CSS.
 
 ### M-05 · Audit log thiếu *giá trị cũ → mới*
 Chain yêu cầu rõ. Hiện chỉ ghi *đã xảy ra hành động gì*. Với sửa giá và điều chỉnh tồn, thiếu
@@ -127,11 +152,11 @@ phép kiểm vùng chạm về sau. *Đề nghị: đánh dấu là nhãn, khôn
 
 ## Tổng hợp
 
-| | Ban đầu | Sau Đợt 1 |
-|---|---|---|
-| 🔴 Critical | 3 | **2** (C-02, C-03) |
-| 🟠 Major | 8 | **8** |
-| 🟡 Minor / UX | 7 | **0** ✅ |
-| ⚪ Không phải lỗi | 4 |
+| | Ban đầu | Sau Đợt 1 | Sau Đợt 2 |
+|---|---|---|---|
+| 🔴 Critical | 3 | 2 | **1** (C-03 — chờ kết luận pháp lý *quầy vs nhà thuốc*) |
+| 🟠 Major | 8 | 8 | **6** (M-02, M-03, M-05, M-06, M-07, M-08) |
+| 🟡 Minor / UX | 7 | **0** ✅ | **0** ✅ |
+| ⚪ Không phải lỗi | 4 | | |
 
 **Không có lỗi Performance** — 128 lượt đo không ghi nhận màn nào tải bất thường.

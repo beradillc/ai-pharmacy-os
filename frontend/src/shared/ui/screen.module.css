@@ -403,6 +403,41 @@
     flex: 0 1 260px;
     min-width: 200px;
   }
+
+  /* 🔴 LẦN THỨ TƯ, và lần này nó quay lại **xuyên qua chính bản vá ở trên**. Ghi chú bên
+     trên nói *"lần này sửa ở chỗ KHAI, nên nó không quay lại được nữa"* — sai. Thu hẹp về
+     `.controls .input` chặn được hộp dọc nằm NGOÀI thanh lọc, nhưng `.controls .input` là
+     bộ chọn **hậu duệ**: một `<label>` dọc đặt BÊN TRONG `.controls` vẫn dính nguyên. Đó
+     đúng là màn Nhật ký ngày 01/08 — hai ô ngày cao **260px**, đo thật.
+
+     Nên chặn ở đây, nơi hộp dọc tự khai mình là hộp dọc. Độ đặc hiệu 0,3,0 > 0,2,0 nên
+     luôn thắng, không phụ thuộc thứ tự.
+
+     Bài học chung: một bản vá "ở chỗ khai" vẫn có thể để lọt nếu bộ chọn của nó là hậu
+     duệ — *phạm vi* mới là thứ quyết định, không phải *vị trí* dòng CSS. */
+  .controls .field > .input,
+  .controls .field > .select {
+    flex: none;
+  }
+}
+
+/* --- hộp nhãn-trên-ô, DỌC ---
+   Khuôn này lặp ở nhiều màn (`bao-cao`, `nha-cung-cap`, `nhat-ky`…), mỗi màn tự khai một
+   bản riêng — và mỗi bản lại dẫm vào bẫy `flex-basis` ở trên. Khai một lần tại đây để màn
+   sau chỉ việc dùng. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  min-width: 9rem;
+}
+
+.fieldLabel {
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--beras-text-muted);
 }
 
 /* --- in ấn: chi tiết hoá đơn phải in ra được ra giấy tử tế ---
