@@ -126,6 +126,59 @@ def test_login_returns_a_usable_token(client: TestClient) -> None:
     assert me.json()["branch_id"] == session["branch_id"]
 
 
+def test_me_carries_the_name_and_email_the_screen_shows(client: TestClient) -> None:
+    """``/auth/me`` phải trả **tên và email**, không chỉ định danh (M-03, UAT 01/08).
+
+    🔴 Vì sao đáng một test riêng: nếu hai trường này biến mất, màn *Tài khoản của tôi*
+    không đỏ ở đâu cả — nó hiện một khối hồ sơ **trống**, mà trống thì trông y hệt đang
+    tải. Đường thay thế duy nhất là ``GET /users``, đòi ``iam.user.read`` — tức là **thu
+    ngân không xem được tên của chính mình**. Test này canh đúng chỗ đó.
+    """
+    session = _login(client)
+    me = client.get("/api/v1/auth/me", headers=_auth(session)).json()
+    assert me["full_name"] == "Nguyễn Quản Trị"
+    assert me["email"] == ADMIN_EMAIL
+    # Cùng một sự thật, hai đường: `/auth/me` không được nói khác `/auth/login` về việc
+    # tài khoản này còn nợ đổi mật khẩu hay không — màn Cài đặt và cửa chặn ở `AppShell`
+    # đọc hai nguồn đó, và hai nguồn lệch nhau thì cửa chặn mở ra sai lúc.
+    assert me["must_change_password"] == session["must_change_password"]
+    # Vừa đăng nhập xong ⇒ phải có dấu thời gian. `None` ở đây nghĩa là màn sẽ hiện
+    # "lần đầu" cho một người đã đăng nhập hàng trăm lần.
+    assert me["last_login_at"] is not None
+
+
+def test_a_staff_member_reads_their_own_name_without_iam_user_read(
+    client: TestClient,
+) -> None:
+    """Thu ngân **không** có ``iam.user.read`` mà vẫn phải xem được hồ sơ của chính mình.
+
+    Đây là toàn bộ lý do ``/auth/me`` được bổ sung thay vì màn đi vòng qua ``GET /users``:
+    nếu test này đỏ thì thiết kế đã quay về đúng chỗ hỏng ban đầu.
+    """
+    admin = _login(client)
+    roles = client.get("/api/v1/roles", headers=_auth(admin)).json()
+    cashier_role = next(r for r in roles if r["code"] == CASHIER)
+    user_id = client.post(
+        "/api/v1/users",
+        headers=_auth(admin),
+        json={"email": "tn9@bera.vn", "password": STAFF_PASSWORD, "full_name": "Thu Ngân 9"},
+    ).json()["id"]
+    # Chưa gán vai trò thì **không đăng nhập được** ("chưa được gán vai trò ở chi nhánh
+    # nào") — nên phải gán trước, không phải bỏ qua bước này.
+    client.post(
+        f"/api/v1/users/{user_id}/roles",
+        headers=_auth(admin),
+        json={"role_id": cashier_role["id"], "branch_id": admin["branch_id"]},
+    )
+    staff = _login(client, "tn9@bera.vn", STAFF_PASSWORD)
+    assert "iam.user.read" not in staff["permissions"]
+    assert client.get("/api/v1/users", headers=_auth(staff)).status_code == 403
+
+    me = client.get("/api/v1/auth/me", headers=_auth(staff))
+    assert me.status_code == 200
+    assert me.json()["full_name"] == "Thu Ngân 9"
+
+
 def test_wrong_password_is_401(client: TestClient) -> None:
     r = client.post("/api/v1/auth/login", json={"email": ADMIN_EMAIL, "password": "SaiMatKhau123"})
     assert r.status_code == 401

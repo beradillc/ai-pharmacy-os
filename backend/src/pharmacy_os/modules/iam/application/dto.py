@@ -205,6 +205,22 @@ class TwoFactorStatusOutput:
 
 
 @dataclass(slots=True)
+class ProfileOutput:
+    """Hồ sơ của chính người đang đăng nhập — nguồn của màn *Tài khoản của tôi* (M-03).
+
+    Chỉ dữ liệu **của bản thân**: không cần ``iam.user.read``, vì đọc tên của chính mình
+    không phải là quản lý nhân sự. Không trả ``password_hash``, không trả trạng thái khoá
+    của người khác, không trả gì vượt ra ngoài tài khoản gọi.
+    """
+
+    user_id: UUID
+    email: str
+    full_name: str
+    last_login_at: datetime | None
+    must_change_password: bool
+
+
+@dataclass(slots=True)
 class TwoFactorLoginInput:
     """Step 2 of a two-factor login.
 

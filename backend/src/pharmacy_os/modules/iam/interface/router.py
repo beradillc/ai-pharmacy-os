@@ -130,12 +130,27 @@ def build_auth_router(get_context: ContextDep) -> APIRouter:
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @router.get("/me", response_model=MeResponse)
-    async def me(ctx: RequestContext = Depends(get_context)) -> MeResponse:
+    async def me(
+        service: AuthService = Depends(_auth),
+        ctx: RequestContext = Depends(get_context),
+    ) -> MeResponse:
+        """Định danh + quyền (bản gốc), **kèm** tên/email/lần đăng nhập cuối (M-03).
+
+        Trước 2026-08-01 route này chỉ đọc ``ctx`` nên không chạm CSDL. Nay nó đọc một
+        hàng ``users`` — đổi này có chủ đích: không có nó thì màn *Tài khoản của tôi* buộc
+        phải gọi ``GET /users``, tức là đòi ``iam.user.read``, tức là **thu ngân không xem
+        được tên của chính mình**.
+        """
+        p = await service.profile(ctx)
         return MeResponse(
             user_id=ctx.user_id,
             tenant_id=ctx.tenant_id,
             branch_id=ctx.branch_id,
             permissions=sorted(ctx.permissions),
+            email=p.email,
+            full_name=p.full_name,
+            last_login_at=p.last_login_at,
+            must_change_password=p.must_change_password,
         )
 
     # --- two-factor -----------------------------------------------------------

@@ -40,6 +40,7 @@ from pharmacy_os.modules.iam.application.dto import (
     BranchOutput,
     ChangePasswordInput,
     LoginInput,
+    ProfileOutput,
     SessionOutput,
     StepUpResult,
     TwoFactorActivationOutput,
@@ -483,6 +484,24 @@ class AuthService:
 
         await self._record(
             user, AuditAction.TWO_FACTOR_DISABLED, ctx.client_ip, branch_id=ctx.branch_id
+        )
+
+    async def profile(self, ctx: RequestContext) -> ProfileOutput:
+        """Hồ sơ của chính người gọi (M-03).
+
+        ``/auth/me`` trước nay chỉ trả **định danh và quyền** — đủ cho máy, không đủ cho
+        người: màn *Tài khoản của tôi* cần tên và email, mà hai thứ đó chỉ lấy được qua
+        ``GET /users`` (đòi ``iam.user.read``, thu ngân không có). Đọc tên của **chính
+        mình** không phải là quản lý nhân sự, nên không gác thêm quyền nào.
+        """
+        async with self._uow_factory() as uow:
+            user = await self._own_user(self._repos_factory(uow), ctx)
+        return ProfileOutput(
+            user_id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            last_login_at=user.last_login_at,
+            must_change_password=user.must_change_password,
         )
 
     async def two_factor_status(self, ctx: RequestContext) -> TwoFactorStatusOutput:

@@ -101,12 +101,20 @@ class SessionResponse(BaseModel):
 
 
 class MeResponse(BaseModel):
-    """Who the bearer token says you are, and what it lets you do."""
+    """Who the bearer token says you are, and what it lets you do.
+
+    Bốn trường đầu là bản gốc — **giữ nguyên tên và kiểu**, bên gọi cũ không hỏng.
+    Bốn trường sau thêm 2026-08-01 cho màn *Tài khoản của tôi* (M-03).
+    """
 
     user_id: UUID
     tenant_id: UUID
     branch_id: UUID
     permissions: list[str]
+    email: str
+    full_name: str
+    last_login_at: datetime | None
+    must_change_password: bool
 
 
 class CreateUserRequest(BaseModel):

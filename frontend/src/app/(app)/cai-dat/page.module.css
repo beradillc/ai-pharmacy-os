@@ -106,3 +106,38 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* --- Tài khoản của tôi (M-03) --- */
+.hoSo {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+/* 🔴 KHÔNG `flex` ở đây — hàng nhãn/giá trị là LƯỚI. Bẫy `flex-basis` trong hộp dọc đã
+   dính bốn lần; lưới không có trục chính nên không dựng được bẫy đó. */
+.dong {
+  display: grid;
+  grid-template-columns: minmax(9rem, max-content) 1fr;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.nhan {
+  font-size: var(--text-sm);
+  color: var(--beras-text-muted);
+}
+
+.giaTri {
+  margin: 0;
+  font-size: var(--text-base);
+}
+
+@media (width < 480px) {
+  /* Ở khổ hẹp, hai cột thành hai dòng: nhãn "Đăng nhập lần trước" cộng một mốc thời gian
+     không vừa 390px, và ép vừa thì giá trị bị cắt — đúng lỗi kỷ luật #21 canh. */
+  .dong {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

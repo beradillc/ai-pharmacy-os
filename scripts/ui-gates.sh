@@ -56,6 +56,7 @@ CONG_DOC=(
   check-luu-tru.mjs         # Cài đặt → Lưu trữ: ảnh chỉ tải khi bấm (ghi audit khi mở)
   check-nhin-thay.mjs       # kỷ luật #21: nhìn thấy được ≠ có trên trang (mọi màn, 390px)
   check-nhat-ky.mjs         # Nhật ký hoạt động: đọc được, lọc được, không lọt mã máy (M-04)
+  check-tai-khoan.mjs       # Cài đặt → Tài khoản của tôi: khớp đúng /auth/me (M-03)
   measure-mobile.mjs        # thanh điều hướng che gì · cột định danh có khuất
   shot-desktop-mobile.mjs   # 6 màn × 2 khổ: trắng · cuộn ngang · phần tử tràn
 )

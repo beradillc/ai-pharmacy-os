@@ -7,6 +7,9 @@ import Link from "next/link";
 import { useTheme } from "@/theme/ThemeProvider";
 import { THEMES } from "@/theme/themes";
 import { DoiMatKhau } from "@/features/auth/DoiMatKhau";
+import { useMe } from "@/features/auth/use-me";
+import { useAuthStore } from "@/features/auth/auth-store";
+import { formatTime } from "@/shared/format/number";
 import styles from "@/shared/ui/screen.module.css";
 
 import local from "./page.module.css";
@@ -25,6 +28,9 @@ import local from "./page.module.css";
 export default function SettingsPage() {
   const [moDoiMatKhau, setMoDoiMatKhau] = useState(false);
   const { theme, setTheme } = useTheme();
+  const me = useMe();
+  const session = useAuthStore((s) => s.session);
+  const chiNhanh = session?.accessible_branches.find((b) => b.id === session.branch_id);
 
   return (
     <div className={styles.page}>
@@ -34,6 +40,51 @@ export default function SettingsPage() {
           <p className={styles.subtitle}>Tuỳ chọn hiển thị, lưu trên máy này</p>
         </div>
       </div>
+
+      {/* Tài khoản của tôi — đóng lỗi M-03 (UAT 01/08).
+
+          🔴 Đặt ở ĐÂY chứ không thành mục menu thứ 15: Chain đã yêu cầu gộp menu (lệnh
+          ⑤⑥ ngày 01/08), và người dùng đi tìm "tên tôi là gì, tôi đang ở chi nhánh nào"
+          ở Cài đặt chứ không ở một mục riêng. Nó cũng nằm ngay trên khối Đổi mật khẩu —
+          đúng thứ tự người ta cần: xem mình là ai, rồi đổi mật khẩu của mình. */}
+      <section className={styles.panel}>
+        <div className={local.section}>
+          <h2 className={local.sectionTitle}>Tài khoản của tôi</h2>
+          {me.isLoading && <div className={styles.skeleton} aria-label="Đang tải" />}
+          {me.error && (
+            <p className={styles.error}>Không tải được thông tin tài khoản.</p>
+          )}
+          {me.data && (
+            <dl className={local.hoSo} data-testid="ho-so">
+              <div className={local.dong}>
+                <dt className={local.nhan}>Họ tên</dt>
+                <dd className={local.giaTri}>{me.data.full_name}</dd>
+              </div>
+              <div className={local.dong}>
+                <dt className={local.nhan}>Email đăng nhập</dt>
+                <dd className={local.giaTri}>{me.data.email}</dd>
+              </div>
+              <div className={local.dong}>
+                <dt className={local.nhan}>Chi nhánh</dt>
+                {/* Tên chi nhánh lấy từ phiên đã ký, không phải từ một lời gọi khác: đây
+                    là chi nhánh đang có hiệu lực trong token, đúng thứ mọi thao tác ghi
+                    vào. Đổi chi nhánh bằng `POST /auth/switch-branch`, không bằng màn này. */}
+                <dd className={local.giaTri}>{chiNhanh ? chiNhanh.name : "—"}</dd>
+              </div>
+              <div className={local.dong}>
+                <dt className={local.nhan}>Đăng nhập lần trước</dt>
+                <dd className={local.giaTri}>
+                  {me.data.last_login_at ? formatTime(me.data.last_login_at) : "lần đầu"}
+                </dd>
+              </div>
+            </dl>
+          )}
+          <p className={local.sectionText}>
+            Sai tên? Chỉ người quản lý sửa được, ở màn <strong>Nhân viên</strong> — tên trên
+            tài khoản đi vào sổ bán thuốc nên không tự sửa được.
+          </p>
+        </div>
+      </section>
 
       {/* Đổi mật khẩu — lối vào TỰ NGUYỆN. Cửa chặn bắt buộc nằm ở `AppShell` khi tài khoản
           còn cờ `must_change_password`; ở đây là chỗ đổi bất cứ lúc nào sau đó. */}

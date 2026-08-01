@@ -1,8 +1,8 @@
 # Danh sách lỗi — UAT 2026-08-01
 
 > 🟢 **Cập nhật 2026-08-01, sau ĐỢT 2** (Chain uỷ quyền sửa toàn bộ lỗi trước khi quay video).
-> **Đã đóng: C-01 · C-02 · U-01…U-07 · M-01 · M-04.**
-> Còn lại: **C-03 · M-02 · M-03 · M-05 · M-06 · M-07 · M-08**. Xem cột *Trạng thái* ở mỗi mục.
+> **Đã đóng: C-01 · C-02 · U-01…U-07 · M-01 · M-03 · M-04.**
+> Còn lại: **C-03 · M-02 · M-05 · M-06 · M-07 · M-08**. Xem cột *Trạng thái* ở mỗi mục.
 
 Phân loại: **Critical** (chặn dùng thật) · **Major** (dùng được nhưng thiếu nghiệp vụ) ·
 **Minor** · **UX** · **Performance** · **Suggestion**.
@@ -59,8 +59,22 @@ from suppliers` → 0.*
 Tên/địa chỉ/ĐT/MST in trên hoá đơn nằm trong **biến môi trường** (`backend/.env`). Dược sĩ
 **không tự sửa được** — phải nhờ kỹ thuật. Với SaaS nhiều nhà thuốc, đây là chặn thật.
 
-### M-03 · Không có màn Thông tin người dùng
-`GET /auth/me` có. Người dùng không xem/sửa được tên, không đổi mật khẩu (xem C-01).
+### ✅ M-03 · Không có màn Thông tin người dùng — **ĐÃ ĐÓNG**
+`GET /auth/me` có — nhưng **chỉ trả định danh và quyền**, không có tên/email. Đủ cho máy,
+không đủ cho người.
+
+**✅ Đã sửa:** mục *Tài khoản của tôi* ở đầu màn **Cài đặt** (không thành mục menu thứ 15 —
+Chain đã yêu cầu gộp menu, và người ta tìm "tôi là ai" ở Cài đặt). Hiện họ tên · email ·
+chi nhánh đang có hiệu lực · lần đăng nhập trước.
+
+🔴 **Vì sao phải sửa BACKEND chứ không đi vòng:** đường duy nhất còn lại để lấy tên là
+`GET /users`, đòi `iam.user.read` — tức là **thu ngân không xem được tên của chính mình**.
+Nên `/auth/me` được **bổ sung** `email`/`full_name`/`last_login_at`/`must_change_password`;
+bốn trường gốc giữ nguyên tên và kiểu, bên gọi cũ không hỏng.
+
+Hai test backend canh đúng chỗ đó, gồm một test *thu ngân không có `iam.user.read` vẫn đọc
+được tên mình* — nếu nó đỏ thì thiết kế đã quay về chỗ hỏng ban đầu. Đột biến: bỏ hai
+trường ⇒ **cả hai đỏ**, khôi phục xanh.
 
 ### ✅ M-04 · Không có màn Nhật ký hoạt động — **ĐÃ ĐÓNG**
 `GET /audit-dashboard` có backend. Chủ quầy **không tra được ai đã làm gì** — mà đây đúng là
