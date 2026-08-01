@@ -5,6 +5,8 @@ import { useState } from "react";
 import { CONSENT_PURPOSES, type ConsentPurposeId, useRecordConsent } from "@/features/crm/use-customers";
 import { ApiError } from "@/shared/api/errors";
 import type { Customer } from "@/shared/api/types";
+import { DetailDialog } from "@/components/overlay/DetailDialog";
+
 import styles from "@/shared/ui/screen.module.css";
 
 import local from "./page.module.css";
@@ -63,13 +65,7 @@ export function ConsentPanel({ customer, onClose }: { customer: Customer; onClos
   }
 
   return (
-    <section className={styles.drawer} aria-label={`Đồng ý của ${customer.full_name}`}>
-      <div className={styles.drawerHead}>
-        <h2 className={styles.drawerTitle}>Đồng ý · {customer.full_name}</h2>
-        <button type="button" className={styles.ghost} onClick={onClose}>
-          Đóng
-        </button>
-      </div>
+    <DetailDialog open title={`Đồng ý · ${customer.full_name}`} onClose={onClose}>
 
       <p className={local.hint}>
         Hỏi khách <strong>từng mục một</strong> rồi bấm thay họ. Không mục nào bắt buộc —
@@ -133,6 +129,6 @@ export function ConsentPanel({ customer, onClose }: { customer: Customer; onClos
         Mỗi lần bấm ghi thêm <strong>một dòng lịch sử</strong>, không sửa dòng cũ — để sau
         này tra được ngày nào khách đồng ý, ngày nào rút lại.
       </p>
-    </section>
+    </DetailDialog>
   );
 }

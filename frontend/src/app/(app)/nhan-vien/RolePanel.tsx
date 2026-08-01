@@ -12,6 +12,8 @@ import {
 } from "@/features/iam/use-staff";
 import { ApiError } from "@/shared/api/errors";
 import type { BranchOption, RoleAssignment, StaffUser } from "@/shared/api/types";
+import { DetailDialog } from "@/components/overlay/DetailDialog";
+
 import styles from "@/shared/ui/screen.module.css";
 
 import local from "./page.module.css";
@@ -90,13 +92,7 @@ export function RolePanel({
   }
 
   return (
-    <section className={styles.drawer} aria-label={`Vai trò của ${user.full_name}`}>
-      <div className={styles.drawerHead}>
-        <h2 className={styles.drawerTitle}>Vai trò · {user.full_name}</h2>
-        <button type="button" className={styles.ghost} onClick={onClose}>
-          Đóng
-        </button>
-      </div>
+    <DetailDialog open title={`Vai trò · ${user.full_name}`} onClose={onClose}>
 
       {error && (
         <div className={styles.error} role="alert">
@@ -223,6 +219,6 @@ export function RolePanel({
         onConfirm={confirmRevoke}
         onCancel={() => setRevoking(null)}
       />
-    </section>
+    </DetailDialog>
   );
 }

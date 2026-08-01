@@ -17,6 +17,8 @@ import { useAuthStore } from "@/features/auth/auth-store";
 import { ApiError } from "@/shared/api/errors";
 import type { StaffUser } from "@/shared/api/types";
 import { formatTime } from "@/shared/format/number";
+import { DetailDialog } from "@/components/overlay/DetailDialog";
+
 import styles from "@/shared/ui/screen.module.css";
 
 import local from "./page.module.css";
@@ -283,10 +285,7 @@ function CreateStaffDialog({
   if (!open) return null;
 
   return (
-    <section className={styles.drawer} aria-label="Thêm nhân viên">
-      <div className={styles.drawerHead}>
-        <h2 className={styles.drawerTitle}>Thêm nhân viên</h2>
-      </div>
+    <DetailDialog open title="Thêm nhân viên" onClose={onCancel}>
       <form
         className={local.form}
         onSubmit={(e) => {
@@ -339,6 +338,6 @@ function CreateStaffDialog({
           </button>
         </div>
       </form>
-    </section>
+    </DetailDialog>
   );
 }

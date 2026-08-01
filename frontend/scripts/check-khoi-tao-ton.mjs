@@ -111,7 +111,7 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   await cayNay().locator("li").filter({ hasText: oMa }).last()
     .locator("button", { hasText: /^Xem hàng$/ }).click();
   await p.waitForTimeout(2000);
-  const trongO = await p.locator('section[aria-label^="Hàng trong"]').innerText().catch(() => "");
+  const trongO = await p.locator('dialog[aria-label^="Hàng trong"]').innerText().catch(() => "");
   // Đúng hai lô của lượt này, đúng số lượng đã đếm.
   const vaoDungO =
     trongO.includes(`KT${N}-0`) && trongO.includes(`KT${N}-1`) &&

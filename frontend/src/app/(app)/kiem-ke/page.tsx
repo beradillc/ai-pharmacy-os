@@ -17,6 +17,8 @@ import {
 import { useLocations, useStockAtLocation } from "@/features/location/use-locations";
 import { ApiError } from "@/shared/api/errors";
 import type { StockCount } from "@/shared/api/types";
+import { DetailDialog } from "@/components/overlay/DetailDialog";
+
 import styles from "@/shared/ui/screen.module.css";
 
 import { TabManGop } from "@/components/layout/TabManGop";
@@ -218,9 +220,9 @@ function ChiTietPhien({
 
   if (!p) {
     return (
-      <section className={styles.drawer} aria-label="Phiên kiểm kê">
+      <DetailDialog open title="Phiên kiểm kê" onClose={onClose}>
         <p className={styles.hint}>Đang tải…</p>
-      </section>
+      </DetailDialog>
     );
   }
 
@@ -238,15 +240,7 @@ function ChiTietPhien({
   };
 
   return (
-    <section className={styles.drawer} aria-label="Phiên kiểm kê">
-      <div className={styles.drawerHead}>
-        <h2 className={styles.drawerTitle}>
-          Kiểm {o?.path ?? "ô"} · {NHAN_TRANG_THAI[p.status]}
-        </h2>
-        <button type="button" className={styles.ghost} onClick={onClose}>
-          Đóng
-        </button>
-      </div>
+    <DetailDialog open title={`Kiểm ${o?.path ?? "ô"} · ${NHAN_TRANG_THAI[p.status]}`} onClose={onClose}>
 
       {loi && (
         <div className={styles.error} role="alert">
@@ -337,7 +331,7 @@ function ChiTietPhien({
           </p>
         )}
       </div>
-    </section>
+    </DetailDialog>
   );
 }
 

@@ -99,7 +99,7 @@ for (const kho of KHO) {
     // xếp dọc" khi ấy là của hai nút thuộc hai dòng khác nhau, tức vô nghĩa. Kỷ luật
     // #15: một kết quả tự mâu thuẫn (370px chứa 168px nút mà vẫn xuống dòng) luôn là
     // lỗi phép đo, không phải lỗi sản phẩm.
-    const panel = document.querySelector('section[aria-label^="Đồng ý của"]');
+    const panel = document.querySelector('dialog[aria-label^="Đồng ý"]');
     if (!panel) return null;
     const muc = panel.querySelectorAll("li");
     const m0 = muc[0];

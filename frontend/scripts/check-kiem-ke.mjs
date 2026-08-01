@@ -125,7 +125,7 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   // Mệnh đề ④: người đếm tự duyệt ⇒ phải nói ra "cùng một người".
   await p.locator("button", { hasText: /^Duyệt/ }).click();
   await p.waitForTimeout(3000);
-  const chuThich = await p.locator('section[aria-label="Phiên kiểm kê"]').innerText();
+  const chuThich = await p.locator('dialog[open]').innerText();
   const noiCungMotNguoi = /cùng một người/i.test(chuThich);
 
   await p.screenshot({ path: `${OUT}/${ten}-2-da-duyet.png`, fullPage: true });
@@ -170,7 +170,7 @@ async function donSoTrongO(p, BASE, khoMa, oMa, loMa) {
     .locator("li").filter({ hasText: oMa }).last()
     .locator("button", { hasText: /^Xem hàng$/ }).click();
   await p.waitForTimeout(2000);
-  const hang = p.locator('section[aria-label^="Hàng trong"] tbody tr').filter({ hasText: loMa });
+  const hang = p.locator('dialog[aria-label^="Hàng trong"] tbody tr').filter({ hasText: loMa });
   if ((await hang.count()) === 0) return NaN;
   const o = (await hang.first().locator("td").last().innerText()).trim();
   return Number(o.replace(/\./g, "").replace(",", "."));

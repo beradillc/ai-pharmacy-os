@@ -78,7 +78,7 @@ const dongChuaDongY = p.locator("tbody tr").filter({ hasText: "✗" }).first();
 await dongChuaDongY.locator("button").first().click();
 await p.waitForTimeout(1500);
 await p.locator('button:has-text("Hỏi khách để lấy đồng ý")').click();
-const drawer = p.locator('section[aria-label^="Đồng ý của"]');
+const drawer = p.locator('dialog[aria-label^="Đồng ý"]');
 await drawer.waitFor({timeout:20000});
 const muc = await drawer.locator("li").count();
 const tick = await drawer.locator('input[type="checkbox"]:checked').count();

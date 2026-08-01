@@ -14,6 +14,8 @@ import {
 import { ApiError } from "@/shared/api/errors";
 import type { PurchaseOrderItem, PurchaseOrderListItem } from "@/shared/api/types";
 import { formatMoney } from "@/shared/format/number";
+import { DetailDialog } from "@/components/overlay/DetailDialog";
+
 import styles from "@/shared/ui/screen.module.css";
 
 import local from "./page.module.css";
@@ -160,15 +162,7 @@ export function ReceiveDrawer({
   const busy = receive.isPending || confirmAgain.isPending;
 
   return (
-    <section className={styles.drawer} aria-label={`Nhận hàng cho đơn ${po.code}`}>
-      <div className={styles.drawerHead}>
-        <h2 className={styles.drawerTitle}>
-          Nhận hàng · <span className={styles.mono}>{po.code}</span>
-        </h2>
-        <button type="button" className={styles.ghost} onClick={onClose}>
-          Đóng
-        </button>
-      </div>
+    <DetailDialog open title={`Nhận hàng · đơn ${po.code}`} onClose={onClose}>
 
       {done ? (
         <div className={local.notice} role="status">
@@ -281,7 +275,7 @@ export function ReceiveDrawer({
           )}
         </>
       )}
-    </section>
+    </DetailDialog>
   );
 }
 

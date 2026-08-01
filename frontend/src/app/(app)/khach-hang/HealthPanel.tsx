@@ -15,6 +15,8 @@ import {
 } from "@/features/crm/use-health";
 import { ApiError } from "@/shared/api/errors";
 import type { Customer } from "@/shared/api/types";
+import { DetailDialog } from "@/components/overlay/DetailDialog";
+
 import styles from "@/shared/ui/screen.module.css";
 
 import local from "./page.module.css";
@@ -127,13 +129,7 @@ export function HealthPanel({
   }
 
   return (
-    <section className={styles.drawer} aria-label={`Hồ sơ sức khoẻ của ${customer.full_name}`}>
-      <div className={styles.drawerHead}>
-        <h2 className={styles.drawerTitle}>Sức khoẻ · {customer.full_name}</h2>
-        <button type="button" className={styles.ghost} onClick={onClose}>
-          Đóng
-        </button>
-      </div>
+    <DetailDialog open title={`Hồ sơ sức khoẻ · ${customer.full_name}`} onClose={onClose}>
 
       {!allowed ? (
         // ① Chưa đồng ý ⇒ không một ô nhập nào. Chỉ nói vì sao và chỉ đường.
@@ -362,7 +358,7 @@ export function HealthPanel({
           onDong={() => setMoChonHoatChat(false)}
         />
       )}
-    </section>
+    </DetailDialog>
   );
 }
 

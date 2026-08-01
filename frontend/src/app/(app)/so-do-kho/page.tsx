@@ -14,6 +14,8 @@ import {
 } from "@/features/location/use-locations";
 import { ApiError } from "@/shared/api/errors";
 import type { StorageLocation } from "@/shared/api/types";
+import { DetailDialog } from "@/components/overlay/DetailDialog";
+
 import styles from "@/shared/ui/screen.module.css";
 
 import { TabManGop } from "@/components/layout/TabManGop";
@@ -198,18 +200,11 @@ function ThemViTri({ cha, onClose }: { cha: StorageLocation | null; onClose: () 
   const tao = useCreateLocation();
 
   return (
-    <section
-      className={styles.drawer}
-      aria-label={cha === null ? "Thêm kho" : `Thêm chỗ dưới ${cha.path}`}
+    <DetailDialog
+      open
+      title={cha === null ? "Thêm kho mới" : `Thêm chỗ dưới ${cha.path}`}
+      onClose={onClose}
     >
-      <div className={styles.drawerHead}>
-        <h2 className={styles.drawerTitle}>
-          {cha === null ? "Thêm kho mới" : `Thêm chỗ dưới ${cha.path}`}
-        </h2>
-        <button type="button" className={styles.ghost} onClick={onClose}>
-          Đóng
-        </button>
-      </div>
 
       {loi && (
         <div className={styles.error} role="alert">
@@ -298,7 +293,7 @@ function ThemViTri({ cha, onClose }: { cha: StorageLocation | null; onClose: () 
           {tao.isPending ? "Đang lưu…" : "Lưu vị trí"}
         </button>
       </div>
-    </section>
+    </DetailDialog>
   );
 }
 
@@ -312,13 +307,7 @@ function TrongO({ o, onClose }: { o: StorageLocation; onClose: () => void }) {
   const tenThuoc = useDrugNames(rows.map((r) => r.drug_id));
 
   return (
-    <section className={styles.drawer} aria-label={`Hàng trong ${o.path}`}>
-      <div className={styles.drawerHead}>
-        <h2 className={styles.drawerTitle}>Trong {o.path}</h2>
-        <button type="button" className={styles.ghost} onClick={onClose}>
-          Đóng
-        </button>
-      </div>
+    <DetailDialog open title={`Hàng trong ${o.path}`} onClose={onClose}>
 
       {ds.isLoading ? (
         <p className={styles.hint}>Đang tải…</p>
@@ -352,6 +341,6 @@ function TrongO({ o, onClose }: { o: StorageLocation; onClose: () => void }) {
           </table>
         </div>
       )}
-    </section>
+    </DetailDialog>
   );
 }

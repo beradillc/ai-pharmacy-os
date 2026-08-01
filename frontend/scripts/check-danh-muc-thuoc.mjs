@@ -77,7 +77,7 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   await p.waitForTimeout(1200);
   await p.screenshot({ path: `${OUT}/${ten}-2-sua-hoat-chat.png`, fullPage: true });
   const bang = await p.evaluate(() => {
-    const d = document.querySelector('section[aria-label^="Hoạt chất của"]');
+    const d = document.querySelector('dialog[aria-label^="Hoạt chất"]');
     if (!d) return null;
     return {
       soDong: d.querySelectorAll("li").length,

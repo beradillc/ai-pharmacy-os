@@ -100,7 +100,7 @@ for (const [ten, w, h, mob] of [["desktop",1440,900,false],["mobile",390,844,tru
   await cayNay().locator("li").filter({ hasText: oMa }).last()
     .locator("button", { hasText: /^Xem hàng$/ }).click();
   await p.waitForTimeout(2000);
-  const trongO = await p.locator('section[aria-label^="Hàng trong"]').innerText().catch(() => "");
+  const trongO = await p.locator('dialog[aria-label^="Hàng trong"]').innerText().catch(() => "");
   const oCoHang = /\d/.test(trongO) && !/chưa có hàng/i.test(trongO);
 
   await p.screenshot({ path: `${OUT}/${ten}-2-trong-o.png`, fullPage: true });

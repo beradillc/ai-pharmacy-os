@@ -17,6 +17,8 @@ import {
 import { ApiError } from "@/shared/api/errors";
 import type { StockRow } from "@/shared/api/types";
 import { formatDate, formatQty } from "@/shared/format/number";
+import { DetailDialog } from "@/components/overlay/DetailDialog";
+
 import styles from "@/shared/ui/screen.module.css";
 
 const TONE_CLASS: Record<string, string> = {
@@ -216,13 +218,7 @@ function CatVaoO({ row, onClose }: { row: StockRow; onClose: () => void }) {
   const cho = (ds.data ?? []).filter((l) => l.kind === "BIN" || l.kind === "SHELF");
 
   return (
-    <section className={styles.drawer} aria-label={`Cất lô ${row.lot_no} vào ô`}>
-      <div className={styles.drawerHead}>
-        <h2 className={styles.drawerTitle}>Cất lô {row.lot_no} vào ô</h2>
-        <button type="button" className={styles.ghost} onClick={onClose}>
-          Đóng
-        </button>
-      </div>
+    <DetailDialog open title={`Sắp xếp lô ${row.lot_no} vào ô`} onClose={onClose}>
 
       {loi && (
         <div className={styles.error} role="alert">
@@ -294,6 +290,6 @@ function CatVaoO({ row, onClose }: { row: StockRow; onClose: () => void }) {
           </label>
         </>
       )}
-    </section>
+    </DetailDialog>
   );
 }

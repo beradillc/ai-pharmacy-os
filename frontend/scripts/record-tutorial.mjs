@@ -266,7 +266,7 @@ try {
   await receiveBtn.waitFor({ timeout: 25_000 });
   await page.waitForTimeout(2200);
   await tap(receiveBtn);
-  const drawer = page.locator('section[aria-label*="Nhận hàng cho đơn"]');
+  const drawer = page.locator('dialog[aria-label*="Nhận hàng"]');
   await drawer.locator("tbody tr").first().waitFor({ timeout: 25_000 });
   await hold();
 

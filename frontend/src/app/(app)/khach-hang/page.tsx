@@ -15,6 +15,8 @@ import {
 import { useAuthStore } from "@/features/auth/auth-store";
 import { ApiError } from "@/shared/api/errors";
 import type { Customer } from "@/shared/api/types";
+import { DetailDialog } from "@/components/overlay/DetailDialog";
+
 import styles from "@/shared/ui/screen.module.css";
 
 import { ConsentPanel } from "./ConsentPanel";
@@ -343,10 +345,7 @@ function CreateCustomerDialog({
   const [phone, setPhone] = useState(initialPhone);
 
   return (
-    <section className={styles.drawer} aria-label="Thêm khách hàng">
-      <div className={styles.drawerHead}>
-        <h2 className={styles.drawerTitle}>Thêm khách hàng</h2>
-      </div>
+    <DetailDialog open title="Thêm khách hàng" onClose={onCancel}>
       <form
         className={local.form}
         onSubmit={(e) => {
@@ -393,6 +392,6 @@ function CreateCustomerDialog({
           </button>
         </div>
       </form>
-    </section>
+    </DetailDialog>
   );
 }

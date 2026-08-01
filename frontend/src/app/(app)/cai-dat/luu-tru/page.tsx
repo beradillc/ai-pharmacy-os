@@ -7,6 +7,8 @@ import {
   usePrescriptionArchive,
   usePrescriptionImage,
 } from "@/features/prescription/use-archive";
+import { DetailDialog } from "@/components/overlay/DetailDialog";
+
 import styles from "@/shared/ui/screen.module.css";
 
 import local from "./page.module.css";
@@ -136,13 +138,7 @@ export default function ArchivePage() {
       )}
 
       {dangMo !== null && (
-        <section className={styles.drawer} aria-label="Ảnh đơn thuốc">
-          <div className={styles.drawerHead}>
-            <h2 className={styles.drawerTitle}>Ảnh đơn thuốc</h2>
-            <button type="button" className={styles.ghost} onClick={() => setDangMo(null)}>
-              Đóng
-            </button>
-          </div>
+        <DetailDialog open title="Ảnh đơn thuốc" onClose={() => setDangMo(null)}>
           {anh.isLoading ? (
             <p className={styles.hint}>Đang tải ảnh…</p>
           ) : anh.data ? (
@@ -157,7 +153,7 @@ export default function ArchivePage() {
           ) : (
             <p className={styles.hint}>Không mở được ảnh.</p>
           )}
-        </section>
+        </DetailDialog>
       )}
     </div>
   );

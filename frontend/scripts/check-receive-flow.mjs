@@ -76,7 +76,7 @@ for (const [name, engine] of [
     }
 
     await button.click();
-    const drawer = page.locator('section[aria-label*="Nhận hàng cho đơn"]');
+    const drawer = page.locator('dialog[aria-label*="Nhận hàng"]');
     await drawer.waitFor({ timeout: 20_000 });
     // 🔴 Chờ DÒNG ĐẦU TIÊN, không chỉ chờ cái ngăn kéo. Ngăn kéo hiện ngay kèm
     // khung xương; các dòng chỉ tới sau khi `GET /purchase-orders/{id}` về. Bản

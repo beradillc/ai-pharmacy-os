@@ -13,6 +13,8 @@ import {
 import { useAuthStore } from "@/features/auth/auth-store";
 import { ApiError } from "@/shared/api/errors";
 import type { Drug } from "@/shared/api/types";
+import { DetailDialog } from "@/components/overlay/DetailDialog";
+
 import styles from "@/shared/ui/screen.module.css";
 
 import local from "./page.module.css";
@@ -201,13 +203,7 @@ function EditIngredients({
   const conLai = (ingredients.data ?? []).filter((i) => !daChon.has(i.id));
 
   return (
-    <section className={styles.drawer} aria-label={`Hoạt chất của ${drug.name}`}>
-      <div className={styles.drawerHead}>
-        <h2 className={styles.drawerTitle}>Hoạt chất · {drug.name}</h2>
-        <button type="button" className={styles.ghost} onClick={onClose}>
-          Đóng
-        </button>
-      </div>
+    <DetailDialog open title={`Hoạt chất · ${drug.name}`} onClose={onClose}>
 
       {loi && (
         <div className={styles.error} role="alert">
@@ -313,7 +309,7 @@ function EditIngredients({
         Lưu xong, cảnh báo dị ứng ở quầy đổi theo <strong>ngay</strong> — không cần khởi
         động lại. Mỗi lần lưu được ghi vào sổ audit.
       </p>
-    </section>
+    </DetailDialog>
   );
 }
 
@@ -335,13 +331,7 @@ function EditPrice({ drug, onClose }: { drug: Drug; onClose: () => void }) {
   const canLyDo = drug.sale_price !== null;
 
   return (
-    <section className={styles.drawer} aria-label={`Giá niêm yết của ${drug.name}`}>
-      <div className={styles.drawerHead}>
-        <h2 className={styles.drawerTitle}>Giá niêm yết · {drug.name}</h2>
-        <button type="button" className={styles.ghost} onClick={onClose}>
-          Đóng
-        </button>
-      </div>
+    <DetailDialog open title={`Giá niêm yết · ${drug.name}`} onClose={onClose}>
 
       {loi && (
         <div className={styles.error} role="alert">
@@ -426,6 +416,6 @@ function EditPrice({ drug, onClose }: { drug: Drug; onClose: () => void }) {
         Giá niêm yết là quyết định <strong>cấp chuỗi</strong>. Quầy vẫn bán lệch được, nhưng
         mỗi lần lệch phải ghi lý do và được ghi vào sổ audit.
       </p>
-    </section>
+    </DetailDialog>
   );
 }
