@@ -121,7 +121,7 @@ Dựng tiếng cho một video:
 | 08 | Khách hàng · Dị ứng | ✅ 6/6 **lượt đầu** | 0 | 0 | ✅ BERAS | ✅ **XONG** |
 | 06 | Bán thuốc | ✅ 7/7 **lượt đầu** | 0 | 0 | ✅ BERAS | ✅ **XONG** |
 | 07 | Phân quyền thu ngân | ✅ 7/7 | **2** (thiếu bước đăng xuất · **màn không báo trước**) | 0 | ✅ BERAS | ✅ **XONG** |
-| 09 | Hoá đơn · Trả hàng | | | | | |
+| 09 | Hoá đơn · Trả hàng | ✅ 6/6 | **1** (lời thoại hứa sai: trả hàng KHÔNG tự nhập lại kho) | 0 | ✅ BERAS | ✅ **XONG** |
 | 10 | Kiểm kê | | | | | |
 | 13 | Nhật ký hoạt động | | | | | |
 | 11 | Báo cáo | | | | | |
