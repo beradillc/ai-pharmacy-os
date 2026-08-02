@@ -70,16 +70,29 @@ Máy **không** đọc được tiếng Việt ở mức giao khách — phần 
 Mỗi video dùng dữ liệu video trước vừa tạo ⇒ không phải dựng dữ liệu giả lần nào, và **thứ tự
 này cũng là thứ tự một quầy thật đi khi mới nhận phần mềm**.
 
+## Giọng chuẩn
+
+Khai ở **`scripts/giong-he-thong.json`** — một chỗ duy nhất, đúng bài học N-4. Chain chốt
+2026-08-02: **VieNeu-TTS v3 Turbo · giọng "Thùy Dung"** (`Nữ · miền Nam · phong cách tin tức`,
+48 kHz). Piper `vivos` spk62 giữ làm dự phòng.
+
+Dựng tiếng cho một video:
+
+```
+~/.local/share/beras-tts/venv-vieneu/bin/python scripts/doc_vieneu.py \
+    docs/testing/09_LOI_THOAI_vNN.md /tmp/tieng-vNN
+```
+
 ## Bảng theo dõi
 
 | # | Video | Quay trọn | Lỗi (a) đã sửa | Lỗi (b) ghi sổ | Lời thoại | Đóng |
 |---|---|---|---|---|---|---|
-| — | tổng quan (nháp) | ✅ 16/16 | 2 | 1 | ✅ | ⏸ chờ giọng |
-| 02 | Thông tin cơ sở · Tài khoản · Đổi mật khẩu | ✅ 9/9 | **1** (lỗi 422 tiếng Anh) | **1** (L-2) | ⏸ chờ giọng | 🟠 chờ Chain cấp số thật |
-| 03 | Danh mục thuốc · Hoạt chất · Giá | | | | | |
+| 01 | Một vòng làm việc trong ngày | ✅ 16/16 | 2 | 1 | ✅ Thùy Dung | ✅ **XONG** |
+| 02 | Thông tin cơ sở · Tài khoản · Đổi mật khẩu | ✅ 9/9 | **1** (lỗi 422 tiếng Anh) | **1** (L-2) | 🟠 giọng CŨ, cần dựng lại | 🟠 chờ Chain cấp số thật |
+| 03 | Danh mục thuốc · Hoạt chất · Giá | ✅ 9/9 | 0 | 0 | ✅ Thùy Dung | ✅ **XONG** |
 | 04 | Sơ đồ kho · Khởi tạo tồn | | | | | |
 | 05 | Nhập hàng · Xếp ô | | | | | |
-| 01 | Đăng nhập · Tổng quan | | | | | |
+| ~~01~~ | ~~Đăng nhập · Tổng quan~~ — gộp vào video 01 ở trên | — | — | — | — | — |
 | 08 | Khách hàng · Dị ứng | | | | | |
 | 06 | Bán thuốc | | | | | |
 | 07 | Phân quyền thu ngân | | | | | |

@@ -8,7 +8,7 @@
  *    đã dùng ở `lib/dung-du-lieu-doi-gia.mjs`; ở đây làm qua **giao diện thật** vì chính thao
  *    tác ấy là thứ video cần cho thấy.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { webkit } from "playwright-core";
 
@@ -16,7 +16,11 @@ import { API, BASE, EMAIL, PASSWORD, doiDangNhap } from "./lib/moi-truong.mjs";
 
 doiDangNhap();
 const OUT = process.env.BERAS_OUT ?? "/tmp/quay-v03";
-const DUR = { "00": 6, "01": 12, "02": 13, "03": 14, "04": 15, "05": 13, "06": 14, "07": 12, "08": 7 };
+const DUR = JSON.parse(
+  process.env.BERAS_DURATIONS
+    ? readFileSync(process.env.BERAS_DURATIONS, "utf8")
+    : JSON.stringify({ "00": 6, "01": 12, "02": 13, "03": 14, "04": 15, "05": 13, "06": 14, "07": 12, "08": 7 }),
+);
 mkdirSync(OUT, { recursive: true });
 
 /** Từ khoá tìm phải ra NHIỀU dòng — bài học dàn cảnh từ bản quay tổng quan (1 dòng ⇒ màn trống). */

@@ -1,0 +1,16 @@
+{
+  "_": "GIỌNG CHUẨN CỦA HỆ THỐNG — Chain chốt 2026-08-02 sau khi nghe bản so sánh.",
+  "_vi_sao_mot_tep": "Trước đây giọng khai rải rác trong từng script; đổi giọng là phải nhớ sửa mấy chỗ. Đúng bài học N-4: chỗ biết một thứ nên có đúng một.",
+  "bo_doc": "vieneu",
+  "giong": "Thùy Dung",
+  "nhan_day_du": "Thùy Dung — Nữ · Nam · Phong cách tin tức",
+  "tan_so_mau": 48000,
+  "chon_ngay": "2026-08-02",
+  "vi_sao": "Chain nghe bản so sánh 4 giọng và chọn đoạn giây 32,2–39,3. Là 1 trong 2 giọng nữ miền Nam của mô hình (còn lại: Thục Đoan, phong cách kể chuyện).",
+  "du_phong": {
+    "bo_doc": "piper",
+    "mo_hinh": "vi_VN-vivos-x_low",
+    "speaker": 62,
+    "ghi_chu": "16 kHz. Dùng khi máy chưa cài VieNeu. KHÔNG áp sổ phát âm của bộ này cho VieNeu — xem 12_SO_PHAT_AM.md."
+  }
+}

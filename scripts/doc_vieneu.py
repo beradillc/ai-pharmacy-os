@@ -27,7 +27,10 @@ from pathlib import Path
 #    miền Nam: **Thục Đoan** (kể chuyện) và **Thùy Dung** (tin tức). Chọn Thục Đoan vì video
 #    hướng dẫn là chỉ việc tại quầy, không phải đọc bản tin.
 #    (Bản so sánh gửi Chain trước đó có 2/3 giọng là miền BẮC — chọn mù vì chưa biết có nhãn.)
-GIONG_MAC_DINH = "Thùy Dung"  # Chain chọn 2026-08-02 sau khi nghe bản so sánh (giây 32,2–39,3)
+# Giọng chuẩn đọc từ `scripts/giong-he-thong.json` — MỘT chỗ duy nhất biết, đúng bài học
+# N-4 (trước đây địa chỉ và tài khoản khai rải rác 33 chỗ, mỗi chỗ một kiểu).
+_CAU_HINH = Path(__file__).parent / "giong-he-thong.json"
+GIONG_MAC_DINH = json.loads(_CAU_HINH.read_text(encoding="utf8"))["giong"]
 
 
 def tach_loi(md: str) -> list[tuple[str, str]]:
