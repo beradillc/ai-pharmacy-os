@@ -24,6 +24,7 @@ theo đúng thứ tự, và có người nhìn từng khung hình.** Không cổ
 ## Vòng lặp cho MỖI video
 
 ```
+⓪ DỌN TRƯỚC      → node scripts/lib/don-truoc-khi-quay.mjs   (video có GHI dữ liệu)
 ① dựng dữ liệu    → node scripts/lib/dung-du-lieu-quay.mjs (hoặc bước riêng của video)
 ② quay            → node scripts/record-vNN.mjs
 ③ đọc log         → mọi lần chết là MỘT phát hiện, không phải một phiền toái
@@ -91,7 +92,7 @@ Dựng tiếng cho một video:
 | 02 | Thông tin cơ sở · Tài khoản · Đổi mật khẩu | ✅ 9/9 | **1** (lỗi 422 tiếng Anh) | **1** (L-2) | 🟠 giọng CŨ, cần dựng lại | 🟠 chờ Chain cấp số thật |
 | 03 | Danh mục thuốc · Hoạt chất · Giá | ✅ 9/9 | 0 | 0 | ✅ Thùy Dung | ✅ **XONG** |
 | 04 | Sơ đồ kho · Khởi tạo tồn | ✅ 8/8 | **2** (mouse.wheel · kho rác) | 0 | ✅ BERAS | ✅ **XONG** |
-| 05 | Nhập hàng · Xếp ô | | | | | |
+| 05 | Nhập hàng · Xếp ô | ✅ 7/7 | **3** (nút thanh điều hướng · chọn thuốc bằng dropdown · nút khoá) | 0 | ✅ BERAS | ✅ **XONG** |
 | ~~01~~ | ~~Đăng nhập · Tổng quan~~ — gộp vào video 01 ở trên | — | — | — | — | — |
 | 08 | Khách hàng · Dị ứng | | | | | |
 | 06 | Bán thuốc | | | | | |
