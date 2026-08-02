@@ -29,7 +29,10 @@ AUDIO_OUTPUT_RETRIEVAL = 1
 ESPEAK_CHARS_UTF8 = 1
 # `+f3` là biến thể giọng NỮ của espeak-ng (f1..f5). `vi` = giọng Bắc — dễ nghe nhất với
 # người dùng toàn quốc; đổi sang `vi-vn-x-south` nếu Chain muốn giọng Nam.
-GIONG_MAC_DINH = "vi+f3"
+# Chain chốt 2026-08-02: **giọng MIỀN NAM, hai người** (nữ nói chính, nam hỏi lại).
+# `vi-vn-x-south` là giọng Nam có sẵn trong espeak-ng-data; `+f3`/`+m3` là biến thể nữ/nam.
+GIONG_NU = "vi-vn-x-south+f3"
+GIONG_NAM = "vi-vn-x-south+m3"
 
 _mau: list[int] = []
 
@@ -59,30 +62,55 @@ def _ghi_wav(duong: Path, mau: list[int], tan_so: int) -> float:
 
 
 class BoDoc:
-    def __init__(self, giong: str = GIONG_MAC_DINH) -> None:
+    def __init__(self, giong: str = GIONG_NU) -> None:
         self.lib = ctypes.CDLL(THU_VIEN)
         self.tan_so = self.lib.espeak_Initialize(AUDIO_OUTPUT_RETRIEVAL, 0, None, 0)
         if self.tan_so <= 0:
             raise RuntimeError("espeak_Initialize thất bại")
         self.lib.espeak_SetSynthCallback(_nhan_mau)
-        if self.lib.espeak_SetVoiceByName(giong.encode()) != 0:
-            raise RuntimeError(f"Không đặt được giọng {giong!r}")
+        self.dat_giong(giong)
         # Chậm hơn mặc định: video hướng dẫn, người xem vừa nghe vừa nhìn tay bấm.
         self.lib.espeak_SetParameter(1, 145, 0)  # espeakRATE, từ/phút
 
-    def doc(self, van_ban: str, ra: Path) -> float:
-        _mau.clear()
-        b = van_ban.encode("utf8")
-        self.lib.espeak_Synth(b, len(b) + 1, 0, 0, 0, ESPEAK_CHARS_UTF8, None, None)
-        self.lib.espeak_Synchronize()
-        if not _mau:
-            raise RuntimeError("espeak không trả về mẫu âm nào")
-        return _ghi_wav(ra, list(_mau), self.tan_so)
+    def dat_giong(self, giong: str) -> None:
+        if self.lib.espeak_SetVoiceByName(giong.encode()) != 0:
+            raise RuntimeError(f"Không đặt được giọng {giong!r}")
+
+    def doc(self, luot: list[tuple[str, str]], ra: Path) -> float:
+        """`luot` = [(giọng, lời), …] — MỘT đoạn có thể gồm nhiều lượt của hai người.
+
+        🔴 Đọc từng lượt rồi NỐI mẫu âm lại, thay vì đọc cả đoạn bằng một giọng: kịch bản
+        viết cho hai người đối đáp, và đọc phần NAM hỏi bằng giọng nữ thì mất hẳn nhịp hội
+        thoại — thứ duy nhất làm video hướng dẫn nghe như một buổi chỉ việc chứ không như
+        một bản tin.
+        """
+        gop: list[int] = []
+        for giong, loi in luot:
+            if not loi.strip():
+                continue
+            self.dat_giong(giong)
+            _mau.clear()
+            b = loi.encode("utf8")
+            self.lib.espeak_Synth(b, len(b) + 1, 0, 0, 0, ESPEAK_CHARS_UTF8, None, None)
+            self.lib.espeak_Synchronize()
+            if not _mau:
+                raise RuntimeError(f"espeak không trả mẫu âm cho {loi[:40]!r}")
+            gop.extend(_mau)
+            # Nghỉ 0,35 giây giữa hai lượt — không có nó thì câu hỏi dính câu trả lời.
+            gop.extend([0] * int(self.tan_so * 0.35))
+        if not gop:
+            raise RuntimeError("không có lượt nào đọc được")
+        return _ghi_wav(ra, gop, self.tan_so)
 
 
-def tach_loi(md: str) -> list[tuple[str, str]]:
-    """Lấy (mã đoạn, lời) từ bảng lời thoại. Bỏ nhãn NỮ/NAM và chú thích trong ngoặc."""
-    ra: list[tuple[str, str]] = []
+def tach_loi(md: str) -> list[tuple[str, list[tuple[str, str]]]]:
+    """Lấy (mã đoạn, [(giọng, lời), …]) từ bảng lời thoại.
+
+    Cột **Ai** cho biết ai mở lời. Trong ô **Lời**, nhãn `**NỮ**` / `**NAM**` xen giữa là
+    chỗ ĐỔI người — ví dụ *"Vào rồi thì thấy gì trước? · **NỮ** Màn tổng quan: …"*. Bảng
+    vốn đã ghi sẵn thông tin đó; trước đây bị vứt đi cùng lúc với việc gỡ dấu sao.
+    """
+    ra: list[tuple[str, list[tuple[str, str]]]] = []
     for dong in md.splitlines():
         if not dong.startswith("| ") or dong.startswith("| #"):
             continue
@@ -92,10 +120,17 @@ def tach_loi(md: str) -> list[tuple[str, str]]:
         loi = o[4]
         if "*(" in loi or not loi:
             continue
-        loi = re.sub(r"\*\*(NỮ|NAM)\*\*|·\s*\*\*(NỮ|NAM)\*\*", " ", loi)
-        loi = re.sub(r"[*`]", "", loi).strip()
-        if loi:
-            ra.append((o[0], loi))
+        giong = GIONG_NAM if "NAM" in o[3] else GIONG_NU
+        luot: list[tuple[str, str]] = []
+        for phan in re.split(r"·?\s*\*\*(NỮ|NAM)\*\*\s*", loi):
+            if phan in ("NỮ", "NAM"):
+                giong = GIONG_NAM if phan == "NAM" else GIONG_NU
+                continue
+            sach = re.sub(r"[*`]", "", phan).strip(" ·")
+            if sach:
+                luot.append((giong, sach))
+        if luot:
+            ra.append((o[0], luot))
     return ra
 
 
@@ -103,7 +138,7 @@ def main() -> int:
     if len(sys.argv) >= 3 and sys.argv[1] == "--thu":
         ra = Path(sys.argv[3] if len(sys.argv) > 3 else "/tmp/tieng")
         ra.mkdir(parents=True, exist_ok=True)
-        giay = BoDoc().doc(sys.argv[2], ra / "thu.wav")
+        giay = BoDoc().doc([(GIONG_NU, sys.argv[2])], ra / "thu.wav")
         print(f"thu.wav · {giay:.1f}s · {ra / 'thu.wav'}")
         return 0
 
@@ -122,11 +157,12 @@ def main() -> int:
     bo = BoDoc()
     tong = 0.0
     nhip: dict[str, int] = {}
-    for ma, loi in doan:
-        giay = bo.doc(loi, ra / f"{ma}.wav")
+    for ma, luot in doan:
+        giay = bo.doc(luot, ra / f"{ma}.wav")
         nhip[ma] = max(1, round(giay))
         tong += giay
-        print(f"  {ma}.wav  {giay:5.1f}s  {loi[:58]}")
+        ai = "+".join("nam" if "m3" in g else "nữ" for g, _ in luot)
+        print(f"  {ma}.wav  {giay:5.1f}s  [{ai}]  {luot[0][1][:48]}")
     (ra / "durations.json").write_text(
         "{\n" + ",\n".join(f'  "{k}": {v}' for k, v in sorted(nhip.items())) + "\n}\n",
         encoding="utf8",
