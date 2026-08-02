@@ -2,7 +2,9 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-02** — đóng phiên §7dm: **bộ 14 video dựng xong** (13 phát hành được,
+> **Cập nhật cuối: 2026-08-02** — §7do: **đợt A đóng trọn 3/3** (L-2 · N-1 · N-2) dưới uỷ quyền
+> full-auto của Chain; pytest **1492 passed**. Trước đó §7dn chốt kế hoạch 9 bước A→B→C, và §7dm
+> đóng phiên **bộ 14 video dựng xong** (13 phát hành được,
 > video 14 chờ Pháp Lý), 4 lỗi sản phẩm do chính việc quay tìm ra, hook pre-commit lên **5 cổng**
 > (thêm vitest). Trước đó: kế hoạch 6 phiên §7cv → §7db, Sprint 1–8 đã đóng, BERAS V2 Phase 0–11
 > (§7cu), kiểm toán độc lập 2026-07-26 (`docs/audit/00_AUDIT_INDEX.md`).
@@ -12,12 +14,14 @@
 > phải sửa **dòng "Cập nhật cuối"** này, không chỉ thêm mục ở cuối tệp.
 >
 > **Còn nợ, xếp theo tỉ lệ hoàn vốn** (chi tiết `docs/ARCHITECTURE_REVIEW.md`):
-> ① **L-2** — `check-thong-tin-co-so` mang nhãn ĐỌC-THUẦN nhưng **ghi đè thông tin pháp lý** ·
-> ② **N-1** hoá đơn chưa đọc Thông tin cơ sở (cross-module read-port) · **N-2** Mẫu số 06 chưa in
-> phần đầu sổ · ③ **F-18 observability** — hôm nay **bằng không**: không metrics, không tracing,
-> không cảnh báo, không dead-man's switch cho cron backup · ④ BERAS V2 **Phase 12** sơ đồ trực
-> quan (có thiết kế `docs/inventory/LOCATION_MAP.md`) · ⑤ **Phase 8** multi-supplier (hoãn có lý
-> do, cần Chain chốt tiêu chí chọn NCC).
+> ~~① **L-2** · ② **N-1** / **N-2**~~ — **cả ba ĐÓNG 2026-08-02** (§7do).
+> ① **F-18 observability** — **bằng không**: không metrics, không tracing, không cảnh báo.
+> *(Dead-man's switch cho cron backup thì **đã có** — `scripts/backup_deadman.sh`, kỷ luật #16;
+> việc còn lại là kiểm nó có răng.)* · ② BERAS V2 **Phase 12** sơ đồ trực quan (có thiết kế
+> `docs/inventory/LOCATION_MAP.md`) · ③ **L-1** phiếu nhập nhận một phần — **Chain đã quyết**
+> (đóng phiếu, phần thiếu ghi là hụt), chờ code · ④ **Phase 8** multi-supplier (cần Chain chốt
+> tiêu chí chọn NCC) · ⑤ 7/21 cổng trình duyệt "chưa đo được" · `tests/` ngoài mypy ·
+> `SalesService.__init__` **8 tham số**.
 >
 > 🔴 **Bốn dòng nợ ở khối này đã bị SỬA ngày 2026-08-02 vì nói SAI sự thật** (kỷ luật #16 — sổ nợ
 > không phân biệt được "chưa làm" với "làm rồi"; chỉ `grep` phân biệt được):
@@ -174,6 +178,7 @@
 | [§7dl](#7dl-r-v-d-n-sau-l-t-quay-u-ch-a-o-c-t-ch-kh) | 2026-08-02 | 🧹 Rà và dọn sau lượt quay đầu — "chưa đo được" tách khỏi "hỏng" |
 | [§7dm](#7dm-ng-phi-n-2026-08-02-b-14-video-d-ng-xon) | 2026-08-02 | 🔒 ĐÓNG PHIÊN — bộ 14 video dựng xong, 4 lỗi sản phẩm do việc quay tìm ra |
 | [§7dn](#7dn-k-ho-ch-9-b-c-a-b-c-chain-duy-t-2026-08) | 2026-08-02 | 📋 **KẾ HOẠCH 9 BƯỚC A→B→C** Chain duyệt + quyết định L-1 (chưa code) |
+| [§7do](#7do-t-a-ng-tr-n-3-3-l-2-n-1-n-2-2026-08-02) | 2026-08-02 | ✅ **ĐỢT A ĐÓNG TRỌN 3/3** — L-2 · N-1 · N-2 + ba lần phép ĐO suýt sai |
 
 ---
 
@@ -9131,3 +9136,123 @@ toán 26/07 đếm được 16 ca. Đó là lý do B đứng trước C, dù C m
 - **Chưa viết một dòng mã sản phẩm nào.** 2 commit, cả hai là tài liệu.
 - Docker **đang tắt** — bước A1 cần `docker compose up -d postgres` trước.
 - Việc kế tiếp khi mở lại: **A1 (L-2)**.
+
+---
+
+## 7do. ✅ ĐỢT A ĐÓNG TRỌN 3/3 — L-2 · N-1 · N-2 (2026-08-02)
+
+Chain uỷ quyền: *"Uỷ quyền GĐ hoàn thiện tiếp phần mềm, phần làm được ngay."* Chế độ full-auto.
+**4 commit mã** (+2 commit tài liệu ở §7dn). Cả ba nợ 🔴 của đợt A đóng.
+
+### A1 — L-2: cổng "đọc-thuần" đã ghi đè thông tin pháp lý suốt thời gian nằm trong nhóm đó
+
+`check-thong-tin-co-so` ghi 5 trường thông tin cơ sở rồi **không bao giờ trả lại**. Chú thích
+đầu tệp khẳng định *"nó ghi rồi trả lại nguyên giá trị cũ, không để lại rác"* — **lời khai
+sai**, và nó là **cơ sở duy nhất** để cổng được xếp vào nhóm đọc-thuần, tức nhóm chạy mặc
+định không hỏi ai.
+
+| Đổi gì | Vì sao |
+|---|---|
+| Chụp nguyên trạng **một lần** ở khổ đầu, khôi phục về đúng bản đó ở mọi khổ | Chụp lại mỗi khổ ⇒ khổ sau khôi phục về **giá trị dò** của khổ trước nếu khổ trước chết giữa chừng: cơ chế khôi phục tự nhân bản lỗi của chính nó |
+| Giá trị dò **hiển nhiên là giả** (`KIỂM THỬ`, `KIEMTHU000000`) | Bản cũ dò bằng địa chỉ Q.5 TP.HCM + MST 10 chữ số **trông y như thật**, trong khi chi nhánh ở Vĩnh Long. Khôi phục hỏng ⇒ thứ nằm lại trong sổ pháp lý phải **nhìn là biết sai ngay** |
+| Khôi phục **6/6** trường trong `finally` + mệnh đề ⑦ **đo chính việc khôi phục** | Bản cũ quên `ma_co_so_ban_buon`; và 6 mệnh đề cũ **không cái nào** hỏi *"cái tôi vừa ghi đè đã về chỗ cũ chưa"* (kỷ luật #24) |
+
+```
+GATE_EXIT=0     7/7 mệnh đề, cả 2 khổ
+MUTANT_EXIT=1   bỏ ghi-lại ⇒ ⑦ đỏ, liệt kê đủ 6/6 trường lệch
+DIFF_EXIT=0     đối chiếu SQL trực tiếp: hàng tenant_compliance_configs KHÔNG đổi một ký tự
+```
+
+Sửa luôn định nghĩa nhóm trong `ui-gates.sh`: **"đọc-thuần" = không để lại thay đổi nào**, KHÔNG
+phải *"không gọi endpoint ghi"*. Ghi rồi trả lại thì được — nhưng phép trả lại phải là một
+**mệnh đề được đo**, không phải một câu trong chú thích.
+
+### A2 — N-1: hoá đơn đọc bản khai của cơ sở (xem `docs/adr/ADR-0004`)
+
+Hai nguồn sự thật cho *"cơ sở này là ai"*: hoá đơn đọc `APP__ORG__*`, màn Cài đặt ghi vào
+`tenant_compliance_configs`. Người dùng đổi tên, bấm Lưu, thấy `✓ Đã lưu` — rồi in ra tờ hoá
+đơn **vẫn mang tên cũ**. Màn đó đã phải tự dán một dòng cáo lỗi; dòng chữ ấy là **bằng chứng
+thiết kế sai**, không phải cách sửa nó.
+
+Adapter `ComplianceOrgProfileReader` ở composition root, `import-linter` **19/19 kept**. Ba
+lựa chọn ghi trong ADR: trộn theo **từng trường** · danh tính hệ thống với **đúng một quyền**
+· **lỗi tra cứu không làm hỏng tờ hoá đơn**. Cổng đọc đi vào **tầng interface**, không vào
+`SalesService` (chữ ký đã 8 tham số — `ARCHITECTURE_REVIEW` ①).
+
+🔴 **Bằng chứng hai nguồn độc lập** (kỷ luật #23), đo qua HTTP thật trên `qt650`:
+
+```
+backend/.env :  ORG__PHONE=        ORG__TAX_CODE=          ← RỖNG cả hai
+hoá đơn in ra:  ĐT: 0918280650     MST: 5800001234         ← CHỈ có thể từ CSDL
+địa chỉ      :  khớp bản CSDL "xã…Vĩnh Long", KHÔNG khớp .env "Xã…tỉnh Vĩnh Long"
+```
+
+### A3 — N-2: Mẫu số 06 có phần đầu và phần cuối biểu mẫu
+
+Nguồn: **giải nén `docs/legal/Nghị-định-163-2025-NĐ-CP.docx`**, đọc thẳng Phụ lục II — không
+suy từ trí nhớ, không suy từ bản tóm tắt (quy tắc R-10 của vault).
+
+🔴 **Ba ô cố ý ĐỂ TRỐNG, mỗi ô một test canh:**
+
+| Ô | Vì sao không tự điền |
+|---|---|
+| `Số:` | Số hiệu văn bản đi theo **sổ văn thư của cơ sở**. Hệ thống không giữ sổ văn thư ⇒ sinh đại một con số là **tạo ra một số hiệu văn bản không có thật** |
+| `Kính gửi:` | UBND cấp tỉnh nơi đặt trụ sở chính. Tách tỉnh từ địa chỉ tự do là **đoán** — `"xã Thạnh Trị, Vĩnh Long"` tách được, `"650 Nguyễn Trãi, P.11, Q.5"` thì không. Đoán sai ⇒ **gửi báo cáo cho sai cơ quan** |
+| Ngày ký | Ngày người đại diện **thật sự ký**, không phải ngày bấm nút xuất tệp |
+
+Đổi tiêu đề cột từ tên máy (`ten_thuoc_day_du`) sang chữ bản gốc kèm số (1)–(12): chấp nhận
+được khi tệp chỉ là *dữ liệu để chép sang biểu mẫu*, nhưng từ khi tệp mang tiêu đề chính thức
++ ô ký + con dấu thì nó **chính là văn bản đem nộp** — và người ta sẽ nộp đúng dòng
+`ten_thuoc_day_du` như thế. Đã rà: **không bên gọi máy nào** đọc tệp này.
+
+### 🔴 Ba lần phép ĐO suýt cho kết quả sai — cả ba trong một phiên
+
+Đây là phần đáng giữ lại nhất của phiên này, hơn cả ba mục đã đóng.
+
+| # | Chuyện gì | Vì sao nguy hiểm | Bắt bằng cách nào |
+|---|---|---|---|
+| 1 | `cd backend && cp … && python3 -c "…đột biến…"` chạy trong lúc cwd **đã là** `backend` ⇒ `cd` hỏng ⇒ **cả chuỗi `&&` dừng** ⇒ đột biến không bao giờ được áp dụng. Lượt `pytest` sau đó xanh | Suýt ghi *"đột biến sống sót ⇒ test không có răng"* rồi **đi sửa một thứ không hỏng** — đúng hai ca ở kỷ luật #15 | `grep -c "ĐỘT BIẾN"` xác nhận đột biến **thật sự nằm trong tệp** trước khi chạy cổng |
+| 2 | Đột biến của A3 làm **hỏng cú pháp** ⇒ `EXIT=2` | `EXIT=2` là lỗi **thu thập test**, không phải cổng đỏ. Đọc lướt thì "khác 0 nghĩa là đỏ" — nhưng nó chứng minh **mệnh đề khác** hẳn | `ast.parse()` trước khi chạy, và đọc kỹ mã thoát chứ không chỉ *"khác 0"* |
+| 3 | `pkill -f uvicorn` xong khởi động lại ⇒ **frontend cũ vẫn giữ cổng 3000** ⇒ `lan-dev.sh` từ chối chạy ⇒ **backend nằm im**, `curl` báo `BE=7` | Nếu chạy cổng lúc này, nó đỏ vì **hạ tầng** chứ không vì sản phẩm — và log hai thứ đó trông y hệt nhau (§7dg đã mất một lượt vì đúng chuyện này) | `curl` **cả hai** cổng trước khi tin app đã lên, không chỉ cổng frontend |
+
+Cả ba cùng một hình dạng: **một lệnh không chạy, nhưng lượt sau vẫn cho ra một con số đọc
+được.** Bổ sung cho #8 theo chiều ngược lại — #8 cấm suy mã thoát của cổng từ lệnh có pipe;
+ba ca này là **suy trạng thái đã-chuẩn-bị từ một chuỗi `&&` đứt giữa chừng**.
+
+### Kỷ luật #16 tiết kiệm thêm một bước
+
+**B2 (dead-man's switch cho cron backup) KHÔNG cần viết** — `scripts/backup_deadman.sh` đã tồn
+tại, 76 dòng, kiểm ba điều theo thứ tự nghiêm trọng giảm dần, và **tự khai giới hạn của chính
+nó** (*"chạy bằng cron thì chính nó cũng im lặng được"*). Kế hoạch §7dn đổi B2 từ **"viết"**
+thành **"kiểm nó có răng"** — ghi lý do đổi theo kỷ luật #12. Tổng số bước **vẫn là 9**.
+
+### Cổng tại điểm dừng
+
+```
+RUFF=0 FORMAT=0 MYPY=0 (273 tệp) IMPORTLINTER=0 (19/19) VITEST=0 (122)
+PYTEST_EXIT=0   1492 passed (1480 → 1485 → 1492)
+GATE_EXIT=0     check-thong-tin-co-so 7/7 mệnh đề × 2 khổ
+```
+
+Ảnh nghiệm thu: `docs/ui-history/2026-08-02-hoa-don-co-so/` — chụp **sau khi khôi phục**. Hai
+ảnh đầu của cổng chụp giữa lượt dò nên hiện giá trị `KIỂM THỬ`: đúng cho gỡ lỗi cổng, **vô
+dụng để Chain nghiệm thu**, và một ảnh nghiệm thu hiện dữ liệu thử còn **tệ hơn không có ảnh**
+— nó trông y như sản phẩm đang mang dữ liệu rác. Đã thêm ảnh thứ ba vào cổng.
+
+### 🚧 Còn mở
+
+| # | Việc | Ai |
+|---|---|---|
+| **B1** | `/metrics` + log có mã lỗi truy được | Trợ lý Code |
+| **B2** | *(đổi phạm vi)* kiểm `backup_deadman.sh` có răng — đột biến theo #14 | Trợ lý Code |
+| **B3** | 7 cổng trình duyệt "chưa đo được" + N-5 | Trợ lý Code |
+| **C1–C3** | Phase 12 sơ đồ kho · L-1 · gom `SalesPorts` | Trợ lý Code |
+| **N-3** | 🔴 Rà pháp lý màn Sổ kiểm soát — **đứng yên 3 ngày**, chạm ngưỡng R-9 | Trợ lý Pháp Lý |
+| — | 🔴 **4 số thật của cơ sở** — nay hoá đơn in ra **đúng thứ đã khai**, mà thứ đã khai thì **chưa ai xác nhận là số thật**. Mức độ đã đổi từ *"chặn video 02"* sang *"chặn cả hoá đơn ngoài đời"* | Chain |
+
+### Điểm dừng
+
+- Backend chạy nền cổng 8000 · frontend cổng 3000 · `qt650` · postgres+redis `up`.
+- Dừng sạch: `pkill -f "uvicorn pharmacy_os.main:app"` rồi `kill` pid của `next-server` — **ở
+  hai lượt shell RIÊNG** (chạy chung lượt sẽ giết luôn shell, exit 144).
+- Việc kế tiếp: **B1**.
