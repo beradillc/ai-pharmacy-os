@@ -6,12 +6,14 @@ from collections.abc import Awaitable, Callable
 from datetime import date
 from uuid import UUID
 
+import structlog
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from pharmacy_os.core.config import OrgSettings, Settings
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.modules.sales.application import SalesService, VnpayConfirmOutcome
+from pharmacy_os.modules.sales.domain import OrgProfile, OrgProfileProvider
 from pharmacy_os.modules.sales.interface.receipt_rendering import render_pdf, render_thermal_k80
 from pharmacy_os.modules.sales.interface.schemas import (
     AllergyCheckRequest,
@@ -24,6 +26,8 @@ from pharmacy_os.modules.sales.interface.schemas import (
     SaleResponse,
     VnpayInitiateResponse,
 )
+
+_log = structlog.get_logger("sales.receipt_org")
 
 ContextDep = Callable[..., Awaitable[RequestContext]]
 """``get_context`` là **async** kể từ audit B-07: nó phải tra CSDL để xác nhận cặp
@@ -55,10 +59,53 @@ def _org_settings(request: Request) -> OrgSettings:
     return settings.org
 
 
-def build_router(get_context: ContextDep) -> APIRouter:
+def _hoa_hai_nguon(moi_truong: OrgSettings, khai_bao: OrgProfile | None) -> OrgSettings:
+    """Thông tin cơ sở **đã khai** thắng cấu hình môi trường, **theo từng trường** (N-1).
+
+    Vì sao trộn theo trường chứ không lấy trọn một bên: một cơ sở có thể mới khai tên và
+    địa chỉ mà chưa có mã số thuế. Lấy trọn bản khai thì tờ hoá đơn **mất dòng MST** đang
+    in đúng từ trước — một bước lùi im lặng, đúng loại lỗi kỷ luật #17 gọi là *"hình dạng
+    không đổi nhưng ngữ nghĩa đổi"*. Lấy trọn cấu hình thì cả màn Cài đặt vô nghĩa.
+
+    Chuỗi rỗng và ``None`` được coi như nhau — *"khai rồi mà để trống"* và *"chưa khai"*
+    đều có nghĩa là **không có gì để in**, và một dòng ``ĐT:`` cụt trên tờ giấy đưa khách
+    thì tệ hơn là không có dòng nào.
+    """
+    if khai_bao is None:
+        return moi_truong
+    return OrgSettings(
+        pharmacy_name=khai_bao.ten_co_so or moi_truong.pharmacy_name,
+        address=khai_bao.dia_chi or moi_truong.address,
+        phone=khai_bao.dien_thoai or moi_truong.phone,
+        tax_code=khai_bao.ma_so_thue or moi_truong.tax_code,
+    )
+
+
+def build_router(
+    get_context: ContextDep, org_profile: OrgProfileProvider | None = None
+) -> APIRouter:
     root = APIRouter(tags=["sales"])
     sales = APIRouter(prefix="/sales")
     sync = APIRouter(prefix="/sync")
+
+    async def dau_trang_hoa_don(
+        request: Request, ctx: RequestContext = Depends(get_context)
+    ) -> OrgSettings:
+        """Đầu trang hoá đơn: bản khai của cơ sở, lùi về cấu hình môi trường khi thiếu.
+
+        🔴 **Không để một lỗi tra cứu làm hỏng tờ hoá đơn.** Nếu cổng đọc ném lỗi (CSDL
+        chớp, quyền lệch, tenant chưa có hàng cấu hình), hoá đơn vẫn phải in ra — nó là
+        chứng từ khách đang đứng chờ ở quầy. Ghi log rồi lùi về cấu hình môi trường,
+        đúng hành vi của mọi phiên bản trước bản vá này.
+        """
+        moi_truong = _org_settings(request)
+        if org_profile is None:
+            return moi_truong
+        try:
+            return _hoa_hai_nguon(moi_truong, await org_profile.profile_of(ctx.tenant_id))
+        except Exception:  # noqa: BLE001 — xem docstring: hoá đơn không được hỏng vì việc này
+            _log.warning("org_profile_loi_tra_cuu", tenant_id=str(ctx.tenant_id), exc_info=True)
+            return moi_truong
 
     @sales.post("", response_model=SaleResponse, status_code=status.HTTP_201_CREATED)
     async def create_sale(
@@ -162,7 +209,7 @@ def build_router(get_context: ContextDep) -> APIRouter:
         order_id: UUID,
         fmt: ReceiptFormat = Query(default=ReceiptFormat.JSON, alias="format"),
         service: SalesService = Depends(_service),
-        org: OrgSettings = Depends(_org_settings),
+        org: OrgSettings = Depends(dau_trang_hoa_don),
         ctx: RequestContext = Depends(get_context),
     ) -> Response:
         receipt = await service.get_receipt(order_id, ctx)

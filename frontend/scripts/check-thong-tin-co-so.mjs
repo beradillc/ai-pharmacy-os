@@ -27,9 +27,11 @@
  *   1. khối có mặt trên màn Cài đặt (`khoi-thong-tin-co-so`);
  *   2. giá trị đã lưu **hiện lại được** sau khi tải lại trang — nếu chỉ ghi mà không đọc
  *      lại thì màn "trông như chạy" trọn vẹn cho tới lần đăng nhập sau;
- *   3. 🔴 màn **tự nói ra là hoá đơn CHƯA dùng** thông tin này. Đây là nợ có thật (N-1), và
- *      một màn "Thông tin cơ sở" mà người dùng tưởng đã đổi được hoá đơn rồi in 200 tờ sai
- *      tên là hỏng đắt hơn nhiều so với một dòng chữ thừa;
+ *   3. màn **nói rõ hoá đơn CÓ dùng** thông tin này. Mệnh đề ③ trước đây canh chiều
+ *      NGƯỢC LẠI — nó đòi màn tự thú *"hoá đơn chưa dùng"*, vì đó là sự thật cho tới
+ *      02/08. Nợ N-1 đóng ⇒ câu đó thành **sai**, và một cổng canh một câu đã sai thì
+ *      giữ nguyên chỗ hỏng thay vì canh nó. Đổi vế, không xoá mệnh đề: người dùng vẫn
+ *      phải đọc được việc mình vừa làm có hiệu lực tới đâu;
  *   4. lời cảnh báo ở ③ **nhìn thấy được**, không chỉ có trong DOM (kỷ luật #21);
  *   5. ô nhập không biến dạng ở khổ 390px — cùng bẫy `flex-basis` đã quay lại bốn lần;
  *   6. trang không cuộn ngang · không lỗi JS;
@@ -193,14 +195,14 @@ for (const [ten, w, h, mob] of [
     const sauTaiLai = await p.inputValue('input[aria-label="Tên cơ sở"]');
     const luuThat = sauTaiLai === do_["Tên cơ sở"];
 
-    const noiChuaVaoHoaDon = /Hoá đơn in ra chưa dùng thông tin ở đây/i.test(
+    const noiVaoHoaDon = /Hoá đơn in ra dùng thông tin ở đây/i.test(
       await p.locator("body").innerText(),
     );
     const oCanhBao = await trongKhungNhin(
       p,
       p
         .locator('[data-testid="khoi-thong-tin-co-so"] p')
-        .filter({ hasText: "chưa dùng thông tin" }),
+        .filter({ hasText: "dùng thông tin ở đây" }),
     );
     const cuon = await cuonNgangTrang(p);
     await p.screenshot({ path: `${OUT}/${ten}-2-sau-tai-lai.png`, fullPage: true });
@@ -211,11 +213,16 @@ for (const [ten, w, h, mob] of [
     //    lo ca hỏng bất thường, còn đường chạy bình thường phải khôi phục **và chứng minh**.
     khoiPhuc = await traLaiNguyenTrang(p);
     daGhi = false;
+    // 🔴 Ảnh thứ BA, chụp SAU khi khôi phục. Hai ảnh trước chụp giữa lượt dò nên chúng
+    //    hiện giá trị `KIỂM THỬ` — đúng cho việc gỡ lỗi cổng, **vô dụng để Chain nghiệm
+    //    thu** (kỷ luật #20: ảnh là thứ Chain duyệt). Một ảnh nghiệm thu hiện dữ liệu thử
+    //    còn tệ hơn không có ảnh: nó trông y như sản phẩm đang mang dữ liệu rác.
+    await p.screenshot({ path: `${OUT}/${ten}-3-nguyen-trang.png`, fullPage: true });
 
     const dat =
       coKhoi &&
       luuThat &&
-      noiChuaVaoHoaDon &&
+      noiVaoHoaDon &&
       oCanhBao.dat &&
       oTen.dat &&
       oNhapBinhThuong &&
@@ -230,7 +237,7 @@ for (const [ten, w, h, mob] of [
       `  ② lưu rồi TẢI LẠI vẫn đúng: ${luuThat ? "✓" : `🔴 ghi "${do_["Tên cơ sở"]}" · đọc lại "${sauTaiLai}"`}`,
     );
     console.log(
-      `  ③ nói rõ hoá đơn CHƯA dùng: ${noiChuaVaoHoaDon ? "✓" : "🔴 — nợ bị giấu, người dùng sẽ in nhầm"}`,
+      `  ③ nói rõ hoá đơn CÓ dùng: ${noiVaoHoaDon ? "✓" : "🔴 — màn không nói hiệu lực tới đâu"}`,
     );
     console.log(`  ⑤ ô nhập cao ${Math.round(caoONhap)}px (≤96) ${oNhapBinhThuong ? "✓" : "🔴"}`);
     inDong("④ cảnh báo nhìn thấy được", oCanhBao);

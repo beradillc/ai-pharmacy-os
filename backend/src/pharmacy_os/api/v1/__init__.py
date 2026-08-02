@@ -17,6 +17,7 @@ from pharmacy_os.api.v1.compliance_cross import wire_compliance_sync
 from pharmacy_os.api.v1.cross_module import (
     CatalogDrugInfoProvider,
     CatalogDrugMasterProvider,
+    ComplianceOrgProfileReader,
     CrmClinicalAllergyRiskProvider,
     IamAuthReauthProvider,
     LocationServiceInfoProvider,
@@ -39,6 +40,7 @@ from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.catalog.interface import register as register_catalog
 from pharmacy_os.modules.clinical.application import ClinicalService
 from pharmacy_os.modules.clinical.interface import register as register_clinical
+from pharmacy_os.modules.compliance.application import ComplianceService
 from pharmacy_os.modules.compliance.interface import register as register_compliance
 from pharmacy_os.modules.crm.application import CrmService
 from pharmacy_os.modules.crm.interface import register as register_crm
@@ -115,9 +117,18 @@ def build_api_router(container: Container) -> APIRouter:
     )
     rx_info = PrescriptionInfoAdapter(container.resolve(PrescriptionService))
     nguoi_ban = SalespersonNameAdapter(container.resolve(IamService))
+    # N-1: đầu trang hoá đơn lấy từ bản khai của cơ sở (compliance), không từ
+    # biến môi trường APP__ORG__*. sales không import compliance — adapter ở đây.
+    ho_so_co_so = ComplianceOrgProfileReader(container.resolve(ComplianceService))
     api.include_router(
         register_sales(
-            container, get_context, drug_info, rx_info, allergy_risk, salesperson_info=nguoi_ban
+            container,
+            get_context,
+            drug_info,
+            rx_info,
+            allergy_risk,
+            salesperson_info=nguoi_ban,
+            org_profile=ho_so_co_so,
         )
     )
 

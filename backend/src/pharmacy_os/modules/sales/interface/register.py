@@ -18,6 +18,7 @@ from pharmacy_os.modules.sales.application import SalesService
 from pharmacy_os.modules.sales.domain import (
     AllergyRiskProvider,
     DrugInfoProvider,
+    OrgProfileProvider,
     PrescriptionInfoProvider,
     SalespersonInfoProvider,
 )
@@ -32,6 +33,7 @@ def register(
     prescription_info: PrescriptionInfoProvider | None = None,
     allergy_risk: AllergyRiskProvider | None = None,
     salesperson_info: SalespersonInfoProvider | None = None,
+    org_profile: OrgProfileProvider | None = None,
 ) -> APIRouter:
     uow_factory = container.resolve(UnitOfWorkFactory)
 
@@ -52,4 +54,7 @@ def register(
         salesperson_info=salesperson_info,
     )
     container.register_instance(SalesService, service)
-    return build_router(get_context)
+    # `org_profile` KHÔNG vào SalesService: đầu trang hoá đơn là việc của tầng interface
+    # (nó chỉ đổi cách vẽ tờ giấy), và chữ ký trên đã tám tham số — ARCHITECTURE_REVIEW ①
+    # ghi rõ cách đó không mở rộng thêm lần nữa được.
+    return build_router(get_context, org_profile=org_profile)

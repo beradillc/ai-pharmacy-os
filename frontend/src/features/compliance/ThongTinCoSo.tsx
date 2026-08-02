@@ -42,13 +42,15 @@ export function ThongTinCoSo() {
           một lần, dùng cho báo cáo gửi cơ quan quản lý.
         </p>
 
-        {/* ⚠️ Nợ NÓI RA TRÊN MÀN, không giấu trong tài liệu — cùng kỷ luật đã dùng ở màn
-            Nhật ký và màn Sổ kiểm soát. Người dùng tưởng đổi được hoá đơn rồi in ra 200
-            tờ sai tên là hỏng đắt hơn nhiều so với một dòng chữ thừa ở đây. */}
+        {/* Dòng này trước đây là một lời XIN LỖI: "hoá đơn in ra chưa dùng thông tin ở
+            đây". Nợ N-1 đã đóng 02/08 — hoá đơn nay đọc thẳng bản khai này qua một cổng
+            đọc cross-module. Giữ lại một dòng, nhưng đổi nội dung: người dùng cần biết
+            việc mình vừa làm có hiệu lực tới đâu, và "tới đâu" nay là một câu khẳng
+            định chứ không phải một câu cáo lỗi. */}
         <p className={styles.hint} style={{ marginTop: "var(--space-2)" }}>
-          ⚠️ <strong>Hoá đơn in ra chưa dùng thông tin ở đây</strong> — nó vẫn
-          lấy tên cơ sở từ cấu hình khi cài đặt. Đổi ở màn này chưa đổi được đầu
-          trang hoá đơn; việc nối hai chỗ còn nợ lại.
+          ✓ <strong>Hoá đơn in ra dùng thông tin ở đây</strong> — đổi tên hoặc
+          địa chỉ tại màn này thì tờ hoá đơn tiếp theo in ra theo giá trị mới.
+          Trường nào để trống thì hoá đơn bỏ hẳn dòng đó.
         </p>
 
         {ds.isLoading && (

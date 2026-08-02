@@ -27,6 +27,7 @@ from pharmacy_os.modules.clinical.application import (
     ClinicalService,
 )
 from pharmacy_os.modules.clinical.domain import AiContextType
+from pharmacy_os.modules.compliance.application import ComplianceService
 from pharmacy_os.modules.compliance.domain import DrugMasterFacts
 from pharmacy_os.modules.compliance.domain.ports import SigningReauthOutcome
 from pharmacy_os.modules.crm.application import CrmService, MedicationHistoryItemInput
@@ -46,6 +47,7 @@ from pharmacy_os.modules.sales.application import SalesService
 from pharmacy_os.modules.sales.domain import (
     AllergyRisk,
     DrugInfo,
+    OrgProfile,
     PrescriptionInfo,
     SaleCompleted,
 )
@@ -725,3 +727,48 @@ class LocationServiceInfoProvider:
             )
             if o.id in location_ids
         }
+
+
+class ComplianceOrgProfileReader:
+    """Cài ``sales.OrgProfileProvider`` trên ``ComplianceService`` — đóng nợ N-1.
+
+    Adapter, không phải logic: bản khai của cơ sở sống trong ``compliance`` (nó là dữ liệu
+    trên **giấy chứng nhận đủ điều kiện kinh doanh dược**, cùng hàng với mã cơ sở do Cục
+    QLD cấp), còn tờ hoá đơn thuộc ``sales``. Hai module không biết nhau tồn tại; chỗ này
+    ráp lại. Cùng khuôn với :class:`SalesLoyaltyAccrualReader` và
+    :class:`CatalogDrugMasterProvider`.
+
+    🔴 **Chạy dưới danh tính hệ thống, có chủ ý.** In một tờ hoá đơn cần quyền ``sales.read``.
+    Nếu adapter này dùng danh tính người đang đăng nhập thì **thu ngân phải được cấp thêm
+    ``compliance.config.read``** chỉ để đầu trang hoá đơn hiện đúng tên nhà thuốc — tức là
+    nới quyền đọc hồ sơ tuân thủ cho toàn bộ nhân viên quầy, đổi lấy một dòng chữ. Đó là cái
+    giá sai. Quyền cấp ở đây hẹp đúng một việc: đọc cấu hình tenant.
+
+    ``NotFoundError`` ⇒ ``None``, không phải lỗi: ``get_tenant_config`` ném 404 khi tenant
+    **chưa khai gì**, và đó là trạng thái hợp lệ của một cơ sở vừa cài đặt xong. Bên gọi
+    hiểu ``None`` là *"lùi về cấu hình môi trường"*.
+    """
+
+    def __init__(self, compliance: ComplianceService) -> None:
+        self._compliance = compliance
+
+    async def profile_of(self, tenant_id: UUID) -> OrgProfile | None:
+        ctx = RequestContext(
+            tenant_id=tenant_id,
+            # Bản khai theo **tenant**, không theo chi nhánh — giấy phép cấp cho cơ sở, và
+            # `tenant_compliance_configs` khoá duy nhất trên `tenant_id`. `branch_id` phải
+            # có giá trị nên dùng chính tenant, đúng như SalesLoyaltyAccrualReader.
+            branch_id=tenant_id,
+            user_id=_SYSTEM_USER,
+            permissions=frozenset({"compliance.config.read"}),
+        )
+        try:
+            cau_hinh = await self._compliance.get_tenant_config(ctx)
+        except NotFoundError:
+            return None
+        return OrgProfile(
+            ten_co_so=cau_hinh.ten_co_so or "",
+            dia_chi=cau_hinh.dia_chi or "",
+            dien_thoai=cau_hinh.dien_thoai or "",
+            ma_so_thue=cau_hinh.ma_so_thue or "",
+        )
