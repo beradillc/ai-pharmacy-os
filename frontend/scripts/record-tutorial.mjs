@@ -292,7 +292,10 @@ try {
   // ── 07 · chốt phiếu ───────────────────────────────────────────────────────
   begin("07");
   await tap(page.locator('button:has-text("Nhận hàng & chốt phiếu")'));
-  await page.locator("text=Đã nhận hàng và chốt phiếu").waitFor({ timeout: 25_000 });
+  await // Thông báo nay PHÂN NHÁNH theo trạng thái phiếu (vá 02/08: "chốt phiếu" từng ghi cứng
+    // cả khi mới nhận một phần — hai vế nói ngược nhau). Khớp cả hai vế, và khớp bằng phần
+    // KHÔNG đổi của câu để lần sửa lời văn sau không làm chết bản quay lần nữa.
+    page.locator("text=/Đã nhận (hàng và chốt phiếu|một phần)/").waitFor({ timeout: 25_000 });
   await hold();
 
   // ── 08 · tồn kho ──────────────────────────────────────────────────────────
