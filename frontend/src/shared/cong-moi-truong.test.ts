@@ -69,8 +69,19 @@ describe("cổng trình duyệt không giấu cấu hình trong mã (N-4)", () =
         const ma = boChuThich(noi_dung);
         // Chuỗi hình dạng email, hoặc một giá trị mặc định gán cho EMAIL/PASSWORD.
         return (
+          // chuỗi hình dạng email
           /"[^"\s]+@[^"\s]+\.[a-z]{2,}"/.test(ma) ||
-          /\b(?:EMAIL|PASSWORD)\b[^\n;]*\?\?\s*"/.test(ma)
+          // giá trị mặc định gán cho EMAIL/PASSWORD
+          /\b(?:EMAIL|PASSWORD)\b[^\n;]*\?\?\s*"/.test(ma) ||
+          // 🔴 HẰNG MẬT KHẨU ĐẶT TÊN KHÁC. (02/08) Lượt đột biến kiểm chính cổng này cho
+          // thấy nó LỌT: `const MK_TAM = "MatKhau@ThuNghiem2026";` đi qua trót lọt vì tên
+          // biến không phải EMAIL/PASSWORD và chuỗi không có đuôi tên miền.
+          // Bắt theo HÌNH DẠNG mật khẩu — chuỗi đủ dài, có chữ hoa, chữ thường, số VÀ ký
+          // tự đặc biệt — chứ không theo tên biến. Tên biến thì đặt kiểu gì cũng được;
+          // hình dạng mật khẩu thì khó giả trang.
+          /"(?=[^"]{10,})(?=[^"]*[a-z])(?=[^"]*[A-Z])(?=[^"]*\d)(?=[^"]*[@#$%!^&*])[^"\s]+"/.test(
+            ma,
+          )
         );
       })
       .map(({ ten }) => ten);

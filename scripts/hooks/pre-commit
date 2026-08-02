@@ -70,6 +70,14 @@ run_gate "ruff format     (toàn repo)"  ruff format --check .
 run_gate "import-linter   (18 contract)" bash -c 'cd backend && lint-imports'
 run_gate "mypy --strict   (pharmacy_os + seeds)" bash -c 'cd backend && mypy'
 
+# 🔴 VITEST THÊM 2026-08-02, Chain duyệt. Lỗ hổng thật, đã lọt một commit hôm nay:
+#   `cong-moi-truong.test.ts` bắt `record-v07.mjs` nhúng mật khẩu vào mã nguồn — tôi CÓ chạy
+#   `npm run test`, CÓ đọc thấy `VITEST_EXIT=1`, rồi vẫn commit ở lượt lệnh sau vì không có
+#   gì chặn tay lại. Đúng ca kỷ luật #8 bổ sung 29/07: "đọc mã thoát chưa đủ — nó phải CHẶN
+#   được việc tiếp theo".
+#   Chi phí: ~3 giây (đo thật), tức bằng 1/180 pytest. Không có lý do nào để nó nằm ngoài.
+run_gate "vitest          (frontend, 122 test)" bash -c 'cd frontend && npx vitest run --silent'
+
 if [ $failed -ne 0 ]; then
     cat <<'MSG'
 
@@ -87,7 +95,7 @@ MSG
     exit 1
 fi
 
-printf '── 4 cổng nhanh XANH (pytest chưa chạy — dùng `make check` trước khi đóng mục) ──\n'
+printf '── 5 cổng nhanh XANH (pytest chưa chạy — dùng `make check` trước khi đóng mục) ──\n'
 
 # ── Nhắc cổng TRÌNH DUYỆT khi commit có động tới giao diện ────────────────────
 #
