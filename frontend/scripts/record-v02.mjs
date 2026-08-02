@@ -9,7 +9,7 @@
  *    cho thấy, không bấm xác nhận. Đổi mật khẩu trong lúc quay là tự khoá mình ra khỏi CSDL,
  *    và lượt quay sau sẽ đỏ ở màn login với thông điệp đọc như lỗi sản phẩm.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { webkit } from "playwright-core";
 

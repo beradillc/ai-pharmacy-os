@@ -80,14 +80,22 @@ SPK_NU = 62  # F0 222,2 Hz · thanh điệu 0,96
 SPK_NAM = 33  # F0 128,0 Hz · thanh điệu 1,29
 # Đọc chậm hơn mặc định 15%: Chain yêu cầu "phát âm rõ chữ hơn". Người xem vừa nghe vừa
 # nhìn tay bấm, nên chậm là đúng chứ không phải nhược điểm.
-NHIP_DOC = "1.35"  # chậm hơn nữa (Chain: "nói chậm hơn")
+# 🔴 ĐO NHỊP THAY VÌ ĐOÁN. (02/08, lượt chỉnh thứ ba — Chain: "giọng quá chậm")
+#    Lần trước tôi nâng lên 1.35 vì Chain bảo "nói chậm hơn", rồi nâng tiếp mà không đo.
+#    Đếm ra: **2,20 âm tiết/giây** — đúng MỘT NỬA nhịp nói tự nhiên. Tiếng Việt hội thoại
+#    ~5–6 âm tiết/giây; hướng dẫn chậm rãi ~4–4,5. Mỗi từ tiếng Việt gần đúng một âm tiết
+#    nên đếm từ chia cho thời lượng là đủ chính xác để chỉnh.
+#    0.80 ⇒ khoảng 3,8 âm tiết/giây: chậm hơn hội thoại một nhịp, vẫn trong khoảng tự nhiên.
+NHIP_DOC = "0.55"  # đo dần: 1.35→2,20 · 0.80→3,17 · 0.66→3,51 âm tiết/giây
 # Độ biến thiên ngôn điệu — "nhấn nhá". Mặc định 0,8; nâng lên cho câu bớt đều đều.
 BIEN_THIEN = "1.0"
 
 # Ngắt câu: đọc CẢ ĐOẠN một hơi thì máy tự chia sai chỗ. Tách theo dấu câu rồi đọc từng
 # mảnh, chèn nghỉ đúng độ dài của dấu — đó là cách duy nhất "ngắt câu đúng" mà không phải
 # dạy mô hình điều gì.
-NGHI_SAU = {".": 0.42, "?": 0.48, "!": 0.45, ";": 0.34, ":": 0.30, ",": 0.20, "—": 0.24}
+# Rút 35% so với lượt trước: nghỉ dài cộng với đọc chậm thành ra lê thê. Nghỉ vẫn PHÂN
+# BIỆT theo dấu — đó là thứ tạo ngắt câu đúng, chỉ là không cần dài đến thế.
+NGHI_SAU = {".": 0.28, "?": 0.32, "!": 0.30, ";": 0.22, ":": 0.20, ",": 0.13, "—": 0.16}
 
 _mau: list[int] = []
 
@@ -231,7 +239,7 @@ class BoDocPiper:
                 lai.unlink(missing_ok=True)
             khuc.append(b[44:])
             # Nghỉ theo DẤU kết thúc mảnh: chấm nghỉ dài hơn phẩy, hỏi dài hơn chấm.
-            nghi = NGHI_SAU.get(loi.strip()[-1], 0.30)
+            nghi = NGHI_SAU.get(loi.strip()[-1], 0.20)
             khuc.append(b"\x00\x00" * int(tan_so * nghi))
             tam.unlink(missing_ok=True)
         if not khuc:

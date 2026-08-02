@@ -34,8 +34,14 @@ def sinh_nhac(ra: Path) -> None:
     )
     tron = "".join(f"[n{i}]" for i in range(len(NOT)))
     loc = (
-        f"{nguon}{tron}amix=inputs={len(NOT)}:normalize=1[hop];"
-        f"[hop]afade=t=in:st=0:d=0.35,afade=t=out:st={NHAC_GIAY - 1.6}:d=1.6,volume=0.22[out]"
+        # 🔴 NHẠC INTRO CÓ NHƯNG KHÔNG AI NGHE THẤY. (02/08, Chain: "thiếu nhạc intro")
+        #    Đo bản v5: nhạc −40 dB, lời thoại −14 dB ⇒ chênh 26 dB, nhỏ hơn khoảng 20 lần.
+        #    Script vẫn in "ghép 17 nguồn tiếng (1 nhạc + 16 câu)" nên nhìn log thì tưởng
+        #    xong — đúng loại "cổng xanh vì lý do sai" mà kỷ luật #14 sinh ra để chặn.
+        #    Nguyên nhân: `normalize=1` chia biên độ cho SỐ NGUỒN (3 nốt), rồi còn nhân
+        #    tiếp 0,22. Nay cộng thẳng (`normalize=0`) và đặt mức đo được, không đặt mò.
+        f"{nguon}{tron}amix=inputs={len(NOT)}:normalize=0[hop];"
+        f"[hop]afade=t=in:st=0:d=0.35,afade=t=out:st={NHAC_GIAY - 1.6}:d=1.6,volume=0.55[out]"
     )
     subprocess.run(
         [
