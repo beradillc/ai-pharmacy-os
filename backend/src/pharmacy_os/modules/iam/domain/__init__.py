@@ -1,5 +1,14 @@
 """IAM domain: users, roles, two-level role assignment, sessions. Framework-free."""
 
+from pharmacy_os.modules.iam.domain.delegation import (
+    KHONG_UY_QUYEN_DUOC,
+    LY_DO_TOI_THIEU,
+    THOI_HAN,
+    UyQuyenKhongHopLe,
+    UyQuyenQuanTri,
+    loc_quyen_uy_quyen_duoc,
+    tao_uy_quyen,
+)
 from pharmacy_os.modules.iam.domain.entities import (
     ActivationStatus,
     Branch,
@@ -71,6 +80,13 @@ from pharmacy_os.modules.iam.domain.two_factor import (
 )
 
 __all__ = [
+    "tao_uy_quyen",
+    "loc_quyen_uy_quyen_duoc",
+    "UyQuyenQuanTri",
+    "UyQuyenKhongHopLe",
+    "THOI_HAN",
+    "LY_DO_TOI_THIEU",
+    "KHONG_UY_QUYEN_DUOC",
     "ALL_PERMISSIONS",
     "ActivationStatus",
     "BRANCH_PHARMACIST",
