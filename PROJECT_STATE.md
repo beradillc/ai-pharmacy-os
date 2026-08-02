@@ -162,6 +162,18 @@
 | [§7cz](#7cz-ng-phi-n-p4-14-d-i-tr-t-th-nh-c-a-s-c) | 2026-08-01 | 🔒 ĐÓNG PHIÊN P4 — 14 dải trượt thành cửa sổ có ✕ |
 | [§7da](#7da-ng-phi-n-p5-nh-d-ng-s-vn-c-a-s-laptop-d) | 2026-08-01 | 🔒 ĐÓNG PHIÊN P5 — định dạng số VN · cửa sổ laptop · danh mục thuốc hết chật |
 | [§7db](#7db-ng-phi-n-p6-l-tr-nh-l-y-h-ng-v2-phase-4) | 2026-08-01 | 🔒 ĐÓNG PHIÊN P6 — lộ trình lấy hàng (V2 Phase 4) + 6 tệp spec |
+| [§7dc](#7dc-t-n-ng-3-6-ng-3-c-n-l-i-c-l-do-r-2026-0) | 2026-08-01 | 🔧 TỒN ĐỌNG — 3/6 đóng (gồm **F-4 test trên Postgres**), 3 còn lại có lý do rõ |
+| [§7dd](#7dd-csdl-ch-y-th-th-t-qu-y-thu-c-650-2026-0) | 2026-08-01 | 🏥 CSDL chạy thử THẬT — Quầy thuốc 650 (`qt650`) |
+| [§7de](#7de-s-a-l-i-uat-t-1-c-02-2026-08-01) | 2026-08-01 | 🔧 SỬA LỖI UAT — đợt 1 + C-02 |
+| [§7df](#7df-t-2-s-a-l-i-uat-nh-cung-c-p-nh-t-k-ho-t) | 2026-08-01 | 🧾 UAT đợt 2 — Nhà cung cấp · Nhật ký hoạt động |
+| [§7dg](#7dg-t-3-s-a-l-i-uat-t-i-kho-n-c-a-t-i-tra-c) | 2026-08-01 | 🧾 UAT đợt 3 — Tài khoản của tôi · Tra cứu đơn thuốc |
+| [§7dh](#7dh-t-4-s-a-l-i-uat-ng-n-t-5-5-ho-n-thi-n-k) | 2026-08-01 | ✅ UAT đợt 4 — đóng nốt 5/5 + hoàn thiện kịch bản video |
+| [§7di](#7di-n-4-gom-c-u-h-nh-c-ng-v-m-t-ch-v-l-i-ph) | 2026-08-02 | 🔑 N-4 — gom cấu hình cổng về MỘT chỗ + vá lỗi phép đo `check-nhat-ky` |
+| [§7dj](#7dj-chu-n-b-quay-video-tr-n-qt650-v-m-t-c-n) | 2026-08-02 | 🎬 Chuẩn bị quay trên `qt650` — và một cổng ĐỌC-THUẦN đã ghi vào sổ quầy (**L-2**) |
+| [§7dk](#7dk-b-t-u-s-n-xu-t-video-v-m-t-l-i-ch-n-t-m) | 2026-08-02 | 🎬 Bắt đầu sản xuất video — lỗi CHẶN ô "Tìm thuốc" ở màn bán hàng |
+| [§7dl](#7dl-r-v-d-n-sau-l-t-quay-u-ch-a-o-c-t-ch-kh) | 2026-08-02 | 🧹 Rà và dọn sau lượt quay đầu — "chưa đo được" tách khỏi "hỏng" |
+| [§7dm](#7dm-ng-phi-n-2026-08-02-b-14-video-d-ng-xon) | 2026-08-02 | 🔒 ĐÓNG PHIÊN — bộ 14 video dựng xong, 4 lỗi sản phẩm do việc quay tìm ra |
+| [§7dn](#7dn-k-ho-ch-9-b-c-a-b-c-chain-duy-t-2026-08) | 2026-08-02 | 📋 **KẾ HOẠCH 9 BƯỚC A→B→C** Chain duyệt + quyết định L-1 (chưa code) |
 
 ---
 
@@ -9019,3 +9031,103 @@ cổng đỏ · hook đọc được · commit bị chặn.
 2. Giao **Trợ lý Pháp Lý** rà màn Sổ kiểm soát — dòng này đã đứng yên 2 ngày.
 3. Sửa **L-2** (cổng đọc-thuần ghi đè dữ liệu pháp lý) — nó nguy hiểm đúng vào ngày ai đó chạy
    bộ cổng lên CSDL của một quầy đang bán thật.
+
+---
+
+## 7dn. 📋 KẾ HOẠCH 9 BƯỚC A→B→C Chain duyệt (2026-08-02)
+
+Chain: *"Tiếp tục hoàn thiện phần mềm, hướng kế hoạch chưa code ngay."* Phiên này **không viết một
+dòng mã sản phẩm nào** — chỉ rà trạng thái thật, sửa sổ nợ, chốt kế hoạch.
+
+### 🔴 Năm chỗ sổ nợ nói SAI — tìm ra trước khi lập kế hoạch, không phải sau
+
+Kỷ luật #16 dặn *đừng tin sổ nợ, grep composition root*. Lượt rà mở đầu phiên này áp đúng nó và
+bắt được **năm** dòng sai trong chính khối tóm tắt của tệp này:
+
+| Dòng cũ | Sự thật đo được | Kiểu sai |
+|---|---|---|
+| "① `git remote` để CI thật sự chạy" | Chain **KHOÁ 01/08: không đưa mã lên GitHub**. `ci.yml` là **mã chết vĩnh viễn**; C-03 đóng bằng `make ci`, không bằng remote | nợ đã **bị huỷ bởi một quyết định**, sổ vẫn treo |
+| "② bộ test chạy trên Postgres (nợ F-4)" | **ĐÓNG 01/08** (§7dc mục 3): `make test-pg` → **1455 passed**, `PYTEST_PG_EXIT=0`, đã nằm trong target `ci` | nợ **đã trả**, sổ vẫn treo |
+| "Tích điểm KH chưa làm" | **ĐÃ CÓ VÀ ĐÃ NỐI DÂY** — `crm.loyalty` giữ luật, `sales` giữ phép cộng, `SalesLoyaltyAccrualReader` ráp hai đầu ở `cross_module.py:648` | đúng ca #16: *"nối dây rồi nhưng sổ ghi chưa làm"* |
+| "Cập nhật cuối: 2026-08-01" | Đứng yên qua **4 mục nhật ký** (§7dj→§7dm) | nguồn sự thật **nói sai về chính nó** |
+| Mục lục §0 dừng ở §7db | Thiếu **11 mục** (§7dc→§7dm) | 🔴 xem dưới |
+
+🔴 **Ca thứ năm đáng ghi riêng.** Mục lục §0 được dựng **ngày 01/08** với lý do viết thẳng trong
+đó: *"một trí nhớ dự án không tra được thì bằng không"*, kèm quy tắc *"mục mới thêm vào cuối tệp
+**và** thêm một dòng vào bảng này — **cùng lúc, không để sau**"*.
+
+Nó **lỗi thời sau đúng một ngày và 11 mục**. Bài học không phải "phải nhớ cập nhật mục lục" —
+đó chính là thứ quy tắc đã dặn và vẫn hỏng. Bài học là **kỷ luật #10**: cưỡng chế bằng máy,
+không bằng trí nhớ. Một quy tắc phụ thuộc vào việc người viết nhớ gõ thêm một dòng thì nó có
+cùng tỉ lệ hỏng với chính việc nó định chống. **Đề xuất cho phiên sau:** một cổng đếm
+`## 7xx` so với số dòng bảng §0 — hai vế **hai nguồn độc lập** (kỷ luật #23), chạy trong `make ci`.
+
+*Phép tạo neo tự kiểm trước khi dùng* (kỷ luật #15 — đo cả phép đo): sinh lại neo của **3 mục đã
+có sẵn** trong bảng, khớp **3/3**, rồi mới sinh neo cho 11 mục thiếu. Nếu không tự kiểm, một quy
+tắc slug đoán sai sẽ tạo 12 liên kết chết — đúng dạng *"đúng vô nghĩa"* mà #22 cảnh báo.
+
+### Trạng thái thật tại lúc lập kế hoạch
+
+| Hạng mục | Đo được |
+|---|---|
+| Cây git | sạch · `main` · **không remote** (đúng chủ ý) |
+| Docker | **không container nào chạy** — `docker compose ps` rỗng |
+| 5 cổng nhanh | xanh (ruff · format · import-linter 18 · mypy 273 tệp · vitest 122) |
+| pytest | §7dm ghi `PYTEST_EXIT=0` 1480 passed — **phiên này chưa đo lại**, không báo con số |
+| Sprint | 1–8 đóng · **Sprint 9 (pilot) chưa mở** · Sprint 10 demo đóng · BERAS V2 Phase 0–11 |
+
+### Nợ THẬT còn lại sau khi dọn sổ
+
+| # | Nợ | Loại | Chặn gì |
+|---|---|---|---|
+| **L-2** | `check-thong-tin-co-so` mang nhãn ĐỌC-THUẦN nhưng **ghi đè thông tin pháp lý** | 🔴 Nguy hiểm | ngày ai đó chạy bộ cổng lên CSDL quầy đang bán |
+| **N-1** | Hoá đơn chưa đọc Thông tin cơ sở (cần read-port cross-module) | Nghiệp vụ + pháp lý | mọi hoá đơn in ra |
+| **N-2** | Mẫu số 06 chưa in phần đầu sổ | Pháp lý | biểu mẫu nộp |
+| **F-18** | **Observability = 0** — không metrics, không tracing, không cảnh báo, không dead-man's switch cho cron backup | Vận hành | pilot thật |
+| **Ph.12** | Sơ đồ kho trực quan (thiết kế có sẵn `docs/inventory/LOCATION_MAP.md`) | Tính năng | — |
+| **L-1** | Phiếu nhập `PARTIALLY_RECEIVED` không đóng cũng không huỷ được | Nghiệp vụ | **Chain đã quyết — xem dưới** |
+| **Ph.8** | Multi-supplier | Tính năng | chờ Chain chốt tiêu chí chọn NCC |
+| **N-5** | `check-rejected-sales` chưa đo được (đã an toàn — không còn ghi) | Cổng | — |
+| — | 7/21 cổng trình duyệt "chưa đo được" · `tests/` ngoài mypy · `SalesService.__init__` **8 tham số** | Nợ nền | — |
+
+**Chặn ngoài, code không gỡ được:** **N-3** rà pháp lý màn Sổ kiểm soát (Trợ lý Pháp Lý, **đứng
+yên 2 ngày**, chặn phát hành video 14 *và* phát hành thương mại) · 4 số thật của cơ sở (Chain) ·
+`# BLOCKER: AI__API_KEY` · `# BLOCKER: DAV API spec` (`dav_connector` **chưa tồn tại** — `plugins/`
+chỉ có `payment_vnpay`).
+
+### Kế hoạch — **9 bước, 3 đợt**, Chain duyệt đúng thứ tự A → B → C
+
+Tổng số bước **chốt trước khi bắt đầu** (kỷ luật #12). Đổi tổng số giữa chừng phải ghi lý do.
+
+| Đợt | Bước | Việc | Model | Cổng đóng bước |
+|---|---|---|---|---|
+| **A** — bịt chỗ nguy hiểm + mặt tiền pháp lý | A1 | **L-2** — cổng đọc-thuần thôi ghi dữ liệu pháp lý, **kèm cổng chứng minh nó không ghi** | Sonnet | `make ci` |
+| | A2 | **N-1** — read-port cross-module cho hoá đơn đọc Thông tin cơ sở | **Opus** (cross-module thật) | `make ci` + ảnh 2 khổ |
+| | A3 | **N-2** — phần đầu sổ Mẫu số 06 | Sonnet | `make ci` + ảnh |
+| **B** — vận hành thật | B1 | **F-18a** — `/metrics` + log có mã lỗi truy được | Sonnet | `make ci` |
+| | B2 | **F-18b** — dead-man's switch cho cron backup | Sonnet | `make ci` + #14 (thấy đỏ 1 lần) |
+| | B3 | Đóng 7 cổng trình duyệt "chưa đo được" + **N-5** | Sonnet | `make ui-gates` |
+| **C** — tính năng | C1 | **BERAS V2 Phase 12** — sơ đồ kho trực quan | Sonnet | `make check-ui` + ảnh 2 khổ |
+| | C2 | **L-1** theo quyết định Chain (dưới) | Sonnet | `make ci` |
+| | C3 | Gom `SalesPorts` — chữ ký 8 tham số đã suýt nổ 1 lần (§ARCHITECTURE_REVIEW ①) | Sonnet | `make ci` |
+
+### 🔒 Chain quyết trong phiên này
+
+| Việc | Quyết định | Ghi chú |
+|---|---|---|
+| Thứ tự kế hoạch | **A → B → C**, đúng đề xuất | GĐ khuyến nghị vì phần mềm sắp đi bán |
+| **L-1** phiếu nhập nhận một phần | **Cho ĐÓNG phiếu; phần thiếu ghi nhận là HỤT** (không huỷ phần còn lại) | Khớp thực tế NCC giao thiếu rồi thôi. Cần trạng thái/lý do hụt ở bước C2 |
+
+### Góc nhìn GĐ đã đưa ra tại thời điểm này
+
+**F-18 (observability = 0) là rủi ro cao hơn cả danh sách tính năng.** 14 video đã dựng để đi bán
+⇒ trong vài tuần có thể có nhà thuốc lạ chạy phần mềm này. Hôm nay nó hỏng lúc 8h sáng giờ cao
+điểm thì **không ai biết cho tới khi khách gọi điện**. Riêng dead-man's switch cho cron backup còn
+tệ hơn: cron chết im lặng trông **y hệt** backup thành công — đúng dạng "niềm tin giả" mà kiểm
+toán 26/07 đếm được 16 ca. Đó là lý do B đứng trước C, dù C mới là thứ đem đi bán được.
+
+### Điểm dừng
+
+- **Chưa viết một dòng mã sản phẩm nào.** 2 commit, cả hai là tài liệu.
+- Docker **đang tắt** — bước A1 cần `docker compose up -d postgres` trước.
+- Việc kế tiếp khi mở lại: **A1 (L-2)**.
