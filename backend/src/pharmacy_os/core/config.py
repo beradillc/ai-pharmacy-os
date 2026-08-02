@@ -9,7 +9,9 @@ Env var format uses a nested delimiter, e.g. ``AI__API_KEY``, ``DB__URL``.
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import Field, SecretStr, model_validator
@@ -238,6 +240,32 @@ class EncryptionSettings(BaseSettings):
     not the encryption key: one key per purpose, so a weakness in one is not a break
     in the other."""
 
+    keys_file: Path | None = None
+    """Đường dẫn tệp giữ khoá, **TÁCH khỏi máy chủ CSDL** (Chain chốt 2026-08-03).
+
+    🔴 **Vấn đề nó giải.** Trước tuỳ chọn này, khoá nằm trong ``backend/.env`` — cùng máy,
+    cùng thư mục, cùng người đọc được với CSDL và với tệp ``pg_dump``. ``core/security/crypto``
+    tự khai thẳng giới hạn ấy: *"Neither stops somebody who owns the application host: the key
+    lives there."* Nghĩa là mã hoá at-rest chống được kịch bản *"tệp dump đi lạc"* nhưng
+    **không** tách được người vận hành máy chủ khỏi hồ sơ bệnh nhân.
+
+    Tệp khoá cho phép đặt khoá ở nơi mà **tài khoản chạy sao lưu / chạy ``psql`` không đọc
+    được**: ổ đĩa khác, thư mục thuộc người dùng khác, hoặc một điểm gắn kết chỉ mở lúc khởi
+    động dịch vụ.
+
+    ⚠️ **Nói cho đúng mức, không nói quá:** việc này tách **vai vận hành CSDL** khỏi khoá. Nó
+    **KHÔNG** chặn ``root``, và không biến hệ thống thành *"dữ liệu an toàn"*. Khẳng định
+    trung thực là: *"một bản sao CSDL cộng với quyền đọc thư mục ứng dụng không còn đủ để đọc
+    hồ sơ bệnh nhân"*.
+
+    Định dạng: JSON, đúng hình dạng của ``ENCRYPTION__KEYS`` cộng khoá vân tay::
+
+        {"keys": {"1": "<base64>"}, "blind_index_key": "<base64>"}
+
+    Khai cả ``keys_file`` lẫn ``ENCRYPTION__KEYS`` là **lỗi cấu hình**, không phải thứ tự ưu
+    tiên: hai nguồn khoá cùng lúc nghĩa là không ai biết chắc bản ghi mới đang được mã hoá
+    bằng khoá nào, và một lần xoay khoá sẽ đi vào chỗ sai lặng lẽ."""
+
 
 class SecuritySettings(BaseSettings):
     jwt_secret: SecretStr = SecretStr(_PLACEHOLDER)
@@ -318,6 +346,57 @@ class Settings(BaseSettings):
     national_sync: NationalSyncSettings = Field(default_factory=NationalSyncSettings)
     plugins: PluginsSettings = Field(default_factory=PluginsSettings)
     encryption: EncryptionSettings = Field(default_factory=EncryptionSettings)
+
+    @model_validator(mode="after")
+    def _nap_khoa_tu_tep(self) -> Settings:
+        """Nạp khoá từ ``ENCRYPTION__KEYS_FILE`` và **từ chối khởi động** nếu tệp hở.
+
+        🔴 Kiểm quyền tệp chứ không chỉ đọc nội dung. Một tệp khoá `chmod 644` nằm ngoài
+        thư mục ứng dụng thì **vẫn ai cũng đọc được** — nó chỉ đổi chỗ chứ không đổi ai đọc
+        được, mà lại tạo cảm giác đã tách xong. Đó đúng là dạng "niềm tin giả" kiểm toán
+        26/07 đếm được 16 ca: một biện pháp trông như bảo vệ nhưng chứng minh một mệnh đề
+        khác với mệnh đề người đọc tưởng.
+
+        Từ chối khởi động chứ không cảnh báo rồi chạy tiếp: một cảnh báo lúc khởi động là
+        thứ cuộn qua trong log và không ai đọc lại.
+        """
+        if self.encryption.keys_file is None:
+            return self
+        if self.encryption.keys:
+            raise ValueError(
+                "Khai CẢ ENCRYPTION__KEYS_FILE lẫn ENCRYPTION__KEYS: hai nguồn khoá cùng "
+                "lúc nghĩa là không ai biết chắc bản ghi mới đang mã hoá bằng khoá nào. "
+                "Chọn một."
+            )
+        tep = self.encryption.keys_file
+        if not tep.is_file():
+            raise ValueError(f"ENCRYPTION__KEYS_FILE không tồn tại hoặc không phải tệp: {tep}")
+
+        che_do = tep.stat().st_mode
+        if che_do & 0o077:
+            raise ValueError(
+                f"Tệp khoá {tep} đang ở quyền {che_do & 0o777:o} — nhóm hoặc người khác "
+                "đọc được. Đặt về 0600 (`chmod 600`). Một tệp khoá ai cũng đọc được thì "
+                "việc dời nó ra khỏi thư mục ứng dụng KHÔNG tách được ai khỏi dữ liệu."
+            )
+
+        try:
+            noi_dung = json.loads(tep.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            # KHÔNG đưa nội dung tệp vào thông điệp lỗi — nó là khoá.
+            raise ValueError(
+                f"Không đọc được ENCRYPTION__KEYS_FILE {tep}: {type(exc).__name__}"
+            ) from exc
+
+        khoa = noi_dung.get("keys")
+        if not isinstance(khoa, dict) or not khoa:
+            raise ValueError(f'Tệp khoá {tep} thiếu khối "keys" (dạng {{"1": "<base64>"}}).')
+        self.encryption.keys = {int(v): SecretStr(str(k)) for v, k in khoa.items()}
+
+        van_tay = noi_dung.get("blind_index_key")
+        if isinstance(van_tay, str) and van_tay:
+            self.encryption.blind_index_key = SecretStr(van_tay)
+        return self
 
     @model_validator(mode="after")
     def _fail_fast_in_prod(self) -> Settings:

@@ -237,3 +237,82 @@ cần cho hiển thị/tra cứu) — nhưng tên người **là dữ liệu cá
 lại phần A trên bản backup sau khi đã bật mã hoá. Chừng đó chưa làm thì tài liệu này là
 **kế hoạch đã kiểm từng phần**, chưa phải **quy trình đã chạy** — và tài liệu này nói rõ
 mình đang ở đâu thay vì để người đọc tự suy.
+
+---
+
+## §D. Tách nơi giữ khoá mã hoá khỏi máy chủ CSDL (2026-08-03, Chain chốt)
+
+**Vì sao.** Rà soát 03/08 xác nhận: khoá mã hoá nằm trong `backend/.env` — **cùng máy, cùng
+thư mục, cùng người đọc được** với CSDL và với tệp `pg_dump`. `core/security/crypto` tự khai
+giới hạn ấy: *"Neither stops somebody who owns the application host: the key lives there."*
+Nghĩa là mã hoá at-rest chống được kịch bản *"tệp dump đi lạc"* nhưng **không** tách được
+người vận hành máy chủ khỏi hồ sơ bệnh nhân.
+
+⚠️ **Nói cho đúng mức.** Việc này tách **vai vận hành CSDL** khỏi khoá. Nó **KHÔNG chặn
+`root`**, và không biến hệ thống thành *"dữ liệu an toàn"*. Khẳng định trung thực sau khi làm
+xong: *"một bản sao CSDL cộng với quyền đọc thư mục ứng dụng không còn đủ để đọc hồ sơ bệnh
+nhân"*.
+
+### Các bước
+
+**1. Tạo tệp khoá ở nơi tài khoản sao lưu KHÔNG đọc được**
+
+```bash
+sudo mkdir -p /etc/pharmacy-os && sudo chmod 700 /etc/pharmacy-os
+```
+
+**2. Chuyển khoá đang có sang tệp — KHÔNG sinh khoá mới**
+
+🔴 Sinh khoá mới là **mất toàn bộ dữ liệu đã mã hoá**, không có `git revert` nào cứu được.
+Lấy đúng giá trị đang chạy trong `backend/.env`:
+
+```bash
+# Đọc ENCRYPTION__KEYS và ENCRYPTION__BLIND_INDEX_KEY hiện có, ghép thành JSON
+sudo tee /etc/pharmacy-os/keys.json > /dev/null <<'JSON'
+{"keys": {"1": "<đúng base64 đang có>"}, "blind_index_key": "<đúng base64 đang có>"}
+JSON
+sudo chmod 600 /etc/pharmacy-os/keys.json
+sudo chown <người-chạy-app>:<người-chạy-app> /etc/pharmacy-os/keys.json
+```
+
+**3. XOÁ khoá khỏi `.env`, rồi trỏ sang tệp**
+
+```
+# backend/.env — XOÁ HẲN hai dòng ENCRYPTION__KEYS và ENCRYPTION__BLIND_INDEX_KEY
+ENCRYPTION__KEYS_FILE=/etc/pharmacy-os/keys.json
+```
+
+Khai **cả hai** nguồn ⇒ ứng dụng **từ chối khởi động**, có chủ đích: hai nguồn khoá cùng lúc
+nghĩa là không ai biết chắc bản ghi mới đang mã hoá bằng khoá nào, và lần xoay khoá kế tiếp
+sẽ đi vào chỗ sai **lặng lẽ**.
+
+**4. Tự kiểm — bắt buộc, và phải thấy CẢ HAI màu**
+
+```bash
+# ① phải khởi động được
+sudo -u <người-chạy-app> .venv/bin/python -c "from pharmacy_os.core.config import Settings; print(list(Settings().encryption.keys))"
+
+# ② phải TỪ CHỐI khi tệp hở — cố ý phá rồi khôi phục (kỷ luật #14)
+sudo chmod 644 /etc/pharmacy-os/keys.json
+sudo -u <người-chạy-app> .venv/bin/python -c "from pharmacy_os.core.config import Settings; Settings()"   # phải BÁO LỖI
+sudo chmod 600 /etc/pharmacy-os/keys.json
+
+# ③ tài khoản sao lưu KHÔNG đọc được — đây mới là mệnh đề của cả mục này
+sudo -u <người-chạy-backup> cat /etc/pharmacy-os/keys.json    # phải "Permission denied"
+```
+
+🔴 **Bước ③ là bước dễ bỏ nhất và là bước duy nhất chứng minh mục tiêu.** Bước ① và ② chỉ
+chứng minh ứng dụng đọc được tệp; chúng **không** chứng minh ai đó khác thì không. Một tệp
+khoá `chmod 600` nhưng **thuộc sở hữu của chính tài khoản chạy sao lưu** thì đọc được bình
+thường — đổi chỗ mà không đổi ai đọc được, tức là công cốc mà lại trông như đã xong.
+
+**5. Sao lưu tệp khoá — TÁCH KHỎI nơi để bản sao CSDL**
+
+Mất khoá = cột mã hoá **vĩnh viễn không đọc lại được**. Nhưng để tệp khoá cạnh tệp `pg_dump`
+là xoá bỏ toàn bộ ý nghĩa của bước 1–4: ai lấy được một cái thì có luôn cái kia.
+
+### Kiểm lại định kỳ
+
+Thêm vào lịch rà: `ls -l /etc/pharmacy-os/keys.json` phải là `-rw-------`. Một lần `chmod`
+nhầm trong lúc xử lý sự cố là đủ mở lại — và nó **không làm đỏ cổng nào**, vì ứng dụng chỉ
+kiểm lúc khởi động.
