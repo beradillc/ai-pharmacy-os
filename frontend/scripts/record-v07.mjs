@@ -29,8 +29,19 @@ const DUR = JSON.parse(
 );
 mkdirSync(OUT, { recursive: true });
 
-const THU_NGAN = process.env.EMAIL_THU_NGAN ?? "thungan@quaythuoc650.vn";
-const MK_THU_NGAN = process.env.MK_THU_NGAN ?? "ThuNgan650@Quay0802";
+// 🔴 KHÔNG ghi cứng tài khoản ở đây — cổng `cong-moi-truong.test.ts` (dựng sáng nay cho
+//    N-4) BẮT ĐƯỢC CHÍNH TÔI ở lượt viết đầu: tôi đặt email và mật khẩu thu ngân làm giá
+//    trị mặc định, đúng thứ cổng ấy sinh ra để chặn. Mật khẩu trong mã là mật khẩu TRONG
+//    GIT — đổi ở CSDL không xoá được nó khỏi lịch sử.
+const THU_NGAN = process.env.EMAIL_THU_NGAN;
+const MK_THU_NGAN = process.env.MK_THU_NGAN;
+if (!THU_NGAN || !MK_THU_NGAN) {
+  console.error(
+    "🔴 Thiếu EMAIL_THU_NGAN / MK_THU_NGAN.\n" +
+      "   Khai trong scripts/ui-gates.env (tệp này .gitignore bỏ qua).",
+  );
+  process.exit(2);
+}
 const THUOC_KE_DON = "Augmentin";
 
 const browser = await webkit.launch();
