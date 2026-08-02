@@ -24,6 +24,7 @@ theo đúng thứ tự, và có người nhìn từng khung hình.** Không cổ
 ## Vòng lặp cho MỖI video
 
 ```
+⓪⁻ CHỤP MÀN TRƯỚC → mở đúng màn sắp quay, chụp một ảnh, NHÌN. Rồi mới viết script.
 ⓪ DỌN TRƯỚC      → node scripts/lib/don-truoc-khi-quay.mjs   (video có GHI dữ liệu)
 ① dựng dữ liệu    → node scripts/lib/dung-du-lieu-quay.mjs (hoặc bước riêng của video)
 ② quay            → node scripts/record-vNN.mjs
@@ -36,6 +37,29 @@ theo đúng thứ tự, và có người nhìn từng khung hình.** Không cổ
 ⑨ quay lại        → cho tới khi trọn, log sạch, ảnh sạch
 ⑩ đóng video      → ghi vào bảng dưới
 ```
+
+### ⓪⁻ Chụp màn TRƯỚC khi viết script — Chain duyệt 2026-08-02
+
+**Mở màn sắp quay, chụp một ảnh, nhìn nó. Rồi mới viết `record-vNN.mjs`.** Mất 30 giây.
+
+🔴 *Vì sao thành quy tắc:* **ba video liên tiếp** vấp cùng một chuyện — tôi **đoán bố cục màn
+thay vì mở ra xem**:
+
+| Video | Đoán gì | Sự thật | Giá phải trả |
+|---|---|---|---|
+| 04 | `mouse.wheel` cuộn được | `isMobile: true` ⇒ WebKit chặn hẳn | một lượt quay |
+| 05 | màn nhập hàng có ô tìm như màn bán hàng | nó dùng **danh sách thả xuống** | một lượt quay |
+| 05 | nút `Thêm` là nút của màn | trùng tên nút **thanh điều hướng** dưới | một lượt quay |
+
+Cả ba lần thứ chỉ ra sự thật đều là **ảnh**, không phải log — log chỉ nói *"waiting for
+element"*, câu đó đúng với mọi nguyên nhân. Kỷ luật #18: một vấn đề lặp từ ba lần thì nâng
+thành quy tắc.
+
+Hệ quả kèm theo, rút từ chính ba ca trên:
+- **Tìm nút trong `main`**, đừng quét toàn trang — thanh điều hướng luôn nằm trong tầm quét
+  và nó có những nút trùng tên với nút của màn (`Thêm`).
+- **`count()` đếm cả nút đang KHOÁ.** Muốn bấm thì kiểm `isEnabled()`, không thì cú bấm chờ
+  tới hết giờ và log đọc y như nút không tồn tại.
 
 ### ⑤ Phân loại — ranh giới
 
@@ -95,7 +119,7 @@ Dựng tiếng cho một video:
 | 05 | Nhập hàng · Xếp ô | ✅ 7/7 | **3** (nút thanh điều hướng · chọn thuốc bằng dropdown · nút khoá) | 0 | ✅ BERAS | ✅ **XONG** |
 | ~~01~~ | ~~Đăng nhập · Tổng quan~~ — gộp vào video 01 ở trên | — | — | — | — | — |
 | 08 | Khách hàng · Dị ứng | | | | | |
-| 06 | Bán thuốc | | | | | |
+| 06 | Bán thuốc | ✅ 7/7 **lượt đầu** | 0 | 0 | ✅ BERAS | ✅ **XONG** |
 | 07 | Phân quyền thu ngân | | | | | |
 | 09 | Hoá đơn · Trả hàng | | | | | |
 | 10 | Kiểm kê | | | | | |
