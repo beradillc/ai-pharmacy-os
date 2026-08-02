@@ -1,0 +1,69 @@
+1
+00:00:09,175 --> 00:00:19,975
+Đi trọn một vòng: nhập hàng, tồn kho,
+bán hàng, hoá đơn, báo cáo.
+
+2
+00:00:21,400 --> 00:00:33,200
+Đăng nhập. Mỗi người một tài khoản riêng.
+
+3
+00:00:34,102 --> 00:00:44,902
+Màn tổng quan: bán được bao nhiêu,
+hàng nào sắp hết, hàng nào cận hạn.
+
+4
+00:00:45,804 --> 00:00:58,604
+Hàng về: vào Đơn mua hàng,
+tìm phiếu đã đặt, bấm Nhận hàng.
+
+5
+00:00:59,507 --> 00:01:11,307
+Nhập số lượng thực nhận, số lô
+và hạn dùng ghi trên hộp.
+
+6
+00:01:12,210 --> 00:01:23,010
+Cận hạn thì phần mềm nhắc ngay.
+Nhận thiếu ⇒ ghi "nhận một phần".
+
+7
+00:01:23,914 --> 00:01:36,714
+Chốt phiếu. Tồn kho tăng ngay
+theo từng lô — không cộng tay.
+
+8
+00:01:37,616 --> 00:01:49,416
+Tồn kho: gõ số lô là ra đúng lô,
+kèm hạn dùng và số còn lại.
+
+9
+00:01:50,317 --> 00:02:03,117
+Bán hàng. Gõ vài chữ đầu tên thuốc là ra.
+
+10
+00:02:04,017 --> 00:02:15,817
+Bấm Thêm là vào giỏ.
+
+11
+00:02:16,719 --> 00:02:30,519
+Giỏ cộng tiền ngay ở thanh dưới cùng.
+
+12
+00:02:31,421 --> 00:02:44,221
+Bấm Xem giỏ để mở. Thanh toán hỏi lại
+một lần trước khi trừ tồn.
+
+13
+00:02:45,127 --> 00:02:55,927
+Đơn vừa bán nằm đầu danh sách Hoá đơn.
+In được khổ máy in nhiệt.
+
+14
+00:02:56,830 --> 00:03:08,630
+Báo cáo: chọn khoảng ngày, xem doanh thu,
+tải file cho kế toán.
+
+15
+00:03:09,533 --> 00:03:16,333
+Từng phần có video riêng nói kỹ hơn.

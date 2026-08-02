@@ -43,3 +43,10 @@ frontend/out/
 *.db
 postgres-data/
 redis-data/
+
+# Tệp video đã dựng (02/08). Bản quay ~7MB/video × 14 video ⇒ repo phình lên hàng trăm MB
+# và mỗi lần quay lại là một bản sao mới trong lịch sử — git không nén được video.
+# GIỮ trong git: kịch bản, lời thoại, phụ đề .srt, và script quay — tức là mọi thứ để
+# DỰNG LẠI video. Bản dựng thì không.
+docs/testing/videos/*.mp4
+docs/testing/videos/*.webm
