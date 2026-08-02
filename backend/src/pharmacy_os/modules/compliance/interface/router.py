@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response, status
 from fastapi.responses import StreamingResponse
 
 from pharmacy_os.core.context import RequestContext
+from pharmacy_os.core.errors import NotFoundError
 from pharmacy_os.core.http import csv_stream_body
 from pharmacy_os.modules.compliance.application import (
     LEDGER_BOOK_CSV_HEADER,
@@ -17,6 +18,8 @@ from pharmacy_os.modules.compliance.application import (
     ComplianceService,
     NationalSyncService,
     ledger_book_row_to_csv,
+    mau_06_phan_cuoi,
+    mau_06_phan_dau,
     periodic_report_row_to_csv,
 )
 from pharmacy_os.modules.compliance.domain import LedgerBookType
@@ -192,13 +195,33 @@ def build_router(get_context: ContextDep) -> APIRouter:
         """
         rows = await service.export_periodic_report(from_date=date_from, to_date=date_to, ctx=ctx)
 
+        # N-2: phần đầu/cuối biểu mẫu. Thông tin cơ sở nằm trong CHÍNH module này
+        # (`tenant_compliance_configs`) nên không cần cổng đọc cross-module như N-1.
+        # Chưa khai ⇒ 404 ⇒ in dấu chấm lửng của bản gốc để người dùng điền tay; một báo
+        # cáo pháp lý không được từ chối xuất chỉ vì chưa ai vào màn Cài đặt.
+        try:
+            cau_hinh = await service.get_tenant_config(ctx)
+            ten_co_so, dia_chi = cau_hinh.ten_co_so or "", cau_hinh.dia_chi or ""
+        except NotFoundError:
+            ten_co_so, dia_chi = "", ""
+
         async def csv_rows() -> AsyncIterator[Sequence[str]]:
+            for dong in mau_06_phan_dau(
+                ten_co_so=ten_co_so, dia_chi=dia_chi, tu_ngay=date_from, den_ngay=date_to
+            ):
+                yield dong
+            yield list(PERIODIC_REPORT_CSV_HEADER)
             for index, row in enumerate(rows, start=1):
                 yield periodic_report_row_to_csv(index, row)
+            for dong in mau_06_phan_cuoi():
+                yield dong
 
         filename = f"bao-cao-mau06-{ctx.tenant_id}-{date_from}_{date_to}.csv"
         return StreamingResponse(
-            csv_stream_body(PERIODIC_REPORT_CSV_HEADER, csv_rows()),
+            # 🔴 Hàng tiêu đề cột KHÔNG truyền cho `csv_stream_body` nữa: nó phải nằm SAU
+            # phần đầu biểu mẫu, nên `csv_rows` tự phát ra đúng chỗ. Truyền cả hai chỗ là
+            # xuất hai hàng tiêu đề.
+            csv_stream_body(None, csv_rows()),
             media_type="text/csv",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )

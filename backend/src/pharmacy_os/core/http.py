@@ -15,7 +15,7 @@ from fastapi import Request
 
 
 async def csv_stream_body(
-    header: Sequence[str], rows: AsyncIterator[Sequence[str]]
+    header: Sequence[str] | None, rows: AsyncIterator[Sequence[str]]
 ) -> AsyncIterator[str]:
     """Header once, then one CSV line per row, using :mod:`csv` for quoting so a
     comma/newline inside a cell cannot break the file. A single reused buffer keeps
@@ -26,6 +26,11 @@ async def csv_stream_body(
     by the audit dashboard (PROJECT_STATE §7al), reused as-is by the Sprint 7
     revenue/stock reports (§7an). Callers build ``rows`` from their own paged
     query; this function only owns the CSV-writer/StreamingResponse glue.
+
+    ``header=None`` khi hàng tiêu đề **không phải hàng đầu tiên** của tệp — biểu mẫu Mẫu số 06
+    (NĐ163 Phụ lục II) có phần đầu văn bản đứng trước bảng, nên bên gọi tự phát tiêu đề cột
+    đúng chỗ trong ``rows``. Thêm nhánh này thay vì để bên gọi truyền một hàng rỗng: một hàng
+    rỗng vẫn là **một dòng CSV thừa** ở đầu tệp, và nó trông y như lỗi định dạng.
     """
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -36,8 +41,9 @@ async def csv_stream_body(
         buffer.truncate(0)
         return line
 
-    writer.writerow(header)
-    yield _drain()
+    if header is not None:
+        writer.writerow(header)
+        yield _drain()
     async for row in rows:
         writer.writerow(row)
         yield _drain()

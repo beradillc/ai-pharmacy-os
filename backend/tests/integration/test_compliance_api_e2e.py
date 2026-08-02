@@ -288,9 +288,24 @@ def test_ket_xuat_bao_cao_dinh_ky_mau_so_06(client: TestClient) -> None:
     assert r.headers["content-type"].startswith("text/csv")
     assert "bao-cao-mau06-" in r.headers["content-disposition"]
     dong = [d for d in r.text.splitlines() if d.strip()]
-    assert dong[0].startswith("tt,ten_thuoc_day_du,nuoc_san_xuat")
-    assert drug in dong[1]
-    assert dong[1].split(",")[0] == "1"  # cột TT
+
+    # 🔴 Kỳ vọng ĐỔI 2026-08-02 cùng lượt đóng N-2 — **hành vi đổi có chủ ý**, không phải
+    # nới cổng cho nó xanh (kỷ luật #17). Trước đó tệp chỉ có bảng 12 cột nên dòng đầu là
+    # hàng tiêu đề; nay tệp là **cả biểu mẫu Mẫu số 06** nên dòng đầu là phần đầu văn bản
+    # và hàng tiêu đề nằm sau nó. Assert cũ vẫn còn ý nghĩa, chỉ đổi chỗ — xem
+    # `tests/unit/test_mau_06_phan_dau_cuoi.py` cho phần đầu/cuối.
+    assert dong[0].startswith("TÊN CƠ SỞ"), "phần đầu biểu mẫu phải đứng trước bảng"
+    assert any("(Kỳ báo cáo từ ngày 01/07/2026 đến ngày 31/07/2026)" in d for d in dong)
+
+    i_tieu_de = next(i for i, d in enumerate(dong) if d.startswith("TT (1),"))
+    assert "Số lượng tồn kho kỳ trước chuyển sang (6)" in dong[i_tieu_de]
+    assert drug in dong[i_tieu_de + 1]
+    assert dong[i_tieu_de + 1].split(",")[0] == "1"  # cột TT
+
+    # Phần cuối: chỗ ký và ghi chú về cột (11) — người điền cần biết cột trống ấy đòi gì.
+    duoi = "\n".join(dong[i_tieu_de + 2 :])
+    assert "NGƯỜI ĐẠI DIỆN THEO PHÁP LUẬT" in duoi
+    assert "Số lượng hao hụt bao gồm cả hỏng, vỡ, hết hạn dùng" in duoi
 
 
 def test_ket_xuat_bao_cao_dinh_ky_can_token(client: TestClient) -> None:
