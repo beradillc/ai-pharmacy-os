@@ -118,7 +118,7 @@ Dựng tiếng cho một video:
 | 04 | Sơ đồ kho · Khởi tạo tồn | ✅ 8/8 | **2** (mouse.wheel · kho rác) | 0 | ✅ BERAS | ✅ **XONG** |
 | 05 | Nhập hàng · Xếp ô | ✅ 7/7 | **3** (nút thanh điều hướng · chọn thuốc bằng dropdown · nút khoá) | 0 | ✅ BERAS | ✅ **XONG** |
 | ~~01~~ | ~~Đăng nhập · Tổng quan~~ — gộp vào video 01 ở trên | — | — | — | — | — |
-| 08 | Khách hàng · Dị ứng | | | | | |
+| 08 | Khách hàng · Dị ứng | ✅ 6/6 **lượt đầu** | 0 | 0 | ✅ BERAS | ✅ **XONG** |
 | 06 | Bán thuốc | ✅ 7/7 **lượt đầu** | 0 | 0 | ✅ BERAS | ✅ **XONG** |
 | 07 | Phân quyền thu ngân | ✅ 7/7 | **2** (thiếu bước đăng xuất · **màn không báo trước**) | 0 | ✅ BERAS | ✅ **XONG** |
 | 09 | Hoá đơn · Trả hàng | | | | | |
