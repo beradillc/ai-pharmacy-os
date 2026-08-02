@@ -18,7 +18,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-TAN_SO = 22050
+# 48 kHz từ 02/08: VieNeu-TTS xuất 48 kHz, ghép ở 22 050 là vứt đi đúng cái đã đổi mô hình
+# để lấy. Nhạc hiệu sinh cùng tần số nên không phải lấy mẫu lại lần nào.
+TAN_SO = 48000
 NHAC_GIAY = 3.0
 # Hợp âm La trưởng — ba nốt, tắt dần. Sinh bằng ffmpeg nên KHÔNG cần tệp nhạc trong repo:
 # một tệp nhạc nhị phân trong git là thứ không ai xem được diff, và mỗi lần đổi là một bản

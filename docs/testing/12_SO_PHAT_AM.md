@@ -3,9 +3,17 @@
 > Chain 2026-08-02: *"Ghi nhận giọng này dùng mặc định trên hệ thống này của tôi, và kèm theo
 > các góp ý để phát âm, cách đọc ngày càng học hỏi chuẩn tự nhiên dần."*
 >
-> **Giọng mặc định của hệ thống:** `vi_VN-vivos-x_low` · **spk62** — chốt 2026-08-02 sau khi
-> quét 21 giọng nữ và chấm hai mặt (thanh điệu 1,18 · độ trong 0,64, cao nhất cả hai).
-> Khai trong `scripts/doc_loi_thoai.py`; đổi giọng là đổi ở đó, không rải rác.
+> **Giọng mặc định của hệ thống (từ 2026-08-02, Chain chọn sau khi nghe):**
+> **VieNeu-TTS v3 Turbo · giọng "Thùy Dung"** — `Nữ · miền Nam · phong cách tin tức`, 48 kHz.
+> Khai trong `scripts/doc_vieneu.py`; chạy bằng venv riêng `venv-vieneu`.
+>
+> Giọng cũ `vi_VN-vivos-x_low` spk62 (Piper, 16 kHz) **giữ làm dự phòng** trong
+> `scripts/doc_loi_thoai.py` — máy nào chưa cài VieNeu vẫn dựng được.
+>
+> 🔴 **Sổ phát âm dưới đây CHỈ áp cho bộ đọc cũ (espeak-ng/Piper).** VieNeu có bộ phiên âm
+> riêng cho tiếng Việt (sea-g2p) nên đọc "doanh" đúng — đưa "doăn" vào thì nó đọc thành
+> "doăn" thật. **Bản vá cho bộ này là thuốc độc cho bộ kia.** Nghe VieNeu đọc sai chữ nào
+> thì ghi vào bảng "Đang sai" và ghi rõ *"(VieNeu)"*, đừng gộp chung.
 
 ## Cách dùng sổ này
 
