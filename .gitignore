@@ -50,3 +50,7 @@ redis-data/
 # DỰNG LẠI video. Bản dựng thì không.
 docs/testing/videos/*.mp4
 docs/testing/videos/*.webm
+
+# Mô hình giọng đọc Piper — cài ở ~/.local/share/beras-tts/, KHÔNG trong repo (61MB + 27MB).
+# Cách cài lại: xem đầu scripts/doc_loi_thoai.py
+*.onnx

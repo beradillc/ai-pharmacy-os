@@ -1,4 +1,13 @@
-"""Đọc lời thoại thành tệp WAV bằng `espeak-ng` có sẵn trên máy — giọng NỮ tiếng Việt.
+"""Đọc lời thoại thành tệp WAV — giọng tiếng Việt NAM + NỮ, ưu tiên bộ đọc thần kinh.
+
+HAI BỘ ĐỌC, tự chọn cái tốt hơn nếu có:
+
+  ① **Piper** (mặc định) — bộ đọc **thần kinh** chạy offline, cài 2026-08-02 theo yêu cầu
+     Chain *"cài giọng chỉnh chu vào máy"*. Mô hình `vi_VN-vivos-x_low` dựng từ ngữ liệu
+     VIVOS thu tại TP.HCM — **giọng miền Nam**, 65 người nói, có cả nam lẫn nữ. Chọn người
+     nói bằng cách **đo tần số cơ bản** chứ không đoán: <165 Hz là nam, ≥165 Hz là nữ.
+  ② **espeak-ng** (dự phòng) — bộ tổng hợp formant có sẵn trong hệ thống. Nghe rõ là giọng
+     máy; giữ lại để máy nào chưa cài Piper vẫn dựng được bản nháp canh nhịp.
 
 Chain yêu cầu 2026-08-02: *"Phương án đưa kịch bản cho, máy này đọc thư viện sẵn có giọng nữ."*
 
@@ -13,14 +22,16 @@ sau khi nghe**, không phải kết luận của tôi trước khi Chain nghe.
 
 Dùng:
     python3 scripts/doc_loi_thoai.py docs/testing/09_LOI_THOAI_tong-quan.md /tmp/tieng
-    python3 scripts/doc_loi_thoai.py --thu "Câu đọc thử" /tmp/tieng   # nghe thử một câu
+    BO_DOC=espeak python3 scripts/doc_loi_thoai.py ...   # ép dùng bộ dự phòng
 """
 
 from __future__ import annotations
 
 import ctypes
+import os
 import re
 import struct
+import subprocess
 import sys
 from pathlib import Path
 
@@ -33,6 +44,12 @@ ESPEAK_CHARS_UTF8 = 1
 # `vi-vn-x-south` là giọng Nam có sẵn trong espeak-ng-data; `+f3`/`+m3` là biến thể nữ/nam.
 GIONG_NU = "vi-vn-x-south+f3"
 GIONG_NAM = "vi-vn-x-south+m3"
+
+GOC_PIPER = Path.home() / ".local/share/beras-tts"
+PIPER = GOC_PIPER / "venv/bin/piper"
+MO_HINH = GOC_PIPER / "voices/vi_VN-vivos-x_low.onnx"
+# Đo bằng tần số cơ bản trên chính bản đọc thử, không đoán theo số hiệu người nói.
+SPK_NU, SPK_NAM = 3, 28  # F0 đo thật: 238,8 Hz · 130,1 Hz
 
 _mau: list[int] = []
 
@@ -103,6 +120,69 @@ class BoDoc:
         return _ghi_wav(ra, gop, self.tan_so)
 
 
+class BoDocPiper:
+    """Bộ đọc thần kinh. Cùng giao diện `doc()` với `BoDoc` để chỗ gọi không phải biết ai."""
+
+    def __init__(self) -> None:
+        if not PIPER.exists() or not MO_HINH.exists():
+            raise FileNotFoundError("chưa cài Piper hoặc thiếu mô hình giọng")
+
+    def _mot_luot(self, loi: str, spk: int, ra: Path) -> None:
+        r = subprocess.run(
+            [str(PIPER), "-m", str(MO_HINH), "-s", str(spk), "-f", str(ra)],
+            input=loi.encode("utf8"),
+            capture_output=True,
+        )
+        if r.returncode != 0 or not ra.exists():
+            raise RuntimeError(f"piper lỗi: {r.stderr.decode()[-200:]}")
+
+    def doc(self, luot: list[tuple[str, str]], ra: Path) -> float:
+        """Đọc từng lượt rồi nối, chèn 0,35 giây nghỉ giữa hai người — không có nó thì câu
+        hỏi dính câu trả lời."""
+        khuc: list[bytes] = []
+        tan_so = 16000
+        for giong, loi in luot:
+            if not loi.strip():
+                continue
+            spk = SPK_NAM if "m3" in giong or giong == "nam" else SPK_NU
+            tam = ra.with_suffix(".tam.wav")
+            self._mot_luot(loi, spk, tam)
+            with open(tam, "rb") as f:
+                b = f.read()
+            tan_so = int.from_bytes(b[24:28], "little")
+            khuc.append(b[44:])
+            khuc.append(b"\x00\x00" * int(tan_so * 0.35))
+            tam.unlink(missing_ok=True)
+        if not khuc:
+            raise RuntimeError("không có lượt nào đọc được")
+        mau = b"".join(khuc)
+        ra.write_bytes(
+            b"RIFF"
+            + struct.pack("<I", 36 + len(mau))
+            + b"WAVEfmt "
+            + struct.pack("<IHHIIHH", 16, 1, 1, tan_so, tan_so * 2, 2, 16)
+            + b"data"
+            + struct.pack("<I", len(mau))
+            + mau
+        )
+        return len(mau) / 2 / tan_so
+
+
+def chon_bo_doc():
+    """Piper nếu có, espeak nếu không. Nói RA đang dùng cái nào — người đọc log phải biết
+    bản tiếng vừa dựng là giọng thần kinh hay giọng máy."""
+    if os.environ.get("BO_DOC") == "espeak":
+        print("bộ đọc: espeak-ng (ép bằng BO_DOC)")
+        return BoDoc()
+    try:
+        b = BoDocPiper()
+        print(f"bộ đọc: Piper · {MO_HINH.name} · nữ=spk{SPK_NU} nam=spk{SPK_NAM}")
+        return b
+    except (FileNotFoundError, RuntimeError) as e:
+        print(f"bộ đọc: espeak-ng (Piper không dùng được — {e})")
+        return BoDoc()
+
+
 def tach_loi(md: str) -> list[tuple[str, list[tuple[str, str]]]]:
     """Lấy (mã đoạn, [(giọng, lời), …]) từ bảng lời thoại.
 
@@ -138,7 +218,7 @@ def main() -> int:
     if len(sys.argv) >= 3 and sys.argv[1] == "--thu":
         ra = Path(sys.argv[3] if len(sys.argv) > 3 else "/tmp/tieng")
         ra.mkdir(parents=True, exist_ok=True)
-        giay = BoDoc().doc([(GIONG_NU, sys.argv[2])], ra / "thu.wav")
+        giay = chon_bo_doc().doc([(GIONG_NU, sys.argv[2])], ra / "thu.wav")
         print(f"thu.wav · {giay:.1f}s · {ra / 'thu.wav'}")
         return 0
 
@@ -154,7 +234,7 @@ def main() -> int:
         print(f"🔴 Chỉ tách được {len(doan)} đoạn từ {nguon} — mẫu bảng đã đổi?")
         return 2
 
-    bo = BoDoc()
+    bo = chon_bo_doc()
     tong = 0.0
     nhip: dict[str, int] = {}
     for ma, luot in doan:
