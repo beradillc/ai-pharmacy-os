@@ -2,8 +2,9 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-03** — §7dp: **B1 xong** (mã sự cố truy được + `/metrics` kèm
-> `health_deadman.sh`); pytest **1512 passed**. Trước đó §7do đóng trọn **đợt A** (L-2 · N-1 · N-2). Trước đó §7dn chốt kế hoạch 9 bước A→B→C, và §7dm
+> **Cập nhật cuối: 2026-08-03** — §7dq **đóng phiên**: đợt A (L-2 · N-1 · N-2) + B1 (mã sự cố ·
+> `/metrics`) + rà soát quyền quản trị + tách nơi giữ khoá mã hoá + uỷ quyền quản trị bước 2/5.
+> pytest **1532 passed**, 13 commit. Trước đó §7dn chốt kế hoạch 9 bước A→B→C, và §7dm
 > đóng phiên **bộ 14 video dựng xong** (13 phát hành được,
 > video 14 chờ Pháp Lý), 4 lỗi sản phẩm do chính việc quay tìm ra, hook pre-commit lên **5 cổng**
 > (thêm vitest). Trước đó: kế hoạch 6 phiên §7cv → §7db, Sprint 1–8 đã đóng, BERAS V2 Phase 0–11
@@ -181,6 +182,7 @@
 | [§7dn](#7dn-k-ho-ch-9-b-c-a-b-c-chain-duy-t-2026-08) | 2026-08-02 | 📋 **KẾ HOẠCH 9 BƯỚC A→B→C** Chain duyệt + quyết định L-1 (chưa code) |
 | [§7do](#7do-t-a-ng-tr-n-3-3-l-2-n-1-n-2-2026-08-02) | 2026-08-02 | ✅ **ĐỢT A ĐÓNG TRỌN 3/3** — L-2 · N-1 · N-2 + ba lần phép ĐO suýt sai |
 | [§7dp](#7dp-b1-m-s-c-truy-c-metrics-c-b-n-ti-u-th-2) | 2026-08-03 | 📈 **B1** — mã sự cố truy được + `/metrics` **có bên tiêu thụ** · đề xuất kỷ luật #25 |
+| [§7dq](#7dq-ng-phi-n-2026-08-02-03-t-a-b1-r-quy-n-q) | 2026-08-03 | 🔒 **ĐÓNG PHIÊN** — đợt A + B1 + rà quyền quản trị · 4 lần phép ĐO suýt sai |
 
 ---
 
@@ -9365,3 +9367,105 @@ Kiểm trên uvicorn THẬT: header bd140fa2f65b ↔ "request_id" trong đúng d
 - **`APP__METRICS_TOKEN` chưa có trong `backend/.env`** — mới thêm vào `.env.example`. Không có
   nó thì `/metrics` trả 404 và `health_deadman.sh` báo đỏ, **đúng thiết kế fail-closed**.
 - Việc kế tiếp: **B2** (kiểm `backup_deadman.sh` có răng) rồi **B3**.
+
+---
+
+## 7dq. 🔒 ĐÓNG PHIÊN 2026-08-02→03 — đợt A + B1 + rà quyền quản trị (2026-08-03)
+
+**13 commit.** Phiên bắt đầu bằng một yêu cầu lập kế hoạch, kết thúc bằng một cuộc rà soát
+quyền mà Chain khởi xướng — và cuộc rà soát ấy hoá ra là phần giá trị nhất.
+
+### Chain chốt gì trong phiên
+
+| Chốt | Nội dung |
+|---|---|
+| Kế hoạch | **9 bước A→B→C**, đúng thứ tự GĐ đề xuất |
+| **L-1** | Phiếu nhập nhận một phần: **cho ĐÓNG phiếu, phần thiếu ghi là hụt** (chưa code — bước C2) |
+| Uỷ quyền quản trị | **Duyệt** — chủ chuỗi chịu trách nhiệm, **24 giờ mỗi lần xác nhận** |
+| Người giữ vai kỹ thuật | Chain giữ **một tài khoản toàn quyền** như hiện nay |
+| Khoá mã hoá | **Làm ngay: tách nơi giữ khoá** ✅ đã xong |
+| Kỷ luật #25 | Chưa duyệt — GĐ đề xuất, ghi nhãn CHỜ |
+| T3 `compliance.ledger.sign` | **Chưa trả lời** — Chain ghi nhận, đóng phiên |
+
+### Việc đã đóng
+
+| Mục | Kết quả |
+|---|---|
+| **A1** L-2 | Cổng đọc-thuần thôi ghi đè thông tin pháp lý · mệnh đề ⑦ đo chính việc khôi phục |
+| **A2** N-1 | Hoá đơn đọc bản khai của cơ sở qua cổng đọc cross-module · ADR-0004 |
+| **A3** N-2 | Mẫu số 06 có phần đầu/cuối biểu mẫu, lấy nguyên văn từ bản gốc `.docx` |
+| **B1a** | Mã sự cố truy được — header · **mọi** dòng log · thân `problem+json` |
+| **B1b** | `/metrics` + `health_deadman.sh` **canh nó ngay từ ngày đầu** |
+| **Tách khoá** | `ENCRYPTION__KEYS_FILE` + runbook `docs/18 §D` |
+| **Uỷ quyền** | Bước 2/5 — domain thuần xong |
+
+Cổng cuối: `PYTEST_EXIT=0` **1532 passed** (1480 → 1532, **+52**) · mypy 275 tệp · vitest 122 ·
+import-linter 19/19. **13 lượt đột biến, tất cả đỏ đúng lý do.**
+
+### 🔴 Bài học lớn nhất phiên này: phép ĐO hỏng nhiều hơn sản phẩm
+
+**Bốn lần** một phép đo suýt cho kết luận sai, và **không lần nào** do sản phẩm hỏng:
+
+| # | Chuyện gì | Nếu không bắt được |
+|---|---|---|
+| 1 | `cd backend && …` chạy khi cwd **đã là** `backend` ⇒ chuỗi `&&` dừng ⇒ **đột biến không bao giờ áp dụng**, pytest lượt sau vẫn xanh | Ghi *"đột biến sống sót ⇒ test không có răng"* rồi đi **sửa một thứ không hỏng** |
+| 2 | Đột biến làm **hỏng cú pháp** ⇒ `EXIT=2` | Đọc lướt thì *"khác 0 = đỏ"*, nhưng đó là lỗi **thu thập test**, chứng minh mệnh đề khác hẳn |
+| 3 | `pkill uvicorn` xong dựng lại, **frontend cũ giữ cổng 3000** ⇒ backend nằm im | Cổng chạy lúc đó đỏ vì **hạ tầng**, không vì sản phẩm — log hai thứ trông y hệt |
+| 4 | Thử tách khoá trên máy thật: `.env` **đã có** `ENCRYPTION__KEYS` nên cả hai lượt dừng ở phép kiểm "hai nguồn" — `EXIT_600=1` chứ không phải 0 | Kết luận *"644 bị từ chối đúng"* trong khi **chưa lần nào chạm tới phép kiểm quyền** |
+
+⇒ **Đề xuất kỷ luật #25** (ghi vào `CLAUDE.md`, **CHỜ CHAIN DUYỆT**): kiểm **trạng thái đã
+chuẩn bị** bằng một lệnh riêng (`grep -c` dấu vết · `ast.parse` · `curl` cả hai cổng) trước khi
+chạy cổng; **không nối bước chuẩn bị vào cùng chuỗi `&&` với bước đo**.
+
+### 🔴 Ba lần chính CỔNG của tôi tự soi gương (kỷ luật #23)
+
+Khác hẳn nhóm trên: ở đây phép đo chạy đúng, nhưng **so hai vế cùng một nguồn**.
+
+1. **B1a** — *"mã trong thân == mã trong header"* nghe như hai nguồn, nhưng ở đường đi lỗi cả
+   hai do **cùng một dòng** sinh ra. Đo thật: `MUTANT2_EXIT=0`, **15/15 xanh với bản cài đặt
+   sai**. Vế độc lập thật là **mã do máy khách tự chọn**.
+2. **A1** — cổng tự khai *"ghi rồi trả lại nguyên giá trị cũ"* mà **chưa từng viết dòng trả
+   lại nào**; câu khai ấy là cơ sở duy nhất để nó nằm trong nhóm chạy mặc định.
+3. **Uỷ quyền** — bản nháp thiết kế của tôi viết *"chủ chuỗi không có quyền ký nên ràng buộc
+   'không cấp thứ mình không có' tự chặn"*. `grep` ra: chủ chuỗi **CÓ** quyền ký. Một **giả
+   định** đội lốt suy luận.
+
+### Rà soát quyền quản trị — kết quả
+
+| # | Phát hiện | Trạng thái |
+|---|---|---|
+| ① | `system_admin` giữ **56/56 quyền**, 25 quyền chạm dữ liệu người bệnh (`crm.sensitive.read`, `crm.pii.reveal`, `rx.image.read`) | 🟡 Đang giải bằng **uỷ quyền có hạn**, không phải cắt quyền |
+| ② | `system_admin` **ký được sổ thuốc kiểm soát đặc biệt** | 🔴 **CHƯA ĐÓNG** — chờ Chain trả lời |
+| ③ | Khoá mã hoá nằm cùng `.env` với CSDL | ✅ Đã có cơ chế tách; **chờ Chain chạy runbook §D trên máy thật** |
+
+🔴 **Chain bác phương án "cắt quyền" của GĐ, và bác đúng.** Lý do ghi lại để phiên sau không đề
+xuất lại: một người bảo trì bị cắt quyền đọc dữ liệu **sẽ không sửa được phần lớn lỗi thật** —
+lỗi nhà thuốc hầu như luôn gắn với một bản ghi cụ thể. Bắt họ làm việc mù thì họ mở `psql`, nơi
+**không có vết kiểm toán nào**. Một quyền bị cắt mà đi vòng được **tệ hơn** một quyền được cấp
+có ghi vết. Đích không phải *ít quyền hơn* mà là **quyền cao nhất phải đắt nhất để dùng**.
+
+### 🚧 Nợ mở
+
+| # | Việc | Ai |
+|---|---|---|
+| **UQ** | Uỷ quyền quản trị **bước 3–5/5** (app+infra+migration · cưỡng chế ở `deps` · e2e) | Trợ lý Code |
+| — | 🔴 **Câu hỏi chờ Chain:** quyền ký sổ có nằm trong phạm vi uỷ quyền không? | Chain |
+| — | 🔴 **Chain chạy runbook `docs/18 §D`** trên máy thật — hôm nay mới là *năng lực*, chưa phải *bảo vệ*: `backend/.env` vẫn giữ `ENCRYPTION__KEYS` | Chain |
+| — | Kỷ luật **#25** chờ duyệt | Chain |
+| **B2** | Kiểm `backup_deadman.sh` **có răng** (đổi phạm vi từ "viết" — nó đã tồn tại) | Trợ lý Code |
+| **B3** | 7 cổng trình duyệt "chưa đo được" + N-5 | Trợ lý Code |
+| **C1–C3** | Phase 12 sơ đồ kho · **L-1** (Chain đã quyết luật) · gom `SalesPorts` | Trợ lý Code |
+| **N-3** | 🔴 Rà pháp lý màn Sổ kiểm soát — **đứng yên 4 ngày**, vượt ngưỡng R-9 | Trợ lý Pháp Lý |
+| — | 🔴 4 số thật của cơ sở — nay hoá đơn in **đúng thứ đã khai**, mà thứ đã khai **chưa ai xác nhận là số thật** | Chain |
+| — | 3 câu pháp lý về uỷ quyền (thiếu NĐ hướng dẫn Luật 91/2025) | Trợ lý Pháp Lý |
+
+### Điểm dừng
+
+- **Đang chạy nền:** backend `uvicorn` cổng 8000 (pid 354248, có `APP__METRICS_TOKEN=thu-nghiem-b1b`)
+  · frontend `next-server` cổng 3000 (pid 53313) · postgres + redis `up`. CSDL **`qt650`**.
+- **Dừng sạch — HAI lượt shell RIÊNG** (chạy chung lượt sẽ giết luôn shell, exit 144):
+  `pkill -f "uvicorn pharmacy_os.main:app"` rồi `kill <pid next-server>`.
+  🔴 `pkill uvicorn` **không** giết frontend — nó giữ cổng 3000 và làm `lan-dev.sh` từ chối
+  chạy lại, đúng ca ③ ở trên.
+- Cây git **sạch**, `main`, không remote (đúng chủ ý Chain).
+- Việc kế tiếp khi mở lại: **uỷ quyền bước 3/5**, hoặc **B2/B3** nếu Chain muốn đóng đợt B trước.
