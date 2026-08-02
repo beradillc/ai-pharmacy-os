@@ -101,6 +101,32 @@ BIEN_THIEN = "1.0"
 #    chỉ cắt khi ĐỔI NGƯỜI NÓI. Một giọng ⇒ gần như không cắt lần nào.
 # Rút 35% so với lượt trước: nghỉ dài cộng với đọc chậm thành ra lê thê. Nghỉ vẫn PHÂN
 # BIỆT theo dấu — đó là thứ tạo ngắt câu đúng, chỉ là không cần dài đến thế.
+# ── SỔ PHÁT ÂM ────────────────────────────────────────────────────────────────────────────
+# Chain nghe thấy chữ nào sai thì ghi vào `docs/testing/12_SO_PHAT_AM.md`; chữ nào sửa được
+# bằng cách VIẾT LẠI thì vào bảng này. Áp trước khi đưa cho bộ đọc.
+#
+# 🔴 Chỉ sửa được lỗi của tầng PHIÊN ÂM. Lỗi tầng GIỌNG (đọc bẹt thanh, nuốt phụ âm cuối)
+#    thì viết kiểu gì cũng vậy — tra phiên âm để biết lỗi nằm ở tầng nào, cách tra ghi trong
+#    chính tệp sổ đó.
+PHAT_AM = {
+    # "doanh" phiên âm ra `zwˈe-ɲ` — nguyên âm `e`, nghe thành "dơn". "doăn" ra `zwˈan`,
+    # đúng nguyên âm `a` VÀ trùng cách miền Nam đọc vần "anh" (Chain 02/08).
+    "doanh": "doăn",
+}
+
+
+def sua_phat_am(t: str) -> str:
+    """Thay chữ theo sổ phát âm, giữ nguyên hoa/thường của chữ gốc."""
+    for sai, dung in PHAT_AM.items():
+        t = re.sub(
+            rf"\b{re.escape(sai)}\b",
+            lambda m, d=dung: d.capitalize() if m.group(0)[0].isupper() else d,
+            t,
+            flags=re.IGNORECASE,
+        )
+    return t
+
+
 NGHI_CAU = "0.35"  # giây nghỉ giữa hai câu, do chính mô hình chèn (có ngôn điệu, không im chết)
 # Vuốt 12ms hai đầu mỗi mảnh: dù còn chỗ nối nào cũng không còn nhảy biên độ ⇒ hết "cụp".
 VUOT_MS = 12
@@ -161,7 +187,7 @@ class BoDoc:
                 continue
             self.dat_giong(giong)
             _mau.clear()
-            b = loi.encode("utf8")
+            b = sua_phat_am(loi).encode("utf8")
             self.lib.espeak_Synth(b, len(b) + 1, 0, 0, 0, ESPEAK_CHARS_UTF8, None, None)
             self.lib.espeak_Synchronize()
             if not _mau:
@@ -232,7 +258,7 @@ class BoDocPiper:
                 continue
             la_nam = "m3" in giong or giong == "nam"
             tam = ra.with_suffix(".tam.wav")
-            self._mot_luot(loi, la_nam, tam)
+            self._mot_luot(sua_phat_am(loi), la_nam, tam)
             # 🔴 HAI MÔ HÌNH, HAI TẦN SỐ MẪU: vais1000 = 22 050 Hz, vivos = 16 000 Hz. Nối
             #    thẳng vào một tệp có MỘT header thì giọng nào không khớp sẽ phát sai tốc độ
             #    — nghe như tua nhanh hoặc kéo chậm, và người nghe sẽ tưởng mô hình hỏng.
