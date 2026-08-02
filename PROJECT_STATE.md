@@ -8875,3 +8875,130 @@ UI_GATES_EXIT=0 — 14/21 xanh · 7 chưa đo được · 0 hỏng
 - **7 cổng chưa đo được** sẽ tự xanh dần khi các video 04→10 dựng ra khách, đơn thuốc, bút toán
   sổ. Không phải nợ kỹ thuật — là thứ tự tự nhiên của việc quay.
 - **Đường găng còn lại của bộ video: GIỌNG ĐỌC HAI NGƯỜI.** Máy không làm được phần này.
+
+---
+
+## 7dm. 🎬 ĐÓNG PHIÊN 2026-08-02 — bộ 14 video dựng xong, 4 lỗi sản phẩm do việc quay tìm ra
+
+**39 commit.** Phiên dài nhất từ trước tới nay, và là phiên đầu tiên sản phẩm chính không phải
+mã nguồn mà là **một bộ video** — nhưng chính việc quay lại là thứ tìm ra nhiều lỗi nhất.
+
+### Chain chốt gì trong phiên
+
+| Chốt | Nội dung |
+|---|---|
+| Kỷ luật #22 · #23 · #24 | Duyệt (treo từ 01/08) |
+| CSDL quay video | **`qt650`**, không dựng `qt650_video` |
+| Giọng đọc | **VieNeu-TTS v3 Turbo**, giọng riêng **BERAS** (nhân bản từ Thùy Dung, biến thể trầm ấm) |
+| Khổ quay | Điện thoại dọc 804×1748, chủ đề **Warm** |
+| Quy trình | **Quay video = một lượt rà app** |
+| Phạm vi | Làm hết 14 video |
+
+### 🔴 Bốn lỗi SẢN PHẨM thật, không cổng nào trong 21 cổng bắt được
+
+| Lỗi | Ai bắt | Vì sao cổng mù |
+|---|---|---|
+| Cửa sổ đã đóng vẫn được vẽ, **chặn ô "Tìm thuốc"** màn bán hàng, cả 2 khổ | **bản quay chết** | cổng đo *có trên trang* và *nhìn thấy được*, không đo **chạm tới được** |
+| Thông báo nhận hàng nói ngược: *"chốt phiếu"* ngay trên *"nhận một phần"* | **ảnh khung hình** | cổng mù về **ý nghĩa** — không đọc được hai câu tiếng Việt cạnh nhau đang chỏi nhau |
+| Lỗi 422 hiện **nguyên văn tiếng Anh**, không nói ô nào | quay video 02 | `tsc` xanh, `eslint` xanh — chuỗi vẫn là chuỗi |
+| **Thu ngân không được báo trước** là cần dược sĩ duyệt | **phép đo trong bản quay** | máy chủ chặn đúng, nên mọi cổng nghiệp vụ đều xanh |
+
+Ca thứ tư đáng nhớ nhất: bản quay đo mệnh đề *"màn có nói lý do không"* và trả `false`, trong
+khi **lời thoại tôi đã viết khẳng định là có**. Không đo thì video đi ra ngoài mang một lời hứa
+sai về sản phẩm.
+
+### 🔴 Ba lần tôi suýt phát ra điều sai — và cả ba đều do TÔI viết
+
+1. **Bịa số liệu cơ sở** — địa chỉ (sai tỉnh so với tên chi nhánh), điện thoại, mã số thuế, mã
+   cơ sở, rồi ghi vào CSDL sắp thành sổ thật. §7dd ghi rõ một phiên trước **đã từ chối** làm
+   đúng việc này. Đã gỡ về trống + `CHUA-KHAI`.
+2. **Báo cáo sai một con số cho Chain** — *"qt650 có 0 đơn bán"*, ghi vào hai tài liệu và một
+   commit. Tôi đọc `pg_stat_user_tables.n_live_tup` (ƯỚC LƯỢNG) thay vì `count(*)`. Thứ vạch
+   ra là một **ảnh chụp** màn Báo cáo hiện `12.000 đ`.
+3. **Lời thoại hứa *"trả hàng sẽ cộng lại tồn kho"*** — đọc mã mới thấy chú thích ghi thẳng
+   rằng **bản đầu của chính hộp thoại ấy** từng hứa vậy và **đã bị sửa vì SAI**. Tôi suýt tái
+   tạo một lỗi đã đóng, chỉ vì câu đó nghe hợp lý.
+
+### Ba quy tắc mới — cả ba chứng minh giá trị ngay lần áp dụng kế tiếp
+
+| Quy tắc | Sinh từ | Kết quả |
+|---|---|---|
+| ⓪⁻ **Chụp màn TRƯỚC khi viết script** | 3 video liên tiếp mất 1 lượt quay vì tôi **đoán** bố cục | video 06 và 08 chạy trọn **ngay lượt đầu** |
+| ⓪ **Dọn TRƯỚC khi quay**, không dọn sau | 3 kho trùng tên lên hình | không tái diễn |
+| ⑥⁺ **Mỗi khẳng định trong lời thoại phải có phép đo** | lời thoại suýt lọt 2 lần trong 1 ngày | tự bắt chính nó ở video 13 |
+
+🔴 Quy tắc ⓪ **lượt viết đầu chính là một lỗi**: nó ngừng HẾT kho `QUAY-*`, tức xoá đúng cái
+kho video 04 vừa tạo cho video 05. Cả bộ video là một **chuỗi dữ liệu nối nhau**;
+**"dọn trùng lặp" ≠ "xoá sạch"**.
+
+### Hạ tầng giọng đọc — tài sản dùng lại được
+
+```
+~/.local/share/beras-tts/
+  venv/          Piper (dự phòng, 16 kHz)
+  venv-vieneu/   VieNeu-TTS v3 Turbo + torch CPU  (1,3 GB)
+  voices/        3 mô hình Piper + beras-giong-rieng.wav  ← MẪU GIỌNG BERAS
+scripts/giong-he-thong.json   ← MỘT chỗ duy nhất biết giọng nào
+```
+
+Đổi giọng = **thay một tệp mẫu**, không sửa dòng mã nào. Đo được: BERAS trầm ấm có trọng tâm
+phổ **1254 Hz** so với gốc Thùy Dung **1684 Hz**.
+
+### Bộ video
+
+**14/14 dựng xong** · khổ 804×1748 · chủ đề Warm · giọng BERAS · nhạc mở đầu 3 giây.
+🔴 **13 phát hành được; video 14 CHƯA** — nó là video duy nhất chạm chủ đề tuân thủ, chờ Trợ lý
+Pháp Lý rà (N-3).
+
+Video **11** và **12** cố ý quay trên dữ liệu KHÔNG đủ (1 ngày thay vì 30; 1 chi nhánh thay vì
+2) và **nói thẳng điều đó trong lời thoại**, thay vì dựng dữ liệu giả vào CSDL một quầy sắp bán
+thật. Quay lại khi quầy chạy đủ một tháng thì video tốt hơn — nhưng không phải nợ.
+
+### Cổng tại điểm dừng
+
+```
+RUFF=0 FORMAT=0 IMPORTLINTER=18/18 MYPY=0 VITEST=0 (122)   ← hook nay 5 cổng
+PYTEST — xem mục dưới
+UI_GATES  14/21 xanh · 7 chưa đo được · 0 hỏng   (đo lúc 09:xx, trước 6 video cuối)
+```
+
+**Hook pre-commit nay 5 cổng** (thêm vitest, 0,85 giây). Lỗ hổng thật đã lọt một commit trong
+phiên: tôi CÓ chạy `npm run test`, CÓ đọc thấy `VITEST_EXIT=1`, rồi vẫn commit ở lượt sau vì
+không có gì chặn tay lại — đúng ca kỷ luật #8 bổ sung 29/07.
+
+🔴 **Và đột biến kiểm chính cổng N-4 thì LỌT lần đầu**: `const MK_TAM = "MatKhau@ThuNghiem2026";`
+đi qua trót lọt, vì cổng chỉ bắt chuỗi hình dạng email và mặc định gán cho biến tên
+EMAIL/PASSWORD. Đã vá: bắt theo **hình dạng mật khẩu**, không theo tên biến. Kiểm lại ba tầng —
+cổng đỏ · hook đọc được · commit bị chặn.
+
+### Điểm dừng
+
+- App chạy trên **`qt650`** · `http://192.168.1.8:3000` · `lan-dev.sh` chạy nền.
+- `qt650`: **12 đơn bán · 8 lô · 1 khách · 2 người dùng · 4 vị trí · 430 dòng audit** — toàn bộ
+  do 14 video tạo ra, **cố ý giữ**: đó là dữ liệu video sau cần và là ảnh chụp một quầy đã đi
+  trọn một vòng.
+- Tài khoản: `trinhthu@quaythuoc650.vn` (dược sĩ) · `thungan@quaythuoc650.vn` (thu ngân, không
+  có `rx.approve`). **Mật khẩu khai trong `scripts/ui-gates.env`, không trong mã.**
+- Thông tin cơ sở còn ở dạng **mẫu** (`MAU-THU-01`, điện thoại/MST để trống) — chờ Chain cấp số
+  thật trước khi phát hành video 02.
+- Dừng sạch: `pkill -f "uvicorn pharmacy_os.main:app"` **ở một lượt shell RIÊNG** (chạy chung
+  lượt sẽ giết luôn shell — exit 144).
+
+### 🚧 Nợ mở
+
+| # | Nợ | Mức |
+|---|---|---|
+| N-3 | 🔴 **Rà pháp lý màn Sổ kiểm soát** (Trợ lý Pháp Lý) — mở từ 01/08, **2 ngày** | Chặn phát hành video 14 **và** phát hành thương mại |
+| — | 🔴 Chain cấp 4 số thật của cơ sở (điện thoại · MST · mã cơ sở · địa chỉ theo giấy phép) | Chặn phát hành video 02 |
+| L-1 | Phiếu nhập `PARTIALLY_RECEIVED` không đóng cũng không huỷ được | Nghiệp vụ — cần Chain quyết |
+| L-2 | `check-thong-tin-co-so` nằm nhóm ĐỌC-THUẦN nhưng **ghi đè thông tin pháp lý** | Sửa trước khi ai đó chạy bộ cổng lên CSDL thật |
+| N-5 | `check-rejected-sales` chưa đo được (nhưng **đã an toàn** — không còn ghi) | Không chặn |
+| N-1 | Hoá đơn chưa đọc Thông tin cơ sở (cần read-port cross-module) | Không chặn |
+| N-2 | Mẫu số 06 chưa in phần đầu sổ | Không chặn |
+
+### Việc tiếp theo khi mở lại
+
+1. **Chain xem 14 video, gom góp ý một lượt** — sửa một đợt rẻ hơn sửa từng cái.
+2. Giao **Trợ lý Pháp Lý** rà màn Sổ kiểm soát — dòng này đã đứng yên 2 ngày.
+3. Sửa **L-2** (cổng đọc-thuần ghi đè dữ liệu pháp lý) — nó nguy hiểm đúng vào ngày ai đó chạy
+   bộ cổng lên CSDL của một quầy đang bán thật.
