@@ -60,12 +60,34 @@ PIPER = GOC_PIPER / "venv/bin/piper"
 #
 #    Giọng nữ hạ cao độ thành "nam" (rubberband giữ formant) nghe được nhưng **mất dấu** —
 #    dịch cao độ kéo theo cả đường thanh điệu. Giọng nam THẬT giữ dấu tốt hơn.
-MO_HINH_NU = GOC_PIPER / "voices/vi_VN-vais1000-medium.onnx"
+#    🔴 LẦN CHỈNH THỨ HAI (02/08, Chain: "nghe như giọng miền Trung, chưa có nhấn nhá").
+#    `vais1000` là mô hình của một đơn vị phía Bắc — rõ dấu nhưng SAI VÙNG MIỀN. Chain nghe
+#    ra ngay, còn tôi thì không nghe được; bảng mô tả mô hình KHÔNG ghi vùng miền, nên chỉ
+#    còn cách suy từ NGUỒN GỐC NGỮ LIỆU: `vivos` thu tại TP.HCM ⇒ giọng Nam.
+#
+#    Và lỗi thật của tôi: `vivos` có **65 giọng**, tôi mới thử ĐÚNG MỘT (spk3) rồi kết luận
+#    cả mô hình bẹt dấu. Quét 19 giọng trên cùng một câu thì spk62 (nữ) và spk33 (nam) đều
+#    HƠN `vais1000` — tức là kết luận cũ sai vì mẫu quá nhỏ, không phải vì mô hình kém.
+#
+#      nữ:  vivos spk62 0,96  ·  vais1000 0,91  ·  vivos spk3 0,67
+#      nam: vivos spk33 1,29  ·  vivos spk28 0,94
+#      (`25hours_single` đạt 1,31 — cao nhất — nhưng KHÔNG rõ vùng miền, để dự phòng)
+#
+#    Nay cả hai vai cùng một mô hình: cùng vùng miền, cùng tần số mẫu, cùng mức chất lượng.
+MO_HINH_NU = GOC_PIPER / "voices/vi_VN-vivos-x_low.onnx"
 MO_HINH_NAM = GOC_PIPER / "voices/vi_VN-vivos-x_low.onnx"
-SPK_NAM = 28  # F0 đo thật 132,2 Hz, thanh điệu 0,94 — tốt nhất trong các giọng nam đã đo
+SPK_NU = 62  # F0 222,2 Hz · thanh điệu 0,96
+SPK_NAM = 33  # F0 128,0 Hz · thanh điệu 1,29
 # Đọc chậm hơn mặc định 15%: Chain yêu cầu "phát âm rõ chữ hơn". Người xem vừa nghe vừa
 # nhìn tay bấm, nên chậm là đúng chứ không phải nhược điểm.
-NHIP_DOC = "1.15"
+NHIP_DOC = "1.35"  # chậm hơn nữa (Chain: "nói chậm hơn")
+# Độ biến thiên ngôn điệu — "nhấn nhá". Mặc định 0,8; nâng lên cho câu bớt đều đều.
+BIEN_THIEN = "1.0"
+
+# Ngắt câu: đọc CẢ ĐOẠN một hơi thì máy tự chia sai chỗ. Tách theo dấu câu rồi đọc từng
+# mảnh, chèn nghỉ đúng độ dài của dấu — đó là cách duy nhất "ngắt câu đúng" mà không phải
+# dạy mô hình điều gì.
+NGHI_SAU = {".": 0.42, "?": 0.48, "!": 0.45, ";": 0.34, ":": 0.30, ",": 0.20, "—": 0.24}
 
 _mau: list[int] = []
 
@@ -136,6 +158,22 @@ class BoDoc:
         return _ghi_wav(ra, gop, self.tan_so)
 
 
+def _tach_manh(luot: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Tách mỗi lượt thành các mảnh theo dấu câu, GIỮ dấu ở cuối mảnh.
+
+    Giữ dấu lại vì khâu sau đọc chính dấu đó để biết nghỉ bao lâu — bỏ dấu đi thì mọi mảnh
+    nghỉ như nhau, tức là quay về đúng cái đều đều đang phải sửa.
+    """
+    ra: list[tuple[str, str]] = []
+    for giong, loi in luot:
+        manh = re.split(r"(?<=[.!?;:])\s+|(?<=—)\s+", loi.strip())
+        for m in manh:
+            m = m.strip()
+            if m:
+                ra.append((giong, m))
+    return ra
+
+
 class BoDocPiper:
     """Bộ đọc thần kinh. Cùng giao diện `doc()` với `BoDoc` để chỗ gọi không phải biết ai."""
 
@@ -144,10 +182,19 @@ class BoDocPiper:
             raise FileNotFoundError("chưa cài Piper hoặc thiếu mô hình giọng")
 
     def _mot_luot(self, loi: str, la_nam: bool, ra: Path) -> None:
-        lenh = [str(PIPER), "-m", str(MO_HINH_NAM if la_nam else MO_HINH_NU)]
-        if la_nam:
-            lenh += ["-s", str(SPK_NAM)]
-        lenh += ["--length-scale", NHIP_DOC, "-f", str(ra)]
+        lenh = [
+            str(PIPER),
+            "-m",
+            str(MO_HINH_NAM if la_nam else MO_HINH_NU),
+            "-s",
+            str(SPK_NAM if la_nam else SPK_NU),
+            "--length-scale",
+            NHIP_DOC,
+            "--noise-w-scale",
+            BIEN_THIEN,
+            "-f",
+            str(ra),
+        ]
         r = subprocess.run(lenh, input=loi.encode("utf8"), capture_output=True)
         if r.returncode != 0 or not ra.exists():
             raise RuntimeError(f"piper lỗi: {r.stderr.decode()[-200:]}")
@@ -157,7 +204,11 @@ class BoDocPiper:
         hỏi dính câu trả lời."""
         khuc: list[bytes] = []
         tan_so = 22050
-        for giong, loi in luot:
+        # 🔴 NGẮT CÂU ĐÚNG CHỖ (Chain 02/08: "cần đúng ngắt câu"). Đưa cả đoạn vào một lần
+        #    thì mô hình tự chia hơi theo phán đoán của nó — và nó chia sai ở câu dài có dấu
+        #    gạch ngang hoặc mệnh đề phụ. Tách theo DẤU CÂU rồi đọc từng mảnh, chèn nghỉ
+        #    đúng độ dài của dấu. Không phải dạy mô hình gì cả, chỉ là không bắt nó đoán.
+        for giong, loi in _tach_manh(luot):
             if not loi.strip():
                 continue
             la_nam = "m3" in giong or giong == "nam"
@@ -179,7 +230,9 @@ class BoDocPiper:
                 b = lai.read_bytes()
                 lai.unlink(missing_ok=True)
             khuc.append(b[44:])
-            khuc.append(b"\x00\x00" * int(tan_so * 0.35))
+            # Nghỉ theo DẤU kết thúc mảnh: chấm nghỉ dài hơn phẩy, hỏi dài hơn chấm.
+            nghi = NGHI_SAU.get(loi.strip()[-1], 0.30)
+            khuc.append(b"\x00\x00" * int(tan_so * nghi))
             tam.unlink(missing_ok=True)
         if not khuc:
             raise RuntimeError("không có lượt nào đọc được")
