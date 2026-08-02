@@ -36,6 +36,18 @@ await p.fill('input[type="email"]',EMAIL); await p.fill('input[type="password"]'
 await p.click('button[type="submit"]'); await p.waitForURL(u=>!u.pathname.includes("login"),{timeout:25000});
 await p.waitForResponse(r=>r.url().includes("/drugs"),{timeout:15000}).catch(()=>{});
 await p.goto(`${B}/khach-hang`,{waitUntil:"networkidle"});
+
+// 🔴 "CHƯA ĐO ĐƯỢC" ≠ "SẢN PHẨM HỎNG". (02/08)
+//    Chạy bộ cổng lên `qt650` (CSDL sạch, 0 khách) thì cổng này trả EXIT=1 — mã của
+//    *sản phẩm hỏng* — trong khi sự thật chỉ là CSDL chưa có dữ liệu để đo. Người đọc
+//    bảng tổng kết thấy 🔴 và đi tìm bug không tồn tại. Quy ước chung của bộ cổng:
+//    **EXIT=2 = chưa đo được**, EXIT=1 = đo được và SAI. Giữ đúng quy ước đó ở đây.
+const soDong = await p.locator("tbody tr").count().catch(() => 0);
+if (soDong === 0) {
+  console.error("⏭️  CHƯA ĐO ĐƯỢC — CSDL không có khách hàng nào. Cổng này đo màn Khách hàng,\n   không đo được trên CSDL trống. Dựng khách rồi chạy lại.");
+  await b.close();
+  process.exit(2);
+}
 await p.locator("tbody tr").first().waitFor({timeout:25000});
 
 // ① Số điện thoại nay ĐÃ CHE trong danh sách (31/07) — không cạo ra từ bảng được nữa,

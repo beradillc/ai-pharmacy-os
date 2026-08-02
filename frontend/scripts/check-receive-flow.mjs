@@ -122,7 +122,8 @@ for (const [name, engine] of [
 
 if (skipped > 0 && failures === 0) {
   console.log("\n⚠ Bỏ qua — CSDL không có đơn nào chờ nhận. KHÔNG tính là đã kiểm.");
-  process.exit(3);
+  // Quy ước chung bộ cổng: 2 = chưa đo được (trước đây tệp này dùng 3, không ai khác dùng).
+  process.exit(2);
 }
 console.log(failures === 0 ? "\n✓ Luồng Nhận hàng chạy trên cả hai engine" : `\n🔴 ${failures} engine hỏng`);
 process.exit(failures === 0 ? 0 : 1);

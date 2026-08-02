@@ -1131,6 +1131,67 @@ Ghi riêng vì đây là video dễ trượt nhất cả bộ:
 | *"Liên thông đã xong"* | *"Đường đi dựng xong, đầu bên kia chưa mở"* |
 | Bất kỳ số hiệu văn bản, tên cơ quan, hạn nộp nào | Mô tả **việc phần mềm làm**, không mô tả nghĩa vụ |
 
+---
+
+# 📋 Ghi chú DÀN CẢNH — rút từ lượt quay thật đầu tiên (2026-08-02)
+
+> Lượt quay đầu chạy **5 lần mới trọn 16/16 đoạn**. Bốn lần chết đầu không phải lỗi ngẫu
+> nhiên — mỗi lần là **một điều kịch bản không biết về ứng dụng hôm nay**. Ghi hết ở đây để
+> lần quay thật không phải khám phá lại.
+
+## ① Ứng dụng đã đổi, kịch bản thì chưa — ba bước bị thiếu
+
+| Bước ứng dụng ĐÒI | Kịch bản cũ | Triệu chứng khi thiếu |
+|---|---|---|
+| Khổ điện thoại: giỏ thu thành **thanh đáy**, bấm **"Xem giỏ"** mới mở (Chain 31/07) | bấm thẳng "Thanh toán" | `count()` = 1 nhưng `boundingBox()` = **null** — đọc như nút đang trôi, thật ra **không có hộp bố cục** |
+| **Xác nhận hai bước**: CÙNG một nút "Thanh toán", bấm **hai lần** (Chain 31/07) | bấm một lần | đợi mãi câu "Đã bán thành công" — câu đó không bao giờ hiện |
+| Nhận hàng xong mở hộp thoại **"Lộ trình lấy hàng"** | không biết có nó | `subtree intercepts pointer events` ở đoạn sau |
+
+**Cả ba đều là thao tác người xem cũng phải làm** ⇒ quay chúng vào video, đừng né. Riêng
+hộp thoại Lộ trình: đóng nó **sau khi để người xem đọc ~1,5 giây**.
+
+## ② Dữ liệu phải dựng TRƯỚC, và mỗi lượt quay tiêu thụ nó
+
+`node scripts/lib/dung-du-lieu-quay.mjs` — dựng nhà cung cấp + đơn mua bằng **API thật**.
+
+🔴 **Chạy lại trước MỖI lượt quay.** Một lượt quay *tiêu thụ* đơn mua; lượt sau tạo đơn mới.
+Sau 5 lượt hỏng, màn Đơn mua hàng có **PO-0001…PO-0007** chồng nhau — trông không giống màn
+một quầy thật. Đã dọn 02/08 (nhận nốt rồi đóng cả 7).
+
+⚠️ **Phiếu `PARTIALLY_RECEIVED` KHÔNG đóng và KHÔNG huỷ được** (`/close` và `/cancel` đều
+trả 422). Lối ra duy nhất là **nhận nốt**. Quay hỏng giữa chừng ⇒ dọn bằng cách nhận nốt.
+
+## ③ Chọn từ khoá tìm cho ra NHIỀU kết quả
+
+Quay cảnh tìm thuốc bằng `"Cetirizin"` ra **đúng một dòng**, rồi hơn nửa màn 874px trống
+trơn. Không phải lỗi bố cục — đã đo, không khối nào cao bất thường — nhưng lên hình thì
+**trông như màn đang tải dở**. Dùng từ khoá ra 4–6 dòng (`"Para"`, `"vitamin"`).
+
+## ④ Nhịp hiện tại là ƯỚC LƯỢNG, không phải đo
+
+`durations.json` vốn được sinh từ **tệp giọng đọc thật** bằng `ffprobe`. Chưa có giọng nên
+bản nháp dùng nhịp tôi đoán (7–14 giây/đoạn, tổng 3 phút 17).
+
+🔴 **Thu tiếng xong phải đo lại và quay lại.** Script `hold()` báo `⚠ tràn Xs` khi thao tác
+dài hơn lời thoại — đó là tín hiệu phải **viết lại lời thoại**, không phải cắt ngắn thao tác.
+
+## ⑤ Quay bằng WebKit, không phải Firefox
+
+Đã ghi trong `record-tutorial.mjs`: chỉ WebKit vẽ ô `<input type="date">` theo kiểu Việt Nam
+(`02/08/2026`). Firefox ra `08/02/2026` kiểu Mỹ **kể cả khi đặt locale** — người xem sẽ tưởng
+phần mềm ghi ngày kiểu Mỹ. Đã xác nhận lại trên bản quay: khung 185 hiện `06/07/2026` và
+`02/08/2026`, đúng.
+
+## ⑥ Hai lỗi SẢN PHẨM do chính việc quay tìm ra
+
+Ghi ở đây vì chúng chứng minh một điều về quy trình: **quay video là một phép kiểm**, không
+chỉ là việc làm tài liệu.
+
+| Lỗi | Ai bắt được |
+|---|---|
+| Cửa sổ đã đóng vẫn được vẽ, **chặn ô "Tìm thuốc"** của màn bán hàng | bản quay chết — 21 cổng đều mù |
+| Thông báo nhận hàng nói ngược: *"chốt phiếu"* ngay trên *"Nhận một phần"* | **ảnh chụp** khung hình — không phép đo nào thấy |
+
 ## ⛔ Nguyên tắc nội dung — Chain chốt 2026-08-01
 
 *"Cái nào nhạy cảm, pháp lý thì bỏ ra khỏi kịch bản."*

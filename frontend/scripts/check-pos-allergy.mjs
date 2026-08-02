@@ -18,7 +18,7 @@
  */
 import { firefox } from "playwright-core";
 import { mkdirSync } from "node:fs";
-import { BASE, EMAIL, PASSWORD, doiDangNhap } from "./lib/moi-truong.mjs";
+import { API, BASE, EMAIL, PASSWORD, doiDangNhap } from "./lib/moi-truong.mjs";
 
 doiDangNhap();
 
@@ -37,6 +37,45 @@ const KHO = [
 ];
 
 let hong = 0;
+// 🔴 "CHƯA ĐO ĐƯỢC" ≠ "SẢN PHẨM HỎNG". (02/08)
+//    Chạy lên `qt650` (CSDL sạch, 0 khách) cổng này in "khách dị ứng + Augmentin · cảnh báo:
+//    KHÔNG HIỆN" rồi trả EXIT=1 — đọc y hệt *"luật cảnh báo dị ứng đã hỏng"*. Sự thật: số
+//    điện thoại đó không thuộc khách nào trong CSDL này, nên không có dị ứng nào để cảnh báo.
+//    Một cổng đỏ vì lý do sai thì lần sau người ta tắt nó đi. Hỏi máy chủ TRƯỚC khi mở trình duyệt.
+{
+  const phien = await (
+    await fetch(`${API}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+    })
+  ).json();
+  if (!phien.access_token) {
+    console.error("🔴 Đăng nhập API thất bại — không kiểm được điều kiện dữ liệu.");
+    process.exit(2);
+  }
+  const kh = await (
+    await fetch(`${API}/customers?search=${encodeURIComponent(SDT_DI_UNG)}`, {
+      headers: { Authorization: `Bearer ${phien.access_token}` },
+    })
+  ).json();
+  const ds = Array.isArray(kh) ? kh : (kh.items ?? []);
+  if (ds.length === 0) {
+    console.error(
+      [
+        `⏭️  CHƯA ĐO ĐƯỢC — không có khách nào mang số ${SDT_DI_UNG} trong CSDL này.`,
+        "",
+        "   Cổng đo: *khách CÓ dị ứng + thuốc xung đột ⇒ phần mềm phải cảnh báo*.",
+        "   Không có khách ấy thì không có gì để cảnh báo, và cổng sẽ đỏ vì LÝ DO SAI —",
+        "   đọc y hệt 'luật dị ứng đã hỏng'.",
+        "",
+        "   Đặt SDT_DI_UNG trỏ tới một khách có dị ứng trong CSDL đang chạy.",
+      ].join("\n"),
+    );
+    process.exit(2);
+  }
+}
+
 const browser = await firefox.launch();
 
 for (const kho of KHO) {

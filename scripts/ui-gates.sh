@@ -136,14 +136,24 @@ say "1/2 · Chạy cổng"
 cd "$(dirname "$0")/../frontend" || die "không vào được frontend/"
 KET_QUA=()
 HONG=0
+CHUA_DO=0
 
 chay() {
   local f="$1" nhom="$2"
   printf '   %-26s ' "$f"
   BASE_URL="$BASE_URL" node "scripts/$f" > "/tmp/ui-gate-$f.log" 2>&1
   local ma=$?                       # mã thoát của CHÍNH node, không phải của lệnh nào khác
+  # 🔴 "CHƯA ĐO ĐƯỢC" ≠ "HỎNG". (02/08) Bảng này từng in 🔴 cho mọi mã khác 0, nên một cổng
+  #    dừng vì CSDL thiếu dữ liệu trông y hệt một cổng bắt được bug. Chạy bộ lên `qt650` ra
+  #    "7 cổng ĐỎ" trong khi chỉ 3 cái là lỗi thật — và cả 3 cũng là lỗi QUY ƯỚC MÃ THOÁT,
+  #    không phải lỗi sản phẩm. Một bảng tổng kết nói quá sẽ bị người đọc chiết khấu, rồi
+  #    tới hôm có lỗi thật thì nó cũng bị chiết khấu nốt.
+  #    Quy ước: 0 = đạt · 2 = chưa đo được (KHÔNG tính là đạt, cũng KHÔNG tính là hỏng) · còn lại = hỏng.
   if [ "$ma" -eq 0 ]; then
     printf '\033[32mEXIT=0 ✓\033[0m\n'
+  elif [ "$ma" -eq 2 ]; then
+    printf '\033[33mEXIT=2 ⏭️  chưa đo được\033[0m\n'
+    CHUA_DO=$((CHUA_DO + 1))
   else
     printf '\033[31mEXIT=%s 🔴\033[0m\n' "$ma"
     HONG=$((HONG + 1))
@@ -159,12 +169,20 @@ say "2/2 · Tổng kết"
 printf '| Cổng | Nhóm | Mã thoát |\n|---|---|---|\n'
 for d in "${KET_QUA[@]}"; do
   IFS='|' read -r f nhom ma <<< "$d"
-  printf '| %s | %s | %s %s |\n' "$f" "$nhom" "$ma" "$([ "$ma" -eq 0 ] && echo ✓ || echo 🔴)"
+  case "$ma" in
+    0) dau="✓" ;;
+    2) dau="⏭️ chưa đo được" ;;
+    *) dau="🔴" ;;
+  esac
+  printf '| %s | %s | %s %s |\n' "$f" "$nhom" "$ma" "$dau"
 done
 [ "$CHAY_CA_NHOM_GHI" = "0" ] && printf '\n(nhóm GHI bị bỏ qua — thêm --all để chạy)\n'
 
+if [ "$CHUA_DO" -gt 0 ]; then
+  printf '\n\033[33m⏭️  %s cổng CHƯA ĐO ĐƯỢC trên CSDL này — không tính là đạt.\033[0m\n' "$CHUA_DO"
+fi
 if [ "$HONG" -eq 0 ]; then
-  printf '\n\033[32m✅ %s cổng trình duyệt XANH.\033[0m\n' "${#KET_QUA[@]}"
+  printf '\033[32m✅ %s/%s cổng XANH.\033[0m\n' "$(( ${#KET_QUA[@]} - CHUA_DO ))" "${#KET_QUA[@]}"
   exit 0
 fi
 printf '\n\033[31m🔴 %s cổng ĐỎ. Nhật ký: /tmp/ui-gate-<tên>.log\033[0m\n' "$HONG"

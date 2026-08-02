@@ -8782,3 +8782,96 @@ RUFF/FORMAT/IMPORT-LINTER/MYPY = 0 (hook)
 - `qt650` nay có: 1 nhà cung cấp · PO-0001 (RECEIVED) · PO-0002 · lô hàng đã nhận · vài đơn bán
   của các lượt quay — **cố ý giữ**, đó là dữ liệu video sau cần.
 - Bản quay thô: `/tmp/quay01/*.webm` (12/16 đoạn) — **chưa đạt, chưa giao**.
+
+---
+
+## 7dl. 🧹 Rà và dọn sau lượt quay đầu — "chưa đo được" tách khỏi "hỏng" (2026-08-02)
+
+**Chain: *"Rà, dọn cho hết lỗi, ghi nhận lại để hoàn thiện kịch bản. Uỷ quyền GĐ toàn phiên."***
+
+### Lỗi lớn nhất tìm được: bộ cổng nói QUÁ
+
+Quét cả bộ trên `qt650` ra **"7 cổng ĐỎ"**. Đọc từng cái thì **không cổng nào bắt được lỗi sản
+phẩm** — cả 7 chỉ là *CSDL này chưa có dữ liệu để đo*. Nhưng bảng tổng kết in 🔴 cho mọi mã
+khác 0, nên một cổng dừng vì thiếu dữ liệu **trông y hệt** một cổng bắt được bug.
+
+Ba cổng còn tệ hơn: chúng trả **EXIT=1** (mã của *"đo được và SAI"*):
+
+| Cổng | In ra | Sự thật |
+|---|---|---|
+| `check-customers` | timeout chờ `tbody tr` | `qt650` có **0 khách** |
+| `check-pos-allergy` | *"khách dị ứng + Augmentin · cảnh báo: **KHÔNG HIỆN**"* | số điện thoại đó **không thuộc khách nào** — không có dị ứng nào để cảnh báo |
+| `check-receive-flow` | nói đúng *"BỎ QUA"* nhưng trả **EXIT=3** | quy ước riêng, không ai khác dùng |
+
+Dòng của `check-pos-allergy` là dòng nguy hiểm nhất cả bảng: nó đọc y như **"luật cảnh báo dị
+ứng đã hỏng"** — thứ đáng dừng cả buổi để điều tra. Không có gì hỏng cả.
+
+**Đã thống nhất quy ước cho toàn bộ cổng:**
+
+```
+0 = đạt
+2 = CHƯA ĐO ĐƯỢC  (không tính đạt, cũng KHÔNG tính hỏng)
+còn lại = HỎNG
+```
+
+`ui-gates.sh` nay in `⏭️ chưa đo được` riêng, đếm riêng, và **không** để nó làm đỏ cả bộ.
+
+Kết quả thật sau khi vá: **`UI_GATES_EXIT=0` · 14/21 xanh · 7 chưa đo được · 0 hỏng.**
+
+> **Vì sao đây là lỗi đáng sửa chứ không phải chuyện thẩm mỹ:** một bảng tổng kết nói quá sẽ
+> bị người đọc chiết khấu — và tới hôm có lỗi thật thì nó cũng bị chiết khấu nốt. Cùng họ với
+> §7di (cổng đỏ vì phép đo) và §7dj (cổng ghi vào sổ trong lúc mang nhãn "đọc-thuần"): **cổng
+> nói sai về CHÍNH NÓ là lớp lỗi đắt nhất của dự án này.**
+
+### Dọn `qt650`
+
+7 đơn mua kẹt `PARTIALLY_RECEIVED` (rác của 5 lượt quay hỏng) — không đóng, không huỷ được.
+Đi đúng đường nghiệp vụ duy nhất còn lại: **nhận nốt rồi đóng**. Sau khi dọn (pg_dump trước):
+
+```
+đơn mua 7/7 CLOSED · 7 lô · 14 phiếu nhập · 1 đơn bán · 29 stock_movements
+```
+
+### Bản quay đầu tiên chạy TRỌN
+
+`QUAY_EXIT=0` · **16/16 đoạn** · 3 phút 17 · WebKit khổ 402×874.
+`docs/testing/videos/00_tong-quan_ban-nhap.mp4` — **bản NHÁP**, nhịp là ước lượng, chưa có giọng.
+
+Phải chạy **5 lần** mới trọn. Bốn lần chết đầu **không lần nào là lỗi ngẫu nhiên** — mỗi lần là
+một điều kịch bản quay không biết về ứng dụng hôm nay. Đã ghi hết vào
+`05_KICH_BAN_VIDEO.md` mục **"Ghi chú DÀN CẢNH"** (6 mục) để lần quay thật không khám phá lại.
+
+### Hai lỗi SẢN PHẨM do chính việc quay tìm ra
+
+| Lỗi | Ai bắt được |
+|---|---|
+| Cửa sổ đã đóng vẫn được vẽ, **chặn ô "Tìm thuốc"** màn bán hàng, cả 2 khổ | **bản quay chết** — 21 cổng đều mù |
+| Thông báo nhận hàng nói ngược: *"chốt phiếu"* ngay trên *"Nhận một phần"* | **ảnh chụp** khung hình |
+
+**Không cái nào do một phép đo tự động tìm ra.** Ba phiên liên tiếp nay đều vậy (§7dj ảnh,
+§7dk bản quay, §7dl ảnh). Kết luận cho quy trình: **quay video là một phép kiểm**, không chỉ là
+việc làm tài liệu — và kỷ luật #20 (mỗi thay đổi giao diện phải có ảnh, ảnh phải có người nhìn)
+đáng giữ nguyên, vì cổng giỏi kiểm *cấu trúc* và **mù về ý nghĩa**: nó không đọc được rằng hai
+câu tiếng Việt cạnh nhau đang nói ngược nhau.
+
+### Không phải lỗi — ghi để khỏi bị báo lại
+
+| Hiện tượng | Vì sao đúng |
+|---|---|
+| Màn bán hàng trống hơn nửa màn sau khi tìm | trang ngắn thật; đã đo, không khối nào cao bất thường. Là chuyện **dàn cảnh** — dùng từ khoá ra 4–6 dòng |
+| Nút "Xong"/"Xem giỏ" màu đỏ | đỏ là màu hành động chính của BERAS, nhất quán toàn ứng dụng |
+
+### Cổng tại điểm dừng
+
+```
+TSC=0  ESLINT=0  VITEST=0 (117)
+RUFF/FORMAT/IMPORT-LINTER/MYPY = 0 (hook)
+UI_GATES_EXIT=0 — 14/21 xanh · 7 chưa đo được · 0 hỏng
+```
+
+### Điểm dừng
+
+- App trên **`qt650`** · `http://192.168.1.8:3000` · sổ đơn mua sạch.
+- **7 cổng chưa đo được** sẽ tự xanh dần khi các video 04→10 dựng ra khách, đơn thuốc, bút toán
+  sổ. Không phải nợ kỹ thuật — là thứ tự tự nhiên của việc quay.
+- **Đường găng còn lại của bộ video: GIỌNG ĐỌC HAI NGƯỜI.** Máy không làm được phần này.
