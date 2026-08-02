@@ -90,7 +90,7 @@ Dựng tiếng cho một video:
 | 01 | Một vòng làm việc trong ngày | ✅ 16/16 | 2 | 1 | ✅ Thùy Dung | ✅ **XONG** |
 | 02 | Thông tin cơ sở · Tài khoản · Đổi mật khẩu | ✅ 9/9 | **1** (lỗi 422 tiếng Anh) | **1** (L-2) | 🟠 giọng CŨ, cần dựng lại | 🟠 chờ Chain cấp số thật |
 | 03 | Danh mục thuốc · Hoạt chất · Giá | ✅ 9/9 | 0 | 0 | ✅ Thùy Dung | ✅ **XONG** |
-| 04 | Sơ đồ kho · Khởi tạo tồn | | | | | |
+| 04 | Sơ đồ kho · Khởi tạo tồn | ✅ 8/8 | **2** (mouse.wheel · kho rác) | 0 | ✅ BERAS | ✅ **XONG** |
 | 05 | Nhập hàng · Xếp ô | | | | | |
 | ~~01~~ | ~~Đăng nhập · Tổng quan~~ — gộp vào video 01 ở trên | — | — | — | — | — |
 | 08 | Khách hàng · Dị ứng | | | | | |
