@@ -54,11 +54,26 @@ if (khop.length < 2) {
 }
 
 const browser = await webkit.launch();
+/** Khổ ĐIỆN THOẠI + chủ đề Warm — Chain chốt 2026-08-02 cho cả bộ video.
+ *  Đúng thứ dược sĩ cầm trên tay ở quầy; khổ laptop là ngoại lệ chứ không phải mặc định. */
 const ctx = await browser.newContext({
-  viewport: { width: 1280, height: 800 },
+  viewport: { width: 402, height: 874 },
   deviceScaleFactor: 2,
+  isMobile: true,
+  hasTouch: true,
   locale: "vi-VN",
-  recordVideo: { dir: OUT, size: { width: 1280, height: 800 } },
+  timezoneId: "Asia/Ho_Chi_Minh",
+  recordVideo: { dir: OUT, size: { width: 804, height: 1748 } },
+});
+
+/** Bật Warm TRƯỚC khi trang kịp vẽ. Bấm qua màn Cài đặt thì khung hình đầu tiên vẫn là
+ *  Classic rồi mới đổi — video mở màn bằng đúng cái theme KHÔNG định giới thiệu. */
+await ctx.addInitScript(() => {
+  try {
+    localStorage.setItem("beras.theme", "warm");
+  } catch {
+    /* chế độ riêng tư — chỉ mất theme, không hỏng gì */
+  }
 });
 const page = await ctx.newPage();
 const loiJS = [];

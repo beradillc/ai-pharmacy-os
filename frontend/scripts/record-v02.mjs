@@ -25,16 +25,32 @@ const DUR = JSON.parse(
 );
 mkdirSync(OUT, { recursive: true });
 
-/** Khổ LAPTOP — kịch bản ghi rõ "nhiều ô nhập" nên quay ngang, khác video tổng quan. */
-const VIEWPORT = { width: 1280, height: 800 };
+/** Khổ ĐIỆN THOẠI — Chain chốt 2026-08-02: cả bộ video quay khổ điện thoại, chủ đề Warm.
+ *  Đúng thứ dược sĩ cầm trên tay ở quầy; khổ laptop là ngoại lệ chứ không phải mặc định. */
+const VIEWPORT = { width: 402, height: 874 };
 const GAP_MS = 700;
 
 const browser = await webkit.launch();
 const ctx = await browser.newContext({
   viewport: VIEWPORT,
   deviceScaleFactor: 2,
+  isMobile: true,
+  hasTouch: true,
   locale: "vi-VN",
-  recordVideo: { dir: OUT, size: { width: 1280, height: 800 } },
+  timezoneId: "Asia/Ho_Chi_Minh",
+  recordVideo: { dir: OUT, size: { width: 804, height: 1748 } },
+});
+
+/** Bật chủ đề **Warm** TRƯỚC khi trang kịp vẽ (Chain chốt 02/08).
+ *  Ghi thẳng `localStorage` chứ không bấm qua Cài đặt → Giao diện: bấm qua màn thì khung
+ *  hình đầu tiên vẫn là Classic rồi mới đổi, tức video mở màn bằng đúng cái theme KHÔNG
+ *  định giới thiệu. `ThemeProvider` đọc khoá này trong script đặt ở `<head>`. */
+await ctx.addInitScript(() => {
+  try {
+    localStorage.setItem("beras.theme", "warm");
+  } catch {
+    /* chế độ riêng tư — chỉ mất theme, không hỏng gì */
+  }
 });
 const page = await ctx.newPage();
 const loiJS = [];
