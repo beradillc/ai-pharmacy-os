@@ -2,8 +2,9 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-01** — đóng **kế hoạch 6 phiên** (§7cv → §7db): chín lệnh Chain giao
-> 01/08 xong hết, cộng BERAS V2 Phase 4. Trước đó: Sprint 1–8 đã đóng, BERAS V2 Phase 0–11
+> **Cập nhật cuối: 2026-08-02** — đóng phiên §7dm: **bộ 14 video dựng xong** (13 phát hành được,
+> video 14 chờ Pháp Lý), 4 lỗi sản phẩm do chính việc quay tìm ra, hook pre-commit lên **5 cổng**
+> (thêm vitest). Trước đó: kế hoạch 6 phiên §7cv → §7db, Sprint 1–8 đã đóng, BERAS V2 Phase 0–11
 > (§7cu), kiểm toán độc lập 2026-07-26 (`docs/audit/00_AUDIT_INDEX.md`).
 >
 > 🔴 **Khối tóm tắt này từng đứng yên ở "Sprint 7, 2026-07-26" suốt sáu ngày và 30 mục nhật ký**
@@ -11,13 +12,29 @@
 > phải sửa **dòng "Cập nhật cuối"** này, không chỉ thêm mục ở cuối tệp.
 >
 > **Còn nợ, xếp theo tỉ lệ hoàn vốn** (chi tiết `docs/ARCHITECTURE_REVIEW.md`):
-> ① `git remote` để CI thật sự chạy — `ci.yml` nằm trong repo từ commit đầu và **chưa chạy lần
-> nào** (kiểm toán C-03) · ② bộ test chạy trên **Postgres** (nợ F-4 — 4 lỗi đã lọt vì thiếu) ·
-> ③ BERAS V2 **Phase 12** sơ đồ trực quan (có thiết kế `docs/inventory/LOCATION_MAP.md`) ·
-> ④ **Phase 8** multi-supplier (hoãn có lý do, cần Chain chốt tiêu chí chọn NCC).
+> ① **L-2** — `check-thong-tin-co-so` mang nhãn ĐỌC-THUẦN nhưng **ghi đè thông tin pháp lý** ·
+> ② **N-1** hoá đơn chưa đọc Thông tin cơ sở (cross-module read-port) · **N-2** Mẫu số 06 chưa in
+> phần đầu sổ · ③ **F-18 observability** — hôm nay **bằng không**: không metrics, không tracing,
+> không cảnh báo, không dead-man's switch cho cron backup · ④ BERAS V2 **Phase 12** sơ đồ trực
+> quan (có thiết kế `docs/inventory/LOCATION_MAP.md`) · ⑤ **Phase 8** multi-supplier (hoãn có lý
+> do, cần Chain chốt tiêu chí chọn NCC).
+>
+> 🔴 **Bốn dòng nợ ở khối này đã bị SỬA ngày 2026-08-02 vì nói SAI sự thật** (kỷ luật #16 — sổ nợ
+> không phân biệt được "chưa làm" với "làm rồi"; chỉ `grep` phân biệt được):
+> - ~~"① `git remote` để CI thật sự chạy"~~ — **Chain KHOÁ 2026-08-01: không đưa mã lên GitHub.**
+>   C-03 **không** đóng bằng cách nối remote; nó đóng bằng cách chuyển đúng nội dung `ci.yml`
+>   sang `make ci`. `ci.yml` từ nay là **mã chết vĩnh viễn**, không phải "chờ ngày có remote".
+> - ~~"② bộ test chạy trên Postgres (nợ F-4)"~~ — **ĐÃ ĐÓNG 2026-08-01** (§7db mục 3):
+>   `make test-pg` → **1455 passed**, `PYTEST_PG_EXIT=0`. Đã nằm trong target `ci`.
+> - ~~"Tích điểm KH chưa làm"~~ — **ĐÃ CÓ VÀ ĐÃ NỐI DÂY**: `crm.loyalty` giữ luật tích điểm,
+>   `sales` giữ phép cộng, adapter `SalesLoyaltyAccrualReader` ráp hai đầu ở `cross_module.py`
+>   (mốc **năm dương lịch**, Chain chốt 29/07). Đúng ca kỷ luật #16 đã cảnh báo.
+> - Dòng "Cập nhật cuối" đứng yên ở 2026-08-01 qua **4 mục nhật ký** (§7dj→§7dm) — chính lỗi mà
+>   đoạn 🔴 ngay trên đây đã ban hành quy tắc để chống.
 >
 > **Nợ nền cũ chưa gỡ:** `docs/legal/` thiếu Luật BVDLCN 91/2025 · Luật Dược · NĐ 356/2025 · GPP.
-> `# BLOCKER: AI__API_KEY` thật (Sprint 5 vẫn mức MOCK). Tích điểm KH chưa làm.
+> `# BLOCKER: AI__API_KEY` thật (Sprint 5 vẫn mức MOCK) · `# BLOCKER: DAV API spec`
+> (`dav_connector` chưa tồn tại — `plugins/` chỉ có `payment_vnpay`).
 >
 > ⚠️ **Lưu ý vận hành — trạng thái docker/hạ tầng trong tài liệu này là ảnh chụp tại thời điểm ghi, KHÔNG phải trạng thái sống.**
 > Container có thể tự `Exited` giữa các phiên dù tài liệu ghi "đang chạy"/"healthy" (đã xảy ra 2026-07-22: postgres Exited 5h,
