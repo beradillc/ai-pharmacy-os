@@ -16,14 +16,16 @@
   "giong_rieng": {
     "ten": "BERAS",
     "mau_tham_chieu": "~/.local/share/beras-tts/voices/beras-giong-rieng.wav",
-    "dung_tu": "Thùy Dung (Nữ · miền Nam) — hạ cao độ 8%, chỉnh chất giọng 4%, rồi NHÂN BẢN lại",
+    "dung_tu": "Thùy Dung (Nữ · miền Nam) — hạ cao độ 6%, nâng chất giọng 6%, rồi NHÂN BẢN lại",
     "vi_sao_nhan_ban_chu_khong_bien_doi_am": "Biến đổi thẳng sóng âm thì méo tiếng và nghe ra ngay. Nhân bản là mô hình SINH LẠI giọng tự nhiên trong chất giọng mới — ổn định qua mọi câu.",
     "do_that": {
       "F0_goc": 212,
-      "F0_beras": 196,
+      "F0_beras": 222,
       "trong_tam_pho_goc": 1684,
-      "trong_tam_pho_beras": 1376,
-      "nghia": "trầm hơn 16 Hz và tối hơn 308 Hz — khác thật, không phải khác trên giấy"
-    }
+      "trong_tam_pho_beras": 1254,
+      "nghia": "trọng tâm phổ tối hơn 430 Hz so với gốc — chất giọng ấm hơn rõ, cao độ giữ gần gốc (212 → 222 Hz)",
+      "ghi_chu": "Chain chọn biến thể này 2026-08-02 sau khi nghe cả ba. Hai biến thể còn lại: dày dặn (F0 196 · phổ 1376) và sáng nhẹ (F0 227 · phổ 1522)."
+    },
+    "bien_the": "trầm ấm"
   }
 }
