@@ -90,12 +90,20 @@ NHIP_DOC = "0.55"  # đo dần: 1.35→2,20 · 0.80→3,17 · 0.66→3,51 âm ti
 # Độ biến thiên ngôn điệu — "nhấn nhá". Mặc định 0,8; nâng lên cho câu bớt đều đều.
 BIEN_THIEN = "1.0"
 
-# Ngắt câu: đọc CẢ ĐOẠN một hơi thì máy tự chia sai chỗ. Tách theo dấu câu rồi đọc từng
-# mảnh, chèn nghỉ đúng độ dài của dấu — đó là cách duy nhất "ngắt câu đúng" mà không phải
-# dạy mô hình điều gì.
+# 🔴 LẦN CHỈNH THỨ NĂM (02/08, Chain: "ngắt câu nghe cụp cụp, thiếu tính liên kết câu").
+#    Ba triệu chứng, MỘT gốc: tôi cắt lời ra từng mảnh, đọc riêng, rồi chèn im lặng.
+#      · "cụp cụp"        — chỗ nối biên độ nhảy đột ngột từ sóng đang dao động sang 0;
+#      · "thiếu liên kết" — mỗi mảnh được đọc như một câu ĐỘC LẬP nên đều xuống giọng ở
+#                           cuối, kể cả khi nó chỉ là một vế giữa câu.
+#    Cắt theo dấu là cách sửa SAI VẤN ĐỀ: mô hình vốn tự biết ngắt theo dấu khi được đưa cả
+#    câu. Nó chỉ chia sai khi bị đưa từng mảnh rời.
+#    Nay: đưa NGUYÊN đoạn cho mô hình, để `--sentence-silence` lo khoảng nghỉ giữa câu, và
+#    chỉ cắt khi ĐỔI NGƯỜI NÓI. Một giọng ⇒ gần như không cắt lần nào.
 # Rút 35% so với lượt trước: nghỉ dài cộng với đọc chậm thành ra lê thê. Nghỉ vẫn PHÂN
 # BIỆT theo dấu — đó là thứ tạo ngắt câu đúng, chỉ là không cần dài đến thế.
-NGHI_SAU = {".": 0.28, "?": 0.32, "!": 0.30, ";": 0.22, ":": 0.20, ",": 0.13, "—": 0.16}
+NGHI_CAU = "0.35"  # giây nghỉ giữa hai câu, do chính mô hình chèn (có ngôn điệu, không im chết)
+# Vuốt 12ms hai đầu mỗi mảnh: dù còn chỗ nối nào cũng không còn nhảy biên độ ⇒ hết "cụp".
+VUOT_MS = 12
 
 _mau: list[int] = []
 
@@ -166,20 +174,21 @@ class BoDoc:
         return _ghi_wav(ra, gop, self.tan_so)
 
 
-def _tach_manh(luot: list[tuple[str, str]]) -> list[tuple[str, str]]:
-    """Tách mỗi lượt thành các mảnh theo dấu câu, GIỮ dấu ở cuối mảnh.
+def _vuot_hai_dau(pcm: bytes, tan_so: int) -> bytes:
+    """Vuốt biên độ 12ms ở hai đầu một mảnh âm thanh.
 
-    Giữ dấu lại vì khâu sau đọc chính dấu đó để biết nghỉ bao lâu — bỏ dấu đi thì mọi mảnh
-    nghỉ như nhau, tức là quay về đúng cái đều đều đang phải sửa.
+    Chỗ nối giữa hai mảnh là chỗ sóng đang dao động bị cắt phựt về 0 — tai nghe ra tiếng
+    "cụp". Vuốt vào/ra làm sóng về 0 mượt, và 12ms thì ngắn tới mức không ai nghe thấy có
+    vuốt, chỉ nghe thấy hết cụp.
     """
-    ra: list[tuple[str, str]] = []
-    for giong, loi in luot:
-        manh = re.split(r"(?<=[.!?;:])\s+|(?<=—)\s+", loi.strip())
-        for m in manh:
-            m = m.strip()
-            if m:
-                ra.append((giong, m))
-    return ra
+    n = len(pcm) // 2
+    mau = list(struct.unpack(f"<{n}h", pcm))
+    k = min(int(tan_so * VUOT_MS / 1000), n // 2)
+    for i in range(k):
+        h = i / k
+        mau[i] = int(mau[i] * h)
+        mau[n - 1 - i] = int(mau[n - 1 - i] * h)
+    return struct.pack(f"<{n}h", *mau)
 
 
 class BoDocPiper:
@@ -200,6 +209,8 @@ class BoDocPiper:
             NHIP_DOC,
             "--noise-w-scale",
             BIEN_THIEN,
+            "--sentence-silence",
+            NGHI_CAU,
             "-f",
             str(ra),
         ]
@@ -216,7 +227,7 @@ class BoDocPiper:
         #    thì mô hình tự chia hơi theo phán đoán của nó — và nó chia sai ở câu dài có dấu
         #    gạch ngang hoặc mệnh đề phụ. Tách theo DẤU CÂU rồi đọc từng mảnh, chèn nghỉ
         #    đúng độ dài của dấu. Không phải dạy mô hình gì cả, chỉ là không bắt nó đoán.
-        for giong, loi in _tach_manh(luot):
+        for giong, loi in luot:
             if not loi.strip():
                 continue
             la_nam = "m3" in giong or giong == "nam"
@@ -237,10 +248,11 @@ class BoDocPiper:
                 )
                 b = lai.read_bytes()
                 lai.unlink(missing_ok=True)
-            khuc.append(b[44:])
-            # Nghỉ theo DẤU kết thúc mảnh: chấm nghỉ dài hơn phẩy, hỏi dài hơn chấm.
-            nghi = NGHI_SAU.get(loi.strip()[-1], 0.20)
-            khuc.append(b"\x00\x00" * int(tan_so * nghi))
+            khuc.append(_vuot_hai_dau(b[44:], tan_so))
+            # Chỉ còn nghỉ khi ĐỔI NGƯỜI NÓI. Trong một lượt, khoảng nghỉ giữa câu do chính
+            # mô hình chèn (`--sentence-silence`) — có ngôn điệu dẫn vào, không im chết.
+            if len(luot) > 1:
+                khuc.append(b"\x00\x00" * int(tan_so * 0.22))
             tam.unlink(missing_ok=True)
         if not khuc:
             raise RuntimeError("không có lượt nào đọc được")

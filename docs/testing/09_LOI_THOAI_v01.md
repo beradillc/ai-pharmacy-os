@@ -16,22 +16,22 @@
 | # | Mốc | Hình đang chiếu | Ai | Lời |
 |---|---|---|---|---|
 | 00 | 0:00 | bìa mở | — | *(nhạc mở đầu ~3 giây, không lời)* |
-| 00b | 0:03 | bìa mở | **NỮ** | Video này đi trọn một vòng làm việc trong ngày ở quầy: nhận hàng về, cất vào kho, bán cho khách, in hoá đơn, rồi xem lại doanh thu. |
-| 01 | | lời chào | **NỮ** | Chào chị. Mình bắt đầu từ đầu ngày, và đi đúng thứ tự mà chị sẽ làm thật. |
-| 02 | | màn đăng nhập | **NỮ** | Đăng nhập trước. Mỗi người một tài khoản riêng, không dùng chung, vì phần mềm ghi lại ai làm việc gì. |
-| 03 | | màn tổng quan | **NỮ** | Vào là thấy màn tổng quan: hôm nay bán được bao nhiêu, hàng nào sắp hết, hàng nào cận hạn. Nhìn một cái là biết cần làm gì trước. |
-| 04 | | Đơn mua hàng → Nhận hàng | **NỮ** | Có xe hàng về. Mình vào Đơn mua hàng, tìm đúng phiếu đã đặt, rồi bấm Nhận hàng. |
-| 05 | | điền số lô + hạn dùng | **NỮ** | Mỗi mặt hàng nhập ba thứ: số lượng thực nhận, số lô, và hạn dùng ghi trên hộp. Ba ô này quan trọng nhất. Sau này muốn truy một lô thuốc đi đâu, mình dựa vào đây. |
-| 06 | | hạn gần ⇒ cảnh báo | **NỮ** | Gặp hàng cận hạn, phần mềm nhắc ngay lúc mình gõ hạn dùng. Còn nếu nhận thiếu so với đơn đặt, nó ghi là nhận một phần, phiếu vẫn để mở, hôm sau giao nốt thì nhận tiếp. |
-| 07 | | chốt phiếu | **NỮ** | Chốt phiếu. Tồn kho tăng lên ngay theo từng lô vừa nhập, mình không phải cộng tay chỗ nào. |
-| 08 | | màn tồn kho | **NỮ** | Qua Tồn kho kiểm lại cho chắc. Gõ số lô là ra đúng lô vừa nhập, kèm hạn dùng và số lượng còn. |
-| 09 | | bán hàng: tìm thuốc | **NỮ** | Giờ tới phần dùng nhiều nhất trong ngày: bán hàng. Gõ vài chữ đầu của tên thuốc là ra, không cần gõ đủ, không cần nhớ mã. |
-| 10 | | thêm vào giỏ | **NỮ** | Bấm Thêm là vào giỏ. |
-| 11 | | thêm hai loại nữa | **NỮ** | Thêm vài món nữa cho giống một đơn thật. Giỏ cộng tiền ngay ở thanh dưới cùng, khách hỏi bao nhiêu là trả lời được luôn. |
-| 12 | | xem giỏ → thanh toán 2 bước | **NỮ** | Trên điện thoại, giỏ thu gọn thành thanh dưới. Bấm Xem giỏ để mở ra, kiểm lại một lượt, rồi bấm Thanh toán. Phần mềm hỏi lại một lần nữa, vì bước này trừ tồn kho và ghi doanh thu thật. Bấm lần thứ hai mới xong. |
-| 13 | | màn hoá đơn | **NỮ** | Đơn vừa bán nằm ngay đầu danh sách Hoá đơn. Mở ra in được khổ giấy nhỏ của máy in nhiệt. |
-| 14 | | màn báo cáo | **NỮ** | Cuối ngày vào Báo cáo. Chọn khoảng ngày, xem doanh thu, tải tệp mở bằng Excel đưa cho kế toán. |
-| 15 | | bìa kết | **NỮ** | Vậy là trọn một vòng: nhận hàng, tồn kho, bán hàng, hoá đơn, báo cáo. Từng phần có video riêng nói kỹ hơn. Chị cứ làm thử trên máy, sai cũng không sao, dữ liệu thử tách riêng với dữ liệu thật. |
+| 00b | 0:03 | bìa mở | **NỮ** | Trong video này, mình sẽ cùng đi trọn một vòng làm việc của một ngày ở quầy, từ lúc nhận hàng về, cất vào kho, bán cho khách, in hoá đơn, cho tới lúc ngồi xem lại doanh thu cuối ngày. |
+| 01 |  | lời chào | **NỮ** | Chào chị. Mình bắt đầu từ đầu buổi sáng nhé, và đi đúng theo thứ tự mà chị sẽ làm ngoài quầy. |
+| 02 |  | màn đăng nhập | **NỮ** | Việc đầu tiên là đăng nhập. Mỗi người nên có một tài khoản riêng, đừng dùng chung, bởi vì phần mềm có ghi lại ai đã làm việc gì. |
+| 03 |  | màn tổng quan | **NỮ** | Đăng nhập xong là chị thấy ngay màn tổng quan. Ở đây có hôm nay bán được bao nhiêu, hàng nào sắp hết, và hàng nào đang cận hạn, nên chỉ cần nhìn một lượt là biết hôm nay cần lo việc gì trước. |
+| 04 |  | Đơn mua hàng → Nhận hàng | **NỮ** | Giả sử sáng nay có xe hàng về. Chị vào mục Đơn mua hàng, tìm đúng cái phiếu mình đã đặt, rồi bấm Nhận hàng. |
+| 05 |  | điền số lô + hạn dùng | **NỮ** | Với mỗi mặt hàng, chị nhập ba thứ thôi: số lượng thực nhận, số lô, và hạn dùng ghi trên hộp. Ba ô này là ba ô quan trọng nhất, bởi vì sau này muốn truy xem một lô thuốc đã đi đâu thì mình dựa hết vào đây. |
+| 06 |  | hạn gần ⇒ cảnh báo | **NỮ** | Nếu gặp hàng cận hạn, phần mềm sẽ nhắc ngay lúc chị vừa gõ hạn dùng vào. Còn trường hợp nhà cung cấp giao thiếu so với đơn đặt, phần mềm ghi là nhận một phần và vẫn để phiếu đó mở, hôm sau giao nốt thì chị nhận tiếp trên chính phiếu ấy. |
+| 07 |  | chốt phiếu | **NỮ** | Nhận đủ rồi thì chốt phiếu lại. Tồn kho sẽ tăng lên ngay theo từng lô vừa nhập, nên chị không phải ngồi cộng tay chỗ nào cả. |
+| 08 |  | màn tồn kho | **NỮ** | Để cho chắc, mình qua màn Tồn kho kiểm lại một lượt. Chị gõ số lô vào là ra đúng lô vừa nhập, kèm theo hạn dùng và số lượng còn lại. |
+| 09 |  | bán hàng: tìm thuốc | **NỮ** | Bây giờ tới phần chị dùng nhiều nhất trong ngày, là bán hàng. Chị chỉ cần gõ vài chữ đầu của tên thuốc là nó hiện ra, không cần gõ cho đủ, cũng không cần nhớ mã. |
+| 10 |  | thêm vào giỏ | **NỮ** | Bấm Thêm một cái là thuốc vào giỏ. |
+| 11 |  | thêm hai loại nữa | **NỮ** | Mình thêm vài món nữa cho giống một đơn thật. Giỏ hàng cộng tiền ngay ở thanh bên dưới, nên khách hỏi bao nhiêu là chị trả lời được liền. |
+| 12 |  | xem giỏ → thanh toán 2 bước | **NỮ** | Ở trên điện thoại, giỏ hàng thu gọn lại thành một thanh nằm dưới cùng. Chị bấm Xem giỏ để mở ra, kiểm lại một lượt cho chắc, rồi bấm Thanh toán. Lúc này phần mềm sẽ hỏi lại chị thêm một lần nữa, bởi vì bước này trừ tồn kho và ghi doanh thu thật, nên bấm lần thứ hai thì đơn mới thật sự xong. |
+| 13 |  | màn hoá đơn | **NỮ** | Đơn vừa bán sẽ nằm ngay đầu danh sách Hoá đơn. Chị mở ra là in được luôn, đúng khổ giấy nhỏ của máy in nhiệt. |
+| 14 |  | màn báo cáo | **NỮ** | Tới cuối ngày, chị vào mục Báo cáo, chọn khoảng ngày muốn xem, rồi tải tệp về. Tệp đó mở bằng Excel được, đưa thẳng cho kế toán. |
+| 15 |  | bìa kết | **NỮ** | Vậy là mình đã đi trọn một vòng, từ nhận hàng, tồn kho, bán hàng, hoá đơn, cho tới báo cáo. Từng phần đều có video riêng nói kỹ hơn. Chị cứ mạnh dạn làm thử trên máy, có sai cũng không sao đâu, vì dữ liệu thử nằm tách riêng với dữ liệu thật. |
 
 ## Ghi chú
 
