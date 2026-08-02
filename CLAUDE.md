@@ -28,6 +28,7 @@
 | Kỷ luật bắt buộc **21** (cổng đo *nhìn thấy được*, không chỉ *có trên trang*) | **2026-08-01** — GĐ đề nghị sau lần thứ **ba** cùng một hình dạng: cổng xanh vì `innerText` đọc được cả phần tràn ngoài khung nhìn. **Chain DUYỆT cùng ngày** |
 | Kỷ luật bắt buộc **22** (chuỗi nối hai thế giới phải có cổng đọc thẳng nguồn bên kia) | **2026-08-01** — GĐ đề nghị sau lần thứ **tư** cùng một hình dạng trong ba ngày: class CSS · mã quyền · mã hành vi audit · `target_type`, cả bốn xanh qua `tsc`/`eslint`/`pytest`. **Chain DUYỆT 2026-08-02** |
 | Kỷ luật bắt buộc **23** (hai vế của một phép so phải có hai nguồn độc lập) + **24** (mỗi dòng của #22 phải kèm cổng của nó) | **2026-08-01** — GĐ đề nghị sau khi một cổng khẳng định *tồn cuối kỳ cộng đúng* xanh trọn vẹn trong lúc màn hình hiện **-5**, che một lỗi sổ pháp lý im lặng từ Sprint 7. **Chain DUYỆT 2026-08-02** |
+| Kỷ luật bắt buộc **25** (chuỗi `&&` đứt vẫn cho ra số đọc được — kiểm trạng thái đã chuẩn bị) | **2026-08-03** — GĐ đề nghị sau lần thứ **ba** cùng một nguyên nhân gốc trong hai phiên (đột biến không áp dụng · khối mã không được thêm · backend nằm im). Áp quy tắc "lặp từ 3 lần" của #18. **CHỜ CHAIN DUYỆT** |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -536,3 +537,30 @@ máy này, khác với văn bản ủy quyền (file này) nay đã có lịch s
     (`Mã 00000000` · dấu `·` mồ côi · ô rỗng vẫn chiếm dòng nhãn ở 390px · giá hiện thô).
     *"Đừng tin ảnh thu nhỏ"* KHÔNG có nghĩa *"ảnh hay sai"* — nó có nghĩa **đo trước khi kết
     luận, theo cả hai hướng**.
+
+25. **Một chuỗi lệnh `&&` đứt giữa chừng vẫn cho ra một con số đọc được — phải kiểm TRẠNG THÁI
+    ĐÃ CHUẨN BỊ, không chỉ mã thoát của lượt sau.** (2026-08-03, GĐ đề nghị sau lần thứ **ba**
+    trong hai phiên — quy tắc "lặp từ 3 lần" của kỷ luật #18)
+
+    Ba ca thật, cùng một nguyên nhân gốc, hai phiên liền:
+
+    | Ca | Lệnh | Chuyện gì xảy ra |
+    |---|---|---|
+    | 1 | `cd backend && cp … && python3 -c "…đột biến…"` chạy khi cwd **đã là** `backend` | `cd` hỏng ⇒ **cả chuỗi dừng** ⇒ đột biến không bao giờ áp dụng. Lượt `pytest` sau đó xanh, suýt ghi *"đột biến sống sót ⇒ test không có răng"* rồi đi **sửa một thứ không hỏng** |
+    | 2 | `cd backend && cat >> file <<'PY' … PY` cùng lỗi | Khối mã **không được thêm**, nhưng lệnh `python3` ở dòng **riêng** vẫn chạy và đã chèn tham chiếu tới nó ⇒ **nửa vời**, tệ hơn hỏng sạch |
+    | 3 | `pkill -f uvicorn` rồi khởi động lại | Frontend cũ vẫn giữ cổng 3000 ⇒ `lan-dev.sh` từ chối ⇒ **backend nằm im**. Cổng chạy lúc đó sẽ đỏ vì **hạ tầng**, không vì sản phẩm — mà log hai thứ đó trông y hệt nhau |
+
+    - **Quy tắc:** sau mỗi bước *chuẩn bị* (đột biến, sinh tệp, khởi động dịch vụ), **kiểm bằng
+      một lệnh riêng rằng nó ĐÃ có tác dụng** trước khi chạy cổng:
+      `grep -c "<dấu vết>" <tệp>` · `python3 -c "import ast; ast.parse(...)"` ·
+      `curl` **cả hai** cổng chứ không chỉ một.
+    - **Đừng nối bước chuẩn bị vào cùng chuỗi `&&` với bước đo.** Chuỗi đứt ở giữa thì bước đo
+      hoặc không chạy, hoặc chạy trên trạng thái cũ — và cả hai đều trả về một con số **trông
+      hợp lệ**.
+    - **`cd <thư mục con>` là lệnh dễ hỏng nhất trong chuỗi** vì cwd của shell **giữ nguyên
+      giữa các lượt gọi** còn ta thì không nhớ. Dùng đường dẫn tuyệt đối, hoặc `cd` ở một lượt
+      riêng và đọc `pwd`.
+    - Bổ sung cho #8 theo **chiều ngược lại**: #8 cấm suy mã thoát của cổng từ lệnh có pipe
+      (*số đọc được không phải của cổng*); #25 cấm suy **trạng thái đã chuẩn bị** từ một chuỗi
+      đứt (*cổng đo đúng, nhưng đo một thế giới chưa được dựng*). Cùng họ với #15 *"phải đo cả
+      chính phép đo"* — ở đây là **đo cả bước dựng cảnh trước khi đo**.

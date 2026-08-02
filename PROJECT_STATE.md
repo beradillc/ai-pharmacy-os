@@ -2,8 +2,8 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-02** — §7do: **đợt A đóng trọn 3/3** (L-2 · N-1 · N-2) dưới uỷ quyền
-> full-auto của Chain; pytest **1492 passed**. Trước đó §7dn chốt kế hoạch 9 bước A→B→C, và §7dm
+> **Cập nhật cuối: 2026-08-03** — §7dp: **B1 xong** (mã sự cố truy được + `/metrics` kèm
+> `health_deadman.sh`); pytest **1512 passed**. Trước đó §7do đóng trọn **đợt A** (L-2 · N-1 · N-2). Trước đó §7dn chốt kế hoạch 9 bước A→B→C, và §7dm
 > đóng phiên **bộ 14 video dựng xong** (13 phát hành được,
 > video 14 chờ Pháp Lý), 4 lỗi sản phẩm do chính việc quay tìm ra, hook pre-commit lên **5 cổng**
 > (thêm vitest). Trước đó: kế hoạch 6 phiên §7cv → §7db, Sprint 1–8 đã đóng, BERAS V2 Phase 0–11
@@ -15,9 +15,10 @@
 >
 > **Còn nợ, xếp theo tỉ lệ hoàn vốn** (chi tiết `docs/ARCHITECTURE_REVIEW.md`):
 > ~~① **L-2** · ② **N-1** / **N-2**~~ — **cả ba ĐÓNG 2026-08-02** (§7do).
-> ① **F-18 observability** — **bằng không**: không metrics, không tracing, không cảnh báo.
-> *(Dead-man's switch cho cron backup thì **đã có** — `scripts/backup_deadman.sh`, kỷ luật #16;
-> việc còn lại là kiểm nó có răng.)* · ② BERAS V2 **Phase 12** sơ đồ trực quan (có thiết kế
+> ~~① **F-18 observability**~~ — **B1 đóng phần lõi 2026-08-03**: mã sự cố truy được trên mọi
+> request · `/metrics` (token riêng, fail-closed) · `health_deadman.sh` canh nó. *Còn lại:*
+> **tracing phân tán** (chưa cần ở quy mô một tiến trình) và **kiểm `backup_deadman.sh` có
+> răng** (bước B2). · ② BERAS V2 **Phase 12** sơ đồ trực quan (có thiết kế
 > `docs/inventory/LOCATION_MAP.md`) · ③ **L-1** phiếu nhập nhận một phần — **Chain đã quyết**
 > (đóng phiếu, phần thiếu ghi là hụt), chờ code · ④ **Phase 8** multi-supplier (cần Chain chốt
 > tiêu chí chọn NCC) · ⑤ 7/21 cổng trình duyệt "chưa đo được" · `tests/` ngoài mypy ·
@@ -179,6 +180,7 @@
 | [§7dm](#7dm-ng-phi-n-2026-08-02-b-14-video-d-ng-xon) | 2026-08-02 | 🔒 ĐÓNG PHIÊN — bộ 14 video dựng xong, 4 lỗi sản phẩm do việc quay tìm ra |
 | [§7dn](#7dn-k-ho-ch-9-b-c-a-b-c-chain-duy-t-2026-08) | 2026-08-02 | 📋 **KẾ HOẠCH 9 BƯỚC A→B→C** Chain duyệt + quyết định L-1 (chưa code) |
 | [§7do](#7do-t-a-ng-tr-n-3-3-l-2-n-1-n-2-2026-08-02) | 2026-08-02 | ✅ **ĐỢT A ĐÓNG TRỌN 3/3** — L-2 · N-1 · N-2 + ba lần phép ĐO suýt sai |
+| [§7dp](#7dp-b1-m-s-c-truy-c-metrics-c-b-n-ti-u-th-2) | 2026-08-03 | 📈 **B1** — mã sự cố truy được + `/metrics` **có bên tiêu thụ** · đề xuất kỷ luật #25 |
 
 ---
 
@@ -9256,3 +9258,110 @@ dụng để Chain nghiệm thu**, và một ảnh nghiệm thu hiện dữ li�
 - Dừng sạch: `pkill -f "uvicorn pharmacy_os.main:app"` rồi `kill` pid của `next-server` — **ở
   hai lượt shell RIÊNG** (chạy chung lượt sẽ giết luôn shell, exit 144).
 - Việc kế tiếp: **B1**.
+
+---
+
+## 7dp. 📈 B1 — mã sự cố truy được + /metrics có bên tiêu thụ (2026-08-03)
+
+Chain duyệt tiếp sau §7do. **2 commit mã** (B1a, B1b) + 1 commit kỷ luật.
+
+### Vì sao chia đôi B1, và vì sao KHÔNG dùng `prometheus-client`
+
+Kế hoạch §7dn ghi B1 là *"`/metrics` + log có mã lỗi truy được"*. Tách ra vì hai nửa có **giá
+trị độc lập và rủi ro khác nhau**: mã sự cố dùng được ngay từ request đầu tiên; `/metrics` thì
+chỉ có giá trị **khi có ai đó đọc nó**.
+
+🔴 Và đó chính là chỗ suýt hỏng. Thêm `/metrics` định dạng Prometheus trong khi **không có máy
+chủ Prometheus nào** là đúng hình dạng `.github/workflows/ci.yml` — nằm trong repo từ commit
+đầu tiên, **chưa chạy lần nào** suốt 209 commit (kiểm toán C-03). *Hạ tầng viết sẵn mà không
+nối dây thì bằng không.* Nên B1b giao **cả bên tiêu thụ**: `scripts/health_deadman.sh`, cùng
+khuôn `backup_deadman.sh` đã có sẵn và đã chứng minh được trong repo này.
+
+Tự viết bộ đếm thay vì thêm phụ thuộc — không phải ngại phụ thuộc (dự án thêm `cryptography`
+và `pyotp` không do dự, đúng chỗ không được tự viết) mà vì **quy mô câu hỏi**: một quầy thuốc
+cần trả lời đúng bốn câu — *còn sống không · có đang lỗi không · lỗi bao nhiêu · chậm cỡ nào*.
+Giới hạn khai rõ ngay trong mã: bộ đếm sống trong tiến trình, **không cộng được qua nhiều
+worker**; vượt quy mô đó thì thay bằng `prometheus-client` multiprocess, không phải vá tệp này.
+
+### B1a — mã sự cố, và BA BUG trong chính mã tôi vừa viết
+
+Mã 12 ký tự xuất hiện ở đúng ba chỗ: header `X-Request-Id` · **mọi** dòng log của request đó ·
+thân `problem+json` — tức thứ người dùng **đọc được trên màn hình**. 12 ký tự vì UUID 36 ký tự
+thì không ai đọc qua điện thoại nổi, và một mã không đọc nổi thì không bao giờ tới được người
+sửa, tức bằng không.
+
+**Cả ba bug đều do test bắt ở lượt chạy đầu, không do rà mắt:**
+
+| # | Bug | Vì sao nó nguy hiểm hơn vẻ ngoài |
+|---|---|---|
+| 1 | `unbind_contextvars` trong `finally` chạy **trước** dòng `_log.info` | Header đúng · thân JSON đúng · **log không có mã nào**. Ba mệnh đề xanh, tính năng chết |
+| 2 | `request.state.request_id` gán **sau** `call_next` | Handler ném ⇒ dòng đó không bao giờ chạy ⇒ hỏng **đúng ở đường đi lỗi**, tức đúng ca tính năng này sinh ra để phục vụ |
+| 3 | Phản hồi 500 do Starlette dựng **không đi ngược qua middleware** | Đúng phản hồi lỗi — thứ duy nhất người dùng cần mã để báo — lại là phản hồi thiếu mã trong header |
+
+🔴 **Và một lỗi trong CHÍNH CỔNG** (kỷ luật #23): mệnh đề *"mã trong thân == mã trong header"*
+nghe như hai nguồn, nhưng ở đường đi lỗi **cả hai do cùng một dòng sinh ra** — mất
+`request.state` thì nó rơi về `ma_su_co_moi()` một lần rồi dùng cho cả hai chỗ, nên hai vế
+**luôn khớp**. Đo thật: đột biến bỏ dòng gán ⇒ `MUTANT2_EXIT=0`, **15/15 xanh với bản cài đặt
+sai**. Vế độc lập thật sự là **mã do máy khách tự chọn** (sinh ngoài tiến trình máy chủ, không
+dòng dự phòng nào bịa lại đúng nó). Thêm mệnh đề đó ⇒ `MUTANT2_EXIT=1`.
+
+**Test phi-ASCII/xuống dòng đo THẲNG `_hop_le`, không qua HTTP** — `httpx` từ chối mã hoá
+những chuỗi ấy, nên test đi qua `TestClient` chết ở **máy khách** và không bao giờ chạm phép
+kiểm của máy chủ: nó xanh (hoặc đỏ) vì lý do khác hẳn mệnh đề nó tuyên bố. Mà máy chủ **không
+được** dựa vào việc máy khách lịch sự.
+
+### B1b — /metrics, và ca token-sai đáng nhớ nhất
+
+Token riêng, mặc định **rỗng ⇒ endpoint không được mount**. Trả **404 chứ không 403**: một
+endpoint trả 403 là một endpoint **tự khai mình có tồn tại**, mà `/metrics` nói ra lưu lượng và
+tỉ lệ lỗi của một cơ sở kinh doanh. Không dùng JWT — bên đọc là một **script cron**, cấp cho nó
+tài khoản thật là tạo ra một tài khoản không ai xoay mật khẩu và không ai để ý.
+
+```
+DEADMAN_APP_CHET_EXIT=1   app tắt       → "KHÔNG gọi được /metrics"
+DEADMAN_TOKEN_SAI_EXIT=1  token sai     → "gọi được nhưng KHÔNG đọc ra pharmacy_up=1"
+DEADMAN_UPTIME_EXIT=1     vừa dựng 8s   → "app vừa khởi động lại… crash loop"
+DEADMAN_XANH_EXIT=0       bình thường   → up=1 · uptime=19s · 8 request · 5xx=0
+```
+
+🔴 **Ca token-sai là ca dạy được nhiều nhất:** script **gọi được**, nhận phản hồi, và nội dung
+là `{"detail":"Not Found"}`. Nếu không có bước tự kiểm `pharmacy_up=1` thì mọi phép so phía sau
+đều so với **chuỗi rỗng** — tức luôn xanh một cách vô nghĩa, và một dead-man's switch luôn xanh
+là thứ tệ hơn không có gì. Đúng kỷ luật #15/#22: *phải đo cả chính phép đo*.
+
+**Ca uptime là lý do script này đáng tồn tại:** một app crash rồi tự dựng lại 40 giây một lần
+**vẫn trả 200 cho mọi phép kiểm sức khoẻ** — `curl /health` xanh, người dùng thì mất đơn hàng
+đang gõ dở mỗi lần nó chết. Chỉ uptime tụt mới lộ ra.
+
+Biểu đồ tần suất chứa đúng mốc **300 ms** vì đó là chỉ tiêu NFR đã chốt (p95 < 300 ms @ 8
+luồng, §7br). Một biểu đồ không chứa ngưỡng mình cam kết thì không trả lời được câu *"có đạt
+không"* — nó trả lời một câu **gần giống**, và người đọc sẽ tưởng là câu kia.
+
+### 🆕 Đề xuất kỷ luật #25 — CHỜ CHAIN DUYỆT
+
+Cái bẫy `cd backend &&` chạy khi cwd **đã là** `backend` nay đã **ba lần trong hai phiên**, và
+kỷ luật #18 nói *"lặp từ 3 lần ⇒ đề xuất nâng thành kỷ luật chính thức"*. Lần thứ ba tệ hơn hai
+lần đầu: chuỗi `&&` đứt nên khối mã **không được thêm**, nhưng lệnh `python3` ở **dòng riêng**
+vẫn chạy và đã chèn tham chiếu tới nó — **nửa vời, không phải hỏng sạch**.
+
+Nội dung đề xuất: **kiểm trạng thái ĐÃ CHUẨN BỊ bằng một lệnh riêng** (`grep -c` dấu vết,
+`ast.parse`, `curl` cả hai cổng) trước khi chạy cổng; **không nối bước chuẩn bị vào cùng chuỗi
+`&&` với bước đo**. Bổ sung cho #8 theo chiều ngược lại — #8: *số đọc được không phải của
+cổng*; #25: *cổng đo đúng, nhưng đo một thế giới chưa được dựng*.
+
+### Cổng tại điểm dừng
+
+```
+RUFF=0 FORMAT=0 MYPY=0 (274 tệp) IMPORTLINTER=0 VITEST=0 (122)
+PYTEST_EXIT=0   1512 passed (1492 → 1508 → 1512)
+Đột biến: 3 lượt B1a + 4 lượt deadman B1b, tất cả đỏ đúng lý do
+Kiểm trên uvicorn THẬT: header bd140fa2f65b ↔ "request_id" trong đúng dòng log
+```
+
+### Điểm dừng
+
+- Backend chạy nền cổng 8000 **với `APP__METRICS_TOKEN=thu-nghiem-b1b`** (giá trị thử; máy
+  thật phải sinh bằng `openssl rand -hex 24`). Frontend cổng 3000. `qt650`.
+- **`APP__METRICS_TOKEN` chưa có trong `backend/.env`** — mới thêm vào `.env.example`. Không có
+  nó thì `/metrics` trả 404 và `health_deadman.sh` báo đỏ, **đúng thiết kế fail-closed**.
+- Việc kế tiếp: **B2** (kiểm `backup_deadman.sh` có răng) rồi **B3**.
