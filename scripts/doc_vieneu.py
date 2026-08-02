@@ -30,7 +30,14 @@ from pathlib import Path
 # Giọng chuẩn đọc từ `scripts/giong-he-thong.json` — MỘT chỗ duy nhất biết, đúng bài học
 # N-4 (trước đây địa chỉ và tài khoản khai rải rác 33 chỗ, mỗi chỗ một kiểu).
 _CAU_HINH = Path(__file__).parent / "giong-he-thong.json"
-GIONG_MAC_DINH = json.loads(_CAU_HINH.read_text(encoding="utf8"))["giong"]
+_CH = json.loads(_CAU_HINH.read_text(encoding="utf8"))
+GIONG_MAC_DINH = _CH["giong"]
+# 🔴 GIỌNG RIÊNG CỦA BERAS (Chain 02/08: "sửa đổi giọng Thùy Dung để có một giọng riêng").
+#    Không biến đổi thẳng sóng âm của từng câu — làm thế thì méo tiếng và nghe ra ngay.
+#    Cách dùng: lấy Thùy Dung đọc một mẫu ~7 giây, chỉnh cao độ/chất giọng TRÊN MẪU ĐÓ, rồi
+#    cho mô hình NHÂN BẢN từ mẫu đã chỉnh. Mô hình sinh lại giọng tự nhiên trong chất giọng
+#    mới, ổn định qua mọi câu — khác hẳn việc bóp méo đầu ra.
+MAU_RIENG = Path(_CH.get("giong_rieng", {}).get("mau_tham_chieu", "")).expanduser()
 
 
 def tach_loi(md: str) -> list[tuple[str, str]]:
@@ -69,6 +76,15 @@ def main() -> int:
     tts = Vieneu()
     # Nhãn giọng có dạng "Thục Đoan — Nữ · Nam · Phong cách kể chuyện"; khớp theo TÊN
     # đứng trước dấu gạch, đừng bắt người gọi phải chép cả nhãn.
+    dung_mau = giong == "BERAS" and MAU_RIENG.exists()
+    if dung_mau:
+        print(f"bộ đọc: VieNeu-TTS v3 Turbo · giọng BERAS (nhân bản từ {MAU_RIENG.name}) · 48 kHz")
+        for ma, loi in doan:
+            tep = ra_thu / f"{ma}.wav"
+            tts.save(tts.infer(loi, ref_audio=str(MAU_RIENG)), str(tep))
+            print(f"  {ma}.wav  {loi[:52]}")
+        return _ghi_nhip(doan, ra_thu)
+
     nhan = [n for n, _ in tts.list_preset_voices()] if hasattr(tts, "list_preset_voices") else []
     khop = [n for n in nhan if n.split("—")[0].strip() == giong]
     if nhan and not khop:
@@ -80,19 +96,23 @@ def main() -> int:
         print(f"   → {khop[0]}")
     print(f"bộ đọc: VieNeu-TTS v3 Turbo · giọng {giong} · 48 kHz")
 
+    for ma, loi in doan:
+        tts.save(tts.infer(loi, voice=giong), str(ra_thu / f"{ma}.wav"))
+        print(f"  {ma}.wav  {loi[:52]}")
+    return _ghi_nhip(doan, ra_thu)
+
+
+def _ghi_nhip(doan: list[tuple[str, str]], ra_thu: Path) -> int:
+    """Đo độ dài THẬT của từng tệp vừa dựng rồi ghi nhịp — hình sẽ khớp theo số này."""
     import wave
 
     nhip: dict[str, int] = {}
     tong = 0.0
-    for ma, loi in doan:
-        tep = ra_thu / f"{ma}.wav"
-        tts.save(tts.infer(loi, voice=giong), str(tep))
-        with wave.open(str(tep)) as w:
+    for ma, _ in doan:
+        with wave.open(str(ra_thu / f"{ma}.wav")) as w:
             giay = w.getnframes() / w.getframerate()
         nhip[ma] = max(1, round(giay))
         tong += giay
-        print(f"  {ma}.wav {giay:5.1f}s  {loi[:52]}")
-
     (ra_thu / "durations.json").write_text(json.dumps(nhip, indent=2), encoding="utf8")
     print(f"\n{len(doan)} đoạn · tổng {tong / 60:.1f} phút · nhịp {ra_thu / 'durations.json'}")
     return 0
