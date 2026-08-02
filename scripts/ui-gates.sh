@@ -16,6 +16,12 @@
 # HAI NHÓM, cố ý tách:
 #
 #   ĐỌC-THUẦN  chạy được lên bất kỳ CSDL nào, kể cả `nt650v2` của Chain.
+#              🔴 "Đọc-thuần" nghĩa là **không để lại thay đổi nào**, KHÔNG phải "không gọi
+#              endpoint ghi". Một cổng được phép ghi rồi trả lại nguyên trạng — nhưng khi ấy
+#              phép trả lại **phải là một mệnh đề được đo**, không phải một câu trong chú
+#              thích. Nợ L-2 (02/08) sinh ra đúng ở khe hở đó: `check-thong-tin-co-so` khai
+#              trong chú thích là *"ghi rồi trả lại nguyên giá trị cũ"* và **chưa từng viết
+#              dòng trả lại nào**, suốt thời gian nằm trong nhóm này. Xem mệnh đề ⑦ của nó.
 #   GHI        BÁN ĐƠN THẬT / TẠO KHÁCH THẬT. Chỉ chạy lên CSDL dùng-một-lần.
 #              Mặc định KHÔNG chạy — chạy nhầm lên CSDL demo là mỗi lần thêm một hoá đơn
 #              rác, và không ai nhận ra cho tới lúc đối chiếu doanh thu.
@@ -93,7 +99,7 @@ CONG_DOC=(
   check-tai-khoan.mjs       # Cài đặt → Tài khoản của tôi: khớp đúng /auth/me (M-03)
   check-don-thuoc.mjs       # Đơn thuốc: tra được cả đơn CHƯA chụp ảnh (M-08)
   check-so-kiem-soat.mjs    # Sổ thuốc kiểm soát đặc biệt: cộng đúng + tự nói chưa rà PL (C-03)
-  check-thong-tin-co-so.mjs # Cài đặt → Thông tin cơ sở: lưu thật, nói rõ nợ hoá đơn (M-02)
+  check-thong-tin-co-so.mjs # Thông tin cơ sở: lưu thật + TRẢ LẠI nguyên trạng, đo ⑦ (M-02·L-2)
   measure-mobile.mjs        # thanh điều hướng che gì · cột định danh có khuất
   shot-desktop-mobile.mjs   # 6 màn × 2 khổ: trắng · cuộn ngang · phần tử tràn
 )
