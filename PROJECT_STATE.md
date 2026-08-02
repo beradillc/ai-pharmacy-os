@@ -8958,7 +8958,7 @@ thật. Quay lại khi quầy chạy đủ một tháng thì video tốt hơn �
 
 ```
 RUFF=0 FORMAT=0 IMPORTLINTER=18/18 MYPY=0 VITEST=0 (122)   ← hook nay 5 cổng
-PYTEST — xem mục dưới
+PYTEST_EXIT=0   1480 passed (292s)   ← chạy lúc đóng phiên, đo thật
 UI_GATES  14/21 xanh · 7 chưa đo được · 0 hỏng   (đo lúc 09:xx, trước 6 video cuối)
 ```
 
