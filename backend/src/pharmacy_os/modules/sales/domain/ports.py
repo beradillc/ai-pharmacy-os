@@ -288,6 +288,43 @@ class SalespersonInfoProvider(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
+class OrgProfile:
+    """Đầu trang hoá đơn: cơ sở này là ai, theo **giấy phép**, không theo tệp cấu hình.
+
+    Bốn trường, tất cả đều có thể rỗng — một cơ sở vừa cài đặt xong thì chưa khai gì, và
+    hoá đơn vẫn phải in được. Chỗ nào rỗng thì bên gọi tự quyết định lấp bằng gì; port
+    này không biết gì về biến môi trường và không nên biết.
+    """
+
+    ten_co_so: str
+    dia_chi: str
+    dien_thoai: str
+    ma_so_thue: str
+
+
+class OrgProfileProvider(Protocol):
+    """Read-port cho **thông tin cơ sở đã khai** — đóng nợ N-1.
+
+    Trước cổng này, hoá đơn in ra lấy đầu trang từ biến môi trường ``APP__ORG__*``, trong
+    khi màn *Cài đặt → Thông tin cơ sở* ghi vào ``compliance``. Hai nguồn, không nối nhau:
+    người dùng đổi tên cơ sở trên màn, bấm Lưu, thấy *"✓ Đã lưu"* — rồi in ra tờ hoá đơn
+    vẫn mang tên cũ. Không mã lỗi nào. Màn đó đã phải tự dán một dòng chữ xin lỗi để người
+    dùng khỏi in nhầm 200 tờ.
+
+    Thông tin cơ sở sống trong ``compliance`` (nó là dữ liệu trên **giấy chứng nhận đủ điều
+    kiện kinh doanh dược**, cùng nhà với mã cơ sở do Cục QLD cấp), và ``sales`` không được
+    import ``compliance`` — nên đây là một cổng đọc, cài đặt ở composition root, đúng khuôn
+    :class:`SalespersonInfoProvider` và :class:`DrugInfoProvider` đã có.
+
+    Trả ``None`` khi tenant **chưa khai gì**: đó là trạng thái hợp lệ của một cơ sở vừa cài
+    đặt, không phải lỗi. Bên gọi lùi về cấu hình môi trường như trước — hoá đơn không bao
+    giờ được hỏng chỉ vì chưa ai vào màn Cài đặt.
+    """
+
+    async def profile_of(self, tenant_id: UUID) -> OrgProfile | None: ...
+
+
+@dataclass(frozen=True, slots=True)
 class PrescriptionInfo:
     """The authoritative Rx facts sales needs to authorise a prescription sale.
 
