@@ -412,6 +412,25 @@ export default function PosPage() {
           {/* 🔴 Ảnh đơn thuốc — Điều 74 Luật Dược: "Đơn thuốc là căn cứ để bán thuốc".
               Đặt TRÊN bảng tiền: chụp tờ đơn xong mới tới chuyện thu tiền, đúng thứ tự
               tay người đứng quầy đi. */}
+          {/* 🔴 THU NGÂN PHẢI BIẾT TRƯỚC, KHÔNG PHẢI BIẾT SAU KHI THẤT BẠI. (02/08)
+              Máy chủ CHẶN thật: bán thuốc ETC không có đơn hợp lệ trả 422 "Thuốc kê đơn
+              cần đơn thuốc hợp lệ mới được bán". Nhưng trước bản vá này giao diện KHÔNG
+              nói gì cả với tài khoản thiếu `rx.approve`: nút duyệt vắng mặt (đúng), nút
+              Thanh toán vẫn bật (đúng, vì máy chủ mới là cổng thật) — nên thu ngân bấm,
+              chờ, rồi nhận một lỗi khó hiểu.
+              Lộ ra khi quay video 07: bản quay ĐO "màn có nói lý do không" và trả về
+              `false`, trong lúc lời thoại tôi viết đã khẳng định "phần mềm nói rõ cần dược
+              sĩ duyệt". Nếu không đo thì video đi ra ngoài mang một lời hứa sai. */}
+          {dongETC.length > 0 && !coQuyenDuyet && (
+            <div className={styles.lechGia}>
+              <span>
+                🔒 <strong>Cần dược sĩ duyệt.</strong> Giỏ có thuốc kê đơn, mà tài khoản
+                này không có quyền duyệt đơn. Nhờ dược sĩ đăng nhập và duyệt giúp — bấm
+                Thanh toán bây giờ sẽ bị từ chối.
+              </span>
+            </div>
+          )}
+
           {canChupDon && (
             <div className={styles.lechGia}>
               <span>

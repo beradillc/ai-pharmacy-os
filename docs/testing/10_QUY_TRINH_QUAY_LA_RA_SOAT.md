@@ -120,7 +120,7 @@ Dựng tiếng cho một video:
 | ~~01~~ | ~~Đăng nhập · Tổng quan~~ — gộp vào video 01 ở trên | — | — | — | — | — |
 | 08 | Khách hàng · Dị ứng | | | | | |
 | 06 | Bán thuốc | ✅ 7/7 **lượt đầu** | 0 | 0 | ✅ BERAS | ✅ **XONG** |
-| 07 | Phân quyền thu ngân | | | | | |
+| 07 | Phân quyền thu ngân | ✅ 7/7 | **2** (thiếu bước đăng xuất · **màn không báo trước**) | 0 | ✅ BERAS | ✅ **XONG** |
 | 09 | Hoá đơn · Trả hàng | | | | | |
 | 10 | Kiểm kê | | | | | |
 | 13 | Nhật ký hoạt động | | | | | |
