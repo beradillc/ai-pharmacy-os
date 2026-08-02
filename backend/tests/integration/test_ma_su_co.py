@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 from sqlalchemy import create_engine
 
 from pharmacy_os.core.config import AppSettings, DatabaseSettings, SecuritySettings, Settings
@@ -191,3 +192,84 @@ def test_ma_CO_MAT_trong_dong_log(client: TestClient, capfd: pytest.CaptureFixtu
     # Và nó phải nằm ở trường `request_id`, không phải tình cờ lọt vào một chuỗi khác.
     ban_ghi = [json.loads(d) for d in dong_co_ma if d.lstrip().startswith("{")]
     assert any(b.get("request_id") == ma for b in ban_ghi)
+
+
+# ─────────────────────────────── /metrics (F-18b) ───────────────────────────────
+
+_TOKEN = "token-thu-nghiem-chi-dung-trong-test"
+
+
+@pytest.fixture
+def client_co_metrics(tmp_path: Path) -> Iterator[TestClient]:
+    db_path = tmp_path / "metrics.db"
+    _sync_url, _async_url = urls_csdl_thu(db_path)
+    engine = create_engine(_sync_url)
+    Base.metadata.create_all(engine)
+    engine.dispose()
+    settings = Settings(
+        app=AppSettings(env="dev", debug=True, metrics_token=SecretStr(_TOKEN)),
+        db=DatabaseSettings(url=_async_url),
+        security=SecuritySettings(allow_dev_auth=True),
+    )
+    with TestClient(create_app(settings)) as c:
+        yield c
+
+
+def test_metrics_TAT_HAN_khi_khong_cau_hinh_token(client: TestClient) -> None:
+    """Fail-closed: không khai token ⇒ endpoint **không được mount**, trả 404.
+
+    404 chứ không 403 có chủ đích — một endpoint trả 403 là một endpoint **tự khai mình có
+    tồn tại**. `/metrics` nói ra tổng lưu lượng và tỉ lệ lỗi của một cơ sở kinh doanh.
+    """
+    assert client.get("/metrics").status_code == 404
+
+
+def test_metrics_doi_dung_token(client_co_metrics: TestClient) -> None:
+    assert client_co_metrics.get("/metrics").status_code == 404
+    assert (
+        client_co_metrics.get("/metrics", headers={"Authorization": "Bearer sai"}).status_code
+        == 404
+    )
+    r = client_co_metrics.get("/metrics", headers={"Authorization": f"Bearer {_TOKEN}"})
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/plain")
+
+
+def test_metrics_dem_dung_so_request_va_so_loi(client_co_metrics: TestClient) -> None:
+    """🔴 Hai vế, hai nguồn độc lập (kỷ luật #23).
+
+    Vế `A` = số lần test **tự gọi** (đếm bằng vòng lặp trong test này). Vế `B` = con số máy
+    chủ tự báo. Nếu lấy cả hai từ `/metrics` thì phép so là một phép gán đội lốt: nó xanh dù
+    bộ đếm có cộng đúng hay không.
+    """
+
+    def doc(ten: str) -> float:
+        body = client_co_metrics.get("/metrics", headers={"Authorization": f"Bearer {_TOKEN}"}).text
+        for dong in body.splitlines():
+            if dong.startswith(ten + " ") or dong.startswith(ten + "{"):
+                return float(dong.rsplit(" ", 1)[1])
+        raise AssertionError(f"không thấy {ten} trong:\n{body}")
+
+    truoc = doc("pharmacy_requests_total")
+    for _ in range(5):
+        client_co_metrics.get("/api/v1/health")
+    sau = doc("pharmacy_requests_total")
+    # +5 lần gọi health, +1 lần gọi /metrics ở lượt `truoc` (chính nó cũng là một request).
+    assert sau - truoc == 6, f"trước={truoc} sau={sau}"
+
+    loi_truoc = doc('pharmacy_errors_total{lop="4xx"}')
+    client_co_metrics.get("/api/v1/khong-ton-tai-dau")
+    assert doc('pharmacy_errors_total{lop="4xx"}') > loi_truoc
+
+
+def test_metrics_co_nguong_NFR_300ms_trong_bieu_do(client_co_metrics: TestClient) -> None:
+    """Chỉ tiêu đã cam kết là **p95 < 300 ms @ 8 luồng** (§7br).
+
+    Một biểu đồ tần suất không chứa đúng mốc mình cam kết thì không trả lời được câu *"có đạt
+    không"* — nó chỉ trả lời được một câu gần giống, và người đọc sẽ tưởng là câu kia.
+    """
+    body = client_co_metrics.get("/metrics", headers={"Authorization": f"Bearer {_TOKEN}"}).text
+    assert 'pharmacy_request_ms_bucket{le="300"}' in body
+    assert 'pharmacy_request_ms_bucket{le="+Inf"}' in body
+    assert "pharmacy_up 1" in body
+    assert "pharmacy_uptime_seconds" in body

@@ -19,7 +19,7 @@ from pharmacy_os.api.v1 import build_api_router
 from pharmacy_os.core.bootstrap import build_container
 from pharmacy_os.core.config import Settings, get_settings
 from pharmacy_os.core.errors import register_error_handlers
-from pharmacy_os.core.observability import register_observability
+from pharmacy_os.core.observability import register_metrics_endpoint, register_observability
 from pharmacy_os.core.outbox import OutboxRelay, OutboxRetention
 from pharmacy_os.core.plugins import PluginLoader
 from pharmacy_os.core.security import RateLimiter
@@ -119,6 +119,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Mã sự cố truy được (F-18a) — nối câu người dùng nói với dòng log của máy.
     # SAU register_error_handlers: AppError đã có bộ xử lý riêng và không phải sự cố.
     register_observability(app)
+    register_metrics_endpoint(app, settings.app.metrics_token.get_secret_value())
     app.include_router(build_api_router(app.state.container))
     return app
 

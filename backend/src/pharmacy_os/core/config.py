@@ -36,6 +36,17 @@ class AppSettings(BaseSettings):
     are unaffected either way). Still explicit rather than ``["*"]`` so a stray
     origin can't silently start reading responses in prod."""
 
+    metrics_token: SecretStr = SecretStr("")
+    """Chuỗi bí mật để đọc ``GET /metrics`` (F-18b). Rỗng ⇒ **endpoint tắt hẳn**, trả 404.
+
+    🔴 Mặc định TẮT chứ không mặc định mở, và trả **404 chứ không 403**: một endpoint trả 403
+    là một endpoint tự khai mình có tồn tại. `/metrics` nói ra tổng lưu lượng và tỉ lệ lỗi của
+    một cơ sở kinh doanh — không phải bí mật y tế, nhưng cũng không phải thứ để bất kỳ ai trên
+    cùng mạng LAN đọc được. Fail-closed, cùng tinh thần ``SECURITY__ALLOW_DEV_AUTH``.
+
+    Không dùng JWT: bên đọc là một **script cron**, không phải một người dùng — cấp cho nó một
+    tài khoản thật là tạo ra một tài khoản không ai xoay mật khẩu và không ai để ý."""
+
 
 class DatabaseSettings(BaseSettings):
     url: str = "postgresql+asyncpg://pharma:pharma@localhost:5432/pharmacy_os"

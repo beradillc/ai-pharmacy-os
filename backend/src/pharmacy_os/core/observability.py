@@ -21,13 +21,14 @@ tiết nội tạng là thứ người dùng không sửa được gì với nó
 
 from __future__ import annotations
 
+import secrets
 import time
 import uuid
 from collections.abc import Awaitable, Callable
 
 import structlog
-from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import JSONResponse, PlainTextResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 _log = structlog.get_logger("observability")
@@ -83,6 +84,9 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
             # đúng lúc dòng log được phát ra: header trả về đúng, thân JSON đúng, và log
             # **không có mã nào**. Cổng xanh, tính năng chết. Test `test_ma_CO_MAT_trong_dong_log`
             # bắt được ngay lượt chạy đầu.
+            _do = getattr(request.app.state, "so_do", None)
+            if _do is not None:
+                _do.ghi(response.status_code, (time.perf_counter() - bat_dau) * 1000)
             _log.info(
                 "http_request",
                 method=request.method,
@@ -152,5 +156,118 @@ def register_observability(app: FastAPI) -> None:
     lý riêng trả problem+json đúng nghiệp vụ, và những lỗi đó **không phải sự cố** — chúng là
     câu trả lời hợp lệ cho một yêu cầu sai. Chỉ thứ lọt qua hết mới là sự cố.
     """
+    # Đặt trên `app.state` chứ không trong container, cùng lý lẽ `rate_limiter` (F-9): đây là
+    # trạng thái của **tiến trình phục vụ HTTP**, không phải một dịch vụ nghiệp vụ — và mỗi
+    # TestClient dựng app riêng nên bộ test không rò số đo từ test này sang test khác.
+    app.state.so_do = SoDo()
     app.add_middleware(RequestIdMiddleware)
     app.add_exception_handler(Exception, _handle_unexpected)
+
+
+# ─────────────────────────────── Số đo (F-18b) ───────────────────────────────
+#
+# 🔴 **Vì sao TỰ VIẾT, không thêm `prometheus-client`.** Không phải vì ngại phụ thuộc — dự án
+# này thêm `cryptography` và `pyotp` không do dự, đúng chỗ không được tự viết. Lý do là **quy
+# mô câu hỏi**: một nhà thuốc 2–3 quầy cần trả lời đúng bốn câu — *máy còn sống không · có
+# đang lỗi không · lỗi bao nhiêu · chậm cỡ nào*. Bốn bộ đếm nguyên và một biểu đồ tần suất
+# thô trả lời hết. `prometheus-client` là thư viện cho hệ nhiều tiến trình, nhiều nhãn, có
+# máy chủ scrape — dự án này **chưa có máy chủ scrape nào**, và một tệp `/metrics` không ai
+# đọc là đúng hình dạng `ci.yml`: hạ tầng viết sẵn, không nối dây, bằng không (kiểm toán C-03).
+#
+# Nên: định dạng văn bản Prometheus (để ngày mai cắm scraper vào là chạy) **cộng với**
+# `scripts/health_deadman.sh` đọc nó ngay hôm nay — cùng khuôn `backup_deadman.sh` đã có và
+# đã chứng minh được trong repo này.
+#
+# Giới hạn khai rõ, không giấu: bộ đếm sống **trong tiến trình**, mất khi khởi động lại, và
+# **không cộng được qua nhiều worker uvicorn**. Chạy `--workers > 1` thì mỗi worker báo phần
+# của nó. Với một quầy thuốc chạy một tiến trình thì đúng; vượt quy mô đó thì đây là lúc
+# thay bằng `prometheus-client` + multiprocess mode, không phải vá tệp này.
+
+_BUCKET_MS: tuple[float, ...] = (50.0, 100.0, 300.0, 1000.0, 3000.0)
+"""Mốc tần suất, tính bằng mili giây. `300` có mặt vì đó là **chỉ tiêu NFR đã chốt**
+(p95 < 300 ms @ 8 luồng, §7br) — một biểu đồ tần suất không chứa đúng ngưỡng mình cam kết
+thì không trả lời được câu *"có đạt không"*."""
+
+
+class SoDo:
+    """Bộ đếm tiến trình: tổng request, tổng lỗi, và phân bố độ trễ.
+
+    Cố ý **không có nhãn theo đường dẫn**. Một quầy thuốc có ~40 endpoint; gắn nhãn đường dẫn
+    là nhân số dòng lên 40 lần để đổi lấy thứ mà log ``http_request`` (đã có ``path``,
+    ``status``, ``ms`` từ B1a) trả lời tốt hơn. Số đo ở đây để **cảnh báo**, log để **điều
+    tra** — trộn hai việc thì được một thứ làm cả hai đều tệ.
+    """
+
+    def __init__(self) -> None:
+        self.tong = 0
+        self.loi_5xx = 0
+        self.loi_4xx = 0
+        self.tong_ms = 0.0
+        self.buckets: dict[float, int] = dict.fromkeys(_BUCKET_MS, 0)
+        self.khoi_dong = time.time()
+
+    def ghi(self, status: int, ms: float) -> None:
+        self.tong += 1
+        self.tong_ms += ms
+        if status >= 500:
+            self.loi_5xx += 1
+        elif status >= 400:
+            self.loi_4xx += 1
+        for moc in _BUCKET_MS:
+            if ms <= moc:
+                self.buckets[moc] += 1
+
+    def phoi_bay(self) -> str:
+        """Định dạng văn bản Prometheus 0.0.4 — ``# HELP``/``# TYPE`` rồi mẫu, mỗi thứ một dòng."""
+        d: list[str] = [
+            "# HELP pharmacy_up Tiến trình còn phục vụ (bằng 1 nếu đọc được dòng này).",
+            "# TYPE pharmacy_up gauge",
+            "pharmacy_up 1",
+            "# HELP pharmacy_uptime_seconds Số giây kể từ lần khởi động gần nhất.",
+            "# TYPE pharmacy_uptime_seconds gauge",
+            f"pharmacy_uptime_seconds {time.time() - self.khoi_dong:.0f}",
+            "# HELP pharmacy_requests_total Tổng số request đã phục vụ.",
+            "# TYPE pharmacy_requests_total counter",
+            f"pharmacy_requests_total {self.tong}",
+            "# HELP pharmacy_errors_total Số phản hồi lỗi, tách theo lớp mã trạng thái.",
+            "# TYPE pharmacy_errors_total counter",
+            f'pharmacy_errors_total{{lop="4xx"}} {self.loi_4xx}',
+            f'pharmacy_errors_total{{lop="5xx"}} {self.loi_5xx}',
+            "# HELP pharmacy_request_ms Phân bố độ trễ (mili giây).",
+            "# TYPE pharmacy_request_ms histogram",
+        ]
+        d.extend(
+            f'pharmacy_request_ms_bucket{{le="{moc:.0f}"}} {self.buckets[moc]}'
+            for moc in _BUCKET_MS
+        )
+        d.append(f'pharmacy_request_ms_bucket{{le="+Inf"}} {self.tong}')
+        d.append(f"pharmacy_request_ms_sum {self.tong_ms:.1f}")
+        d.append(f"pharmacy_request_ms_count {self.tong}")
+        return "\n".join(d) + "\n"
+
+
+def register_metrics_endpoint(app: FastAPI, token: str) -> None:
+    """Mount ``GET /metrics`` — **chỉ khi** có token cấu hình.
+
+    Đặt ngoài ``/api/v1`` có chủ đích: nó không phải API nghiệp vụ, không có phiên bản, và
+    không nên xuất hiện trong OpenAPI của khách hàng (``include_in_schema=False``).
+
+    So token bằng :func:`secrets.compare_digest` chứ không bằng ``==``: phép so chuỗi thường
+    thoát sớm ở ký tự đầu khác nhau, nên thời gian trả lời rò rỉ **độ dài tiền tố đúng** và
+    đoán được từng ký tự. Cùng nguyên tắc đã áp cho chữ ký VNPAY.
+    """
+    if not token:
+        _log.info("metrics_tat", ly_do="APP__METRICS_TOKEN rỗng — endpoint không được mount")
+        return
+
+    @app.get("/metrics", include_in_schema=False)
+    async def _metrics(request: Request) -> Response:
+        gui = request.headers.get("Authorization", "")
+        gui = gui[7:] if gui.startswith("Bearer ") else gui
+        if not secrets.compare_digest(gui, token):
+            # 404 chứ không 403 — xem `AppSettings.metrics_token`.
+            raise HTTPException(status_code=404)
+        do: SoDo = request.app.state.so_do
+        return PlainTextResponse(
+            do.phoi_bay(), media_type="text/plain; version=0.0.4; charset=utf-8"
+        )
