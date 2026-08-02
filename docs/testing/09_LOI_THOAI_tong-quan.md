@@ -34,7 +34,8 @@ dài ra**, đừng cắt thao tác — thao tác là thứ người xem cần nh
 
 | # | Mốc | Hình đang chiếu | Ai | Lời |
 |---|---|---|---|---|
-| 00 | 0:00 | bìa mở | — | *(nhạc nền, không lời)* |
+| 00 | 0:00 | bìa mở | — | *(nhạc mở đầu ~3 giây, không lời)* |
+| 00b | 0:03 | bìa mở | **NỮ** | Video này hướng dẫn **một vòng làm việc trọn ngày ở quầy** — từ lúc nhận hàng về, cất vào kho, bán cho khách, in hoá đơn, cho tới lúc xem lại doanh thu cuối ngày. |
 | 01 | 0:09 | lời chào | **NỮ** | Chào chị. Video này đi trọn một vòng của Quầy thuốc 650 trong phần mềm: nhập hàng về, xếp vào kho, bán cho khách, in hoá đơn, rồi xem lại doanh thu. Khoảng ba phút. |
 | 02 | 0:21 | màn đăng nhập | **NỮ** | Bắt đầu bằng đăng nhập. Mỗi người một tài khoản riêng — không dùng chung, vì phần mềm ghi lại ai làm việc gì. |
 | 03 | 0:34 | màn tổng quan | **NAM** | Vào rồi thì thấy gì trước? · **NỮ** Màn tổng quan: hôm nay bán được bao nhiêu, hàng nào sắp hết, hàng nào cận hạn. Nhìn một cái là biết cần làm gì. |

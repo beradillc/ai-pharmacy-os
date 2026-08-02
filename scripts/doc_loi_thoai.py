@@ -47,9 +47,25 @@ GIONG_NAM = "vi-vn-x-south+m3"
 
 GOC_PIPER = Path.home() / ".local/share/beras-tts"
 PIPER = GOC_PIPER / "venv/bin/piper"
-MO_HINH = GOC_PIPER / "voices/vi_VN-vivos-x_low.onnx"
-# Đo bằng tần số cơ bản trên chính bản đọc thử, không đoán theo số hiệu người nói.
-SPK_NU, SPK_NAM = 3, 28  # F0 đo thật: 238,8 Hz · 130,1 Hz
+# 🔴 HAI MÔ HÌNH KHÁC NHAU cho hai vai — quyết định bằng ĐO, và phép đo cho hai kết luận
+#    NGƯỢC nhau nên không suy từ cái này ra cái kia được. (02/08, sau khi Chain nghe bản đầu
+#    và nói "như không có dấu tiếng Việt".)
+#
+#    "Không có dấu" = MẤT THANH ĐIỆU, và thanh điệu đo được: tiếng Việt có thanh nên giọng
+#    đọc đúng phải có F0 chuyển động mạnh TRONG từng âm tiết. Đo trên CÙNG một câu cho từng
+#    vai (nửa cung / 10ms, càng cao càng rõ dấu):
+#
+#      câu NỮ:  vais1000-medium 0,91  ·  vivos spk3      0,67   ⇒ vais1000
+#      câu NAM: vivos spk28     0,94  ·  vais1000 hạ 8 nửa cung 0,72   ⇒ vivos spk28
+#
+#    Giọng nữ hạ cao độ thành "nam" (rubberband giữ formant) nghe được nhưng **mất dấu** —
+#    dịch cao độ kéo theo cả đường thanh điệu. Giọng nam THẬT giữ dấu tốt hơn.
+MO_HINH_NU = GOC_PIPER / "voices/vi_VN-vais1000-medium.onnx"
+MO_HINH_NAM = GOC_PIPER / "voices/vi_VN-vivos-x_low.onnx"
+SPK_NAM = 28  # F0 đo thật 132,2 Hz, thanh điệu 0,94 — tốt nhất trong các giọng nam đã đo
+# Đọc chậm hơn mặc định 15%: Chain yêu cầu "phát âm rõ chữ hơn". Người xem vừa nghe vừa
+# nhìn tay bấm, nên chậm là đúng chứ không phải nhược điểm.
+NHIP_DOC = "1.15"
 
 _mau: list[int] = []
 
@@ -124,15 +140,15 @@ class BoDocPiper:
     """Bộ đọc thần kinh. Cùng giao diện `doc()` với `BoDoc` để chỗ gọi không phải biết ai."""
 
     def __init__(self) -> None:
-        if not PIPER.exists() or not MO_HINH.exists():
+        if not PIPER.exists() or not MO_HINH_NU.exists() or not MO_HINH_NAM.exists():
             raise FileNotFoundError("chưa cài Piper hoặc thiếu mô hình giọng")
 
-    def _mot_luot(self, loi: str, spk: int, ra: Path) -> None:
-        r = subprocess.run(
-            [str(PIPER), "-m", str(MO_HINH), "-s", str(spk), "-f", str(ra)],
-            input=loi.encode("utf8"),
-            capture_output=True,
-        )
+    def _mot_luot(self, loi: str, la_nam: bool, ra: Path) -> None:
+        lenh = [str(PIPER), "-m", str(MO_HINH_NAM if la_nam else MO_HINH_NU)]
+        if la_nam:
+            lenh += ["-s", str(SPK_NAM)]
+        lenh += ["--length-scale", NHIP_DOC, "-f", str(ra)]
+        r = subprocess.run(lenh, input=loi.encode("utf8"), capture_output=True)
         if r.returncode != 0 or not ra.exists():
             raise RuntimeError(f"piper lỗi: {r.stderr.decode()[-200:]}")
 
@@ -140,16 +156,28 @@ class BoDocPiper:
         """Đọc từng lượt rồi nối, chèn 0,35 giây nghỉ giữa hai người — không có nó thì câu
         hỏi dính câu trả lời."""
         khuc: list[bytes] = []
-        tan_so = 16000
+        tan_so = 22050
         for giong, loi in luot:
             if not loi.strip():
                 continue
-            spk = SPK_NAM if "m3" in giong or giong == "nam" else SPK_NU
+            la_nam = "m3" in giong or giong == "nam"
             tam = ra.with_suffix(".tam.wav")
-            self._mot_luot(loi, spk, tam)
+            self._mot_luot(loi, la_nam, tam)
+            # 🔴 HAI MÔ HÌNH, HAI TẦN SỐ MẪU: vais1000 = 22 050 Hz, vivos = 16 000 Hz. Nối
+            #    thẳng vào một tệp có MỘT header thì giọng nào không khớp sẽ phát sai tốc độ
+            #    — nghe như tua nhanh hoặc kéo chậm, và người nghe sẽ tưởng mô hình hỏng.
+            #    Quy tất cả về 22 050 Hz trước khi nối.
             with open(tam, "rb") as f:
                 b = f.read()
-            tan_so = int.from_bytes(b[24:28], "little")
+            if int.from_bytes(b[24:28], "little") != tan_so:
+                lai = ra.with_suffix(".lai.wav")
+                subprocess.run(
+                    ["ffmpeg", "-y", "-i", str(tam), "-ar", str(tan_so), "-ac", "1", str(lai)],
+                    capture_output=True,
+                    check=True,
+                )
+                b = lai.read_bytes()
+                lai.unlink(missing_ok=True)
             khuc.append(b[44:])
             khuc.append(b"\x00\x00" * int(tan_so * 0.35))
             tam.unlink(missing_ok=True)
@@ -176,7 +204,10 @@ def chon_bo_doc():
         return BoDoc()
     try:
         b = BoDocPiper()
-        print(f"bộ đọc: Piper · {MO_HINH.name} · nữ=spk{SPK_NU} nam=spk{SPK_NAM}")
+        print(
+            f"bộ đọc: Piper · nữ={MO_HINH_NU.name} · "
+            f"nam={MO_HINH_NAM.name} spk{SPK_NAM} · nhịp {NHIP_DOC}"
+        )
         return b
     except (FileNotFoundError, RuntimeError) as e:
         print(f"bộ đọc: espeak-ng (Piper không dùng được — {e})")
@@ -195,7 +226,8 @@ def tach_loi(md: str) -> list[tuple[str, list[tuple[str, str]]]]:
         if not dong.startswith("| ") or dong.startswith("| #"):
             continue
         o = [c.strip() for c in dong.strip("|").split("|")]
-        if len(o) < 5 or not re.fullmatch(r"\d{2}", o[0]):
+        # Mã đoạn có thể là "00" hoặc "00b" — đoạn phụ chèn thêm (câu giới thiệu nội dung).
+        if len(o) < 5 or not re.fullmatch(r"\d{2}[a-z]?", o[0]):
             continue
         loi = o[4]
         if "*(" in loi or not loi:
