@@ -61,6 +61,27 @@ Hệ quả kèm theo, rút từ chính ba ca trên:
 - **`count()` đếm cả nút đang KHOÁ.** Muốn bấm thì kiểm `isEnabled()`, không thì cú bấm chờ
   tới hết giờ và log đọc y như nút không tồn tại.
 
+### ⑥⁺ Mỗi khẳng định trong LỜI THOẠI phải có phép đo — Chain duyệt 2026-08-02
+
+**Câu nào trong lời thoại nói *"phần mềm làm X"* thì bản quay phải ĐO X, hoặc lời thoại phải
+trích được một dòng mã nguồn.** Không đo được thì viết mềm đi, đừng khẳng định.
+
+🔴 *Vì sao:* chín video qua, cơ chế bắt lỗi có ba lớp — **cổng** bắt lỗi cấu trúc, **ảnh** bắt
+lỗi giao diện, **phép đo trong bản quay** bắt lỗi hành vi. **Lời thoại không có lớp nào canh.**
+Nó là văn bản tôi viết, không có gì đối chiếu với sự thật của sản phẩm. Và nó suýt lọt hai lần
+trong một ngày:
+
+| Video | Tôi viết | Sự thật | Bắt được nhờ |
+|---|---|---|---|
+| 07 | *"phần mềm nói rõ cần dược sĩ duyệt"* | lúc đó màn **không nói gì** | phép đo `noiLyDo` trả `false` |
+| 09 | *"phần mềm sẽ cộng lại tồn kho"* | trả hàng **KHÔNG** tự nhập kho | đọc chú thích trong mã |
+
+Cả hai lần đều **tình cờ**: một lần vì tôi đo, một lần vì tôi đọc mã. Lần thứ ba có thể không
+may như vậy — và lời thoại sai đi thẳng ra video giao khách, nơi không cổng nào soi câu chữ.
+
+Video 09 còn cho thấy điều đáng lo hơn: câu tôi viết ra **là câu chính sản phẩm đã từng nói
+và đã sửa vì sai**. Tôi tái tạo lại một lỗi đã đóng, chỉ vì nó nghe hợp lý.
+
 ### ⑤ Phân loại — ranh giới
 
 | Loại | Định nghĩa | Xử |
@@ -122,7 +143,7 @@ Dựng tiếng cho một video:
 | 06 | Bán thuốc | ✅ 7/7 **lượt đầu** | 0 | 0 | ✅ BERAS | ✅ **XONG** |
 | 07 | Phân quyền thu ngân | ✅ 7/7 | **2** (thiếu bước đăng xuất · **màn không báo trước**) | 0 | ✅ BERAS | ✅ **XONG** |
 | 09 | Hoá đơn · Trả hàng | ✅ 6/6 | **1** (lời thoại hứa sai: trả hàng KHÔNG tự nhập lại kho) | 0 | ✅ BERAS | ✅ **XONG** |
-| 10 | Kiểm kê | | | | | |
+| 10 | Kiểm kê | ✅ 5/5 **lượt đầu** | 0 | 0 | ✅ BERAS | ✅ **XONG** |
 | 13 | Nhật ký hoạt động | | | | | |
 | 11 | Báo cáo | | | | | |
 | 12 | Dashboard chuỗi | | | | | |
