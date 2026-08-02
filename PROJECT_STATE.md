@@ -9461,11 +9461,15 @@ có ghi vết. Đích không phải *ít quyền hơn* mà là **quyền cao nh�
 
 ### Điểm dừng
 
-- **Đang chạy nền:** backend `uvicorn` cổng 8000 (pid 354248, có `APP__METRICS_TOKEN=thu-nghiem-b1b`)
-  · frontend `next-server` cổng 3000 (pid 53313) · postgres + redis `up`. CSDL **`qt650`**.
-- **Dừng sạch — HAI lượt shell RIÊNG** (chạy chung lượt sẽ giết luôn shell, exit 144):
+- **ĐÃ DỪNG SẠCH lúc đóng phiên:** backend `uvicorn` và frontend `next-server` đều tắt, kiểm
+  bằng `ss -ltnp` — **cả hai cổng 3000/8000 đã rảnh**. `docker` postgres + redis **vẫn `up`**
+  (hạ tầng dùng chung, cố ý giữ). CSDL **`qt650`**.
+- **Cách dừng, HAI lượt shell RIÊNG** (chạy chung lượt sẽ giết luôn shell, exit 144):
   `pkill -f "uvicorn pharmacy_os.main:app"` rồi `kill <pid next-server>`.
   🔴 `pkill uvicorn` **không** giết frontend — nó giữ cổng 3000 và làm `lan-dev.sh` từ chối
   chạy lại, đúng ca ③ ở trên.
+- 🔴 Backend phiên này chạy với `APP__METRICS_TOKEN=thu-nghiem-b1b` — **giá trị thử, không phải
+  bí mật thật**. Máy thật phải sinh bằng `openssl rand -hex 24`. `backend/.env` **chưa có** biến
+  này, nên `/metrics` mặc định trả 404: đúng thiết kế fail-closed.
 - Cây git **sạch**, `main`, không remote (đúng chủ ý Chain).
 - Việc kế tiếp khi mở lại: **uỷ quyền bước 3/5**, hoặc **B2/B3** nếu Chain muốn đóng đợt B trước.
