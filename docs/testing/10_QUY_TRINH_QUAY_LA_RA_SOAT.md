@@ -144,7 +144,7 @@ Dựng tiếng cho một video:
 | 07 | Phân quyền thu ngân | ✅ 7/7 | **2** (thiếu bước đăng xuất · **màn không báo trước**) | 0 | ✅ BERAS | ✅ **XONG** |
 | 09 | Hoá đơn · Trả hàng | ✅ 6/6 | **1** (lời thoại hứa sai: trả hàng KHÔNG tự nhập lại kho) | 0 | ✅ BERAS | ✅ **XONG** |
 | 10 | Kiểm kê | ✅ 5/5 **lượt đầu** | 0 | 0 | ✅ BERAS | ✅ **XONG** |
-| 13 | Nhật ký hoạt động | | | | | |
-| 11 | Báo cáo | | | | | |
-| 12 | Dashboard chuỗi | | | | | |
-| 14 | Định hướng phát triển | | | | | 🔴 chờ Pháp Lý |
+| 13 | Nhật ký hoạt động | ✅ 5/5 | **1** (lời thoại hứa "danh sách thu lại" — không nhìn thấy được) | 0 | ✅ BERAS | ✅ **XONG** |
+| 11 | Báo cáo | ✅ 5/5 | 0 | 0 | ✅ BERAS | ✅ **XONG** — quay trên dữ liệu THẬT 1 ngày, không dựng 30 ngày giả |
+| 12 | Bảng điều hành | ✅ 5/5 | 0 | 0 | ✅ BERAS | ✅ **XONG** — quay trên tenant 1 chi nhánh, lời thoại nói rõ |
+| 14 | Định hướng phát triển | ✅ 6/6 | 0 | 0 | ✅ BERAS | 🟠 **DỰNG XONG — 🔴 CHƯA PHÁT HÀNH**, chờ Trợ lý Pháp Lý (N-3) |
