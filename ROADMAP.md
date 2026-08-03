@@ -294,6 +294,160 @@ trong phiên) · frontend vẫn **không có một test nào**.
 
 ---
 
+## Đợt V3 — rà soát quy trình vận hành (Chain nêu 2026-08-04)
+
+> Sinh từ lượt Chain tự dùng thử trên LAN bằng tài khoản **chủ chuỗi**. Mọi mục dưới đây đã
+> **tra thẳng mã nguồn để xác nhận**, không ghi theo cảm nhận — chỗ nào Chain thấy khác thực
+> tế thì ghi rõ nguyên nhân thật.
+>
+> Xếp theo **mức chặn việc thật**, không theo thứ tự Chain nêu.
+
+### V3-1 🔴 Không có chỗ THÊM THUỐC MỚI — chặn hẳn một việc đang làm
+
+| | |
+|---|---|
+| Thực tế | Backend **có** `POST /catalog/drugs`; grep toàn frontend: **không dòng nào gọi**. Màn Danh mục thuốc chỉ có *Sửa giá* · *Sửa hoạt chất*. Thuốc vào `qt650` là do chạy seed |
+| Hệ quả | Nhận hàng gặp mặt hàng lạ ⇒ **dừng**, không đường đi tiếp. Ba mục còn lại chỉ gây bất tiện; mục này gây bế tắc |
+| Việc | Thêm màn/drawer tạo thuốc, **gọi được ngay giữa luồng nhập hàng** (không bắt thoát ra rồi quay lại) |
+
+### V3-2 Không có nút TẠO ĐƠN MUA HÀNG thủ công
+
+| | |
+|---|---|
+| Thực tế | Backend đủ: `POST /purchase-orders` · `/place` · `/cancel` · `/close`. Frontend chỉ có **GET** + luồng nhận hàng. Đường duy nhất đẻ ra đơn hôm nay: **Đề xuất đặt hàng → "Tạo đơn nháp"** |
+| Hệ quả | Ca trình dược viên chào hàng tận quầy **không có đề xuất nào** ⇒ không dựng được đơn |
+| Việc | Nút tạo đơn ở `/don-mua-hang`. Rẻ nhất trên mỗi đồng bỏ ra — chỉ thiếu màn |
+
+### V3-3 Gộp Đơn mua hàng ↔ Đề xuất đặt hàng
+
+**Không gộp làm một màn.** Thực tế đã gộp một nửa (đề xuất là cửa duy nhất tạo đơn). Chỗ vướng
+thật nằm chỗ khác: `materialize()` tạo **một đơn nháp cho mỗi đề xuất**, mà mỗi đề xuất là
+**một mặt hàng** ⇒ đặt 10 mặt hàng cùng một NCC sinh **10 đơn nháp rời**. Và đề xuất chỉ bấm
+được khi thuốc **đã gán nhà cung cấp**.
+
+⇒ Việc: **gom nhiều đề xuất cùng NCC thành một đơn**, giữ hai màn.
+
+### V3-4 Trình tự 5 màn kho — gom lại thế nào (Chain hỏi 04/08)
+
+Thứ tự đúng và phụ thuộc dữ liệu, đã tra mã:
+
+| # | Màn | Khi nào | Lấy từ | Đẻ ra |
+|---|---|---|---|---|
+| 1 | Danh mục thuốc | Trước tất cả | — | `drug_id` |
+| 2 | Sơ đồ kho | Trước khi xếp hàng | — | Kho→Khu→Kệ→Ô |
+| 3 | Khởi tạo tồn kho | **Đúng một lần**, ngày chuyển từ sổ giấy | 1 + 2 | Lô, **không giá vốn** |
+| 4 | Nhập hàng nhanh | Hằng ngày | 1 + 2 | Lô **có giá vốn** |
+| 5 | Kiểm kê | Định kỳ | 2 + tồn hiện có | Chênh lệch chờ duyệt |
+
+Hôm nay đã gom **2 cặp tab**: `Sơ đồ kho ↔ Kiểm kê` và `Nhập hàng nhanh ↔ Khởi tạo tồn`.
+
+🔴 **KHÔNG gộp 3 với 4 dù nhìn giống nhau.** Khởi tạo gọi `/inventory/initialize`
+(`is_initial=True`), nhập nhanh gọi `/inventory/receive`. Khởi tạo là đếm hàng **đã có trên
+kệ**, thường không biết giá vốn thật — đi chung đường thì **giá vốn 0 bị kéo vào bình quân gia
+quyền**, hỏng giá vốn mọi lô sau. Hai màn còn khác ở **thứ tự thao tác**: nhập nhanh cố định
+*mặt hàng*, khởi tạo cố định *cái ô đang đứng trước mặt*.
+
+⇒ Việc: **một màn "Bắt đầu dùng phần mềm"** dẫn 1→2→3 theo đúng thứ tự, có dấu đã-xong từng
+bước. Không gộp chức năng, chỉ **chỉ đường** — hôm nay không màn nào nói cho người mới biết
+phải làm gì trước.
+
+**Nhập giữa chừng được không:** vị trí ô ✅ bỏ trống được, xếp sau · lô/hạn dùng ❌ bắt buộc ·
+thuốc chưa có trong danh mục 🔴 **tắc** (xem V3-1).
+
+### V3-5 Báo cáo CSV toàn mã máy, không đọc được
+
+| Báo cáo | Tiêu đề cột thật trong mã |
+|---|---|
+| Doanh thu | `period_start, branch_id, currency, order_count, revenue_total` |
+| Tồn kho | `batch_id, drug_id, branch_id, lot_no, expiry_date, quantity` |
+| Thuốc bán chạy | `rank, drug_id, branch_id, quantity_sold, revenue` |
+
+🔴 **Nặng hơn chuyện tiếng Anh: không báo cáo nào có TÊN THUỐC.** Chỉ `drug_id` dạng UUID. Mã
+nguồn tự khai lý do — tránh đọc chéo module (`catalog` giữ tên thuốc), và *"để người tiêu thụ
+CSV tự tra tên"*. Với một chủ quầy thì tệp ấy **bằng không**.
+
+⇒ Việc: tiêu đề tiếng Việt · **thêm cột tên thuốc/tên chi nhánh** · định dạng ngày và tiền
+theo lối Việt Nam. Đây là đọc chéo module có kiểm soát, cần thiết kế cổng đọc như `N-1` đã làm
+cho hoá đơn.
+
+### V3-6 Phân quyền ở mục Nhân viên — CÓ, nhưng chủ chuỗi không thấy
+
+🔴 **Không phải thiếu tính năng.** `nhan-vien/page.tsx` có sẵn `RolePanel` cấp/thu hồi vai trò,
+gác bằng `iam.role.assign`. Đã kiểm bằng lệnh:
+
+| Quyền | Chủ chuỗi |
+|---|---|
+| `iam.user.read` · `iam.role.read` | ✅ có ⇒ **thấy được mục Nhân viên** |
+| `iam.role.assign` · `iam.user.create` · `iam.user.write` | ❌ **không** ⇒ nút Vai trò **ẩn** |
+
+Đây là thiết kế cố ý (docs/15 §5 Q5): *"chủ chuỗi không sửa được người dùng/vai trò, để một tài
+khoản chuyên môn không tự nới rộng chính mình"*.
+
+⇒ Vấn đề thật là **giao diện im lặng**: menu hiện ra, bảng hiện ra, nút biến mất, **không câu
+nào giải thích**. Người dùng kết luận "phần mềm thiếu tính năng" — đúng như đã xảy ra.
+⇒ Việc: khi thiếu quyền thì **nói ra** (*"Cần quyền cấp vai trò — liên hệ quản trị hệ thống"*),
+đừng ẩn trơn. Áp cho **mọi** nút bị gác quyền, không riêng màn này.
+
+### V3-7 Hoá đơn mua thuốc · giá vốn · lợi nhuận
+
+| Thứ cần | Có chưa |
+|---|---|
+| Giá vốn từng lô | ✅ `cost_price`, bình quân gia quyền khi nhập thêm |
+| Số hoá đơn NCC · VAT đầu vào · công nợ phải trả | ❌ **không trường nào** trong `procurement` |
+| Báo cáo lợi nhuận / giá vốn hàng bán | ❌ `reports.py` **không có chữ `cost` nào** |
+
+Chia làm hai việc **rất khác nhau về giá**:
+
+- **V3-7a — Báo cáo lợi nhuận.** Dữ liệu **đã nằm sẵn**: giá bán ở `sale_lines`, giá vốn ở
+  `product_batches`. Thiếu **người nối hai đầu**, không thiếu dữ liệu ⇒ rẻ hơn nhiều so với vẻ
+  ngoài. **Cần Chain chốt chiều xem:** theo thuốc · theo ngày · hay theo nhà cung cấp.
+- **V3-7b — Hoá đơn NCC, VAT, công nợ.** Thêm trường + migration, và **đụng ranh giới kế toán**.
+  🔴 **Chưa code khi chưa có câu trả lời:** phần mềm dừng ở *ghi nhận nội bộ để theo dõi lợi
+  nhuận*, hay *xuất số liệu khớp sổ thuế*? Hai đích cách nhau rất xa về khối lượng. Hỏi Trợ lý
+  Kế toán **cùng lượt** với 3 câu chặn sổ quỹ tiền mặt đang treo — nhiều khả năng cùng một cụm.
+
+### V3-8 Mảng AI — luồng dữ liệu cho Trợ lý AI (Chain nêu 04/08)
+
+Trạng thái thật hôm nay, đã tra mã:
+
+| Thành phần | Trạng thái |
+|---|---|
+| Cổng `core.ai.LLMProvider` | ✅ có, đã nối dây |
+| Nhà cung cấp đang chạy | 🔴 **`MockLLMProvider`** — chưa gọi LLM thật lần nào |
+| `AI__API_KEY` thật | 🔴 **BLOCKER** ghi sẵn trong `clinical/__init__.py` |
+| Nguồn tri thức dược có bản quyền | 🔴 **BLOCKER** — chưa có |
+| RAG (`drug_knowledge_chunks`) | 🔴 chưa dựng |
+| Vết kiểm toán mỗi lượt gọi AI | ✅ `AiRecommendation` — model · prompt_hash · confidence · `requires_review` · người dược sĩ chấp nhận |
+
+🔴 **Ranh giới đã khoá, không được nới khi thêm tính năng AI:** phán quyết an toàn là của
+**bộ luật tất định** (bảng `drug_interactions`), **LLM chỉ giải thích**. Bốn việc Chain nêu
+không cùng mức rủi ro:
+
+| Việc Chain nêu | Rủi ro | Ghi chú |
+|---|---|---|
+| Trả lời câu hỏi doanh thu, lập báo cáo tài chính | **Thấp** — số liệu nội bộ, sai thì thấy ngay | Làm được trước, sau khi có V3-5 và V3-7a |
+| Hỏi đáp về thuốc | **Trung bình** | Cần nguồn tri thức có bản quyền, không để LLM tự bịa |
+| **Gợi ý toa thuốc** | 🔴 **Cao nhất** | Là **hành vi chuyên môn dược**. Phải qua `docs/14_FEATURE_PROCESS.md` Bước 0–3 và **Chain + Trợ lý Pháp Lý duyệt** trước khi viết dòng đầu tiên. Cùng họ ranh giới T3 của uỷ quyền: phần mềm không thay chứng chỉ hành nghề |
+
+⇒ Việc trước mắt: **dựng luồng dữ liệu**, chưa dựng tính năng — gom nguồn số liệu sạch để AI
+đọc đúng (doanh thu, tồn kho, giá vốn, danh mục). Đúng thứ tự tự nhiên: **V3-5 và V3-7a là
+đầu vào của V3-8**, làm chúng trước thì phần AI rẻ đi.
+
+### Thứ tự đề nghị
+
+| Ưu tiên | Mục | Vì sao |
+|---|---|---|
+| 1 | **V3-1** thêm thuốc mới | Thứ duy nhất làm *dừng hẳn* việc đang làm |
+| 2 | **V3-2** nút tạo đơn mua | Backend xong, chỉ thiếu màn |
+| 3 | **V3-6** nói ra khi thiếu quyền | Rẻ, và sửa đúng loại hiểu nhầm vừa xảy ra |
+| 4 | **V3-5** báo cáo đọc được | Đầu vào của V3-8 |
+| 5 | **V3-7a** báo cáo lợi nhuận | Dữ liệu đã đủ — *chờ Chain chốt chiều xem* |
+| 6 | **V3-4** màn dẫn đường bắt đầu | Sau khi V3-1 xong mới trọn nghĩa |
+| 7 | **V3-3** gom đề xuất cùng NCC | Bất tiện, không chặn |
+| 8 | **V3-7b** · **V3-8** | *Chờ Kế toán / chờ Pháp Lý + khoá API* |
+
+---
+
 ## Backlog (sau v1)
 
 - Ứng dụng bệnh nhân, sàn B2C.
