@@ -407,7 +407,7 @@ Chia làm hai việc **rất khác nhau về giá**:
   nhuận*, hay *xuất số liệu khớp sổ thuế*? Hai đích cách nhau rất xa về khối lượng. Hỏi Trợ lý
   Kế toán **cùng lượt** với 3 câu chặn sổ quỹ tiền mặt đang treo — nhiều khả năng cùng một cụm.
 
-### V3-8 Mảng AI — luồng dữ liệu cho Trợ lý AI (Chain nêu 04/08)
+### V3-8 Mảng AI — bản rút gọn, **đã thay bằng mục "Lộ trình AI — V4" bên dưới**
 
 Trạng thái thật hôm nay, đã tra mã:
 
@@ -446,6 +446,119 @@ không cùng mức rủi ro:
 | 6 | **V3-4** màn dẫn đường bắt đầu | Sau khi V3-1 xong mới trọn nghĩa |
 | 7 | **V3-3** gom đề xuất cùng NCC | Bất tiện, không chặn |
 | 8 | **V3-7b** · **V3-8** | *Chờ Kế toán / chờ Pháp Lý + khoá API* |
+
+---
+
+## Lộ trình AI — V4 (Chain giao 2026-08-04)
+
+> Chain giao: *"Đưa AI nghiệp vụ thuốc, kho, kế toán, thuế, đơn hàng… vào lộ trình AI"*, kèm
+> một ví dụ cụ thể: **"tạo đơn thuốc đau dạ dày, ợ hơi cho bé 6 tuổi, 3 ngày thuốc → có ngay
+> toa sẵn sàng bán → dược sĩ rà lại và chốt → ghi nhận AI đề xuất, dược sĩ duyệt"**.
+>
+> Mục V3-8 ở trên là bản rút gọn; mục này thay thế nó và chi tiết hoá.
+
+### V4-0 Nền chung — phải xong trước mọi tầng
+
+| Việc | Trạng thái hôm nay |
+|---|---|
+| Cổng `core.ai.LLMProvider` | ✅ có, đã nối dây |
+| Nhà cung cấp đang chạy | 🔴 **`MockLLMProvider`** — **chưa gọi LLM thật lần nào** |
+| `AI__API_KEY` thật | 🔴 BLOCKER, ghi sẵn trong `clinical/__init__.py` |
+| Nguồn tri thức dược **có bản quyền** | 🔴 BLOCKER — chưa có |
+| RAG `drug_knowledge_chunks` | 🔴 chưa dựng |
+| Vết kiểm toán mỗi lượt gọi | ✅ `AiRecommendation`: `model` · `prompt_hash` · `confidence` · `requires_review` · `accepted_by` |
+| Đường dược sĩ duyệt | ✅ `POST /clinical/recommendations/{id}/accept` |
+
+🟢 **Tin tốt cho yêu cầu thứ hai của Chain** (*"ghi nhận AI đề xuất, dược sĩ duyệt"*): **khung
+đã có sẵn và đã chạy**. `AiRecommendation` + `accept_recommendation` chính là thứ đó. Không
+phải xây lại, chỉ mở rộng `AiContextType` (nay có `SALE` · `RX` · `CHAT`).
+
+### V4-1 🟢 Tầng A — AI đọc DỮ LIỆU NỘI BỘ (rủi ro thấp, làm trước)
+
+*"Doanh thu tháng này bao nhiêu"* · *"thuốc nào sắp hết"* · *"lô nào cận hạn"* · *"tồn kho
+mặt hàng X còn mấy"* · *"đơn mua hàng nào chưa về"* · *"lãi gộp tháng qua"*.
+
+Vì sao an toàn: **số liệu của chính cơ sở, sai thì thấy ngay**, và không lời khuyên y tế nào.
+
+| Cần gì | Phụ thuộc |
+|---|---|
+| Số sạch, có tên thay vì UUID | **V3-5** (báo cáo đọc được) |
+| Giá vốn ⇒ lợi nhuận | **V3-7a** |
+| Công cụ đọc có kiểm soát quyền | Mới — AI **phải đi qua đúng `RequestContext`** của người hỏi |
+
+🔴 **Ràng buộc bắt buộc, không thoả hiệp:** AI **không** được có đường đọc riêng vòng qua phân
+quyền. Thu ngân hỏi *"doanh thu tháng"* thì phải nhận đúng thứ quyền `sales.read` cho phép —
+nếu không, AI trở thành **đường vòng qua toàn bộ RBAC**, đúng thứ nguy hiểm hơn cả việc không
+có AI. Cùng lý do kỷ luật đã ghi cho `maint.sql.run`: *"một việc nguy hiểm nên khó"*.
+
+⇒ **V3-5 và V3-7a là ĐẦU VÀO của tầng này.** Làm chúng trước thì tầng A gần như chỉ còn là
+nối dây.
+
+### V4-2 🟡 Tầng B — Hỏi đáp TRI THỨC THUỐC (rủi ro trung bình)
+
+*"Thuốc này uống trước hay sau ăn"* · *"có kiêng gì không"* · *"hai thuốc này có tương tác"*.
+
+| Chặn | Vì sao |
+|---|---|
+| 🔴 Nguồn tri thức **có bản quyền** | Không có nguồn thì LLM **bịa**, và nó bịa rất trôi chảy. Đây là chặn cứng, không đi vòng bằng prompt |
+| RAG `drug_knowledge_chunks` | Mỗi câu trả lời phải **trích được nguồn**, không trả lời trần |
+
+Ranh giới giữ nguyên như `clinical` đang làm: **phán quyết là của bộ luật tất định** (bảng
+`drug_interactions`), **LLM chỉ diễn giải**. Nới ranh giới này là quyết định của Chain, không
+phải của tôi.
+
+### V4-3 🔴 Tầng C — GỢI Ý TOA THUỐC (ví dụ của Chain) — rủi ro cao nhất
+
+**Chưa code một dòng nào khi chưa qua `docs/14_FEATURE_PROCESS.md` Bước 0–3 và chưa có
+Chain + Trợ lý Pháp Lý duyệt.** Ghi ở đây để lộ trình đầy đủ, không phải để bắt đầu.
+
+Đi qua đúng ví dụ Chain đưa — *"đau dạ dày, ợ hơi, bé 6 tuổi, 3 ngày"* — để thấy phần khó nằm
+ở đâu. Sáu chỗ, **không chỗ nào là vấn đề của LLM**:
+
+| # | Vấn đề | Vì sao nó không phải chuyện prompt |
+|---|---|---|
+| 1 | **6 tuổi ⇒ liều theo CÂN NẶNG, không theo tuổi** | `crm.weight_kg` có sẵn nhưng **không bắt buộc**, và khách vãng lai **không có hồ sơ**. Không biết cân nặng thì không tính được liều trẻ em — phải **hỏi**, không được đoán |
+| 2 | **"Đau dạ dày + ợ hơi" ở trẻ 6 tuổi có thể là dấu hiệu cần đi khám** | Đầu ra hợp lệ **phải bao gồm "chuyển khám"**, không phải lúc nào cũng là một giỏ thuốc. Một AI luôn trả về thuốc là một AI bán được hàng và sai về y tế |
+| 3 | **Không có đơn bác sĩ ⇒ chỉ bán được OTC** | Đề xuất phải bị **chặn cứng ở tầng dữ liệu** theo `rx_class`, không phải nhắc khéo trong prompt |
+| 4 | 🟠 **Quầy thuốc vs nhà thuốc — phạm vi bán khác nhau** | Cờ pháp lý **đang treo** (`docs/QUAY_THUOC_650_CHAY_THU.md`). AI đề xuất một mã ngoài phạm vi hành nghề là **đề xuất một giao dịch trái phép** |
+| 5 | **Không có "bộ luật tất định" cho việc chọn thuốc** | Tầng A/B có bảng tra làm chỗ dựa; ở đây **chưa có gì** tương đương. Ranh giới *"máy quyết, LLM giải thích"* **không áp thẳng được** — phải thiết kế lại, không được im lặng bỏ |
+| 6 | **Dị ứng** | Mã thuốc **chưa có hoạt chất** thì cảnh báo dị ứng im lặng (xem V3-1). AI đề xuất dựa trên danh mục thiếu hoạt chất là đề xuất mù |
+
+**Khuôn đầu ra bắt buộc** nếu tầng này được duyệt:
+
+1. AI đề xuất ⇒ ghi `AiRecommendation` với `requires_review=True`, **luôn luôn**, không có
+   ngưỡng `confidence` nào tự động bỏ qua bước duyệt.
+2. Giỏ hàng ở trạng thái **nháp, KHÔNG bán được** cho tới khi dược sĩ bấm duyệt.
+3. Dược sĩ duyệt ⇒ `accept_recommendation` ghi **ai duyệt, lúc nào**. Sửa liều trước khi
+   duyệt cũng phải ghi lại **phần đã sửa** — đó mới là dữ liệu cho biết AI sai ở đâu.
+4. Bán xong ⇒ đơn trỏ ngược về `recommendation_id`, để về sau trả lời được
+   *"đơn này do AI đề xuất hay người tự chọn"*.
+
+🔴 **Câu Chain cần trả lời trước khi mở tầng C:** *"toa thuốc sẵn sàng bán"* nghĩa là AI chọn
+**thuốc**, hay AI chỉ dựng sẵn **giỏ hàng từ một phác đồ do dược sĩ đã duyệt trước**? Hai thứ
+này cách nhau rất xa về pháp lý. Phương án thứ hai — **thư viện phác đồ do dược sĩ tự soạn,
+AI chỉ khớp triệu chứng vào phác đồ có sẵn rồi tính liều theo cân nặng** — làm được sớm hơn
+nhiều, vì bộ luật tất định lúc ấy **chính là thư viện phác đồ**, do người có chứng chỉ hành
+nghề ký. Tôi nghiêng hẳn về phương án này cho bản đầu.
+
+### V4-4 🟠 Tầng D — Kế toán & thuế
+
+*"Tháng này nộp thuế bao nhiêu"* · *"lập báo cáo tài chính hộ kinh doanh"*.
+
+**Chặn ngoài phần mềm, không phải chặn kỹ thuật:** phụ thuộc **V3-7b**, mà V3-7b đang chờ Trợ
+lý Kế toán trả lời phần mềm dừng ở *ghi nhận nội bộ* hay *khớp sổ thuế*. AI lập báo cáo thuế
+từ dữ liệu chưa đủ tư cách sổ sách là cách tạo ra **một con số sai trông rất đáng tin**.
+
+⇒ Không mở tầng D trước khi V3-7b có câu trả lời.
+
+### Thứ tự và chặn
+
+| Tầng | Làm được khi | Chặn bởi |
+|---|---|---|
+| **A** nội bộ | Sau V3-5 + V3-7a | Khoá API thật |
+| **B** tri thức thuốc | — | Khoá API + **nguồn có bản quyền** |
+| **C** gợi ý toa | — | `docs/14` Bước 0–3 · **Chain + Pháp Lý** · cờ quầy/nhà thuốc · Chain chốt phương án "phác đồ" hay "AI tự chọn thuốc" |
+| **D** kế toán/thuế | Sau V3-7b | **Trợ lý Kế toán** |
 
 ---
 
