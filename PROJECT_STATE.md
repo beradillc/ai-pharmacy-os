@@ -2,7 +2,11 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-03** — §7dq **đóng phiên**: đợt A (L-2 · N-1 · N-2) + B1 (mã sự cố ·
+> **Cập nhật cuối: 2026-08-03** — §7dr **uỷ quyền quản trị TRỌN BỘ** (bước 3/5·4/5·5/5): tìm ra
+> **2 lỗi thật** trong domain bước 2/5 bằng cách chạy nó với tập quyền của một vai CÓ THẬT —
+> tính năng vốn chết 100% ở đường dùng thật trong khi 10/10 test xanh. `system_admin` nay
+> **57/58 quyền** (chờ Chain xem lại). pytest **1559 passed**, 5 đột biến đều đỏ đúng lý do.
+> Trước đó §7dq **đóng phiên**: đợt A (L-2 · N-1 · N-2) + B1 (mã sự cố ·
 > `/metrics`) + rà soát quyền quản trị + tách nơi giữ khoá mã hoá + uỷ quyền quản trị bước 2/5.
 > pytest **1532 passed**, 13 commit. Trước đó §7dn chốt kế hoạch 9 bước A→B→C, và §7dm
 > đóng phiên **bộ 14 video dựng xong** (13 phát hành được,
@@ -183,6 +187,7 @@
 | [§7do](#7do-t-a-ng-tr-n-3-3-l-2-n-1-n-2-2026-08-02) | 2026-08-02 | ✅ **ĐỢT A ĐÓNG TRỌN 3/3** — L-2 · N-1 · N-2 + ba lần phép ĐO suýt sai |
 | [§7dp](#7dp-b1-m-s-c-truy-c-metrics-c-b-n-ti-u-th-2) | 2026-08-03 | 📈 **B1** — mã sự cố truy được + `/metrics` **có bên tiêu thụ** · đề xuất kỷ luật #25 |
 | [§7dq](#7dq-ng-phi-n-2026-08-02-03-t-a-b1-r-quy-n-q) | 2026-08-03 | 🔒 **ĐÓNG PHIÊN** — đợt A + B1 + rà quyền quản trị · 4 lần phép ĐO suýt sai |
+| [§7dr](#7dr-u-quy-n-qu-n-tr-tr-n-b-3-5-4-5-5-5-2026-08-03) | 2026-08-03 | ✅ **UỶ QUYỀN QUẢN TRỊ TRỌN BỘ** 3/5·4/5·5/5 — 2 lỗi thật trong domain bước 2/5 |
 
 ---
 
@@ -9473,3 +9478,111 @@ có ghi vết. Đích không phải *ít quyền hơn* mà là **quyền cao nh�
   này, nên `/metrics` mặc định trả 404: đúng thiết kế fail-closed.
 - Cây git **sạch**, `main`, không remote (đúng chủ ý Chain).
 - Việc kế tiếp khi mở lại: **uỷ quyền bước 3/5**, hoặc **B2/B3** nếu Chain muốn đóng đợt B trước.
+
+---
+
+## 7dr. ✅ Uỷ quyền quản trị TRỌN BỘ — bước 3/5 · 4/5 · 5/5 (2026-08-03)
+
+**3 commit.** Chain uỷ quyền GĐ *"toàn quyền tiếp tục hoàn thiện phần mềm"*. Tính năng uỷ
+quyền đang dở ở bước 2/5 là thứ nguy hiểm nhất để bỏ giữa chừng — một cơ chế kiểm soát dựng
+một nửa **đọc y hệt một cơ chế đã có** (kỷ luật #16) — nên đóng trọn trước.
+
+### 🔴 Hai lỗi THẬT trong domain bước 2/5, và cách tìm ra
+
+Không tìm ra bằng rà mắt. Tìm ra bằng cách **chạy hàm domain với tập quyền thật của vai
+`chain_pharmacist`** thay vì tập bịa mà test đang dùng:
+
+| # | Lỗi | Hệ quả nếu không sửa |
+|---|---|---|
+| 1 | Luật 3 soi tập **người cấp đang có** thay vì tập **được xin** | Chủ chuỗi luôn có `compliance.ledger.sign` (họ là dược sĩ ký sổ hợp pháp) ⇒ **mọi** lần cấp ném lỗi ⇒ **vai duy nhất được phép cấp thì không bao giờ cấp nổi gì**. Tính năng chết 100% ở đường dùng thật |
+| 2 | Luật 2 *"không cấp quá thứ mình có"* **không tồn tại trong mã** | Hàm chỉ nhận **một** tập quyền và cấp đúng bằng nó ⇒ mệnh đề luôn đúng, **không bao giờ đỏ được**. Docstring khai một phép so mà không có code |
+
+Lỗi 2 đúng hình dạng **kỷ luật #23**: một phép so hai vế cùng nguồn là một **phép gán đội
+lốt**. Nay `quyen_nguoi_cap` (đang có) tách khỏi `quyen_yeu_cau` (đang xin) — hai nguồn độc
+lập, nên luật 2 đỏ được, và `MUTANT1_EXIT=1` chứng minh nó đỏ.
+
+🔴 **Vì sao 10/10 test đơn vị xanh trong lúc tính năng chết:** cả 10 đều dùng `_QUYEN` —
+một tập **bịa 4 mã**, không phải tập của bất kỳ vai có thật nào. Cùng họ kỷ luật #14: một tín
+hiệu xanh chứng minh một mệnh đề **khác** với mệnh đề người đọc tưởng nó chứng minh. Đã thêm
+`test_chu_chuoi_THAT_cap_duoc_uy_quyen`.
+
+### 🔴 Quyết định GĐ tự chốt: `system_admin` mất đúng MỘT quyền — CHỜ CHAIN XEM LẠI
+
+`sa.permissions == ALL_PERMISSIONS` trả **`True`** (kiểm bằng lệnh, không suy). Nếu
+`iam.delegation.grant` cứ thế đi vào `IAM_PERMISSIONS` thì **tài khoản kỹ thuật tự mở quyền
+cho tài khoản kỹ thuật**, và điều kiện Chain đặt ra — *"chủ chuỗi sẽ chịu trách nhiệm"* —
+không còn ai thực hiện.
+
+**Luật "không tự uỷ quyền cho chính mình" KHÔNG chặn được đường này**, và đây đúng là chỗ dễ
+tưởng nhầm là đã chặn: nó chỉ so `nguoi_cap_id != nguoi_nhan_id`, nên **hai** tài khoản quản
+trị cấp chéo cho nhau là hợp lệ với mọi luật domain. Cùng hình dạng sai lầm bước 2/5.
+
+⇒ `system_admin` nay **57/58**, thiếu đúng `iam.delegation.grant`. **Không phải phương án
+"cắt quyền" Chain đã bác**: không một quyền **dữ liệu** nào bị lấy đi — người bảo trì vẫn
+nhận đủ 25 quyền dữ liệu, chỉ là **qua uỷ quyền có vết, có hạn** thay vì thường trực. Thứ bị
+lấy đi là quyền **tự ký giấy cho mình**.
+
+Hệ quả vận hành: quầy một người cần **hai tài khoản**. Điều đó **đã là** hệ quả bắt buộc của
+luật 1 từ bước 2/5 — bản này không thêm ràng buộc mới nào cho Chain.
+
+### Vì sao cưỡng chế ở tầng REQUEST, không ở JWT
+
+Uỷ quyền **24 giờ** nằm trong token đã ký sẽ **sống dai hơn cửa sổ của chính nó**: token cấp
+lúc 23:59 vẫn mang quyền ấy sau khi uỷ quyền đã hết. Cơ chế kiểm soát hỏng đúng ở chỗ nó tồn
+tại để canh.
+
+`UyQuyenGuard` **cố ý không có cache**, khác hẳn `TokenScopeGuard` ngay bên cạnh: cache của
+guard kia an toàn vì nó nhớ một sự thật **vĩnh viễn đúng** (chi nhánh không đổi tenant), còn
+uỷ quyền thì **được sinh ra để hết hạn**. Cache nó là tái tạo đúng lỗi vừa tránh, ở tầng khó
+thấy hơn.
+
+**Test e2e đắt nhất — ba lượt gọi CÙNG MỘT TOKEN:** ①403 → ②uỷ quyền → **200 không đăng nhập
+lại** → ③rút → **403**. Nếu quyền nằm trong JWT thì ② vẫn 403 và ③ vẫn 200 — **sai theo hai
+hướng ngược nhau**.
+
+### 🔴 Phép ĐO hỏng trước sản phẩm, hai lần nữa
+
+| # | Chuyện gì | Nếu tin nó |
+|---|---|---|
+| 1 | `cd backend/src/...` chạy khi cwd **đã là** thư mục đó ⇒ lệnh sau `ls` hỏng | Đúng bẫy **kỷ luật #25**, lần thứ tư. Lần này lỗi **ồn ào** nên vô hại — dùng đường dẫn tuyệt đối từ đó |
+| 2 | Lượt kiểm tuyến báo `SO_TUYEN=0` | Suýt đi sửa router. Nhưng `/users` **có sẵn** cũng không hiện ⇒ **tự mâu thuẫn** ⇒ lỗi phép đo (#15): router nghiệp vụ mount trong **lifespan**, phép đo đọc app lúc vừa import. Đo lại qua `TestClient`: **113 path**, đủ 3 endpoint |
+| 3 | Hai lượt `python3 - <<PY` khai `assert` **thất bại**, nhưng lượt cuối in `IMPORT OK` | Đúng họ #25 theo chiều khác: **một con số trông hợp lệ từ một thế giới chưa được dựng**. Nguyên nhân: import một dòng, không phải dạng ngoặc như tôi giả định |
+
+### Cổng và đột biến
+
+```
+RUFF=0 FORMAT=0 IMPORTLINTER=0 (19/19) MYPY=0 (289 tệp) VITEST=0 (122) TSC=0
+PYTEST_EXIT=0   1559 passed  (1532 → 1547 → 1551 → 1559, +27)
+5 lượt đột biến, TẤT CẢ đỏ đúng lý do, tất cả đã khôi phục:
+  MUTANT1=1 bỏ luật 2              MUTANT4=1 bỏ phép so hạn ở guard
+  MUTANT2=1 đường mặc định không lọc (đỏ 3, gồm ranh giới T3 rò qua đường mới)
+  MUTANT3=1 admin giữ lại grant    MUTANT5=1 deps không hợp nhất quyền mượn
+Cổng nhãn hai ngôn ngữ tự đỏ trước khi thêm nhãn: GATE_TRUOC=1 → GATE_SAU=0
+```
+
+**Kỷ luật #7 — thử trên `qt650` CÓ SẴN DỮ LIỆU** (không tin log `updated=2`, đếm bằng SQL):
+
+| | system_admin | chain_pharmacist | quyền delegation |
+|---|---|---|---|
+| trước | 56 | 52 | 0 |
+| sau | 57 | 54 | 3 (admin chỉ có `.read`) |
+
+Migration 0047: `pg_dump` **559 KB** trước khi chạy · downgrade→upgrade **2→0→2** bảng.
+
+### Ba ca sản phẩm ĐÚNG mà test sai — sửa test, không nới sản phẩm
+
+1. Khoá ngoại thật chặn `uuid4()` rời (đỏ 6/11 rồi 3/4) — **ràng buộc bắt đúng thứ nó sinh ra
+   để bắt**: không ghi được uỷ quyền do một người không tồn tại cấp.
+2. `/auth/login` từ chối tài khoản chưa gán vai nào ⇒ tài khoản bảo trì phải có vai nền. Chọn
+   `warehouse` sau khi **kiểm bằng lệnh**: vai duy nhất không có `crm.read` (`cashier` thì có).
+3. Cổng `test_request_schema_lengths` **có sẵn** bắt `quyen_yeu_cau` không chặn độ dài — mã dài
+   hơn `varchar(64)` sẽ thành **500 của Postgres** thay vì 422. Đúng họ `audit_logs.action`.
+
+### 🚧 Còn lại
+
+- **Chưa có màn hình** — 5 bước của kế hoạch là backend; giao diện uỷ quyền là mục riêng, chưa
+  mở. Hôm nay dùng được qua API, **chưa dùng được qua trình duyệt**.
+- Bộ quyền **`maint.*`** (Bước 2 bản thiết kế — 9 quyền bảo trì sâu) **chưa xây**.
+- Câu hỏi T3 *"quyền ký sổ có nằm trong phạm vi uỷ quyền không"* — **vẫn chờ Chain**. Hôm nay
+  giữ nguyên: **không** uỷ quyền được.
+- B2 (`backup_deadman.sh` có răng) · B3 · C1–C3 chưa đụng tới.
