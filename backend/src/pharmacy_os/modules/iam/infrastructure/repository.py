@@ -27,6 +27,7 @@ from pharmacy_os.modules.iam.domain import (
     TwoFactorChallenge,
     User,
     UserTwoFactor,
+    UyQuyenQuanTri,
 )
 from pharmacy_os.modules.iam.infrastructure.mappers import (
     assignment_to_domain,
@@ -47,6 +48,8 @@ from pharmacy_os.modules.iam.infrastructure.mappers import (
     two_factor_to_orm,
     user_to_domain,
     user_to_orm,
+    uy_quyen_to_domain,
+    uy_quyen_to_orm,
 )
 from pharmacy_os.modules.iam.infrastructure.models import (
     BranchORM,
@@ -59,6 +62,7 @@ from pharmacy_os.modules.iam.infrastructure.models import (
     UserORM,
     UserRoleORM,
     UserTwoFactorORM,
+    UyQuyenQuanTriORM,
 )
 
 
@@ -345,3 +349,66 @@ class SqlAlchemyTwoFactorChallengeRepository:
         stmt = delete(TwoFactorChallengeORM).where(TwoFactorChallengeORM.expires_at < now)
         result = cast("CursorResult[Any]", await self._session.execute(stmt))
         return result.rowcount
+
+
+class SqlAlchemyUyQuyenRepository:
+    """Uỷ quyền quản trị — **chỉ ghi thêm**, không có ``delete_expired``.
+
+    Xem :class:`~pharmacy_os.modules.iam.domain.ports.UyQuyenRepository`: hàng hết hạn
+    là vết kiểm toán, không phải rác. Thu hồi là **ghi một mốc thời gian**, không phải
+    một lượt ``DELETE`` — sổ phải còn đọc được rằng quyền ấy từng được cấp rồi bị rút.
+    """
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def add(self, uy_quyen: UyQuyenQuanTri) -> None:
+        self._session.add(uy_quyen_to_orm(uy_quyen))
+        await self._session.flush()
+
+    async def get(self, uy_quyen_id: UUID) -> UyQuyenQuanTri | None:
+        row = await self._session.get(UyQuyenQuanTriORM, uy_quyen_id)
+        return uy_quyen_to_domain(row) if row is not None else None
+
+    async def list_con_hieu_luc(
+        self, nguoi_nhan_id: UUID, bay_gio: datetime
+    ) -> list[UyQuyenQuanTri]:
+        # Lọc ở CSDL, không đọc hết rồi lọc trong Python: bảng chỉ-ghi-thêm nên phần
+        # lịch sử tăng mãi, còn phần còn hiệu lực gần như luôn rỗng. Hai điều kiện này
+        # là bản dịch SQL của ``UyQuyenQuanTri.con_hieu_luc`` — đổi một bên phải đổi
+        # bên kia (test ``test_loc_sql_khop_luat_domain`` canh đúng chỗ này).
+        stmt = (
+            select(UyQuyenQuanTriORM)
+            .where(
+                UyQuyenQuanTriORM.nguoi_nhan_id == nguoi_nhan_id,
+                UyQuyenQuanTriORM.thu_hoi_luc.is_(None),
+                UyQuyenQuanTriORM.het_han_luc > bay_gio,
+            )
+            .order_by(UyQuyenQuanTriORM.cap_luc.desc())
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [uy_quyen_to_domain(row) for row in rows]
+
+    async def list_cua_tenant(
+        self, tenant_id: UUID, *, limit: int = 50, offset: int = 0
+    ) -> list[UyQuyenQuanTri]:
+        stmt = (
+            select(UyQuyenQuanTriORM)
+            .where(UyQuyenQuanTriORM.tenant_id == tenant_id)
+            .order_by(UyQuyenQuanTriORM.cap_luc.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [uy_quyen_to_domain(row) for row in rows]
+
+    async def thu_hoi(self, uy_quyen_id: UUID, thu_hoi_luc: datetime) -> None:
+        row = await self._session.get(UyQuyenQuanTriORM, uy_quyen_id)
+        if row is None:
+            return
+        if row.thu_hoi_luc is not None:
+            # Thu hồi lần hai không được đẩy mốc về sau: thời điểm quyền thật sự ngừng
+            # có hiệu lực là lần **đầu**, và đó là con số sổ kiểm toán cần.
+            return
+        row.thu_hoi_luc = thu_hoi_luc
+        await self._session.flush()

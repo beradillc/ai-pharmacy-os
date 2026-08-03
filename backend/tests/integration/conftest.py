@@ -52,6 +52,7 @@ from pharmacy_os.modules.iam.infrastructure import (
     SqlAlchemyTwoFactorChallengeRepository,
     SqlAlchemyUserRepository,
     SqlAlchemyUserTwoFactorRepository,
+    SqlAlchemyUyQuyenRepository,
 )
 from pharmacy_os.modules.inventory.application import InventoryService
 from pharmacy_os.modules.inventory.infrastructure import (
@@ -292,6 +293,7 @@ def _iam_repos(uow: UnitOfWork) -> IamRepositories:
         two_factor=SqlAlchemyUserTwoFactorRepository(uow.session),
         backup_codes=SqlAlchemyBackupCodeRepository(uow.session),
         challenges=SqlAlchemyTwoFactorChallengeRepository(uow.session),
+        uy_quyen=SqlAlchemyUyQuyenRepository(uow.session),
     )
 
 

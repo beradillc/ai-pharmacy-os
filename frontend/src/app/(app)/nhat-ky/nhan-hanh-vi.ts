@@ -90,6 +90,10 @@ export const NHAN: Record<string, string> = {
   PERIODIC_REPORT_EXPORTED: "Xuất báo cáo định kỳ",
   TENANT_COMPLIANCE_CONFIG_SET: "Đổi cấu hình tuân thủ",
   ENCRYPTION_KEY_ROTATED: "Xoay khoá mã hoá",
+
+  // Uỷ quyền quản trị có thời hạn (Chain chốt 2026-08-03)
+  ADMIN_DELEGATION_GRANTED: "Uỷ quyền quản trị",
+  ADMIN_DELEGATION_REVOKED: "Rút uỷ quyền trước hạn",
 };
 
 /** Nhóm hành vi để lọc nhanh — chủ quầy hỏi theo NHÓM, không theo từng mã. */
@@ -138,4 +142,5 @@ export const DOI_TUONG: Record<string, string> = {
   tenant_compliance_config: "Thông tin cơ sở",
   user: "Tài khoản",
   user_role: "Vai trò tài khoản",
+  uy_quyen_quan_tri: "Uỷ quyền quản trị",
 };

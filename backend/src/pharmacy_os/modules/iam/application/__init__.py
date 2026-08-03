@@ -31,6 +31,7 @@ from pharmacy_os.modules.iam.application.repositories import (
     ReposFactory,
     UowFactory,
 )
+from pharmacy_os.modules.iam.application.uy_quyen_service import UyQuyenService
 
 __all__ = [
     "AssignRoleInput",
@@ -58,5 +59,6 @@ __all__ = [
     "TwoFactorStatusOutput",
     "UowFactory",
     "UserOutput",
+    "UyQuyenService",
     "hash_refresh_token",
 ]

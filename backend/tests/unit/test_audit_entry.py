@@ -135,6 +135,11 @@ def test_every_action_the_codebase_emits_has_a_member() -> None:
         "TWO_FACTOR_RESET",
         "TWO_FACTOR_FAILED",
         "TWO_FACTOR_BACKUP_CODE_USED",
+        # 2026-08-03: uỷ quyền quản trị có thời hạn (Chain chốt). Cấp và rút tách làm hai mã
+        # vì hết hạn là mặc định không ai làm gì, còn rút sớm là hành vi có chủ ý của một
+        # con người — trộn vào một mã là chôn cái hiếm dưới cái thường xuyên.
+        "ADMIN_DELEGATION_GRANTED",
+        "ADMIN_DELEGATION_REVOKED",
     }
     assert {a.value for a in AuditAction} == expected
 

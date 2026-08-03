@@ -277,6 +277,11 @@ _COVERED_ELSEWHERE = {
     AuditAction.RX_IMAGE_VIEWED,
     # Có test riêng: tests/integration/test_crm_phone_masking.py (đường mở lộ số).
     AuditAction.CUSTOMER_PHONE_REVEALED,
+    # Có test riêng: tests/integration/test_uy_quyen_quan_tri_flow.py
+    # ::test_cap_va_thu_hoi_deu_de_lai_vet_voi_ly_do — đọc thẳng AuditLogORM và khẳng định
+    # cả nội dung ``context`` (có ``ly_do``, có ``so_quyen``, KHÔNG có danh sách mã quyền).
+    AuditAction.ADMIN_DELEGATION_GRANTED,
+    AuditAction.ADMIN_DELEGATION_REVOKED,
     AuditAction.SALE_RETURN_REGISTERED,
     AuditAction.INVENTORY_RECONCILIATION_RESOLVED,
     # Có test riêng: tests/integration/test_inventory_location_e2e.py

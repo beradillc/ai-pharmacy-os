@@ -242,6 +242,71 @@ class TwoFactorBackupCodeORM(Base):
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class UyQuyenQuanTriORM(PkUuidMixin, Base):
+    """Một lần chủ chuỗi mở quyền nghiệp vụ cho một tài khoản, 24 giờ (Chain chốt 03/08).
+
+    🔴 **Chỉ ghi thêm, không xoá.** Hàng hết hạn **vẫn nằm lại**: nó là câu trả lời cho
+    *"ai đã mở quyền đọc hồ sơ bệnh nhân cho ai, lúc nào, vì lý do gì"*. Khác hẳn
+    ``two_factor_challenges`` và ``refresh_tokens`` — hai bảng đó có ``delete_expired``
+    vì hàng cũ của chúng là **rác**, còn hàng cũ của bảng này là **bằng chứng**.
+
+    Không ``TimestampMixin``: ``cap_luc`` là *thời điểm hành vi uỷ quyền xảy ra*, thứ đi
+    vào sổ kiểm toán và phải do use-case quyết định. Một cột ``created_at`` do CSDL tự
+    điền bên cạnh nó là hai nguồn sự thật cho cùng một sự kiện — và khi hai cột lệch
+    nhau thì không có cách nào biết cột nào đúng.
+    """
+
+    __tablename__ = "uy_quyen_quan_tri"
+    __table_args__ = (
+        # Đường nóng: mỗi request đã xác thực hỏi "người này có uỷ quyền nào còn sống
+        # không". Chỉ mục theo người nhận + hạn, vì bảng chỉ-ghi-thêm nên phần lịch sử
+        # tăng mãi trong khi phần còn hiệu lực gần như luôn rỗng.
+        Index("ix_uy_quyen_nguoi_nhan_han", "nguoi_nhan_id", "het_han_luc"),
+    )
+
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id"), index=True, nullable=False)
+    nguoi_nhan_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    nguoi_cap_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    """Không ``ondelete=CASCADE`` — cố ý khác người nhận.
+
+    Xoá tài khoản người **nhận** thì uỷ quyền của họ không còn nghĩa gì. Nhưng xoá tài
+    khoản người **cấp** mà kéo theo cả vết uỷ quyền thì việc xoá một tài khoản trở thành
+    cách xoá dấu vết mình đã cấp quyền cho ai — đúng thứ sổ này sinh ra để chặn."""
+
+    ly_do: Mapped[str] = mapped_column(Text, nullable=False)
+    cap_luc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    het_han_luc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    thu_hoi_luc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    quyen: Mapped[list[UyQuyenQuyenORM]] = relationship(
+        back_populates="uy_quyen",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class UyQuyenQuyenORM(Base):
+    """Một quyền trong **ảnh chụp** của một lần uỷ quyền — cùng khuôn ``role_permissions``.
+
+    🔴 Là **ảnh chụp**, không phải tham chiếu tới vai người cấp. Vai đổi được sau khi đã
+    cấp; nếu suy lại lúc dùng thì một lần nâng quyền cho chủ chuỗi sẽ **âm thầm nới rộng
+    mọi uỷ quyền đang mở** — người cấp không hề biết mình vừa cho thêm cái gì. Bảng riêng
+    thay vì cột JSON để giữ đúng quy ước sẵn có của module và để trả lời được câu *"ai
+    từng được uỷ quyền ``crm.pii.reveal``"* bằng một lượt ``WHERE``.
+    """
+
+    __tablename__ = "uy_quyen_quan_tri_quyen"
+
+    uy_quyen_id: Mapped[UUID] = mapped_column(
+        ForeignKey("uy_quyen_quan_tri.id", ondelete="CASCADE"), primary_key=True
+    )
+    permission: Mapped[str] = mapped_column(String(64), primary_key=True)
+
+    uy_quyen: Mapped[UyQuyenQuanTriORM] = relationship(back_populates="quyen")
+
+
 class TwoFactorChallengeORM(PkUuidMixin, Base):
     """A login that passed the password and still owes its second factor.
 

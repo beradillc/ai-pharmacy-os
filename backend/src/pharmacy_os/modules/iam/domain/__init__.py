@@ -56,6 +56,7 @@ from pharmacy_os.modules.iam.domain.ports import (
     TwoFactorChallengeRepository,
     UserRepository,
     UserTwoFactorRepository,
+    UyQuyenRepository,
 )
 from pharmacy_os.modules.iam.domain.system_roles import (
     ALL_PERMISSIONS,
@@ -138,6 +139,7 @@ __all__ = [
     "UserRepository",
     "UserTwoFactor",
     "UserTwoFactorRepository",
+    "UyQuyenRepository",
     "WAREHOUSE",
     "WeakPasswordError",
     "accessible_branch_ids",

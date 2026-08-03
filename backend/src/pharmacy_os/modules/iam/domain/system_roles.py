@@ -140,8 +140,15 @@ IAM_PERMISSIONS = frozenset(
         "iam.role.read",
         "iam.role.write",
         "iam.role.assign",
+        "iam.delegation.grant",
+        "iam.delegation.read",
     }
 )
+"""``iam.delegation.grant`` là quyền **cấp** uỷ quyền quản trị có thời hạn (Chain chốt
+2026-08-03), ``iam.delegation.read`` là quyền **đọc** sổ uỷ quyền.
+
+🔴 Xem :data:`_SYSTEM_ADMIN_PERMISSIONS`: quyền *cấp* là quyền duy nhất bị giữ **ngoài**
+vai quản trị hệ thống, và lý do nằm ở đó."""
 
 ALL_PERMISSIONS: frozenset[str] = (
     CATALOG_PERMISSIONS
@@ -160,6 +167,32 @@ ALL_PERMISSIONS: frozenset[str] = (
     | PRIVACY_PERMISSIONS
     | ANALYTICS_PERMISSIONS
 )
+
+_SYSTEM_ADMIN_PERMISSIONS = ALL_PERMISSIONS - {"iam.delegation.grant"}
+"""🔴 **Quyền duy nhất vai quản trị hệ thống KHÔNG có** (Chain chốt 2026-08-03).
+
+Cho tới bản này ``system_admin`` giữ đúng **56/56** quyền — đã kiểm bằng lệnh, không suy:
+``sa.permissions == ALL_PERMISSIONS`` trả ``True``. Nếu ``iam.delegation.grant`` cứ thế đi
+vào :data:`IAM_PERMISSIONS` thì tài khoản kỹ thuật **tự cấp được** quyền nghiệp vụ cho tài
+khoản kỹ thuật — tức chính cơ chế uỷ quyền mất nghĩa ngay khi vừa dựng xong.
+
+**Luật "không tự uỷ quyền cho chính mình" KHÔNG chặn được đường này**, và chỗ này đúng là
+chỗ dễ tưởng nhầm là đã chặn: luật ấy chỉ so ``nguoi_cap_id != nguoi_nhan_id``, nên **hai**
+tài khoản quản trị cấp chéo cho nhau là hợp lệ với mọi luật domain hiện có. Cùng một hình
+dạng lỗi đã bắt được ở bước 2/5 (*"chủ chuỗi không có quyền ký nên ràng buộc tự chặn"* —
+`grep` cho thấy chủ chuỗi **có**): *"ràng buộc A tự nhiên kéo theo tính chất B"* là một
+**giả định**, không phải một suy luận.
+
+Đây **không** phải phương án "cắt quyền" mà Chain đã bác. Chain bác việc cắt quyền **đọc
+dữ liệu** của người bảo trì, vì làm việc mù thì họ mở ``psql`` — không vết. Ở đây không
+quyền dữ liệu nào bị lấy đi: người bảo trì vẫn nhận đủ 25 quyền dữ liệu **qua uỷ quyền**.
+Thứ bị lấy đi là quyền **tự ký giấy cho mình** — đúng điều kiện Chain đặt ra: *"chủ chuỗi
+sẽ chịu trách nhiệm"*. Một người vừa cấp vừa dùng thì không còn ai chịu trách nhiệm.
+
+Hệ quả vận hành phải nói thẳng: ở quầy một người, Chain cần **hai tài khoản** — một
+``chain_pharmacist`` để cấp, một ``system_admin`` để dùng. Điều đó đã là hệ quả bắt buộc
+của luật 1 trong :func:`~pharmacy_os.modules.iam.domain.delegation.tao_uy_quyen` từ bước
+2/5, bản này không thêm ràng buộc mới nào cho Chain."""
 
 SYSTEM_ADMIN = "system_admin"
 CHAIN_PHARMACIST = "chain_pharmacist"
@@ -204,7 +237,9 @@ _CHAIN_PHARMACIST_PERMISSIONS = (
     | LOCATION_PERMISSIONS
     | PRIVACY_PERMISSIONS
     | ANALYTICS_PERMISSIONS
-    | {"iam.user.read", "iam.role.read"}
+    # Chủ chuỗi là người CẤP uỷ quyền quản trị và người đọc lại sổ ấy — xem
+    # `_SYSTEM_ADMIN_PERMISSIONS` để biết vì sao quyền cấp không nằm ở vai quản trị.
+    | {"iam.user.read", "iam.role.read", "iam.delegation.grant", "iam.delegation.read"}
 )
 
 #: Branch-level professional. Excludes the chain-wide switches: ``catalog.create`` and
@@ -269,8 +304,11 @@ SYSTEM_ROLES: tuple[SystemRoleSpec, ...] = (
     SystemRoleSpec(
         code=SYSTEM_ADMIN,
         name="Quản trị hệ thống",
-        description="Toàn quyền kỹ thuật trên tenant, gồm quản lý người dùng và vai trò.",
-        permissions=ALL_PERMISSIONS,
+        description=(
+            "Toàn quyền kỹ thuật trên tenant, gồm quản lý người dùng và vai trò. Không tự "
+            "cấp được uỷ quyền quản trị — quyền đó thuộc chủ chuỗi (Chain chốt 03/08)."
+        ),
+        permissions=_SYSTEM_ADMIN_PERMISSIONS,
         chain_level=True,
     ),
     SystemRoleSpec(

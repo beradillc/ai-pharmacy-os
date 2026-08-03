@@ -10,6 +10,7 @@ from pharmacy_os.modules.iam.infrastructure.repository import (
     SqlAlchemyTwoFactorChallengeRepository,
     SqlAlchemyUserRepository,
     SqlAlchemyUserTwoFactorRepository,
+    SqlAlchemyUyQuyenRepository,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "SqlAlchemyTwoFactorChallengeRepository",
     "SqlAlchemyUserRepository",
     "SqlAlchemyUserTwoFactorRepository",
+    "SqlAlchemyUyQuyenRepository",
 ]

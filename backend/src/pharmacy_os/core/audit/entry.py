@@ -364,6 +364,30 @@ class AuditAction(StrEnum):
     because this path cancels under the **system** identity — without a row here, the
     trail would show a purchase order cancelled by nobody."""
 
+    # --- uỷ quyền quản trị có thời hạn (Chain chốt 2026-08-03) ---
+    ADMIN_DELEGATION_GRANTED = "ADMIN_DELEGATION_GRANTED"
+    """Chủ chuỗi mở quyền nghiệp vụ cho một tài khoản kỹ thuật, 24 giờ.
+
+    🔴 **Đây là dòng làm cho cả cơ chế uỷ quyền có nghĩa.** Chain bác phương án cắt quyền
+    của vai quản trị, và bác đúng — một người bảo trì làm việc mù sẽ mở ``psql``, nơi
+    không có vết nào. Đích không phải *ít quyền hơn* mà là **quyền cao nhất phải đắt nhất
+    để dùng**: giá của nó chính là dòng này.
+
+    ``context`` mang **số quyền** và người nhận, không mang danh sách mã quyền: danh sách
+    đầy đủ đã nằm trong ``uy_quyen_quan_tri_quyen`` và chép nó vào đây là biến sổ audit
+    thành bản sao thứ hai của bảng nó đang canh — cùng kỷ luật với
+    :attr:`SALE_PRICE_OVERRIDE`. ``ly_do`` **thì có**, vì nó không tồn tại ở đâu khác dưới
+    dạng người đọc được, và nó là thứ người rà soát đọc trước tiên."""
+
+    ADMIN_DELEGATION_REVOKED = "ADMIN_DELEGATION_REVOKED"
+    """Một uỷ quyền bị rút **trước hạn** — cố ý tách khỏi việc hết hạn tự nhiên.
+
+    Hết hạn là mặc định và không cần ai làm gì (một phép so thời gian, không phải tác vụ
+    nền). Rút sớm là một **hành vi có chủ ý** của một con người, và nó thường có nghĩa là
+    người cấp vừa đổi ý về người nhận — đúng loại sự kiện phải trả lời được. Trộn hai thứ
+    vào một mã là chôn cái hiếm dưới cái thường xuyên, cùng lý do
+    :attr:`PASSWORD_RESET` tách khỏi :attr:`PASSWORD_CHANGED`."""
+
 
 @dataclass(frozen=True, slots=True)
 class AuditEntry:

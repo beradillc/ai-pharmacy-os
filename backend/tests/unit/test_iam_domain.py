@@ -272,10 +272,41 @@ def test_every_seeded_permission_is_a_known_permission() -> None:
         assert spec.permissions <= ALL_PERMISSIONS, spec.code
 
 
-def test_admin_holds_every_permission_and_is_the_only_role_that_does() -> None:
-    assert SYSTEM_ROLES_BY_CODE[SYSTEM_ADMIN].permissions == ALL_PERMISSIONS
+def test_admin_holds_every_permission_EXCEPT_the_one_that_grants_delegation() -> None:
+    """🔴 Kỳ vọng đổi có chủ ý 2026-08-03 (Chain chốt uỷ quyền quản trị), không phải nới lỏng.
+
+    Tới bản trước, vai quản trị hệ thống giữ đúng **56/56** quyền. Nay nó giữ 57/58: quyền
+    **duy nhất** bị giữ lại là ``iam.delegation.grant``.
+
+    Vì sao đây là thay đổi bắt buộc chứ không phải một lựa chọn phong cách: nếu tài khoản kỹ
+    thuật cấp được uỷ quyền, nó cấp cho **một tài khoản kỹ thuật khác**, và điều kiện Chain
+    đặt ra — *"chủ chuỗi sẽ chịu trách nhiệm"* — không còn ai thực hiện. Luật *"không tự uỷ
+    quyền cho chính mình"* **không** đóng đường ấy: nó chỉ so hai id, nên hai tài khoản quản
+    trị cấp chéo cho nhau là hợp lệ với mọi luật domain. Đúng hình dạng sai lầm đã mắc ở bước
+    2/5 — *"ràng buộc A tự nhiên kéo theo tính chất B"* là một **giả định**, không phải suy
+    luận (họ kỷ luật #16).
+
+    Đây **không** phải phương án "cắt quyền" Chain đã bác: không một quyền **dữ liệu** nào bị
+    lấy đi — người bảo trì vẫn nhận đủ 25 quyền dữ liệu, chỉ là **qua uỷ quyền có vết** thay
+    vì thường trực. Thứ bị lấy đi là quyền tự ký giấy cho chính mình.
+    """
+    admin = SYSTEM_ROLES_BY_CODE[SYSTEM_ADMIN].permissions
+    assert ALL_PERMISSIONS - admin == {"iam.delegation.grant"}, (
+        "Vai quản trị hệ thống chỉ được thiếu ĐÚNG một quyền. Thiếu thêm quyền khác nghĩa là "
+        "ai đó đang cắt quyền người bảo trì — phương án Chain đã bác 03/08."
+    )
     others = [s for s in SYSTEM_ROLES if s.code != SYSTEM_ADMIN]
     assert all(spec.permissions < ALL_PERMISSIONS for spec in others)
+
+
+def test_chi_chu_chuoi_cap_duoc_uy_quyen() -> None:
+    """Chiều còn lại: quyền cấp phải nằm ở **đúng một** vai, và là vai chịu trách nhiệm.
+
+    Một quyền không thuộc về ai thì tính năng chết; thuộc về nhiều vai thì "chủ chuỗi chịu
+    trách nhiệm" mất nghĩa. Kiểm cả hai chiều — cùng kỷ luật #22.
+    """
+    co_quyen_cap = [s.code for s in SYSTEM_ROLES if "iam.delegation.grant" in s.permissions]
+    assert co_quyen_cap == [CHAIN_PHARMACIST]
 
 
 def test_cashier_cannot_approve_or_dispense_prescriptions() -> None:

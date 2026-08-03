@@ -16,6 +16,7 @@ from pharmacy_os.modules.iam.domain import (
     TwoFactorStatus,
     User,
     UserTwoFactor,
+    UyQuyenQuanTri,
 )
 from pharmacy_os.modules.iam.infrastructure.models import (
     BranchORM,
@@ -28,6 +29,8 @@ from pharmacy_os.modules.iam.infrastructure.models import (
     UserORM,
     UserRoleORM,
     UserTwoFactorORM,
+    UyQuyenQuanTriORM,
+    UyQuyenQuyenORM,
 )
 
 
@@ -218,6 +221,36 @@ def backup_code_to_orm(code: BackupCode) -> TwoFactorBackupCodeORM:
         two_factor_id=code.two_factor_id,
         code_hash=code.code_hash,
         used_at=code.used_at,
+    )
+
+
+def uy_quyen_to_domain(row: UyQuyenQuanTriORM) -> UyQuyenQuanTri:
+    return UyQuyenQuanTri(
+        id=row.id,
+        tenant_id=row.tenant_id,
+        nguoi_nhan_id=row.nguoi_nhan_id,
+        nguoi_cap_id=row.nguoi_cap_id,
+        ly_do=row.ly_do,
+        quyen=frozenset(q.permission for q in row.quyen),
+        cap_luc=_as_utc(row.cap_luc) or row.cap_luc,
+        het_han_luc=_as_utc(row.het_han_luc) or row.het_han_luc,
+        thu_hoi_luc=_as_utc(row.thu_hoi_luc),
+    )
+
+
+def uy_quyen_to_orm(uy_quyen: UyQuyenQuanTri) -> UyQuyenQuanTriORM:
+    return UyQuyenQuanTriORM(
+        id=uy_quyen.id,
+        tenant_id=uy_quyen.tenant_id,
+        nguoi_nhan_id=uy_quyen.nguoi_nhan_id,
+        nguoi_cap_id=uy_quyen.nguoi_cap_id,
+        ly_do=uy_quyen.ly_do,
+        cap_luc=uy_quyen.cap_luc,
+        het_han_luc=uy_quyen.het_han_luc,
+        thu_hoi_luc=uy_quyen.thu_hoi_luc,
+        quyen=[
+            UyQuyenQuyenORM(uy_quyen_id=uy_quyen.id, permission=ma) for ma in sorted(uy_quyen.quyen)
+        ],
     )
 
 

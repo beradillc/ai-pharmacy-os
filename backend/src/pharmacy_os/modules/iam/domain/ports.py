@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
+from pharmacy_os.modules.iam.domain.delegation import UyQuyenQuanTri
 from pharmacy_os.modules.iam.domain.entities import (
     Branch,
     RefreshSession,
@@ -124,6 +125,40 @@ class BackupCodeRepository(Protocol):
     async def list_for(self, two_factor_id: UUID) -> list[BackupCode]: ...
 
     async def update(self, code: BackupCode) -> None: ...
+
+
+class UyQuyenRepository(Protocol):
+    """Uỷ quyền quản trị có thời hạn (Chain chốt 2026-08-03).
+
+    🔴 **Không có ``delete_expired`` như hai port trên.** Uỷ quyền hết hạn là **vết kiểm
+    toán**, không phải rác dọn được: câu hỏi *"ai đã mở quyền đọc hồ sơ bệnh nhân cho ai,
+    lúc nào, vì lý do gì"* chỉ trả lời được nếu hàng đã hết hạn vẫn nằm đó. Hết hiệu lực
+    là một **phép so thời gian** (:meth:`UyQuyenQuanTri.con_hieu_luc`), không phải một
+    lượt ``DELETE``.
+    """
+
+    async def add(self, uy_quyen: UyQuyenQuanTri) -> None: ...
+
+    async def get(self, uy_quyen_id: UUID) -> UyQuyenQuanTri | None: ...
+
+    async def list_con_hieu_luc(
+        self, nguoi_nhan_id: UUID, bay_gio: datetime
+    ) -> list[UyQuyenQuanTri]:
+        """Uỷ quyền đang còn hiệu lực của một người — đường nóng, gọi mỗi request.
+
+        Lọc ``thu_hoi_luc IS NULL AND het_han_luc > bay_gio`` **ở CSDL**, không đọc hết
+        rồi lọc trong Python: bảng này chỉ-ghi-thêm, nên số hàng lịch sử tăng mãi trong
+        khi số hàng còn hiệu lực gần như luôn là 0.
+        """
+        ...
+
+    async def list_cua_tenant(
+        self, tenant_id: UUID, *, limit: int = 50, offset: int = 0
+    ) -> list[UyQuyenQuanTri]:
+        """Cả lịch sử, mới nhất trước — màn rà soát của chủ chuỗi."""
+        ...
+
+    async def thu_hoi(self, uy_quyen_id: UUID, thu_hoi_luc: datetime) -> None: ...
 
 
 class TwoFactorChallengeRepository(Protocol):

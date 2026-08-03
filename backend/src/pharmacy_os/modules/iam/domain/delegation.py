@@ -92,6 +92,7 @@ def tao_uy_quyen(
     nguoi_cap_id: UUID,
     ly_do: str,
     quyen_nguoi_cap: frozenset[str],
+    quyen_yeu_cau: frozenset[str] | None = None,
     bay_gio: datetime | None = None,
 ) -> UyQuyenQuanTri:
     """Dựng một uỷ quyền hợp lệ, hoặc ném :class:`UyQuyenKhongHopLe`.
@@ -106,6 +107,27 @@ def tao_uy_quyen(
     2. **Không cấp quá thứ mình có.** Uỷ quyền không bao giờ rộng hơn người ký nó.
     3. **Không cấp thứ nằm trong :data:`KHONG_UY_QUYEN_DUOC`**, dù người cấp có.
     4. **Phải có lý do.**
+
+    🔴 **Hai tham số quyền, không phải một — sửa 2026-08-03 (bước 3/5).** Bản bước 2/5 chỉ
+    có ``quyen_nguoi_cap`` và cấp đúng bằng chính nó, nên:
+
+    * **Luật 2 không hề tồn tại trong mã.** Docstring khai một phép so, nhưng chỉ có **một**
+      tập — tập được cấp *là* tập người cấp, nên luật ấy luôn đúng và không bao giờ đỏ được.
+      Đúng hình dạng kỷ luật #23: *một phép so hai vế cùng nguồn là một phép gán đội lốt*.
+    * **Và luật 3 bắn nhầm mục tiêu.** Nó soi tập **người cấp đang có** thay vì tập **được
+      yêu cầu**. Chủ chuỗi — vai **duy nhất** được phép cấp — luôn có ``compliance.ledger.sign``
+      vì họ là dược sĩ ký sổ hợp pháp, nên truyền tập quyền thật của họ vào thì **mọi** lần
+      cấp đều ném lỗi. Đo bằng lệnh trước khi sửa: tính năng chết 100% ở đúng đường dùng thật,
+      trong khi 10/10 test đơn vị xanh — vì không test nào truyền tập quyền của một vai thật.
+
+    Nay: ``quyen_nguoi_cap`` là **thứ người cấp đang có**, ``quyen_yeu_cau`` là **thứ đang xin**.
+    Hai nguồn độc lập ⇒ luật 2 đỏ được.
+
+    ``quyen_yeu_cau=None`` nghĩa là *"cấp tất cả những gì tôi cấp được"* — đường mặc định, và
+    nó **lọc im lặng** qua :func:`loc_quyen_uy_quyen_duoc`. Không mâu thuẫn với nguyên tắc
+    *"quyền cấm lọt vào phải là lỗi ồn ào"*: nguyên tắc ấy nói về thứ **được xin**, không nói
+    về thứ người cấp **tình cờ đang có**. Một chủ chuỗi có quyền ký là trạng thái **đúng**,
+    không phải một lỗi cần hét lên. Xin đích danh quyền ký thì vẫn ném lỗi, như cũ.
     """
     bay_gio = bay_gio or datetime.now(UTC)
 
@@ -120,13 +142,24 @@ def tao_uy_quyen(
             "và là thứ người ta đọc lại khi rà."
         )
 
-    xin = frozenset(quyen_nguoi_cap)
-    vuot = xin & KHONG_UY_QUYEN_DUOC
-    if vuot:
-        raise UyQuyenKhongHopLe(
-            f"Không uỷ quyền được: {', '.join(sorted(vuot))}. Đây là hành vi pháp lý gắn với "
-            "Chứng chỉ hành nghề dược của một con người, không phải một quyền phần mềm."
-        )
+    co = frozenset(quyen_nguoi_cap)
+    if quyen_yeu_cau is None:
+        xin = loc_quyen_uy_quyen_duoc(co)
+    else:
+        xin = frozenset(quyen_yeu_cau)
+        vuot = xin & KHONG_UY_QUYEN_DUOC
+        if vuot:
+            raise UyQuyenKhongHopLe(
+                f"Không uỷ quyền được: {', '.join(sorted(vuot))}. Đây là hành vi pháp lý gắn "
+                "với Chứng chỉ hành nghề dược của một con người, không phải một quyền phần mềm."
+            )
+        # Luật 2 — nay là một phép so THẬT, giữa hai tập đến từ hai chỗ khác nhau.
+        thieu = xin - co
+        if thieu:
+            raise UyQuyenKhongHopLe(
+                f"Không cấp được thứ chính mình không có: {', '.join(sorted(thieu))}. "
+                "Uỷ quyền không bao giờ rộng hơn người ký nó."
+            )
 
     if not xin:
         raise UyQuyenKhongHopLe("Không có quyền nào để uỷ quyền.")
