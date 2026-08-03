@@ -13,7 +13,7 @@ import {
 } from "@/features/procurement/use-goods-receipt";
 import { ApiError } from "@/shared/api/errors";
 import type { PurchaseOrderItem, PurchaseOrderListItem } from "@/shared/api/types";
-import { formatMoney } from "@/shared/format/number";
+import { formatMoney, formatQty, formatSo } from "@/shared/format/number";
 import { DetailDialog } from "@/components/overlay/DetailDialog";
 
 import styles from "@/shared/ui/screen.module.css";
@@ -310,7 +310,7 @@ function ReceiveRow({
         {name ?? <span className={styles.muted}>Mã {item.drug_id.slice(0, 8)}</span>}
         {Number(item.quantity_received) > 0 && (
           <span className={`${styles.chip} ${styles.chipMuted} ${local.tag}`}>
-            đã nhận {item.quantity_received}
+            đã nhận {formatQty(item.quantity_received)}
           </span>
         )}
       </td>
@@ -364,7 +364,7 @@ function ReceiveRow({
           value={line.unit_cost}
           onChange={(e) => onChange({ unit_cost: e.target.value })}
           aria-label={`Giá nhập — ${name ?? item.drug_id}`}
-          placeholder={item.unit_price}
+          placeholder={formatSo(item.unit_price)}
         />
       </td>
     </tr>

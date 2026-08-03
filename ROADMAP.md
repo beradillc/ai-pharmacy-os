@@ -434,13 +434,63 @@ không cùng mức rủi ro:
 đọc đúng (doanh thu, tồn kho, giá vốn, danh mục). Đúng thứ tự tự nhiên: **V3-5 và V3-7a là
 đầu vào của V3-8**, làm chúng trước thì phần AI rẻ đi.
 
+### V3-9 ✅ XONG 2026-08-04 — Số lượng hiện thô: "sổ ghi 100.000" cho 100 viên
+
+Chain phát hiện ở màn Kiểm kê. Nguyên nhân đo bằng lệnh, không suy:
+
+| Tầng | Sự thật |
+|---|---|
+| CSDL | `quantity_received numeric(18,3)` |
+| API thật (`GET /inventory/stock`) | `{'lot_no': 'Aa', 'quantity': '100.000'}` — **100 viên** |
+| Màn hình | dựng **thẳng** chuỗi ấy vào JSX |
+
+Dấu chấm ở JSON là **thập phân**, ở Việt Nam là **ngăn hàng nghìn**. Người đọc thấy
+*"100.000"* hiểu là **một trăm nghìn**. Không cổng nào đỏ: `tsc` xanh vì `string` là
+`string`, `pytest` xanh vì backend trả đúng, ảnh chụp trông bình thường vì `100.000` là một
+con số hợp lệ.
+
+🔴 **Hàm chữa bệnh đã có sẵn từ 01/08** (`formatQty`, sinh ra sau ca ô hoạt chất hiện
+`1.0000`). Thứ thiếu suốt ba ngày là **cái bắt người ta phải dùng nó** — đúng kết luận kiểm
+toán 26/07 mà kỷ luật #24 ghi lại.
+
+**Đã sửa 7 chỗ** (Kiểm kê ×5, Nhận hàng ×2) **và thêm cổng** `shared/so-thap-phan.test.ts`:
+đọc tên trường `Decimal` **thẳng từ schema Python**, quét `.tsx` tìm chỗ dựng thô.
+`MUTANT7_EXIT=1` — trả một chỗ về nguyên trạng lỗi thì cổng đỏ đúng dòng đó.
+
+### V3-10 🔴 "Token không hợp lệ hoặc đã hết hạn" — mà nút lại là **Thử lại** (Chain nêu 04/08)
+
+Chain hỏi đúng: *"hết hạn thì đăng nhập lại, chứ thử lại cái gì?"* Bấm Thử lại là gửi lại
+**đúng cái token đã chết** — không lần nào thành công được.
+
+Ba lỗi **chồng lên nhau**, không phải một:
+
+| # | Lỗi | Chỗ |
+|---|---|---|
+| 1 | Token hết hạn ném **`PermissionDeniedError` ⇒ HTTP 403**, tiêu đề *"Không đủ quyền"* | `core/security/jwt.py:54` |
+| 2 | ⇒ Phân loại **sai về ngữ nghĩa**: người dùng **có** quyền, chỉ là **phiên đã hết**. Đó là lỗi **xác thực (401)**, không phải **phân quyền (403)** | — |
+| 3 | `ApiError.isUnauthenticated` (`status === 401`) **tồn tại nhưng KHÔNG NƠI NÀO GỌI** — `grep` cả frontend chỉ thấy đúng dòng khai báo nó | `shared/api/errors.ts:23` |
+
+⇒ Không có đường nào đưa người dùng về màn đăng nhập, kể cả khi backend trả 401 thật. Mọi
+lỗi rơi vào `ErrorState` chung, và `ErrorState` chỉ biết mời **Thử lại**.
+
+**Việc:**
+1. Token hỏng/hết hạn ⇒ ném lỗi **401**, không phải 403. *(Đổi hành vi API — kiểm lại các
+   chỗ đang bắt 403 trước khi sửa.)*
+2. Nối `isUnauthenticated`: gặp 401 ⇒ **xoá phiên + đưa về `/login`**, kèm câu *"Phiên đăng
+   nhập đã hết, vui lòng đăng nhập lại"*. Không hiện nút Thử lại.
+3. `ErrorState` phân biệt **lỗi thử lại được** (mạng, 5xx) với **lỗi không thử lại được**
+   (401, 403, 404) — hôm nay nó mời Thử lại cho cả ba loại.
+
+🟠 Cùng họ với V3-6 (*giao diện im lặng khi thiếu quyền*): cả hai đều là **màn hình nói sai
+việc cần làm tiếp theo**. Gộp làm một đợt thì rẻ hơn làm rời.
+
 ### Thứ tự đề nghị
 
 | Ưu tiên | Mục | Vì sao |
 |---|---|---|
 | ~~1~~ | ~~**V3-1** thêm thuốc mới~~ | ✅ **xong 04/08** |
 | 2 | **V3-2** nút tạo đơn mua | Backend xong, chỉ thiếu màn |
-| 3 | **V3-6** nói ra khi thiếu quyền | Rẻ, và sửa đúng loại hiểu nhầm vừa xảy ra |
+| 3 | **V3-6 + V3-10** màn hình nói đúng việc cần làm tiếp | Cùng họ: thiếu quyền thì nói ra · hết phiên thì mời đăng nhập lại, không mời Thử lại |
 | 4 | **V3-5** báo cáo đọc được | Đầu vào của V3-8 |
 | 5 | **V3-7a** báo cáo lợi nhuận | Dữ liệu đã đủ — *chờ Chain chốt chiều xem* |
 | 6 | **V3-4** màn dẫn đường bắt đầu | Sau khi V3-1 xong mới trọn nghĩa |

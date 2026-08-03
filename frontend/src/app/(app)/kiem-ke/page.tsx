@@ -20,6 +20,8 @@ import { ApiError } from "@/shared/api/errors";
 import type { StockCount } from "@/shared/api/types";
 import { DetailDialog } from "@/components/overlay/DetailDialog";
 
+import { formatQty } from "@/shared/format/number";
+
 import styles from "@/shared/ui/screen.module.css";
 
 import { TabManGop } from "@/components/layout/TabManGop";
@@ -268,7 +270,7 @@ function DieuChinhNhanh() {
             {(trongO.data ?? []).map((r) => (
               <option key={r.batch_id} value={r.batch_id}>
                 {ten.nameOf(r.drug_id) ?? `Mã ${r.drug_id.slice(0, 8)}`} · lô {r.lot_no} · sổ ghi{" "}
-                {r.quantity}
+                {formatQty(r.quantity)}
               </option>
             ))}
           </select>
@@ -303,7 +305,8 @@ function DieuChinhNhanh() {
           một cách trông rất giống đúng. Hiện phép trừ ra là chặn đúng nhầm lẫn đó. */}
       {loDangChon && so !== "" && Number.isFinite(Number(so)) && (
         <p className={local.chenh}>
-          Sổ đang ghi <strong>{loDangChon.quantity}</strong> → sẽ thành <strong>{so}</strong> (
+          Sổ đang ghi <strong>{formatQty(loDangChon.quantity)}</strong> → sẽ thành{" "}
+          <strong>{formatQty(so)}</strong> (
           {Number(so) - Number(loDangChon.quantity) >= 0 ? "thừa " : "thiếu "}
           {Math.abs(Number(so) - Number(loDangChon.quantity))})
         </p>
@@ -537,11 +540,13 @@ function DongDem({
             aria-label={`Đếm được lô ${lot}`}
           />
         ) : (
-          (dong?.counted_qty ?? "—")
+          (dong?.counted_qty ? formatQty(dong.counted_qty) : "—")
         )}
       </td>
       {/* 🔴 Chưa nộp thì để TRỐNG, không hiện 0 — 0 đọc y hệt "đã chốt và khớp". */}
-      <td data-nhan="Sổ ghi" className={styles.num}>{dong?.system_qty ?? "—"}</td>
+      <td data-nhan="Sổ ghi" className={styles.num}>
+        {dong?.system_qty ? formatQty(dong.system_qty) : "—"}
+      </td>
       <td
         data-nhan="Chênh"
         className={`${styles.num} ${lech === null ? "" : lech === 0 ? local.khop : local.lech}`}
