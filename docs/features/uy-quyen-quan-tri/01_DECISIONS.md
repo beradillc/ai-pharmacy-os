@@ -61,3 +61,44 @@ lên. Cần Chain trả lời một câu để đóng: *quyền ký sổ có n�
 5. **Danh sách KHÔNG-UỶ-QUYỀN-ĐƯỢC là hằng số trong domain**, không phải cấu hình. Một quyền
    chỉ ra khỏi danh sách đó bằng cách sửa mã và qua cổng — không bằng một dòng `.env` gõ vội
    lúc 2 giờ sáng đang xử lý sự cố.
+
+6. 🔴 **Quyền `iam.delegation.grant` KHÔNG nằm ở vai quản trị hệ thống** (GĐ quyết dưới uỷ
+   quyền full-auto 2026-08-03, bước 3/5 — **Chain xem lại khi rảnh**).
+
+   Vai `system_admin` tới bản này giữ đúng **56/56** quyền — kiểm bằng lệnh, không suy:
+   `sa.permissions == ALL_PERMISSIONS` trả `True`. Nếu quyền cấp uỷ quyền cứ thế đi vào
+   `IAM_PERMISSIONS` thì **tài khoản kỹ thuật tự mở quyền cho tài khoản kỹ thuật**, và điều
+   kiện Chain đặt ra — *"chủ chuỗi sẽ chịu trách nhiệm"* — không còn ai thực hiện.
+
+   **Luật 1 ("không tự uỷ quyền cho chính mình") KHÔNG chặn được đường này.** Nó chỉ so
+   `nguoi_cap_id != nguoi_nhan_id`, nên **hai** tài khoản quản trị cấp chéo cho nhau là hợp
+   lệ với mọi luật domain. Đây đúng là hình dạng sai lầm đã mắc ở bước 2/5 (*"chủ chuỗi
+   không có quyền ký nên ràng buộc tự chặn"* — `grep` cho thấy chủ chuỗi **có**): một **giả
+   định** đội lốt suy luận. Lần này kiểm bằng lệnh trước khi ghi.
+
+   **Đây không phải phương án "cắt quyền" Chain đã bác.** Chain bác việc cắt quyền **đọc dữ
+   liệu** của người bảo trì, vì làm việc mù thì họ mở `psql` — không vết. Ở đây **không một
+   quyền dữ liệu nào bị lấy đi**: người bảo trì vẫn nhận đủ 25 quyền dữ liệu, chỉ là **qua
+   uỷ quyền có vết và có hạn** thay vì thường trực. Thứ bị lấy đi là quyền **tự ký giấy cho
+   chính mình**.
+
+   Hệ quả vận hành: ở quầy một người, Chain cần **hai tài khoản** — một `chain_pharmacist`
+   để cấp, một `system_admin` để dùng. Điều này **đã là** hệ quả bắt buộc của luật 1 từ bước
+   2/5; bản này không thêm ràng buộc mới nào cho Chain.
+
+7. **Hai tham số quyền, không phải một** (sửa lỗi của bước 2/5, bước 3/5).
+
+   Bản bước 2/5 chỉ có `quyen_nguoi_cap` và cấp đúng bằng chính nó. Hai hệ quả, cả hai đã đo
+   bằng lệnh trên tập quyền thật của `chain_pharmacist`:
+
+   | Lỗi | Hệ quả |
+   |---|---|
+   | Luật 3 soi tập **đang có** thay vì tập **được xin** | Chủ chuỗi luôn có `compliance.ledger.sign` ⇒ **mọi** lần cấp ném lỗi ⇒ tính năng chết 100% ở đường dùng thật, trong khi 10/10 test đơn vị xanh |
+   | Luật 2 **không tồn tại trong mã** | Chỉ có một tập ⇒ tập được cấp *là* tập người cấp ⇒ mệnh đề luôn đúng, không bao giờ đỏ được (kỷ luật #23: phép so hai vế cùng nguồn) |
+
+   Nay `quyen_nguoi_cap` (đang có) tách khỏi `quyen_yeu_cau` (đang xin). Bỏ trống nghĩa là
+   *"cấp tất cả những gì tôi cấp được"* và **lọc im lặng**; xin đích danh quyền ký thì vẫn
+   **ném lỗi ồn ào**. Nguyên tắc cũ giữ nguyên, chỉ là soi đúng mục tiêu của nó.
+
+   *Vì sao không test nào bắt được:* cả 10 test đều dùng một tập quyền **bịa 4 mã**, không
+   phải tập của bất kỳ vai có thật nào. Đã thêm `test_chu_chuoi_THAT_cap_duoc_uy_quyen`.

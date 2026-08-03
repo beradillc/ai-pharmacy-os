@@ -28,6 +28,7 @@ from pharmacy_os.core.errors import UnauthenticatedError
 from pharmacy_os.core.http import client_ip_of, user_agent_of
 from pharmacy_os.core.security import JwtService
 from pharmacy_os.core.security.branch_scope import TokenScopeGuard
+from pharmacy_os.core.security.uy_quyen_scope import UyQuyenGuard
 from pharmacy_os.modules.iam.domain import ALL_PERMISSIONS
 
 _log = structlog.get_logger("api.auth")
@@ -80,11 +81,35 @@ async def get_context(request: Request) -> RequestContext:
                 detail="claim trong token không đi được với nhau — từ chối (audit B-07/B-13)",
             )
             raise UnauthenticatedError("Token không hợp lệ, vui lòng đăng nhập lại")
+
+        # Uỷ quyền quản trị có thời hạn (Chain chốt 2026-08-03): quyền MƯỢN được cộng vào
+        # đây, ở tầng request — cố ý KHÔNG nằm trong token đã ký. Một uỷ quyền 24 giờ nằm
+        # trong JWT sẽ sống dai hơn cửa sổ của chính nó (token cấp lúc 23:59 vẫn mang quyền
+        # ấy sau khi uỷ quyền đã hết), tức cơ chế kiểm soát hỏng đúng ở chỗ nó tồn tại để
+        # canh. Xem `core/security/uy_quyen_scope.py` và ràng buộc cài đặt #1 của
+        # `docs/features/uy-quyen-quan-tri/01_DECISIONS.md`.
+        muon = await container.resolve(UyQuyenGuard).quyen_duoc_uy_quyen(
+            payload.tenant_id, payload.user_id
+        )
+        if muon:
+            # Ghi log ở mức info, không phải warning: đây là một cơ chế hợp lệ đang hoạt
+            # động đúng thiết kế, không phải một bất thường. Nhưng nó PHẢI để lại dòng —
+            # "vì sao tài khoản này đọc được hồ sơ bệnh nhân lúc 2 giờ sáng" là câu hỏi
+            # người rà soát sẽ hỏi, và câu trả lời không được chỉ nằm trong một bảng.
+            _log.info(
+                "quyen_uy_quyen_ap_dung",
+                tenant_id=str(payload.tenant_id),
+                user_id=str(payload.user_id),
+                so_quyen_muon=len(muon),
+                detail="quyền thêm từ uỷ quyền quản trị còn hiệu lực",
+            )
         return RequestContext(
             tenant_id=payload.tenant_id,
             branch_id=payload.branch_id,
             user_id=payload.user_id,
-            permissions=payload.permissions,
+            # Hợp NHẤT, không thay thế: uỷ quyền chỉ **thêm**, không bao giờ bớt. Một cơ chế
+            # mở quyền mà lại có đường làm mất quyền là một cơ chế không ai dám bật.
+            permissions=payload.permissions | muon,
             client_ip=client_ip_of(request),
             user_agent=user_agent_of(request),
         )

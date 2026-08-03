@@ -30,6 +30,7 @@ from pharmacy_os.core.plugins import HookRegistry, PluginLoader
 from pharmacy_os.core.security.branch_scope import TokenScopeGuard
 from pharmacy_os.core.security.crypto import BlindIndex, FieldCipher, KeyRing, decode_key
 from pharmacy_os.core.security.jwt import JwtService
+from pharmacy_os.core.security.uy_quyen_scope import UyQuyenGuard
 
 _log = structlog.get_logger("core.bootstrap")
 
@@ -128,6 +129,12 @@ def build_container(settings: Settings) -> Container:
     # (tenant, chi nhánh) VÀ (tenant, người dùng) là có thật. Singleton vì nó giữ
     # cache các cặp đã xác nhận — instance mới mỗi request thì cache vô nghĩa.
     container.register_instance(TokenScopeGuard, TokenScopeGuard(session_factory))
+
+    # Uỷ quyền quản trị có thời hạn (Chain chốt 2026-08-03): quyền mượn được đọc lại ở
+    # MỖI request, không nhét vào JWT — một uỷ quyền 24 giờ nằm trong token sẽ sống dai
+    # hơn cửa sổ của chính nó. Guard này CỐ Ý không có cache, khác TokenScopeGuard ngay
+    # trên: cache một thứ sinh ra để hết hạn là tái tạo đúng lỗi vừa tránh.
+    container.register_instance(UyQuyenGuard, UyQuyenGuard(session_factory))
 
     # EventBus is a Protocol used as a service key; concrete impl is InMemoryEventBus.
     container.register_singleton(EventBus, lambda _c: InMemoryEventBus())  # type: ignore[type-abstract]
