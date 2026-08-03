@@ -1,0 +1,87 @@
+/** Cửa sổ "Tạo đơn mua hàng" (V3-2) — cùng lối một cột với `them-thuoc.module.css`. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.o {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.nhan {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted-fg, #5b6b5e);
+}
+
+/* Một mặt hàng = một khối có viền, không phải một hàng của bảng. Bảng buộc phải cuộn ngang
+   trên điện thoại, mà đây là màn dùng khi đứng nói chuyện với trình dược viên. */
+.dong {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border, #d9e2db);
+  border-radius: 0.5rem;
+}
+
+/* Số lượng và đơn giá đứng cạnh nhau: hai ô ngắn, luôn đi cùng nhau trong đầu người nhập. */
+.doi {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.doi > * {
+  /* `flex: 1 1 0` chứ KHÔNG `flex: 1` — xem bẫy `flex-basis` đã quay lại bốn lần
+     (kỷ luật #22 hệ luận): `flex: 1` cho `basis: 0%` nhưng trong hộp DỌC nó nở theo chiều
+     cao. Ở đây hộp là ngang, vẫn khai tường minh để không ai bê khối này sang chỗ khác rồi
+     dính lại. */
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.trong {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px dashed var(--border, #d9e2db);
+  border-radius: 0.5rem;
+  text-align: center;
+  color: var(--muted-fg, #5b6b5e);
+  font-size: 0.875rem;
+}
+
+.tong {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--accent-soft, #eef5f0);
+  font-size: 0.9375rem;
+}
+
+.day {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+/* Khổ điện thoại: nút chính xuống dưới cùng, nơi ngón cái với tới dễ nhất (kỷ luật #21). */
+@media (max-width: 480px) {
+  .day {
+    flex-direction: column-reverse;
+  }
+
+  .day > * {
+    width: 100%;
+  }
+
+  .doi {
+    flex-direction: column;
+  }
+}

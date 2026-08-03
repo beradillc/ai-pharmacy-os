@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 
+import { TaoDonMuaDialog } from "@/features/procurement/TaoDonMuaDialog";
+import { usePlacePurchaseOrder } from "@/features/procurement/use-create-po";
+
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
   PO_PAGE_SIZE,
@@ -76,9 +79,13 @@ export default function PurchaseOrdersPage() {
   // Quyền do backend cấp; đây chỉ là ẩn nút cho đỡ vướng mắt. Người không có
   // quyền mà gọi thẳng API vẫn bị 403 — giao diện KHÔNG phải chỗ quyết
   // authorization, chỉ phản ánh nó.
-  const canReceive = new Set(useAuthStore((s) => s.session)?.permissions ?? []).has(
-    "procurement.grn.create",
-  );
+  const quyen = new Set(useAuthStore((s) => s.session)?.permissions ?? []);
+  const canReceive = quyen.has("procurement.grn.create");
+  const canCreate = quyen.has("procurement.po.create");
+  const canPlace = quyen.has("procurement.po.write");
+
+  const [dangTao, setDangTao] = useState(false);
+  const datDon = usePlacePurchaseOrder();
 
   const { data, isLoading, error, refetch } = usePurchaseOrders(status, page);
   const rows = data ?? [];
@@ -91,6 +98,18 @@ export default function PurchaseOrdersPage() {
           <p className={styles.subtitle}>Mới nhất trước · tổng tiền là tiền ĐẶT, chưa phải tiền nhận</p>
         </div>
         <div className={styles.controls}>
+          {/* V3-2: trước bản này KHÔNG có chỗ nào tạo đơn mua thủ công — đường duy nhất là
+              Đề xuất đặt hàng, mà ca trình dược viên chào tận quầy thì không có đề xuất nào. */}
+          {canCreate ? (
+            <button type="button" className={styles.button} onClick={() => setDangTao(true)}>
+              + Tạo đơn mua
+            </button>
+          ) : (
+            // Kỷ luật V3-6: thiếu quyền thì NÓI RA, đừng ẩn trơn.
+            <span className={local.hint}>
+              Cần quyền <code>procurement.po.create</code> để tạo đơn.
+            </span>
+          )}
           <select
             className={styles.select}
             value={status ?? ""}
@@ -184,6 +203,19 @@ export default function PurchaseOrdersPage() {
                           >
                             Nhận hàng
                           </button>
+                        ) : po.status === "DRAFT" && canPlace ? (
+                          // 🔴 DRAFT → ORDERED là lúc đơn thành CAM KẾT TÀI CHÍNH thật với
+                          // nhà cung cấp (backend ghi audit PROCUREMENT_PO_ORDERED đúng ở
+                          // mốc này). Tách khỏi lúc tạo có chủ đích — gộp lại thì mỗi lần gõ
+                          // thử một đơn là một lần cam kết.
+                          <button
+                            type="button"
+                            className={styles.ghost}
+                            disabled={datDon.isPending}
+                            onClick={() => datDon.mutate(po.id)}
+                          >
+                            Đặt đơn
+                          </button>
                         ) : (
                           <span className={local.hint} title={WHY_NOT[po.status]}>
                             —
@@ -220,6 +252,17 @@ export default function PurchaseOrdersPage() {
       </div>
 
       {receiving && <ReceiveDrawer po={receiving} onClose={() => setReceiving(null)} />}
+      <TaoDonMuaDialog
+        open={dangTao}
+        onClose={() => setDangTao(false)}
+        // Tạo xong lọc về NHÁP: đơn mới nằm ở đó, và bước tiếp theo của người dùng là bấm
+        // "Đặt đơn" trên chính dòng vừa hiện ra — không phải đi tìm nó giữa danh sách.
+        onCreated={() => {
+          setStatus("DRAFT");
+          setPage(0);
+        }}
+      />
+
     </div>
   );
 }

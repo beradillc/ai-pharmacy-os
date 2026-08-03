@@ -311,13 +311,14 @@ trong phiên) · frontend vẫn **không có một test nào**.
 | Việc | Thêm màn/drawer tạo thuốc, **gọi được ngay giữa luồng nhập hàng** (không bắt thoát ra rồi quay lại) |
 | **Đã làm** | `ThemThuocDialog` dùng chung cho `/danh-muc-thuoc` và `/nhap-nhanh`. Tạo xong **chọn sẵn mã mới**, dữ liệu gõ dở còn nguyên. Ảnh + cổng: `docs/ui-history/2026-08-04-them-thuoc/` |
 
-### V3-2 Không có nút TẠO ĐƠN MUA HÀNG thủ công
+### V3-2 ✅ XONG 2026-08-04 — Nút tạo đơn mua hàng thủ công
 
 | | |
 |---|---|
 | Thực tế | Backend đủ: `POST /purchase-orders` · `/place` · `/cancel` · `/close`. Frontend chỉ có **GET** + luồng nhận hàng. Đường duy nhất đẻ ra đơn hôm nay: **Đề xuất đặt hàng → "Tạo đơn nháp"** |
 | Hệ quả | Ca trình dược viên chào hàng tận quầy **không có đề xuất nào** ⇒ không dựng được đơn |
 | Việc | Nút tạo đơn ở `/don-mua-hang`. Rẻ nhất trên mỗi đồng bỏ ra — chỉ thiếu màn |
+| **Đã làm** | `TaoDonMuaDialog` + nút **Đặt đơn** (`DRAFT→ORDERED`). Lưu ở trạng thái **nháp**, không tự đặt. Ảnh + cổng: `docs/ui-history/2026-08-04-tao-don-mua/` |
 
 ### V3-3 Gộp Đơn mua hàng ↔ Đề xuất đặt hàng
 
@@ -489,7 +490,7 @@ việc cần làm tiếp theo**. Gộp làm một đợt thì rẻ hơn làm r�
 | Ưu tiên | Mục | Vì sao |
 |---|---|---|
 | ~~1~~ | ~~**V3-1** thêm thuốc mới~~ | ✅ **xong 04/08** |
-| 2 | **V3-2** nút tạo đơn mua | Backend xong, chỉ thiếu màn |
+| ~~2~~ | ~~**V3-2** nút tạo đơn mua~~ | ✅ **xong 04/08** |
 | ~~3~~ | ~~**V3-6 + V3-10**~~ | ✅ **xong 04/08** |
 | 4 | **V3-5** báo cáo đọc được | Đầu vào của V3-8 |
 | 5 | **V3-7a** báo cáo lợi nhuận | Dữ liệu đã đủ — *chờ Chain chốt chiều xem* |
