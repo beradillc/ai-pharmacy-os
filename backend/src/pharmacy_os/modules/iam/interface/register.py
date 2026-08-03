@@ -15,7 +15,12 @@ from pharmacy_os.core.config import Settings
 from pharmacy_os.core.db import UnitOfWork, UnitOfWorkFactory
 from pharmacy_os.core.di import Container
 from pharmacy_os.core.security import JwtService
-from pharmacy_os.modules.iam.application import AuthService, IamRepositories, IamService
+from pharmacy_os.modules.iam.application import (
+    AuthService,
+    IamRepositories,
+    IamService,
+    UyQuyenService,
+)
 from pharmacy_os.modules.iam.infrastructure import (
     SqlAlchemyBackupCodeRepository,
     SqlAlchemyBranchRepository,
@@ -68,5 +73,10 @@ def register(container: Container, get_context: ContextDep) -> list[APIRouter]:
     iam_service = IamService(uow_factory, build_repositories, audit, auth_service)
     container.register_instance(IamService, iam_service)
     container.register_instance(AuthService, auth_service)
+    # Uỷ quyền quản trị (Chain chốt 2026-08-03). Dùng chung `build_repositories` như hai
+    # service kia — bó kho lưu của iam nay có thêm `uy_quyen`.
+    container.register_instance(
+        UyQuyenService, UyQuyenService(uow_factory, build_repositories, audit)
+    )
 
     return [build_auth_router(get_context), build_admin_router(get_context)]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -22,7 +23,7 @@ from pharmacy_os.modules.iam.application.dto import (
     TwoFactorStatusOutput,
     UserOutput,
 )
-from pharmacy_os.modules.iam.domain import MIN_PASSWORD_LENGTH
+from pharmacy_os.modules.iam.domain import MIN_PASSWORD_LENGTH, UyQuyenQuanTri
 
 _EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 """A deliberately loose shape check, not RFC 5322 validation: pydantic's ``EmailStr``
@@ -330,3 +331,68 @@ class TwoFactorLoginRequest(BaseModel):
 
     def to_input(self) -> TwoFactorLoginInput:
         return TwoFactorLoginInput(challenge_token=self.challenge_token, code=self.code)
+
+
+class CapUyQuyenRequest(BaseModel):
+    """Chủ chuỗi mở quyền nghiệp vụ cho một tài khoản, 24 giờ (Chain chốt 2026-08-03).
+
+    **Không có trường ``so_gio``** — Chain chốt 24 giờ **cố định**. Một ô nhập số giờ là một
+    ô người ta sẽ điền số lớn nhất được phép, và khi ấy "có hạn" chỉ còn là hình thức. Cần
+    dài hơn thì **xác nhận lại**, và lần xác nhận thứ hai là một dòng audit thứ hai.
+    """
+
+    nguoi_nhan_id: UUID
+    ly_do: str = Field(min_length=10, max_length=500)
+    """Tối thiểu 10 ký tự — khớp ``LY_DO_TOI_THIEU`` của domain.
+
+    Ngưỡng thấp có chủ đích: chặn ``"."`` và ``"x"``, không ép người đang xử lý sự cố viết
+    văn. Một trường quá khắt khe sẽ được điền ``"aaaaaaaaaa"`` — tệ hơn, vì trông như thật.
+    Giới hạn trên để một lý do dán nhầm cả trang log không tràn vào sổ kiểm toán.
+    """
+
+    quyen_yeu_cau: list[Annotated[str, Field(max_length=64)]] | None = Field(
+        default=None, max_length=200
+    )
+    """Bỏ trống = *"cấp tất cả những gì tôi cấp được"*, đã lọc quyền không uỷ quyền được.
+
+    Nêu đích danh một quyền cấm ⇒ **422**, không phải lọc im lặng: người gõ tên quyền ký sổ
+    vào đây cần biết là nó bị từ chối, chứ không phải tưởng mình vừa cấp được.
+
+    ``max_length=64`` cho **từng mã** khớp đúng cột ``uy_quyen_quan_tri_quyen.permission``:
+    không chặn ở đây thì một mã dài hơn cột sẽ thành **500 của Postgres** thay vì **422**
+    (cùng họ bài học ``audit_logs.action`` varchar(32) — SQLite nuốt im lặng nên test xanh,
+    Postgres từ chối nên chỉ deployment mới thấy). ``max_length=200`` cho **cả danh sách**
+    vì toàn bộ danh mục quyền hiện có 58 mã — không yêu cầu hợp lệ nào cần hơn thế, và một
+    danh sách không đáy là một đường làm nghẽn máy chủ bằng một request."""
+
+
+class UyQuyenResponse(BaseModel):
+    id: UUID
+    tenant_id: UUID
+    nguoi_nhan_id: UUID
+    nguoi_cap_id: UUID
+    ly_do: str
+    quyen: list[str]
+    cap_luc: datetime
+    het_han_luc: datetime
+    thu_hoi_luc: datetime | None
+    con_hieu_luc: bool
+    """Tính **ở máy chủ**, không để máy khách tự so ``het_han_luc`` với đồng hồ của nó.
+
+    Đồng hồ máy quầy lệch là chuyện thường; nếu màn hình tự suy thì hai máy cạnh nhau sẽ nói
+    hai điều khác nhau về cùng một uỷ quyền — và cái đúng là cái máy chủ dùng để gác cửa."""
+
+    @classmethod
+    def of(cls, uq: UyQuyenQuanTri, *, bay_gio: datetime) -> UyQuyenResponse:
+        return cls(
+            id=uq.id,
+            tenant_id=uq.tenant_id,
+            nguoi_nhan_id=uq.nguoi_nhan_id,
+            nguoi_cap_id=uq.nguoi_cap_id,
+            ly_do=uq.ly_do,
+            quyen=sorted(uq.quyen),
+            cap_luc=uq.cap_luc,
+            het_han_luc=uq.het_han_luc,
+            thu_hoi_luc=uq.thu_hoi_luc,
+            con_hieu_luc=uq.con_hieu_luc(bay_gio),
+        )

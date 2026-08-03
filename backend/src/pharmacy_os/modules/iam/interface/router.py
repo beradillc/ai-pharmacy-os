@@ -8,6 +8,7 @@ and take it explicitly.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -16,9 +17,15 @@ from pharmacy_os.core.config import Settings
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.http import client_ip_of, user_agent_of
 from pharmacy_os.core.security import RateLimiter, RateLimitRule
-from pharmacy_os.modules.iam.application import AuthService, IamService, StepUpResult
+from pharmacy_os.modules.iam.application import (
+    AuthService,
+    IamService,
+    StepUpResult,
+    UyQuyenService,
+)
 from pharmacy_os.modules.iam.interface.schemas import (
     AssignRoleRequest,
+    CapUyQuyenRequest,
     ChangePasswordRequest,
     CreateUserRequest,
     LoginRequest,
@@ -39,6 +46,7 @@ from pharmacy_os.modules.iam.interface.schemas import (
     TwoFactorLoginRequest,
     TwoFactorStatusResponse,
     UserResponse,
+    UyQuyenResponse,
 )
 
 ContextDep = Callable[..., Awaitable[RequestContext]]
@@ -53,6 +61,11 @@ def _auth(request: Request) -> AuthService:
 
 def _iam(request: Request) -> IamService:
     service: IamService = request.app.state.container.resolve(IamService)
+    return service
+
+
+def _uy_quyen(request: Request) -> UyQuyenService:
+    service: UyQuyenService = request.app.state.container.resolve(UyQuyenService)
     return service
 
 
@@ -354,5 +367,49 @@ def build_admin_router(get_context: ContextDep) -> APIRouter:
         ctx: RequestContext = Depends(get_context),
     ) -> list[RoleResponse]:
         return [RoleResponse.of(r) for r in await service.list_roles(ctx)]
+
+    # --- uỷ quyền quản trị có thời hạn (Chain chốt 2026-08-03) -----------------
+    #
+    # Nằm trong router quản trị vì đây là hành vi quản trị, nhưng quyền gác thì KHÁC hẳn
+    # phần trên: `iam.delegation.grant` là quyền DUY NHẤT vai quản trị hệ thống không có.
+
+    @router.post("/uy-quyen", response_model=UyQuyenResponse, status_code=status.HTTP_201_CREATED)
+    async def cap_uy_quyen(
+        body: CapUyQuyenRequest,
+        service: UyQuyenService = Depends(_uy_quyen),
+        ctx: RequestContext = Depends(get_context),
+    ) -> UyQuyenResponse:
+        uq = await service.cap(
+            body.nguoi_nhan_id,
+            body.ly_do,
+            ctx,
+            quyen_yeu_cau=frozenset(body.quyen_yeu_cau) if body.quyen_yeu_cau else None,
+        )
+        return UyQuyenResponse.of(uq, bay_gio=datetime.now(UTC))
+
+    @router.get("/uy-quyen", response_model=list[UyQuyenResponse])
+    async def liet_ke_uy_quyen(
+        service: UyQuyenService = Depends(_uy_quyen),
+        ctx: RequestContext = Depends(get_context),
+        limit: int = Query(50, ge=1, le=200),
+        offset: int = Query(0, ge=0),
+    ) -> list[UyQuyenResponse]:
+        # Một mốc thời gian cho CẢ danh sách, không gọi now() từng dòng: hai dòng cạnh nhau
+        # trong cùng một bảng phải được đánh giá trên cùng một đồng hồ, nếu không một lần
+        # tải trang có thể hiện hai uỷ quyền hết hạn cùng lúc ở hai trạng thái khác nhau.
+        bay_gio = datetime.now(UTC)
+        so = await service.liet_ke(ctx, limit=limit, offset=offset)
+        return [UyQuyenResponse.of(u, bay_gio=bay_gio) for u in so]
+
+    @router.delete("/uy-quyen/{uy_quyen_id}", status_code=status.HTTP_204_NO_CONTENT)
+    async def thu_hoi_uy_quyen(
+        uy_quyen_id: UUID,
+        service: UyQuyenService = Depends(_uy_quyen),
+        ctx: RequestContext = Depends(get_context),
+    ) -> Response:
+        # DELETE về ngữ nghĩa HTTP, nhưng KHÔNG xoá hàng nào — nó ghi `thu_hoi_luc`. Hàng ở
+        # lại vì nó là vết kiểm toán, không phải rác (xem port `UyQuyenRepository`).
+        await service.thu_hoi(uy_quyen_id, ctx)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     return router
