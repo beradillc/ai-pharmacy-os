@@ -28,7 +28,8 @@
 | Kỷ luật bắt buộc **21** (cổng đo *nhìn thấy được*, không chỉ *có trên trang*) | **2026-08-01** — GĐ đề nghị sau lần thứ **ba** cùng một hình dạng: cổng xanh vì `innerText` đọc được cả phần tràn ngoài khung nhìn. **Chain DUYỆT cùng ngày** |
 | Kỷ luật bắt buộc **22** (chuỗi nối hai thế giới phải có cổng đọc thẳng nguồn bên kia) | **2026-08-01** — GĐ đề nghị sau lần thứ **tư** cùng một hình dạng trong ba ngày: class CSS · mã quyền · mã hành vi audit · `target_type`, cả bốn xanh qua `tsc`/`eslint`/`pytest`. **Chain DUYỆT 2026-08-02** |
 | Kỷ luật bắt buộc **23** (hai vế của một phép so phải có hai nguồn độc lập) + **24** (mỗi dòng của #22 phải kèm cổng của nó) | **2026-08-01** — GĐ đề nghị sau khi một cổng khẳng định *tồn cuối kỳ cộng đúng* xanh trọn vẹn trong lúc màn hình hiện **-5**, che một lỗi sổ pháp lý im lặng từ Sprint 7. **Chain DUYỆT 2026-08-02** |
-| Kỷ luật bắt buộc **25** (chuỗi `&&` đứt vẫn cho ra số đọc được — kiểm trạng thái đã chuẩn bị) | **2026-08-03** — GĐ đề nghị sau lần thứ **ba** cùng một nguyên nhân gốc trong hai phiên (đột biến không áp dụng · khối mã không được thêm · backend nằm im). Áp quy tắc "lặp từ 3 lần" của #18. **CHỜ CHAIN DUYỆT** |
+| Kỷ luật bắt buộc **25** (chuỗi `&&` đứt vẫn cho ra số đọc được — kiểm trạng thái đã chuẩn bị) | **2026-08-03** — GĐ đề nghị sau lần thứ **ba** cùng một nguyên nhân gốc trong hai phiên (đột biến không áp dụng · khối mã không được thêm · backend nằm im). Áp quy tắc "lặp từ 3 lần" của #18. **Chain DUYỆT 2026-08-04** |
+| Kỷ luật bắt buộc **26** (năng lực dùng chung phải có ít nhất một chỗ gọi thật) | **2026-08-04** — GĐ đề nghị sau lần thứ **ba** cùng hình dạng trong bốn ngày (`formatSo` 01/08 · `formatQty` 04/08 sáng · `ApiError.isUnauthenticated` 04/08 chiều). Áp quy tắc "lặp từ 3 lần" của #18. **Chain DUYỆT cùng ngày** |
 
 **Từ nay mọi mục thêm/sửa phải ghi ngày ngay tại mục đó**, để bảng này không
 phải đoán lần nữa.
@@ -564,3 +565,36 @@ máy này, khác với văn bản ủy quyền (file này) nay đã có lịch s
       (*số đọc được không phải của cổng*); #25 cấm suy **trạng thái đã chuẩn bị** từ một chuỗi
       đứt (*cổng đo đúng, nhưng đo một thế giới chưa được dựng*). Cùng họ với #15 *"phải đo cả
       chính phép đo"* — ở đây là **đo cả bước dựng cảnh trước khi đo**.
+
+26. **Một năng lực dùng chung chưa có chỗ gọi thật thì BẰNG KHÔNG — và nó không làm đỏ cổng
+    nào.** (2026-08-04, GĐ đề nghị sau lần thứ **ba** cùng hình dạng trong bốn ngày — **Chain
+    DUYỆT cùng ngày**)
+
+    Khi thêm một **năng lực dùng chung** — hàm định dạng, cờ lỗi, guard, endpoint, cổng đọc
+    cross-module — phải `grep` xác nhận **có ít nhất một chỗ gọi thật**. Chưa có thì ghi vào
+    sổ nợ **ngay trong cùng commit**, không để nó nằm im chờ ai đó nhớ ra.
+
+    | Lần | Năng lực đã viết xong | Thứ thiếu | Hậu quả ngoài đời |
+    |---|---|---|---|
+    | 01/08 | `formatSo` | không ai bị bắt dùng | ô hoạt chất hiện `1.0000` |
+    | 04/08 sáng | `formatQty` (có từ 01/08) | không ai bị bắt dùng | *"sổ ghi 100.000"* cho **100 viên** — Chain đọc thành một trăm nghìn |
+    | 04/08 chiều | `ApiError.isUnauthenticated` | **không nơi nào gọi** — `grep` cả frontend ra đúng dòng khai báo | phiên hết ⇒ mời **Thử lại**, mà thử lại là gửi lại token đã chết |
+
+    - **Vì sao không cổng nào bắt được:** mã còn thiếu đường gọi **vẫn là mã hợp lệ**. `tsc`
+      xanh, `pytest` xanh, `eslint` xanh. Cùng đúng hình dạng kiểm toán 26/07 chỉ ra với
+      `.github/workflows/ci.yml` — nội dung đúng, nằm trong repo từ commit **đầu tiên**,
+      **chưa chạy lần nào** trong 209 commit. *Hạ tầng viết sẵn mà không nối dây thì bằng
+      không.*
+    - **Nguy hiểm hơn "chưa làm":** một năng lực đã tồn tại làm người đọc sau tin là **đã
+      có**. Người phát hiện triệu chứng sẽ đi **viết lại** thay vì **nối dây** — đúng cái giá
+      262 dòng đã trả ở #16.
+    - **Ba lệnh, sau khi viết xong một năng lực dùng chung:**
+      ```
+      grep -rn "<tên hàm/cờ/endpoint>" --include=*.ts --include=*.tsx --include=*.py . | grep -v "<tệp khai báo>"
+      ```
+      Kết quả rỗng ⇒ **chưa xong**, dù cổng có xanh cỡ nào.
+    - Họ hàng: **#16** nói *grep composition root **trước** khi code* (tính năng đã có chưa);
+      **#22** nói *grep nguồn bên kia **sau** khi code* (chuỗi mình vừa viết có thật không);
+      **#24** nói *mỗi dòng của #22 phải kèm cổng của nó*; **#26** nói *thứ mình vừa viết đã
+      có ai gọi chưa*. Bốn câu hỏi khác nhau, cùng một gốc: **mã đúng mà không nối dây thì
+      không tồn tại đối với người dùng.**
