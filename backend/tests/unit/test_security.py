@@ -3,7 +3,7 @@ from uuid import uuid4
 import pytest
 
 from pharmacy_os.core.context import RequestContext
-from pharmacy_os.core.errors import PermissionDeniedError
+from pharmacy_os.core.errors import PermissionDeniedError, UnauthenticatedError
 from pharmacy_os.core.security import (
     JwtService,
     TokenPayload,
@@ -31,9 +31,24 @@ def test_jwt_round_trip() -> None:
     assert "sales.create" in decoded.permissions
 
 
-def test_jwt_bad_token_raises() -> None:
-    with pytest.raises(PermissionDeniedError):
+def test_jwt_bad_token_raises_401_KHONG_phai_403() -> None:
+    """🔴 Kỳ vọng đổi CÓ CHỦ Ý 2026-08-04 (V3-10), không phải nới lỏng để cho xanh.
+
+    Bản trước khẳng định token hỏng ném ``PermissionDeniedError`` ⇒ **403 "Không đủ quyền"**.
+    Sai về ngữ nghĩa, và cái sai ấy đi thẳng ra màn hình: người dùng **CÓ** quyền, chỉ là
+    **phiên đã hết**. Chính ``UnauthenticatedError`` khai đúng ranh giới ấy trong docstring
+    của nó — *"distinct from 403, which means known but not allowed"*.
+
+    Ca thật Chain bắt được: màn báo *"Token không hợp lệ hoặc đã hết hạn"* kèm nút **Thử
+    lại** — mà thử lại là gửi lại đúng token đã chết. Mã trạng thái đúng mới cho phép
+    frontend phân biệt *"đăng nhập lại"* với *"thử lại"*.
+
+    Khẳng định thêm **mã trạng thái**, không chỉ loại ngoại lệ: loại ngoại lệ là chi tiết cài
+    đặt, còn thứ đi ra tới người dùng và tới frontend là **con số 401**.
+    """
+    with pytest.raises(UnauthenticatedError) as loi:
         JwtService("test-secret-key-0123456789abcdef").decode("not-a-token")
+    assert loi.value.status_code == 401
 
 
 def test_require_permission() -> None:

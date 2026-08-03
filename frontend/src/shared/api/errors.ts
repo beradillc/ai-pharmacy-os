@@ -110,3 +110,15 @@ export function thongDiepLoi(err: unknown, mac_dinh = "Đã có lỗi xảy ra")
   if (err instanceof Error && err.message) return err.message;
   return mac_dinh;
 }
+
+/**
+ * Lỗi này bấm lại có ích không?
+ *
+ * Mất mạng và 5xx thì có — máy chủ có thể đã tỉnh lại. 4xx thì **không**: yêu cầu sai ở phía
+ * người gọi, gửi lại y hệt sẽ hỏng y hệt. Trả `true` cho lỗi **không phải** `ApiError` (mất
+ * mạng, `JSON.parse` hỏng): những lỗi đó đúng là loại thử lại được.
+ */
+export function thuLaiDuocKhong(loi: unknown): boolean {
+  if (!(loi instanceof ApiError)) return true;
+  return loi.status >= 500;
+}

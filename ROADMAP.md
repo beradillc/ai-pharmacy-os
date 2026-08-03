@@ -457,7 +457,7 @@ toán 26/07 mà kỷ luật #24 ghi lại.
 đọc tên trường `Decimal` **thẳng từ schema Python**, quét `.tsx` tìm chỗ dựng thô.
 `MUTANT7_EXIT=1` — trả một chỗ về nguyên trạng lỗi thì cổng đỏ đúng dòng đó.
 
-### V3-10 🔴 "Token không hợp lệ hoặc đã hết hạn" — mà nút lại là **Thử lại** (Chain nêu 04/08)
+### V3-10 ✅ XONG 2026-08-04 — "Token hết hạn" mà nút lại là **Thử lại**
 
 Chain hỏi đúng: *"hết hạn thì đăng nhập lại, chứ thử lại cái gì?"* Bấm Thử lại là gửi lại
 **đúng cái token đã chết** — không lần nào thành công được.
@@ -490,7 +490,7 @@ việc cần làm tiếp theo**. Gộp làm một đợt thì rẻ hơn làm r�
 |---|---|---|
 | ~~1~~ | ~~**V3-1** thêm thuốc mới~~ | ✅ **xong 04/08** |
 | 2 | **V3-2** nút tạo đơn mua | Backend xong, chỉ thiếu màn |
-| 3 | **V3-6 + V3-10** màn hình nói đúng việc cần làm tiếp | Cùng họ: thiếu quyền thì nói ra · hết phiên thì mời đăng nhập lại, không mời Thử lại |
+| ~~3~~ | ~~**V3-6 + V3-10**~~ | ✅ **xong 04/08** |
 | 4 | **V3-5** báo cáo đọc được | Đầu vào của V3-8 |
 | 5 | **V3-7a** báo cáo lợi nhuận | Dữ liệu đã đủ — *chờ Chain chốt chiều xem* |
 | 6 | **V3-4** màn dẫn đường bắt đầu | Sau khi V3-1 xong mới trọn nghĩa |

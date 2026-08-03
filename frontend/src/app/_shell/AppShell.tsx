@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "@/features/auth/auth-store";
 import { RejectedSalesBanner } from "@/components/layout/RejectedSalesBanner";
 import { DoiMatKhau } from "@/features/auth/DoiMatKhau";
+import { ghiNhoPhienHet, khiPhienHet } from "@/shared/api/phien-het";
 import { useOfflineSync } from "@/shared/offline/use-offline-sync";
 
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -70,6 +71,27 @@ export function AppShell({
   useEffect(() => {
     if (hydrated && !session) router.replace("/login");
   }, [hydrated, session, router]);
+
+  /**
+   * 🔴 **Phiên hết ⇒ về màn đăng nhập, KHÔNG mời "Thử lại"** (V3-10, Chain nêu 04/08).
+   *
+   * Trước bản này `ApiError.isUnauthenticated` **tồn tại nhưng không nơi nào gọi** — `grep`
+   * cả frontend chỉ ra đúng dòng khai báo nó. Nên một token hết hạn rơi vào `ErrorState`
+   * chung, và người dùng được mời **Thử lại**: gửi lại đúng cái token đã chết, không lần nào
+   * thành công. Chain hỏi thẳng *"hết hạn thì đăng nhập lại, chứ thử lại cái gì?"*
+   *
+   * `logout()` trước rồi mới `replace()`: xoá phiên là thứ phải xảy ra **chắc chắn**, còn
+   * điều hướng có thể bị một màn đang mở nuốt mất. Đảo thứ tự thì có ca người dùng ở lại
+   * trong ứng dụng với một phiên đã chết trong tay.
+   */
+  useEffect(() => khiPhienHet(() => {
+    // Ghi cờ TRƯỚC khi `logout()`: `logout()` làm `session` thành `null`, và hiệu ứng ngay
+    // phía trên sẽ lập tức `replace("/login")`. Ghi sau thì có lượt màn đăng nhập dựng xong
+    // trước khi cờ kịp có mặt.
+    ghiNhoPhienHet();
+    logout();
+    router.replace("/login");
+  }), [logout, router]);
 
   // Canh đăng nhập giữ nguyên cách đang chạy: đọc localStorage SAU khi mount, vì
   // lượt render phía máy chủ không có `window` — chuyển hướng sớm hơn sẽ đá văng

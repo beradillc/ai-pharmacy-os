@@ -8,7 +8,7 @@ from uuid import UUID
 
 import jwt
 
-from pharmacy_os.core.errors import PermissionDeniedError
+from pharmacy_os.core.errors import UnauthenticatedError
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,7 +51,19 @@ class JwtService:
         try:
             claims = jwt.decode(token, self._secret, algorithms=[self._algorithm])
         except jwt.PyJWTError as exc:  # expired, bad signature, malformed
-            raise PermissionDeniedError("Token không hợp lệ hoặc đã hết hạn") from exc
+            # 🔴 **401, KHÔNG phải 403** (V3-10, Chain nêu 2026-08-04).
+            #
+            # Bản trước ném ``PermissionDeniedError`` ⇒ 403 *"Không đủ quyền"*. Sai về ngữ
+            # nghĩa, và cái sai ấy đi thẳng ra màn hình: người dùng **CÓ** quyền, chỉ là
+            # **phiên đã hết**. ``UnauthenticatedError`` tự khai đúng ranh giới này ngay
+            # trong docstring của nó — *"distinct from 403, which means known but not
+            # allowed"*; chỗ này chỉ là dùng nhầm.
+            #
+            # Hệ quả ngoài đời Chain bắt được: màn báo *"Token không hợp lệ hoặc đã hết
+            # hạn"* kèm nút **Thử lại** — mà thử lại là gửi lại đúng cái token đã chết,
+            # không lần nào thành công được. Mã trạng thái đúng mới cho phép frontend phân
+            # biệt *"đăng nhập lại"* với *"thử lại"*.
+            raise UnauthenticatedError("Phiên đăng nhập đã hết, vui lòng đăng nhập lại") from exc
         branch = claims.get("branch")
         return TokenPayload(
             user_id=UUID(claims["sub"]),

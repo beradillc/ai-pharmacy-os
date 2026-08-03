@@ -1,4 +1,5 @@
 import { ApiError } from "./errors";
+import { baoPhienHet } from "./phien-het";
 import { getAccessToken } from "./token-storage";
 import type { ProblemDetail } from "./types";
 
@@ -41,7 +42,13 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   const parsed: unknown = text ? JSON.parse(text) : undefined;
 
   if (!res.ok) {
-    throw new ApiError(parsed as ProblemDetail);
+    const loi = new ApiError(parsed as ProblemDetail);
+    // 🔴 401 = phiên đã hết, KHÔNG phải lỗi thử lại được (V3-10). Hô lên để tầng ứng dụng
+    // xoá phiên và đưa về màn đăng nhập; vẫn NÉM tiếp như cũ, vì nơi gọi có thể cần biết
+    // lượt gọi của mình đã hỏng. Hô rồi nuốt lỗi sẽ để lại một màn treo vĩnh viễn ở trạng
+    // thái "đang tải".
+    if (loi.isUnauthenticated) baoPhienHet();
+    throw loi;
   }
   return parsed as T;
 }

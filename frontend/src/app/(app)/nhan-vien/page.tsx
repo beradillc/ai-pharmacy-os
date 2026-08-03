@@ -95,6 +95,22 @@ export default function StaffPage() {
         )}
       </div>
 
+      {/* 🔴 **NÓI RA khi chỉ xem được** (V3-6, Chain nêu 04/08).
+          Chủ chuỗi có `iam.user.read` nên THẤY màn này, nhưng không có `iam.role.assign`
+          nên nút "Vai trò" biến mất — không một câu giải thích. Chain kết luận *"chưa thấy
+          phân quyền mục nhân viên"*, và đó là kết luận ĐÚNG với thứ màn hình đang nói.
+          Việc ẩn là cố ý (docs/15 §5 Q5: một tài khoản chuyên môn không tự nới rộng chính
+          mình) — cái sai là ẩn mà im lặng. */}
+      {!canCreate && !canWrite && !canAssign && (
+        <div className={local.notice} role="status">
+          <strong>Bạn đang ở chế độ chỉ xem.</strong> Tài khoản này xem được danh sách và vai
+          trò, nhưng <strong>không tạo tài khoản, không cấp/thu hồi vai trò</strong> — cần
+          quyền <code>iam.user.create</code> · <code>iam.role.assign</code>, thuộc vai Quản
+          trị hệ thống. Đây là ranh giới cố ý: một tài khoản chuyên môn không tự nới rộng
+          quyền của chính mình.
+        </div>
+      )}
+
       {actionError && (
         <div className={styles.error} role="alert">
           <span>{actionError}</span>

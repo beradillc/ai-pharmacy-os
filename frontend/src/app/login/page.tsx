@@ -6,12 +6,16 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "@/features/auth/auth-store";
 import { useLogin } from "@/features/auth/use-login";
 import { ApiError } from "@/shared/api/errors";
+import { docVaXoaPhienHet } from "@/shared/api/phien-het";
 import type { BranchOption } from "@/shared/api/types";
 
 import styles from "./page.module.css";
 
-export default function LoginPage() {
+function ManDangNhap() {
   const router = useRouter();
+  // Đọc cờ MỘT LẦN lúc gắn, rồi xoá. Không đọc qua tham số URL: `AppShell` có một hiệu ứng
+  // `replace("/login")` chạy ngay sau `logout()` và ghi đè mất tham số — đã đo thấy hỏng.
+  const [phienHet] = useState(docVaXoaPhienHet);
   const login = useLogin();
   const session = useAuthStore((s) => s.session);
   const hydrate = useAuthStore((s) => s.hydrate);
@@ -59,6 +63,15 @@ export default function LoginPage() {
         </div>
         <h1 className={styles.brand}>BERAS</h1>
         <p className={styles.tagline}>Sổ Quản Lý Nhà Thuốc</p>
+
+        {/* 🔴 Nói ra VÌ SAO vừa bị đá về đây (V3-10). Không có câu này thì người đang gõ dở
+            một phiếu nhập bị văng ra màn đăng nhập mà không hiểu chuyện gì, và kết luận là
+            phần mềm tự thoát. `?phien=het` do AppShell gắn khi máy chủ trả 401. */}
+        {phienHet && (
+          <p className={styles.error} role="status">
+            Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.
+          </p>
+        )}
 
         {branches ? (
           <form
@@ -127,4 +140,8 @@ export default function LoginPage() {
       </div>
     </main>
   );
+}
+
+export default function LoginPage() {
+  return <ManDangNhap />;
 }
