@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { useAuthStore } from "@/features/auth/auth-store";
 import { useCatalogDrugs } from "@/features/catalog/use-drug-ingredients";
+import { ThemThuocDialog } from "@/features/catalog/ThemThuocDialog";
 import { useLocations } from "@/features/location/use-locations";
 import { apiFetch } from "@/shared/api/client";
 import { ApiError } from "@/shared/api/errors";
@@ -46,6 +47,7 @@ export default function QuickReceivePage() {
   const locs = useLocations();
 
   const [drugId, setDrugId] = useState("");
+  const [dangThemThuoc, setDangThemThuoc] = useState(false);
   const [soLuong, setSoLuong] = useState("");
   const [lo, setLo] = useState("");
   const [hsd, setHsd] = useState("");
@@ -107,6 +109,16 @@ export default function QuickReceivePage() {
               </option>
             ))}
           </select>
+          {/* 🔴 Nút này là toàn bộ lý do V3-1 tồn tại: gặp mặt hàng chưa có trong danh mục
+              giữa lúc đang dỡ hàng thì trước đây phải DỪNG HẲN. Cửa sổ nổi lên trên, đóng
+              lại là quay về đúng chỗ cũ — số lượng/lô/hạn dùng đã gõ vẫn còn nguyên. */}
+          <button
+            type="button"
+            className={styles.ghost}
+            onClick={() => setDangThemThuoc(true)}
+          >
+            + Chưa có trong danh mục? Thêm thuốc mới
+          </button>
         </label>
 
         <label className={local.o}>
@@ -227,6 +239,15 @@ export default function QuickReceivePage() {
           </ul>
         </>
       )}
+
+      <ThemThuocDialog
+        open={dangThemThuoc}
+        onClose={() => setDangThemThuoc(false)}
+        // Chọn sẵn mã vừa tạo: người dùng mở cửa sổ ra vì họ đang ĐỊNH nhập mã đó. Bắt họ
+        // đóng cửa sổ rồi tự đi tìm lại tên mình vừa gõ là thêm một bước thừa, và là chỗ
+        // chọn nhầm sang mã có tên gần giống.
+        onCreated={(thuoc) => setDrugId(thuoc.id)}
+      />
     </div>
   );
 }

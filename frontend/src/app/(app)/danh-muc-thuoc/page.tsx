@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { ThemThuocDialog } from "@/features/catalog/ThemThuocDialog";
+
 import { useIngredients } from "@/features/crm/use-health";
 import {
   useCatalogDrugs,
@@ -37,6 +39,8 @@ export default function DrugCatalogPage() {
   /** Sửa hoạt chất là quyết định CẤP CHUỖI — đổi ở một chi nhánh là đổi hành vi cảnh báo
    *  của toàn chuỗi. Không có quyền thì không thấy nút, thay vì thấy rồi bị từ chối. */
   const coQuyenSua = quyen.has("catalog.update");
+  const coQuyenTao = quyen.has("catalog.create");
+  const [dangThemThuoc, setDangThemThuoc] = useState(false);
 
   const [tim, setTim] = useState("");
   const [dangSua, setDangSua] = useState<Drug | null>(null);
@@ -68,6 +72,22 @@ export default function DrugCatalogPage() {
             báo <strong>không bao giờ kêu</strong> cho mã đó.
           </p>
         </div>
+        {/* V3-1: trước bản này KHÔNG có chỗ nào tạo thuốc mới trong cả giao diện —
+            `POST /drugs` có sẵn ở backend nhưng không dòng frontend nào gọi. */}
+        {coQuyenTao ? (
+          <button
+            type="button"
+            className={styles.button}
+            onClick={() => setDangThemThuoc(true)}
+          >
+            + Thêm thuốc
+          </button>
+        ) : (
+          // Kỷ luật V3-6: thiếu quyền thì NÓI RA, đừng ẩn trơn. Nút biến mất không lời
+          // giải thích là cách chắc chắn nhất để người dùng kết luận "phần mềm thiếu
+          // tính năng" — đúng chuyện vừa xảy ra với mục Nhân viên.
+          <p className={styles.muted}>Cần quyền <code>catalog.create</code> để thêm thuốc.</p>
+        )}
       </div>
 
       {/* 🔴 Ô nhập PHẢI nằm trong `.controls`. `.input` mang `flex: 1 1 auto` — dùng cho
@@ -178,6 +198,14 @@ export default function DrugCatalogPage() {
           onClose={() => setDangSua(null)}
         />
       )}
+
+      <ThemThuocDialog
+        open={dangThemThuoc}
+        onClose={() => setDangThemThuoc(false)}
+        // Tạo xong mở luôn cửa sổ hoạt chất cho mã mới: mã chưa có hoạt chất là mã làm
+        // cảnh báo dị ứng im lặng, nên đường ĐÚNG phải là đường ít bước nhất.
+        onCreated={(thuoc) => setDangSua(thuoc)}
+      />
     </div>
   );
 }

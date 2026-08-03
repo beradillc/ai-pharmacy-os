@@ -1,0 +1,92 @@
+/**
+ * Cửa sổ "Thêm thuốc mới" (V3-1).
+ *
+ * Một cột, ô nhập từ trên xuống theo đúng thứ tự tay người ta làm — cùng lối bố cục với
+ * `/nhap-nhanh`, vì đây là cửa sổ mở ra từ chính màn đó, trên chính chiếc điện thoại đó.
+ * Không bảng, không gì phải kéo ngang.
+ */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.o {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.nhan {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted-fg, #5b6b5e);
+}
+
+.mo {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--muted-fg, #5b6b5e);
+}
+
+.nhom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.chon {
+  display: flex;
+  align-items: flex-start;
+  /* Khoảng cách giữa ô tròn và chữ — đủ để ngón tay không bấm nhầm dòng bên cạnh. */
+  gap: 0.6rem;
+  /* Vùng bấm cao ≥44px theo khuyến nghị chạm của iOS: cả DÒNG bấm được, không riêng
+     ô tròn 16px. Đây là màn dùng một tay khi tay kia đang giữ hộp thuốc. */
+  min-height: 2.75rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border, #d9e2db);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.chon:has(input:checked) {
+  border-color: var(--accent, #2f6b41);
+  background: var(--accent-soft, #eef5f0);
+}
+
+.luuY {
+  margin: 0;
+  padding: 0.75rem;
+  border-left: 3px solid var(--warn, #b58900);
+  border-radius: 0.25rem;
+  background: var(--warn-soft, #fdf6e3);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.day {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+/* Khổ điện thoại: hai nút trải hết bề ngang và ĐỔI THỨ TỰ — nút chính xuống dưới cùng,
+   nơi ngón cái với tới dễ nhất. Kỷ luật #21: thứ người dùng phải chạm được thì phải nằm
+   trong tầm chạm, không chỉ nằm trên trang. */
+@media (max-width: 480px) {
+  .day {
+    flex-direction: column-reverse;
+  }
+
+  .day > * {
+    width: 100%;
+  }
+}

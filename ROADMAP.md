@@ -302,13 +302,14 @@ trong phiên) · frontend vẫn **không có một test nào**.
 >
 > Xếp theo **mức chặn việc thật**, không theo thứ tự Chain nêu.
 
-### V3-1 🔴 Không có chỗ THÊM THUỐC MỚI — chặn hẳn một việc đang làm
+### V3-1 ✅ XONG 2026-08-04 — Thêm thuốc mới, gọi được giữa lúc nhập hàng
 
 | | |
 |---|---|
 | Thực tế | Backend **có** `POST /catalog/drugs`; grep toàn frontend: **không dòng nào gọi**. Màn Danh mục thuốc chỉ có *Sửa giá* · *Sửa hoạt chất*. Thuốc vào `qt650` là do chạy seed |
 | Hệ quả | Nhận hàng gặp mặt hàng lạ ⇒ **dừng**, không đường đi tiếp. Ba mục còn lại chỉ gây bất tiện; mục này gây bế tắc |
 | Việc | Thêm màn/drawer tạo thuốc, **gọi được ngay giữa luồng nhập hàng** (không bắt thoát ra rồi quay lại) |
+| **Đã làm** | `ThemThuocDialog` dùng chung cho `/danh-muc-thuoc` và `/nhap-nhanh`. Tạo xong **chọn sẵn mã mới**, dữ liệu gõ dở còn nguyên. Ảnh + cổng: `docs/ui-history/2026-08-04-them-thuoc/` |
 
 ### V3-2 Không có nút TẠO ĐƠN MUA HÀNG thủ công
 
@@ -437,7 +438,7 @@ không cùng mức rủi ro:
 
 | Ưu tiên | Mục | Vì sao |
 |---|---|---|
-| 1 | **V3-1** thêm thuốc mới | Thứ duy nhất làm *dừng hẳn* việc đang làm |
+| ~~1~~ | ~~**V3-1** thêm thuốc mới~~ | ✅ **xong 04/08** |
 | 2 | **V3-2** nút tạo đơn mua | Backend xong, chỉ thiếu màn |
 | 3 | **V3-6** nói ra khi thiếu quyền | Rẻ, và sửa đúng loại hiểu nhầm vừa xảy ra |
 | 4 | **V3-5** báo cáo đọc được | Đầu vào của V3-8 |
