@@ -2,7 +2,11 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-03** — §7dr **uỷ quyền quản trị TRỌN BỘ** (bước 3/5·4/5·5/5): tìm ra
+> **Cập nhật cuối: 2026-08-04** — §7ds **đóng phiên**: uỷ quyền quản trị trọn bộ + **đợt V3
+> đóng 4 mục** (thêm thuốc · tạo đơn mua · số lượng hiện thô · màn hình nói đúng việc) + lộ
+> trình **AI V4** bốn tầng. Chain duyệt **kỷ luật #25 và #26**. pytest **1559 passed**, 10
+> commit. **Môi trường LAN vẫn đang chạy** — xem điểm dừng.
+> Trước đó §7dr **uỷ quyền quản trị TRỌN BỘ** (bước 3/5·4/5·5/5): tìm ra
 > **2 lỗi thật** trong domain bước 2/5 bằng cách chạy nó với tập quyền của một vai CÓ THẬT —
 > tính năng vốn chết 100% ở đường dùng thật trong khi 10/10 test xanh. `system_admin` nay
 > **57/58 quyền** (chờ Chain xem lại). pytest **1559 passed**, 5 đột biến đều đỏ đúng lý do.
@@ -188,6 +192,7 @@
 | [§7dp](#7dp-b1-m-s-c-truy-c-metrics-c-b-n-ti-u-th-2) | 2026-08-03 | 📈 **B1** — mã sự cố truy được + `/metrics` **có bên tiêu thụ** · đề xuất kỷ luật #25 |
 | [§7dq](#7dq-ng-phi-n-2026-08-02-03-t-a-b1-r-quy-n-q) | 2026-08-03 | 🔒 **ĐÓNG PHIÊN** — đợt A + B1 + rà quyền quản trị · 4 lần phép ĐO suýt sai |
 | [§7dr](#7dr-u-quy-n-qu-n-tr-tr-n-b-3-5-4-5-5-5-2026-08-03) | 2026-08-03 | ✅ **UỶ QUYỀN QUẢN TRỊ TRỌN BỘ** 3/5·4/5·5/5 — 2 lỗi thật trong domain bước 2/5 |
+| [§7ds](#7ds-ng-phi-n-2026-08-03-04-t-v3-4-m-c-2026-08-04) | 2026-08-04 | 🔒 **ĐÓNG PHIÊN** — uỷ quyền trọn bộ + đợt V3 4 mục + lộ trình AI V4 · kỷ luật #25·#26 |
 
 ---
 
@@ -9586,3 +9591,122 @@ Migration 0047: `pg_dump` **559 KB** trước khi chạy · downgrade→upgrade 
 - Câu hỏi T3 *"quyền ký sổ có nằm trong phạm vi uỷ quyền không"* — **vẫn chờ Chain**. Hôm nay
   giữ nguyên: **không** uỷ quyền được.
 - B2 (`backup_deadman.sh` có răng) · B3 · C1–C3 chưa đụng tới.
+
+---
+
+## 7ds. 🔒 ĐÓNG PHIÊN 2026-08-03→04 — uỷ quyền trọn bộ + đợt V3 4 mục (2026-08-04)
+
+**10 commit.** Phiên mở bằng *"uỷ quyền GĐ toàn quyền tiếp tục hoàn thiện phần mềm"*, chuyển
+sang **Chain tự dùng thử trên LAN** rồi thành một đợt rà soát vận hành — và phần Chain tự tìm
+ra hoá ra đáng giá hơn phần tôi tự làm.
+
+### Chain chốt gì trong phiên
+
+| Chốt | Nội dung |
+|---|---|
+| Uỷ quyền quản trị | Làm trọn bước **3/5 · 4/5 · 5/5** |
+| Ký số | **Để đó**, không làm ngay |
+| Môi trường thử | Dựng LAN + tài khoản **chủ chuỗi** |
+| Đợt **V3** | Duyệt lộ trình 10 mục, duyệt thứ tự làm |
+| Lộ trình **AI V4** | Ghi 4 tầng theo rủi ro |
+| Kỷ luật **#25** | **DUYỆT** (treo từ 03/08) |
+| Kỷ luật **#26** | **DUYỆT** cùng ngày |
+
+### Việc đã đóng
+
+| Mục | Kết quả |
+|---|---|
+| **Uỷ quyền 3/5** | 2 bảng + port + kho lưu + `UyQuyenService` + migration 0047 |
+| **Uỷ quyền 4/5** | `UyQuyenGuard` — cưỡng chế ở **tầng request**, cố ý **không cache** |
+| **Uỷ quyền 5/5** | 3 endpoint + e2e ba lượt gọi **cùng một token** |
+| **V3-1** | Thêm thuốc mới, gọi được **giữa lúc nhập hàng** |
+| **V3-2** | Nút tạo đơn mua thủ công + **Đặt đơn** (`DRAFT→ORDERED`) |
+| **V3-9** | *"sổ ghi 100.000"* → **100**, kèm cổng canh `Decimal` |
+| **V3-6 + V3-10** | Màn hình **nói đúng việc cần làm tiếp** |
+
+### 🔴 Bài học lớn nhất: ba lần "năng lực có sẵn mà không ai gọi" ⇒ kỷ luật #26
+
+| Lần | Đã viết xong | Hậu quả |
+|---|---|---|
+| 01/08 | `formatSo` | ô hoạt chất hiện `1.0000` |
+| 04/08 sáng | `formatQty` | *"sổ ghi 100.000"* cho **100 viên** |
+| 04/08 chiều | `ApiError.isUnauthenticated` | phiên hết mà mời **Thử lại** |
+
+Cả ba **không làm đỏ cổng nào** — mã thiếu đường gọi vẫn là mã hợp lệ. Cùng gốc với `ci.yml`
+của kiểm toán 26/07: đúng nội dung, có từ commit đầu tiên, **chưa chạy lần nào** trong 209
+commit.
+
+### 🔴 Hai lỗi thật trong domain uỷ quyền bước 2/5 — tìm ra bằng cách chạy với vai THẬT
+
+1. Luật 3 soi tập **đang có** thay vì tập **được xin** ⇒ chủ chuỗi (vai **duy nhất** được
+   cấp) luôn có `compliance.ledger.sign` ⇒ **mọi** lần cấp ném lỗi. Tính năng chết 100% ở
+   đường dùng thật trong khi **10/10 test đơn vị xanh** — vì cả 10 dùng một tập **bịa 4 mã**.
+2. Luật 2 *"không cấp quá thứ mình có"* **không tồn tại trong mã**: chỉ một tập ⇒ mệnh đề
+   luôn đúng, không bao giờ đỏ được (kỷ luật #23).
+
+### 🔴 Bốn lần đột biến/phép đo cứu một kết luận sai
+
+| # | Chuyện gì |
+|---|---|
+| 1 | Cổng V3-10 đỏ 3/4 — **backend LAN chạy mã cũ** (khởi động trước khi sửa `jwt.py`). `curl` ra 403 bản cũ. Đúng kỷ luật **#25** Chain vừa duyệt |
+| 2 | Mệnh đề *"có câu giải thích"* **xanh sai lý do**: chuỗi ấy cũng là `detail` của 401 nên quét body xanh cả khi **không có chuyển hướng**. Siết vào ô `[role=status]` ⇒ đột biến đỏ 3/3 thay vì 2/3 |
+| 3 | Cổng V3-2 **sống sót** đột biến `items: []` — chứng minh *"một đơn đã được tạo"*, không phải *"đơn có đúng hàng"*. Thêm vế **tổng tiền do máy chủ tính** ⇒ `MUTANT9b=1` |
+| 4 | Lượt kiểm tuyến báo `SO_TUYEN=0` — nhưng `/users` **có sẵn** cũng không hiện ⇒ **tự mâu thuẫn** ⇒ lỗi phép đo: router mount trong **lifespan** |
+
+### 🔴 Quyết định GĐ tự chốt — Chain xem lại khi rảnh
+
+**`system_admin` nay 57/58 quyền**, thiếu đúng `iam.delegation.grant`. Kiểm bằng lệnh trước:
+`sa.permissions == ALL_PERMISSIONS` trả `True`. Để nguyên thì tài khoản kỹ thuật **tự mở
+quyền cho tài khoản kỹ thuật**, và luật *"không tự uỷ quyền cho chính mình"* **không chặn**
+(nó chỉ so hai id — hai tài khoản admin cấp chéo là hợp lệ).
+**Không phải phương án cắt quyền Chain đã bác:** không quyền **dữ liệu** nào bị lấy đi.
+
+### Phát hiện chưa xử lý
+
+🟠 **Gốc repo không có `package.json` lẫn `node_modules`**, mà `scripts/ui-gates.sh` chạy
+`node "scripts/$f"` từ gốc ⇒ mọi script cổng trình duyệt import `playwright-core` **không
+phân giải được**. Rất có thể là nguyên nhân thật của **"7 cổng trình duyệt chưa đo được"**
+(mục B3). Nếu đúng thì rẻ hơn nhiều mức nợ đang ghi. **Chưa sửa** — ngoài phạm vi Chain giao.
+
+### Cổng tại điểm dừng
+
+```
+RUFF=0 FORMAT=0 IMPORTLINTER=0 (19/19) MYPY=0 (289 tệp)
+PYTEST_EXIT=0   1559 passed  (1532 → 1559, +27)
+TSC=0 LINT=0 VITEST=0 (122 → 125) BUILD=0
+Đột biến: 9 lượt, tất cả đỏ đúng lý do sau khi siết, tất cả đã khôi phục
+Alembic: 0047_uy_quyen (head) · CSDL qt650
+```
+
+### Điểm dừng
+
+- 🔴 **MÔI TRƯỜNG LAN VẪN ĐANG CHẠY** (cố ý — Chain đang thử): frontend `pid 329523` cổng
+  3000, backend `pid 329451` cổng 8000, địa chỉ **http://192.168.1.8:3000**.
+  Dừng: `kill 329451` rồi `kill 329523` — **hai lượt shell RIÊNG**, và **không dùng `pkill`**
+  (§7dq: `pkill` khớp cả shell đang chạy ⇒ exit 144, đã tái diễn đúng như vậy trong phiên này).
+- 🟠 **UFW vẫn chặn** — Chain **chưa chạy** 2 lệnh `sudo ufw allow … port 3000/8000`. Nghĩa là
+  điện thoại **chưa vào được**; ảnh chụp trong phiên đi từ trình duyệt **trên chính máy này**,
+  nên chúng chứng minh app dựng đúng, **không** chứng minh điện thoại kết nối được.
+- Tài khoản thử: `chuchuoi@quaythuoc650.vn` / `ChuChuoi@650`, vai `chain_pharmacist` phạm vi
+  chuỗi, 54 quyền. **Đã tắt cờ bắt đổi mật khẩu** để vào thẳng — tài khoản test, không phải
+  tài khoản dùng lâu dài.
+- `docker` postgres + redis **vẫn `up`** (hạ tầng dùng chung, cố ý giữ).
+- Cây git **sạch**, `main`, không remote.
+- Dữ liệu thử đã dọn: `PO-0021` · `PO-0022` · 3 mã `Thuốc thử V31…` — kiểm 0 tồn/0 bán trước
+  khi xoá, xác nhận `0 | 0` sau khi xoá.
+
+### 🚧 Nợ mở
+
+| # | Việc | Ai |
+|---|---|---|
+| **V3-5** | Báo cáo CSV đọc được — **nút thắt**: vừa rẻ nhất, vừa là **đầu vào AI tầng A** | Trợ lý Code |
+| **V3-7a** | Báo cáo lợi nhuận — 🔴 **chờ Chain chốt chiều xem**: thuốc / ngày / NCC | Chain |
+| **V3-4** · **V3-3** | Màn dẫn đường bắt đầu · gom đề xuất cùng NCC | Trợ lý Code |
+| **V3-7b** | Hoá đơn NCC · VAT · công nợ — 🔴 chờ **Kế toán**: dừng ở nội bộ hay khớp sổ thuế? | Trợ lý Kế toán |
+| **AI tầng C** | 🔴 chờ **Pháp Lý** + Chain chốt *"AI chọn thuốc"* hay *"dựng từ phác đồ"* | Pháp Lý · Chain |
+| — | 🔴 Cờ **quầy thuốc vs nhà thuốc** — treo từ 01/08, chặn AI tầng C | Trợ lý Pháp Lý |
+| — | 🔴 Khoá `AI__API_KEY` thật + nguồn tri thức dược có bản quyền | Chain |
+| — | 🔴 Câu hỏi **T3**: quyền ký sổ có trong phạm vi uỷ quyền không? (treo từ 03/08) | Chain |
+| — | 🔴 Chain chạy **runbook `docs/18 §D`** trên máy thật (treo từ 03/08) | Chain |
+| **UQ** | Màn hình uỷ quyền + bộ quyền `maint.*` — hôm nay chỉ dùng được qua API | Trợ lý Code |
+| **B2/B3** | `backup_deadman.sh` có răng · 7 cổng trình duyệt (xem phát hiện `node_modules`) | Trợ lý Code |
