@@ -10538,3 +10538,41 @@ theo 21:00 giờ VN.
 
 **Link demo hiện tại:** `https://continue-nature-las-administrator.trycloudflare.com/` — **sẽ đổi lần
 nữa** ở lần restart kế tiếp. Đây vẫn là lý do tên miền riêng là nút thắt số 1.
+
+---
+
+## 7eg. 🔑 NOPASSWD hẹp thay cho gửi mật khẩu sudo qua chat (2026-08-04, 20:22)
+
+Chain chốt: cài NOPASSWD thay vì đổi mật khẩu. Đã cài `/etc/sudoers.d/chain-vanhanh`
+(`0440 root:root`), nguồn versioned tại **`infra/sudoers.d/chain-vanhanh`**.
+
+**Nguyên tắc chọn lệnh:** chỉ liệt kê lệnh **không thể biến thành shell root**. Đây là chỗ dễ hỏng
+nhất khi cấp NOPASSWD — cấp `systemctl` chung nghe có vẻ vô hại nhưng khởi động được unit tuỳ ý là
+chạy được lệnh tuỳ ý dưới root, tức là cấp luôn cả máy.
+
+| Cho phép | Cố ý loại trừ | Lý do loại |
+|---|---|---|
+| `timedatectl` status/`set-timezone`/`set-ntp` | `podman` | `podman run -v /:/host` = root shell 1 dòng |
+| `systemctl start/stop/restart` **chỉ** `crond` | `systemctl` không giới hạn unit | unit tuỳ ý = lệnh tuỳ ý dưới root |
+| `systemctl start/restart` **chỉ** `tailscaled` | `dnf` / `rpm` | scriptlet gói chạy root |
+| `firewall-cmd` **chỉ đọc** | `journalctl` | pager → `!sh` → shell root |
+| — | `systemctl reboot` | không phải lỗ bảo mật; gián đoạn dịch vụ nên để Chain tự thêm (mẫu sẵn cuối file) |
+
+**Quy trình cài an toàn (sai cú pháp sudoers = hỏng `sudo` toàn máy, mất luôn đường sửa):**
+`scp` ra `/tmp` → `visudo -cf /tmp/…` → chỉ khi `parsed OK` mới `install -m 0440 -o root -g root`
+→ `visudo -c` toàn bộ lần nữa. Cả 2 lần đều `parsed OK`.
+
+**Kiểm chứng bằng `sudo -n` (không hỏi mật khẩu; không được phép thì trả lỗi ngay):**
+
+| Phải chạy được | Kết quả | Phải bị chặn | Kết quả |
+|---|---|---|---|
+| `timedatectl status` | ✅ | `podman ps` | ✅ chặn |
+| `timedatectl set-timezone` | ✅ | `dnf list` | ✅ chặn |
+| `systemctl restart crond` | ✅ | `systemctl restart sshd` | ✅ chặn |
+| `firewall-cmd --state` | ✅ | `cat /etc/shadow` | ✅ chặn |
+| | | `systemctl reboot` | ✅ chặn |
+| | | `firewall-cmd --add-port=1234/tcp` | ✅ chặn |
+
+🔴 **Việc còn lại cho Chain:** mật khẩu sudo cũ **vẫn nằm trong lịch sử hội thoại 04/08**. NOPASSWD
+chỉ làm cho *lần sau* không phải gửi nữa — nó **không thu hồi** mật khẩu đã lộ. Muốn sạch hẳn thì
+vẫn phải đổi mật khẩu tài khoản `chain` (`passwd`, tự gõ trên máy, không qua chat).

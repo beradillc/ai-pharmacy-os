@@ -321,6 +321,38 @@ sudo reboot                    # cần mật khẩu — Claude không chạy đ�
 #   https://bera-saas.tailfb7b8c.ts.net/     → phải ra màn đăng nhập BERAS
 ```
 
+### 🔑 NOPASSWD hẹp cho vài lệnh vận hành (lập 2026-08-04)
+
+**Vì sao:** cách cũ là Chain gõ mật khẩu sudo vào chat mỗi lần cần root — mật khẩu đó
+nằm lại trong lịch sử hội thoại vĩnh viễn. Cấp quyền hẹp cho đúng vài lệnh **an toàn
+hơn nhiều** so với luân chuyển mật khẩu qua kênh chat.
+
+Nguồn: **`infra/sudoers.d/chain-vanhanh`** trong repo → cài tại
+`/etc/sudoers.d/chain-vanhanh` (`0440 root:root`).
+
+| Nhóm | Cho phép |
+|---|---|
+| Múi giờ | `timedatectl` (status · `set-timezone *` · `set-ntp *`) |
+| Dịch vụ | `systemctl start\|stop\|restart` **chỉ** `crond`; `start\|restart` **chỉ** `tailscaled` |
+| Tường lửa | `firewall-cmd` **chỉ đọc** (`--state`, `--list-all`, `--list-all-zones`, `--get-active-zones`) |
+
+**Cố ý KHÔNG cấp** — mỗi cái là một đường lên root trong một dòng lệnh:
+
+| Loại trừ | Vì sao |
+|---|---|
+| `podman` | `podman run -v /:/host` = root shell tức thì |
+| `systemctl` (không giới hạn unit) | khởi động unit tuỳ ý = chạy lệnh tuỳ ý dưới root ⇒ phải liệt kê đúng tên unit |
+| `dnf` / `rpm` | scriptlet gói chạy dưới root |
+| `journalctl` | mở pager rồi `!sh` là thoát ra shell root |
+| `systemctl reboot` | không phải lỗ bảo mật, nhưng gián đoạn dịch vụ — để Chain tự quyết, mẫu sẵn ở cuối file |
+
+⚠️ Sửa file này **bắt buộc** qua `visudo -f /etc/sudoers.d/chain-vanhanh`, hoặc
+`visudo -cf <file>` **trước** khi chép vào — sai cú pháp là hỏng `sudo` toàn máy.
+
+Kiểm chứng đã chạy thật 04/08 (`sudo -n` = không hỏi mật khẩu, hỏng thì trả lỗi):
+4 lệnh trong danh sách ✅ chạy; `podman ps` · `dnf list` · `systemctl restart sshd` ·
+`cat /etc/shadow` · `systemctl reboot` · `firewall-cmd --add-port` ✅ vẫn bị chặn.
+
 ### 🔄 Đồng bộ mã nguồn máy dev ↔ `bera-saas` (rà 2026-08-04)
 
 Repo trên server **không có `git remote`** (deploy key nằm ở máy Mint, không ở server).

@@ -1,0 +1,44 @@
+# NOPASSWD HẸP cho tài khoản vận hành `chain` — lập 2026-08-04.
+#
+# Vì sao có file này: vài lệnh vận hành lặt vặt (đổi múi giờ, restart crond) cần root,
+# mà cách cũ là Chain gõ mật khẩu sudo vào chat — mật khẩu đó nằm lại trong lịch sử
+# hội thoại vĩnh viễn. Cấp quyền hẹp cho đúng vài lệnh an toàn hơn nhiều so với việc
+# luân chuyển mật khẩu qua kênh chat.
+#
+# NGUYÊN TẮC: chỉ liệt kê lệnh KHÔNG THỂ biến thành shell root. Cụ thể đã CỐ Ý loại:
+#   - podman        : `podman run -v /:/host` là root shell trong 1 dòng
+#   - systemctl (chung) : khởi động unit tuỳ ý = chạy lệnh tuỳ ý dưới root
+#                     ⇒ chỉ cho phép đúng TÊN UNIT liệt kê dưới đây
+#   - dnf / rpm     : scriptlet gói chạy dưới root
+#   - journalctl    : mở pager rồi `!sh` là thoát ra shell root
+#   - reboot        : không phải lỗ bảo mật, nhưng là hành động gián đoạn dịch vụ —
+#                     để Chain tự quyết có thêm hay không (xem ghi chú cuối file)
+#
+# Sửa file này BẮT BUỘC qua `visudo -f /etc/sudoers.d/chain-vanhanh`, hoặc kiểm bằng
+# `visudo -cf <file>` TRƯỚC khi chép vào. Sai cú pháp ⇒ hỏng sudo toàn máy.
+
+# --- Múi giờ & đồng bộ giờ ---
+Cmnd_Alias BERA_GIO = /usr/bin/timedatectl "", \
+                      /usr/bin/timedatectl status, \
+                      /usr/bin/timedatectl set-timezone *, \
+                      /usr/bin/timedatectl set-ntp *
+
+# --- Dịch vụ hệ thống mà app phụ thuộc — CHỈ đúng các unit này, không phải unit tuỳ ý ---
+Cmnd_Alias BERA_DICHVU = /usr/bin/systemctl restart crond, \
+                         /usr/bin/systemctl start crond, \
+                         /usr/bin/systemctl stop crond, \
+                         /usr/bin/systemctl restart tailscaled, \
+                         /usr/bin/systemctl start tailscaled
+
+# --- Tường lửa: CHỈ ĐỌC, không sửa luật ---
+Cmnd_Alias BERA_TUONGLUA = /usr/bin/firewall-cmd --list-all, \
+                           /usr/bin/firewall-cmd --list-all-zones, \
+                           /usr/bin/firewall-cmd --get-active-zones, \
+                           /usr/bin/firewall-cmd --state
+
+chain ALL=(root) NOPASSWD: BERA_GIO, BERA_DICHVU, BERA_TUONGLUA
+
+# Muốn cho phép reboot không cần mật khẩu thì thêm dòng dưới (đã cân nhắc: máy đã
+# chứng minh tự phục hồi hoàn toàn sau 2 lần reboot — 5 container + đường hầm tự lên):
+#   Cmnd_Alias BERA_REBOOT = /usr/bin/systemctl reboot
+#   chain ALL=(root) NOPASSWD: BERA_REBOOT
