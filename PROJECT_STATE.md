@@ -10576,3 +10576,86 @@ chạy được lệnh tuỳ ý dưới root, tức là cấp luôn cả máy.
 🔴 **Việc còn lại cho Chain:** mật khẩu sudo cũ **vẫn nằm trong lịch sử hội thoại 04/08**. NOPASSWD
 chỉ làm cho *lần sau* không phải gửi nữa — nó **không thu hồi** mật khẩu đã lộ. Muốn sạch hẳn thì
 vẫn phải đổi mật khẩu tài khoản `chain` (`passwd`, tự gõ trên máy, không qua chat).
+
+---
+
+## 7eh. 📧 Canh tin tuyển dụng viên chức Sở GD&ĐT Vĩnh Long, tự gửi email (2026-08-04, 20:45)
+
+Chain giao GĐ lên kế hoạch tận dụng Claude Code trên server để rà tin tuyển dụng viên chức
+trang chính thức Sở GD&ĐT Vĩnh Long, 30 phút/lần, gửi về `ngochuynh1712@chauthanh.edu.vn`.
+Chain chốt: gửi qua **Gmail `beradillc@gmail.com` + App Password**, phạm vi **Tin tuyển dụng
++ Thông báo chung**.
+
+### Khảo sát trước khi viết dòng nào (kỷ luật #5 — không tin tài liệu)
+
+| Hạng mục | Đo thật |
+|---|---|
+| Trang nguồn | HTTP 200 · 57 KB · 0,9s · **HTML tĩnh**, `curl` lấy được link, không cần trình duyệt |
+| RSS | ❌ `/rss.xml` trả **HTTP 200 nhưng ruột là trang 404** — bẫy kinh điển, tin mã trạng thái là hỏng |
+| `robots.txt` | cho phép `/tin-tuc/`; **chặn `/*.pdf`, `/*.doc`, `/*.xls`, `/content/download/`**; không có `Crawl-delay` |
+| Claude CLI trên server | ✅ đã đăng nhập, `claude -p` chạy được không cần TTY |
+| Gửi mail | `python3` có sẵn ⇒ `smtplib` thư viện chuẩn. **Không cài gói** ⇒ không phải mở `dnf` trong sudoers (§7eg đã cố ý loại `dnf` vì nó là đường lên root) |
+
+### 🔍 Phát hiện đáng giá nhất: canh một mục là sót
+
+Thông báo **tuyển dụng viên chức** không chỉ nằm ở mục *Tin tuyển dụng*. Có một bản nằm trong
+**Văn bản chỉ đạo điều hành** (`260/TB-SGDĐT`). Nếu làm đúng nghĩa đen yêu cầu ban đầu — canh
+mỗi mục Tin tuyển dụng — thì đúng loại tin cần bắt lại có đường lọt. Nay canh **3 nguồn**.
+
+### Kiến trúc — vì sao KHÔNG đưa trang cho Claude mỗi 30 phút
+
+| | Gọi Claude mỗi lần | Có cổng lọc rẻ |
+|---|---|---|
+| Số lần gọi | 48/ngày · ~1.440/tháng | **~1–5/tháng** |
+| Token | ~**21 triệu/tháng** | không đáng kể |
+| Hệ quả | ăn chung hạn mức với việc Pharmacy | không ảnh hưởng |
+
+`urllib` lấy danh sách URL (0 token) → so `seen.txt` → **chỉ khi có URL mới** Claude mới tóm
+tắt. Vẫn phát hiện trong vòng 30 phút đúng như Chain yêu cầu.
+
+### Ba lỗi tìm ra bằng cách chạy thật, không phải bằng suy luận
+
+| # | Lỗi | Sửa |
+|---|---|---|
+| 1 | Regex chỉ bắt kiểu `<a href title="…">`. Mục **Văn bản** dùng `<a class="title-documment" href="…">Tiêu đề</a>` ⇒ **tách được 0 link** | Bắt chung `<a …>…</a>`, ưu tiên `title=`, không có thì lấy chữ trong thẻ |
+| 2 | Bộ lọc từ khoá có `xet tuyen`/`thi tuyen`/`chi tieu tuyen` ⇒ dính **2 tin tuyển sinh lớp 10** (chuyện học sinh) | Chỉ giữ từ khoá mạnh: `tuyen dung`, `vien chuc`, `bien che`… Kết quả: **0/10** tin chung lọt sai, vẫn bắt đúng tin `260/TB-SGDĐT` |
+| 3 | Timer dùng `OnUnitActiveSec` + `Persistent=true` — **`Persistent` chỉ có tác dụng với `OnCalendar`**, bị bỏ qua im lặng. `list-timers` hiện `NEXT` rỗng | Chuyển `OnCalendar=*:00/30`. Xác nhận `NEXT Tue 2026-08-04 21:01:31` |
+
+Lỗi #3 là loại nguy hiểm nhất: unit vẫn `enabled`, `active`, không log lỗi — chỉ **không bao
+giờ chạy**, và tính năng chạy bù (lý do duy nhất chọn systemd timer thay cron) mất sạch.
+
+### Cổng "0 link = LỖI" đã thấy ĐỎ vì lý do đúng (kỷ luật #14)
+
+Không phải đột biến dựng lên: lần chạy đầu, nguồn *Văn bản chỉ đạo* tách được 0 link thật, cổng
+báo động đúng và **không ghi `seen.txt`**. Nếu thiếu cổng này, script sẽ im lặng báo "không có
+tin mới" vĩnh viễn cho một nguồn đã hỏng.
+
+### Tự bảo vệ đã cài
+
+| Cơ chế | Chống được gì |
+|---|---|
+| Chỉ ghi `seen.txt` **sau khi** gửi mail thành công | Gửi lỗi ⇒ vòng sau thử lại. Ghi trước là **mất tin vĩnh viễn** |
+| Tách 0 link = lỗi, gửi cảnh báo | Trang đổi giao diện mà script vẫn "yên tâm" |
+| Claude hỏng/timeout ⇒ vẫn gửi mail trơn | Tóm tắt là tiện nghi, **cảnh báo mới là nhiệm vụ** |
+| Lần chạy đầu chỉ ghi mốc, không gửi | Không dội 28 tin cũ vào hộp thư |
+| Nhịp tim 1 mail/tuần | Im lặng có hai nghĩa: chưa có tin, hay script đã chết? |
+| `Persistent=true` + `OnCalendar` | Laptop tắt qua đêm ⇒ bật lên chạy bù ngay |
+
+### Kiểm chứng đã chạy
+
+| Việc | Kết quả |
+|---|---|
+| 3 nguồn tách link | 10 · 10 · 8 tin |
+| Bộ lọc trên 2 nguồn tin chung | **1/18** lọt — đúng tin `260/TB-SGDĐT`, 0 tin tuyển sinh |
+| Mốc đầu | 28 tin ghi nhận, **không gửi mail** |
+| Timer | `NEXT 21:01:31`, cách 18 phút |
+| `claude -p` tóm tắt tin thật | ✅ 15 giây, đúng mẫu, **tự khai chỗ không có dữ liệu thay vì bịa** |
+| `ruff check` + `format` | sạch |
+
+⚠️ **Giới hạn thật, không giấu:** với nguồn *Văn bản chỉ đạo*, phần ruột (chỉ tiêu, hạn nộp)
+nằm trong **file PDF đính kèm** mà `robots.txt` chặn tải. Mail sẽ có metadata + link, người
+nhận phải tự mở. Đây là lựa chọn tuân thủ có chủ ý, không phải thiếu sót kỹ thuật.
+
+🔴 **Chưa chạy được cho tới khi có App Password.** `~/.config/canhtin-vinhlong.env` đã tạo
+(`0600`) nhưng `SMTP_PASS` còn rỗng. Timer đã bật — có tin mới trong lúc chờ thì gửi lỗi và
+**thử lại vòng sau**, không mất tin.

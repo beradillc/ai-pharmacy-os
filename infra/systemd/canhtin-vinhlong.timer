@@ -1,0 +1,18 @@
+[Unit]
+Description=Chay canh tin Vinh Long moi 30 phut
+
+[Timer]
+# Mốc cố định :00 và :30 mỗi giờ.
+# ⚠️ BẮT BUỘC là OnCalendar, không phải OnBootSec/OnUnitActiveSec: `Persistent=`
+# CHỈ có tác dụng với OnCalendar. Bản đầu 04/08 dùng OnUnitActiveSec + Persistent,
+# `list-timers` hiện NEXT rỗng — Persistent bị bỏ qua IM LẶNG, mất luôn tính năng
+# chạy bù, mà chạy bù chính là lý do chọn systemd timer thay vì cron.
+OnCalendar=*:00/30
+# bera-saas là laptop, tắt qua đêm là bỏ lỡ các mốc. Persistent làm systemd chạy bù
+# NGAY khi máy bật lại, thay vì chờ tới mốc 30 phút kế tiếp.
+Persistent=true
+# Lệch ngẫu nhiên để không gõ cửa trang đúng phút tròn mỗi lần
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

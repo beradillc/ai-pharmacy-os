@@ -1,0 +1,14 @@
+[Unit]
+# Canh tin tuyển dụng viên chức — Sở GD&ĐT Vĩnh Long (lập 2026-08-04).
+# Gửi mail khi có tin mới. Chi tiết thiết kế: scripts/canhtin_vinhlong.py
+Description=Canh tin tuyen dung vien chuc So GD&DT Vinh Long
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Bí mật SMTP để ngoài repo, quyền 0600 — cùng mẫu ~/.config/pharmacy-os.env
+EnvironmentFile=%h/.config/canhtin-vinhlong.env
+ExecStart=%h/.local/bin/canhtin-vinhlong
+StandardOutput=append:%h/canhtin-vinhlong.log
+StandardError=append:%h/canhtin-vinhlong.log
