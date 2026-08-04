@@ -123,6 +123,35 @@ Nếu `tailscale serve` báo "Serve is not enabled on your tailnet" kèm link
 Serve (khác Funnel) không thật sự bị chặn bởi cờ đó; xác nhận bằng `tailscale serve
 status` sau khi chạy.
 
+### 6b. Mở CÔNG KHAI ra internet bằng Funnel (2026-08-04, Chain duyệt — demo rộng rãi)
+
+Mục tiêu: người xem **mở link là vào**, không cài Tailscale, không cần tài khoản Tailscale.
+
+🔴 **Cú pháp `tailscale funnel <target>` ở mục 6 KHÔNG dùng được nữa.** Bản trên máy này
+(Tailscale hiện hành) trả `Error: the CLI for serve and funnel has changed.` với dạng
+`tailscale funnel --bg 443 on`. Cú pháp đúng — và giữ nguyên bẫy `--set-path` ở mục 6:
+
+```bash
+tailscale funnel --bg --set-path /       http://127.0.0.1:3000
+tailscale funnel --bg --set-path /api/v1 http://127.0.0.1:8000/api/v1
+tailscale funnel status        # phải thấy "(Funnel on)", không phải "(tailnet only)"
+```
+
+**Không cần `sudo`** sau khi đã chạy **một lần**: `sudo tailscale set --operator=$USER`
+(Chain chạy 2026-08-04). Trước đó mọi lệnh `serve`/`funnel` trả `Access denied: serve
+config denied`.
+
+**Tắt lại khi demo xong:**
+```bash
+tailscale funnel reset         # gỡ công khai, quay về tailnet-only
+```
+
+🔴 **`curl` từ máy trong tailnet KHÔNG chứng minh được Funnel hoạt động** — máy đó vào
+được kể cả khi Funnel tắt. Phải đo từ **ngoài** tailnet. Cách đã dùng 2026-08-04: gọi
+`https://bera-saas.tailfb7b8c.ts.net/` bằng một dịch vụ chạy ngoài mạng (WebFetch của
+Claude, hạ tầng Anthropic) — trả về đúng trang `BERAS — Sổ Quản Lý Nhà Thuốc`, và
+`/api/v1/health` trả `{"status":"ok","version":"0.2.0",...}`. Đúng tinh thần kỷ luật #15.
+
 ## 7. Kiểm thử TRƯỚC khi có dữ liệu thật — bắt buộc, không bỏ qua
 
 Đúng kỷ luật #15 (`AI_Pharmacy_OS/CLAUDE.md`): "không cổng nào chạy JS trong trình
@@ -175,14 +204,91 @@ podman-compose -f docker-compose.prod.yml exec backend \
   podman-compose -f docker-compose.prod.yml up -d && podman-compose -f
   docker-compose.prod.yml exec backend alembic upgrade head`
 
+### 🔌 BẬT MÁY LÊN LÀ VÀO ĐƯỢC NGAY — không thao tác gì (rà 2026-08-04)
+
+Bốn mắt xích phải cùng đúng thì mở link là chạy. Đã rà từng cái bằng lệnh thật:
+
+| # | Mắt xích | Lệnh kiểm | Trạng thái 2026-08-04 |
+|---|---|---|---|
+| 1 | `tailscaled` tự chạy khi boot | `systemctl is-enabled tailscaled` | ✅ `enabled` + `active` |
+| 2 | **`Linger`** — cho `systemd --user` chạy khi **chưa ai đăng nhập** | `loginctl show-user chain \| grep Linger` | ✅ `Linger=yes` |
+| 3 | Unit app tự dựng 4 container | `systemctl --user is-enabled pharmacy-os.service` | ✅ `enabled` + `active` |
+| 4 | Funnel còn bật | `tailscale funnel status` | ✅ `(Funnel on)` |
+
+🔴 **Mắt xích số 2 là chỗ dễ hỏng nhất và im lặng nhất.** Không có `Linger=yes` thì
+`systemd --user` chỉ sống trong lúc có phiên đăng nhập ⇒ máy boot xong, **không ai SSH
+vào thì app không bao giờ khởi động** — mà `systemctl --user is-enabled` vẫn báo
+`enabled`, nên nhìn cấu hình sẽ tưởng đúng. Bật bằng `loginctl enable-linger chain`.
+
+⚠️ **Chưa kiểm chứng bằng reboot thật SAU khi bật Funnel.** §7ea (2026-08-04) đã reboot
+thật và xác nhận **4 container tự lên** — nhưng lúc đó Funnel **chưa tồn tại**. Việc
+"cấu hình Funnel bền qua reboot" hiện mới ở mức **suy luận từ cờ `--bg`** (ghi vào state
+của `tailscaled`, mà `tailscaled` thì `enabled`), **chưa phải bằng chứng**. Muốn có bằng
+chứng thì chạy:
+
+```bash
+sudo reboot                    # cần mật khẩu — Claude không chạy được, phải là người
+# sau khi máy dậy, kiểm TỪ NGOÀI tailnet (điện thoại tắt WiFi, dùng 4G):
+#   https://bera-saas.tailfb7b8c.ts.net/     → phải ra màn đăng nhập BERAS
+```
+
+### 🔄 Đồng bộ mã nguồn máy dev ↔ `bera-saas` (rà 2026-08-04)
+
+Repo trên server **không có `git remote`** (deploy key nằm ở máy Mint, không ở server).
+Ngày 04/08 phát hiện server tụt **6 commit** sau máy dev, nghĩa là bản mã đang phục vụ
+thật đã trôi khỏi repo chính — sửa gì trực tiếp trên server sẽ mất ở lần deploy sau.
+
+Cách đồng bộ **không cần GitHub, không đưa gì ra internet** — dùng `git bundle` qua
+Tailscale (đã dùng thật 04/08, fast-forward sạch):
+
+```bash
+# trên máy dev
+git bundle create /tmp/sync.bundle <commit-server-đang-đứng>..main
+git bundle verify /tmp/sync.bundle
+scp /tmp/sync.bundle chain@bera-saas:/tmp/sync.bundle
+
+# trên server
+cd ~/ai-pharmacy-os
+git checkout -- .                                   # bỏ thay đổi cục bộ (xem cảnh báo dưới)
+git fetch /tmp/sync.bundle main:refs/remotes/mint/main
+git merge --ff-only refs/remotes/mint/main
+```
+
+🔴 **Merge sẽ bị chặn bởi file `untracked` trùng tên với file trong commit mới**
+(`error: untracked working tree files would be overwritten`). Ngày 04/08 thủ phạm là
+`scripts/backup_secrets.sh` — được tạo tay trên server và **đang chạy trong cron**.
+**Đối chiếu nội dung trước khi gỡ** (`diff` với bản trong commit), đừng `rm` mù: nếu bản
+trên server mới hơn thì gỡ đi là mất một thứ đang chạy production.
+
+Trước khi `git checkout -- .`, chép riêng những file đang phục vụ thật
+(`docker-compose.prod.yml`, `.env.prod`) ra `/tmp` để đối chiếu sau merge — `.env.prod`
+nằm trong `.gitignore` nên không bị đụng, nhưng compose thì có.
+
 ## 🚧 Nợ — chưa làm
 
 - **fail2ban cho chính ứng dụng** (khác fail2ban cấp hệ điều hành đã bật sẵn) — rate
   limit đăng nhập đã có ở tầng app (`SECURITY__RATE_LIMIT_*`), chưa có gì ở tầng
   mạng cho riêng cổng ứng dụng.
-- **Mở công khai ra internet** — cố ý CHƯA làm (Chain chốt 2026-08-04). Khi nào cần,
-  phải quay lại: domain thật, TLS Let's Encrypt/certbot, mở cổng 80/443 qua
-  firewalld zone `public`, và rà lại toàn bộ rate-limit/fail2ban trước khi mở.
+- ~~**Mở công khai ra internet** — cố ý CHƯA làm~~ → **ĐÃ MỞ 2026-08-04** bằng
+  **Tailscale Funnel** (mục 6b), Chain duyệt để demo rộng rãi. Không cần domain riêng,
+  không cần certbot, không mở cổng nào trên firewalld/router — Funnel đi qua hạ tầng
+  Tailscale và tự cấp TLS. 🔴 **Hệ quả:** dòng "fail2ban cho chính ứng dụng" ngay trên
+  đây từ nay **không còn là nợ hoãn được** — app đã nằm trên internet công khai, bot quét
+  sẽ tìm ra. Chưa chặn pilot, nhưng phải xử trước khi có nhà thuốc thật chạy trên máy này.
+- 🔴 **`SECURITY__RATE_LIMIT_LOGIN_ATTEMPTS` đang ở `300`, KHÔNG phải `10`** — nới tạm
+  2026-08-04 cho demo công khai, **phải trả về `10` cùng lúc với `tailscale funnel reset`**.
+  *Vì sao phải nới:* backend đọc IP client bằng `request.client.host`
+  (`core/http.py:client_ip_of`, cố ý không đọc `X-Forwarded-For` để sổ audit không giả mạo
+  được). Sau reverse-proxy, **mọi người dùng đều mang cùng một IP** — đo thật: `10.89.0.4`
+  (gateway mạng container). Hạn mức 10 lượt/phút vì thế là 10 lượt cho **toàn hệ thống**,
+  không phải mỗi người: **một người gõ sai mật khẩu 10 lần là khoá đường đăng nhập của
+  tất cả những người còn lại**. Lớp khoá tài khoản sau 5 lần sai **vẫn nguyên**, nên
+  chống dò mật khẩu vào một tài khoản không bị yếu đi.
+  **Cách sửa đúng (chưa làm):** cho `client_ip_of` tin `X-Forwarded-For` khi socket peer
+  nằm trong danh sách proxy tin cậy — đọc từ **phải sang trái**, lấy IP đầu tiên không
+  thuộc danh sách (đi từ trái sẽ tin phần client tự gửi). Đã đo xác nhận `tailscale serve`
+  **có** gửi `X-Forwarded-For` với IP thật, nên bản vá sẽ chạy. Chính docstring của hàm đó
+  đã ghi sẵn đây là *"the follow-up"*.
 - **`AI__API_KEY` thật** — chưa cấp, tầng AI (ROADMAP V4) vẫn dùng `MockLLMProvider`
   (đang chạy dưới cờ diễn tập vận hành `PHARMACY_ALLOW_MOCKS_IN_PROD=true` — Chain chốt
   2026-08-04, xem PROJECT_STATE §7dy). **Tắt cờ này ngay khi có khoá thật.**

@@ -2,7 +2,10 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-04** — §7ec **tối ưu server**: 4/4 container nay có giới hạn RAM
+> **Cập nhật cuối: 2026-08-04** — §7ed **Funnel công khai**: người xem mở link là vào, KHÔNG
+> cần cài Tailscale (kiểm chứng từ NGOÀI tailnet). Danh mục **70 mã thuốc** vào Quầy thuốc 650.
+> Mã nguồn Mint ↔ server nay **khớp `9885fa8`** (server từng tụt 6 commit). 🔴 Rate limit đang
+> nới **300**, phải trả về 10 khi tắt Funnel. Trước đó §7ec **tối ưu server**: 4/4 container nay có giới hạn RAM
 > (768/256/768/512 MB) + healthcheck, áp live không gián đoạn, `(healthy)` cả 4. iPhone không vào
 > được là do **chưa gia nhập tailnet**, không phải lỗi server. Phát hiện phụ: repo trên server
 > **không có remote** và cũ hơn dev 1 commit — mã đang chạy thật trôi khỏi repo chính.
@@ -218,6 +221,7 @@
 | [§7ea](#7ea-ki-m-ch-ng-server-c-l-p-b-ng-reboot-th-t-cockpit-gi-m-s-t-2026-08-04) | 2026-08-04 | ✅ **KIỂM CHỨNG BẰNG REBOOT THẬT + Cockpit** — 4 container tự lên sau reboot, giao diện giám sát `:9090` |
 | [§7eb](#7eb-ng-phi-n-full-auto-v3-5-v3-7a-deploy-almalinux-ho-n-t-t-2026-08-04) | 2026-08-04 | 🔒 **ĐÓNG PHIÊN** — V3-5→V3-7a→deploy AlmaLinux hoàn tất, 9 commit, remote git đầu tiên, 12 quyết định tự chốt |
 | [§7ec](#7ec-t-i-u-server-ch-n-o-n-iphone-kh-ng-v-o-c-2026-08-04-chi-u) | 2026-08-04 | 🔧 **TỐI ƯU SERVER** — giới hạn RAM + healthcheck 4 container; iPhone chưa vào tailnet (không phải lỗi server) |
+| [§7ed](#7ed-m-funnel-c-ng-khai-ng-b-m-ngu-n-mint-server-2026-08-04-chi-u) | 2026-08-04 | 🌐 **FUNNEL CÔNG KHAI** — demo không cần cài Tailscale (kiểm từ ngoài tailnet) + 70 mã thuốc + Mint↔server khớp `9885fa8` |
 
 ---
 
@@ -10320,3 +10324,79 @@ trong lần rsync/deploy sau. Đã xử lý đúng chiều: sửa cả hai nơi,
 - 4/4 container `(healthy)`, giới hạn RAM đã vào cgroup (xác nhận `podman inspect`).
 - Commit `7da50a2` ở repo dev, **chưa push** — chờ Chain quyết.
 - Sao lưu compose gốc: `~/ai-pharmacy-os/docker-compose.prod.yml.bak-20260804-1637`.
+
+## 7ed. 🌐 Mở Funnel công khai + đồng bộ mã nguồn Mint ↔ server (2026-08-04, chiều)
+
+**Chain giao 3 việc:** ① demo rộng rãi, người xem **không cần cài Tailscale** ② nạp danh
+mục thuốc vào Quầy thuốc 650 ③ uỷ quyền rà soát/đồng bộ mã nguồn + ghi tiến trình để
+**lần sau bật server lên là vào được ngay**.
+
+### ① Funnel — đã mở, kiểm chứng TỪ NGOÀI tailnet
+
+| Việc | Kết quả |
+|---|---|
+| Cú pháp cũ `tailscale funnel --bg 443 on` | ❌ `Error: the CLI for serve and funnel has changed` |
+| Cú pháp đúng | `tailscale funnel --bg --set-path / http://127.0.0.1:3000` (+ tuyến `/api/v1`) |
+| Quyền | Chain chạy `sudo tailscale set --operator=$USER` một lần ⇒ từ nay không cần `sudo` |
+| **Kiểm từ ngoài tailnet** | ✅ WebFetch (hạ tầng Anthropic) → trang `BERAS`, `/api/v1/health` → `{"status":"ok"}` |
+
+🔴 **`curl` từ máy trong tailnet không chứng minh được gì** — máy đó vào được kể cả khi
+Funnel tắt. Đây đúng ca kỷ luật #15: phải đo bằng thứ người ngoài thật sự chạm vào.
+
+### ② Danh mục thuốc — 70 mã vào Quầy thuốc 650
+
+`seeds.danh_muc_quay_thuoc` (viết 01/08 cho đúng quầy này, **chưa từng chạy** trên CSDL
+prod). Kết quả: **70 mã** (63 thuốc + 7 vật tư) · **61 hoạt chất** · nối đủ **63/63**
+thuốc ⇒ cảnh báo dị ứng hoạt động (không lặp lỗi §7ce). `pg_dump` trước khi chạy.
+
+**Tự khai một lần báo động sai:** thấy `7 thuốc chưa nối hoạt chất` tôi đã gọi đó là lỗi
+§7ce tái phát — sai. Bảy mục đó là **vật tư y tế** (băng gạc, khẩu trang, kim tiêm,
+nhiệt kế), không có hoạt chất nên không nối là **đúng**; seed báo `thieu_hoat_chat=None`
+là chính xác. Đã đính chính ngay trong phiên.
+
+🔴 **Ba lỗ hổng của danh mục, đo thật:** `registration_no` **0/70** · `atc_code` **0/70** ·
+`barcode` 70/70 nhưng **TỰ SINH** (`893{6500000000+i}`, dãy tuần tự) ⇒ **quét hộp thuốc
+thật không ra kết quả**. Tồn kho **0 lô** ⇒ danh mục có nhưng chưa bán được.
+*Khuyến nghị GĐ:* **không** nạp danh mục quốc gia 20.000 SĐK vào ô tìm kiếm bán hàng —
+gõ "para" ra vài trăm dòng gần giống nhau là bán nhầm hàm lượng. Danh mục lớn để **tra
+cứu**, danh mục nhỏ để **bán**. Đáng bổ sung là **SĐK cho 63 thuốc đang có** (trường có
+nghĩa pháp lý), và **xoá barcode giả** — số trông hợp lệ mà quét không ra tệ hơn ô trống.
+
+### ③ Đồng bộ mã nguồn — server tụt **6 commit**, nay khớp
+
+Đính chính §7ec: tôi ghi "cũ hơn dev 1 commit" — **sai, là 6** (`eb4ca89`→`9885fa8`).
+Đồng bộ bằng **`git bundle` qua Tailscale**, không qua GitHub, không đưa gì ra internet.
+Fast-forward sạch vì server không có commit riêng. Chi tiết quy trình +
+2 cái bẫy đã vấp: `docs/DEPLOY_ALMALINUX.md` mục "Đồng bộ mã nguồn".
+
+**Bẫy đáng ghi:** merge bị chặn bởi `scripts/backup_secrets.sh` — file `untracked` trên
+server **đang chạy trong cron mỗi giờ**. Đã `diff` xác nhận giống hệt bản trong commit
+rồi mới gỡ. Gỡ mù ở đây là mất một thứ đang phục vụ production.
+
+### 🔌 "Bật máy lên là vào được ngay" — 4 mắt xích, rà bằng lệnh thật
+
+`tailscaled` `enabled`+`active` · **`Linger=yes`** · `pharmacy-os.service` `enabled`+`active` ·
+`funnel status` = `(Funnel on)`. Mắt xích **`Linger`** là chỗ hỏng im lặng nhất: thiếu nó
+thì máy boot xong **không ai SSH vào là app không khởi động**, mà `is-enabled` vẫn báo
+`enabled`.
+
+⚠️ **CHƯA kiểm chứng bằng reboot thật sau khi bật Funnel** — §7ea reboot thật lúc Funnel
+chưa tồn tại. "Funnel bền qua reboot" hiện là **suy luận từ cờ `--bg`**, không phải bằng
+chứng. `sudo reboot` cần mật khẩu ⇒ Claude không chạy được, phải là người.
+
+### 🔴 Nợ mở cuối mục
+
+| # | Việc | Ai |
+|---|---|---|
+| 1 | `RATE_LIMIT_LOGIN_ATTEMPTS` **đang 300**, trả về `10` khi tắt Funnel | Chain + Code |
+| 2 | Sửa `client_ip_of` đọc `X-Forwarded-For` từ proxy tin cậy (cách đúng thay cho nới hạn mức) | Code |
+| 3 | Tài khoản demo quyền hạn chế — nay chỉ có 2 tài khoản, đều là người thật | **Chain quyết** |
+| 4 | Reboot thật kiểm Funnel sống lại | Chain |
+| 5 | fail2ban cho app — **hết là nợ hoãn được** kể từ khi mở công khai | Code |
+| 6 | SĐK 0/70 · barcode tự sinh · tồn kho 0 lô | Chain + Code |
+
+### Điểm dừng
+
+Mint = server = `9885fa8`. Funnel **đang bật**, app 200/200 từ ngoài. 4 container
+`(healthy)`, có `mem_limit`. Dữ liệu: 70 thuốc · 2 users · 1 tenant.
+Tắt demo: `tailscale funnel reset` (+ trả rate limit về 10).
