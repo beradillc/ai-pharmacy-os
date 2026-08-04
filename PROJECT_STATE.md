@@ -10659,3 +10659,23 @@ nhận phải tự mở. Đây là lựa chọn tuân thủ có chủ ý, không
 🔴 **Chưa chạy được cho tới khi có App Password.** `~/.config/canhtin-vinhlong.env` đã tạo
 (`0600`) nhưng `SMTP_PASS` còn rỗng. Timer đã bật — có tin mới trong lúc chờ thì gửi lỗi và
 **thử lại vòng sau**, không mất tin.
+
+**Cập nhật 20:55 — ĐÃ CHẠY THẬT.** Chain gặp *"Cài đặt bạn đang tìm kiếm không khả dụng"* khi
+mở trang App Password — nguyên nhân: tài khoản chưa bật Xác minh 2 bước, Google ẩn hẳn mục đó.
+Chain bật 2FA rồi cấp App Password.
+
+| Kiểm chứng | Kết quả |
+|---|---|
+| Đường ra SMTP từ server | ✅ cổng **587 (STARTTLS)** và **465 (SSL)** đều thông — nhà mạng không chặn |
+| Ghi bí mật | `~/.config/canhtin-vinhlong.env`, quyền **0600**, 3 biến đủ |
+| Thư thử | ✅ đã gửi tới `ngochuynh1712@chauthanh.edu.vn` |
+| Chạy qua **đúng đường systemd** (không phải chạy tay) | ✅ `Result=success`, `ExecMainStatus=0`, `[NHỊP TIM] đã gửi`, `[OK] không có tin mới` |
+| Timer | `NEXT 21:01:29` |
+
+⚠️ Hai dòng `RuntimeError` trong `~/canhtin-vinhlong.log` là của lượt **20:42** (lúc `SMTP_PASS`
+còn rỗng), không phải lượt 20:55 — `nhiptim.txt` đóng dấu 20:55 xác nhận. Ghi rõ ở đây để phiên
+sau đọc log không tưởng là đang lỗi.
+
+**Việc lớn hơn cái script:** tài khoản `beradillc@gmail.com` — nơi `rclone` đang đồng bộ **toàn
+bộ Vault công ty** lên Drive — trước hôm nay **chưa bật 2FA**. Cái script chỉ là cái cớ làm lộ ra
+điều đó. Nay đã bật.
