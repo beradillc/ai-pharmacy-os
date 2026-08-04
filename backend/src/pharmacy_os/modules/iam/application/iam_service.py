@@ -184,6 +184,30 @@ class IamService:
             roles = await repos.roles.list_available(ctx.tenant_id)
         return [RoleOutput.of(r) for r in roles]
 
+    # -- branches --------------------------------------------------------------
+
+    async def branch_names(self, ctx: RequestContext) -> dict[UUID, str]:
+        """Every active branch's id → display name for the tenant, in one query.
+
+        Exists for read models that hold a ``branch_id`` and need a label — the
+        report CSV exports (``/reports/*``, PROJECT_STATE §7dp) print branch UUIDs
+        today. Unlike :meth:`CatalogService.drug_names`, this takes no id list and
+        returns every active branch: a tenant's branch count is a handful of
+        outlets, never thousands like a drug catalogue, so filtering would cost a
+        round-trip to save nothing.
+
+        Reuses ``iam.user.read`` rather than introducing a new permission — this is
+        only ever called by a composition-root adapter under a fixed system
+        identity (never a real user's token, see ``api/v1/reports.py``), so no
+        seeded role needs the grant, and adding one would mean touching seeds/
+        migrations for a permission nothing in the UI ever checks.
+        """
+        require_permission(ctx, "iam.user.read")
+        async with self._uow_factory() as uow:
+            repos = self._repos_factory(uow)
+            branches = await repos.branches.list_active(ctx.tenant_id)
+        return {b.id: b.name for b in branches}
+
     async def list_assignments(
         self, user_id: UUID, ctx: RequestContext
     ) -> list[RoleAssignmentOutput]:

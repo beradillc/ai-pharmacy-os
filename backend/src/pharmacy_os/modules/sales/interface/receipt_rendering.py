@@ -6,7 +6,6 @@ khoảng trống trên giấy in — không có chữ ký điện tử/xác th�
 
 from __future__ import annotations
 
-from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
 from typing import Literal
@@ -18,6 +17,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 
 from pharmacy_os.core.config import OrgSettings
+from pharmacy_os.core.formatting import format_money
 from pharmacy_os.modules.sales.application.dto import ReceiptSummaryDTO
 
 K80_WIDTH = 48
@@ -35,11 +35,6 @@ _UNICODE_FONT_CANDIDATES = (
     "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
 )
 _resolved_font: str | None = None
-
-
-def format_money(amount: Decimal) -> str:
-    """Vietnamese-style thousands separator; VND has no subunit worth printing."""
-    return f"{int(amount):,}".replace(",", ".")
 
 
 def _payment_label(method: str) -> str:

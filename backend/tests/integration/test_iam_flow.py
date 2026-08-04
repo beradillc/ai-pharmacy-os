@@ -633,3 +633,22 @@ async def test_sync_leaves_tenant_owned_roles_alone(
 
     kept = next(r for r in await iam_service.list_roles(ctx) if r.code == "vai_tro_rieng")
     assert kept.permissions == ["sales.read"]
+
+
+# --- branch names (report exports, PROJECT_STATE §7dp) ----------------------
+
+
+async def test_branch_names_resolves_the_bootstrap_branch(
+    iam_service: IamService, auth_service: AuthService
+) -> None:
+    ctx = await _admin_ctx(iam_service, auth_service)
+    names = await iam_service.branch_names(ctx)
+    assert names == {ctx.branch_id: "Chi nhánh chính"}
+
+
+async def test_branch_names_requires_a_permission(iam_service: IamService) -> None:
+    ctx = RequestContext(
+        tenant_id=uuid4(), branch_id=uuid4(), user_id=uuid4(), permissions=frozenset()
+    )
+    with pytest.raises(PermissionDeniedError):
+        await iam_service.branch_names(ctx)
