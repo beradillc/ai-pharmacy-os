@@ -190,7 +190,7 @@ class IamService:
         """Every active branch's id → display name for the tenant, in one query.
 
         Exists for read models that hold a ``branch_id`` and need a label — the
-        report CSV exports (``/reports/*``, PROJECT_STATE §7dp) print branch UUIDs
+        report CSV exports (``/reports/*``, PROJECT_STATE §7dt) print branch UUIDs
         today. Unlike :meth:`CatalogService.drug_names`, this takes no id list and
         returns every active branch: a tenant's branch count is a handful of
         outlets, never thousands like a drug catalogue, so filtering would cost a

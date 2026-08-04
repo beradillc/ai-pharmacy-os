@@ -17,7 +17,7 @@ def format_money(amount: Decimal) -> str:
     """Vietnamese-style thousands separator; VND has no subunit worth printing.
 
     Moved here 2026-08-04 from ``sales.interface.receipt_rendering`` (its only
-    prior home) so ``sales.application`` (report CSV export, PROJECT_STATE §7dp)
+    prior home) so ``sales.application`` (report CSV export, PROJECT_STATE §7dt)
     can reuse it too — an ``application`` module importing its own
     ``interface`` layer would run the Hexagonal dependency arrow backwards.
     See ADR-0005.
@@ -40,5 +40,5 @@ def format_qty(value: Decimal) -> str:
 def format_date_vn(value: date) -> str:
     """``dd/mm/yyyy`` — the format already used on printed receipts
     (``sales.interface.receipt_rendering``), reused here for VN-facing CSV
-    report exports (PROJECT_STATE §7dp)."""
+    report exports (PROJECT_STATE §7dt)."""
     return value.strftime("%d/%m/%Y")

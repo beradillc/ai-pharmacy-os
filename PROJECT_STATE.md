@@ -2,7 +2,10 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-04** — §7ds **đóng phiên**: uỷ quyền quản trị trọn bộ + **đợt V3
+> **Cập nhật cuối: 2026-08-04** — §7dt: **V3-5 xong** (báo cáo CSV 3 file đổi tiếng Việt +
+> tên thuốc/chi nhánh, ADR-0005) dưới uỷ quyền GĐ toàn quyền sau khi Chain chuyển từ mảng
+> Công Trình. pytest **1565 passed** + 16 payment_vnpay, đột biến xác nhận cổng có răng.
+> Trước đó §7ds **đóng phiên**: uỷ quyền quản trị trọn bộ + **đợt V3
 > đóng 4 mục** (thêm thuốc · tạo đơn mua · số lượng hiện thô · màn hình nói đúng việc) + lộ
 > trình **AI V4** bốn tầng. Chain duyệt **kỷ luật #25 và #26**. pytest **1559 passed**, 10
 > commit. **Môi trường LAN vẫn đang chạy** — xem điểm dừng.
@@ -193,6 +196,7 @@
 | [§7dq](#7dq-ng-phi-n-2026-08-02-03-t-a-b1-r-quy-n-q) | 2026-08-03 | 🔒 **ĐÓNG PHIÊN** — đợt A + B1 + rà quyền quản trị · 4 lần phép ĐO suýt sai |
 | [§7dr](#7dr-u-quy-n-qu-n-tr-tr-n-b-3-5-4-5-5-5-2026-08-03) | 2026-08-03 | ✅ **UỶ QUYỀN QUẢN TRỊ TRỌN BỘ** 3/5·4/5·5/5 — 2 lỗi thật trong domain bước 2/5 |
 | [§7ds](#7ds-ng-phi-n-2026-08-03-04-t-v3-4-m-c-2026-08-04) | 2026-08-04 | 🔒 **ĐÓNG PHIÊN** — uỷ quyền trọn bộ + đợt V3 4 mục + lộ trình AI V4 · kỷ luật #25·#26 |
+| [§7dt](#7dt-v3-5-b-o-c-o-csv-c-c-ti-ng-vi-t-2026-08-04) | 2026-08-04 | ✅ **V3-5 XONG** — báo cáo CSV tiếng Việt + tên thuốc/chi nhánh, ADR-0005, full-auto |
 
 ---
 
@@ -9699,7 +9703,7 @@ Alembic: 0047_uy_quyen (head) · CSDL qt650
 
 | # | Việc | Ai |
 |---|---|---|
-| **V3-5** | Báo cáo CSV đọc được — **nút thắt**: vừa rẻ nhất, vừa là **đầu vào AI tầng A** | Trợ lý Code |
+| ~~**V3-5**~~ | ~~Báo cáo CSV đọc được~~ ✅ **xong 04/08**, xem §7dt | — |
 | **V3-7a** | Báo cáo lợi nhuận — 🔴 **chờ Chain chốt chiều xem**: thuốc / ngày / NCC | Chain |
 | **V3-4** · **V3-3** | Màn dẫn đường bắt đầu · gom đề xuất cùng NCC | Trợ lý Code |
 | **V3-7b** | Hoá đơn NCC · VAT · công nợ — 🔴 chờ **Kế toán**: dừng ở nội bộ hay khớp sổ thuế? | Trợ lý Kế toán |
@@ -9710,3 +9714,62 @@ Alembic: 0047_uy_quyen (head) · CSDL qt650
 | — | 🔴 Chain chạy **runbook `docs/18 §D`** trên máy thật (treo từ 03/08) | Chain |
 | **UQ** | Màn hình uỷ quyền + bộ quyền `maint.*` — hôm nay chỉ dùng được qua API | Trợ lý Code |
 | **B2/B3** | `backup_deadman.sh` có răng · 7 cổng trình duyệt (xem phát hiện `node_modules`) | Trợ lý Code |
+
+## 7dt. ✅ V3-5 — Báo cáo CSV đọc được tiếng Việt (2026-08-04)
+
+**Mở phiên dưới uỷ quyền:** Chain đóng phiên Công Trình, chuyển sang mảng này với câu
+*"GĐ tiếp tục hoàn thiện Code, uỷ quyền GĐ toàn quyền"* — áp dụng đúng CHẾ ĐỘ FULL-AUTO đã
+ghi ở CLAUDE.md (Chain bận mảng khác). Chọn **V3-5** làm việc đầu tiên: đứng đầu bảng ưu
+tiên ROADMAP ("Thứ tự đề nghị" #4), không chặn bởi ai, và là **đầu vào của cả V3-7a và
+Tầng A lộ trình AI** — đòn bẩy cao nhất trong nợ mở tại điểm dừng §7ds.
+
+### Việc đã đóng
+
+Đóng trọn **V3-5**: 3 báo cáo CSV (`revenue`, `stock`, `top-drugs`) đổi tiêu đề sang tiếng
+Việt, thêm cột tên thuốc/tên chi nhánh cạnh cột mã, định dạng ngày `dd/mm/yyyy` + tiền phân
+cách nghìn + số lượng bỏ số 0 thừa. Chi tiết đầy đủ + đánh đổi thiết kế:
+`docs/adr/ADR-0005-report-csv-doc-duoc-tieng-viet.md`.
+
+Hai bước, đúng kỷ luật #1 (stepped-commit):
+
+| Bước | Nội dung | Commit |
+|---|---|---|
+| 1 (nền) | `core.formatting` (chuyển `format_money` ra khỏi `sales.interface` + thêm `format_qty`/`format_date_vn`) · `IamService.branch_names` mới | `b0d4aed` |
+| 2 (interface) | `reports.py` tra tên dưới danh tính hệ thống (khuôn `CatalogDrugInfoProvider`, ADR-0004) · sửa `sales`/`inventory` `csv_export.py` · sửa `test_reports_e2e.py` · ADR-0005 · ROADMAP | (commit theo sau ngay entry này) |
+
+### 🔴 Quyết định GĐ tự chốt trong phiên — Chain xem lại khi rảnh
+
+1. **`IamService.branch_names` tái dùng quyền `iam.user.read` đã có, không thêm quyền
+   mới.** Vì chỉ gọi dưới danh tính hệ thống (không qua vai trò thật) nên không cần
+   seed/migration — tránh kỷ luật #7 (kiểm trên CSDL có dữ liệu sẵn) cho một permission
+   không ai thật sự cấp qua UI.
+2. **Giữ cột mã (`*_id`) bên cạnh cột tên, không thay thế.** Roadmap chỉ nói "thêm cột",
+   không nói "đổi cột" — quyết định đọc đúng nghĩa hẹp, và giữ cột mã còn giúp
+   `test_reports_e2e.py` tiếp tục đối chiếu theo id thật thay vì phải tra ngược tên.
+3. **`stock` export cần `_chunked` (gom 500 dòng/lượt) mà `revenue`/`top-drugs` thì
+   không** — vì `stock_report_rows` là stream thật (phân trang DB), còn hai báo cáo kia
+   đã gom danh sách trước khi xếp hạng. Tra tên trước khi stream sẽ phá thiết kế bộ nhớ
+   phẳng đã có; xem ADR-0005 phần "Streaming vs. tra tên hàng loạt".
+4. **Không đổi `compliance/application/csv_export.py`** (sổ TT18) dù nó có cùng hạn chế
+   "chưa có tên thuốc" — cột đó phải khớp đúng mẫu sổ pháp lý (số cột cố định), không phải
+   báo cáo tự do như V3-5. Đụng vào đó là phạm vi khác, không mở rộng hôm nay.
+
+### Cổng tại điểm dừng
+
+```
+RUFF=0 FORMAT=0 IMPORTLINTER=0 (19/19) MYPY=0 (290 tệp)
+PYTEST_EXIT=0   1565 passed + 16 payment_vnpay passed
+Đột biến (kỷ luật #14): _branch_names → {}, xác nhận đúng 2 test đỏ đúng lý do
+  (test_revenue_export_sums_completed_orders, test_stock_export_lists_lot_and_expiry),
+  đã khôi phục, xanh lại
+```
+
+Chưa chạy `check-ui`/cổng trình duyệt: không đổi giao diện — cả 3 endpoint là tải file,
+frontend không đổi (đã `grep` xác nhận `bao-cao/page.tsx` chỉ trigger download).
+
+### 🚧 Còn lại (không đổi so với §7ds, trừ dòng V3-5 đã đóng)
+
+Xem bảng "Nợ mở" cập nhật ngay phía trên §7dt — V3-5 đã gạch, các mục khác giữ nguyên.
+Việc kế tiếp theo thứ tự ROADMAP: **V3-7a** (chờ Chain chốt chiều xem lợi nhuận: thuốc /
+ngày / NCC — không tự chốt được, đây là quyết định sản phẩm cần Chain), sau đó **V3-4**/
+**V3-3** (không chặn, tự làm được).

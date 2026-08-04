@@ -23,6 +23,13 @@ mục đã phát hành**, sai thì ghi một mục mới đính chính.
   Bán **đúng** giá niêm yết, hoặc bán một mã **chưa đặt giá**, không bị ảnh hưởng.
   → `docs/adr/ADR-0003`
 
+- **3 báo cáo CSV xuất ra (`GET /reports/revenue/export`, `.../inventory/stock/export`,
+  `.../top-drugs/export`) đổi tiêu đề cột sang tiếng Việt và thêm cột tên thuốc/tên chi
+  nhánh.** Đường dẫn, mã trạng thái, `Content-Type` **không đổi**; cột mã (`*_id`) vẫn còn,
+  chỉ thêm cột mới cạnh nó. Bên nào tự động đọc file này **theo tên tiêu đề cột** (không
+  phải vị trí) sẽ phải đổi tên cột tra cứu, VD `revenue_total` → `Doanh thu`.
+  → `docs/adr/ADR-0005`
+
 ### Đã thêm
 
 - **Cài đặt → Lưu trữ** (`/cai-dat/luu-tru`): xem lại ảnh đơn thuốc đã chụp. Dữ liệu hiện

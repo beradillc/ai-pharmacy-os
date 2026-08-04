@@ -356,7 +356,7 @@ phải làm gì trước.
 **Nhập giữa chừng được không:** vị trí ô ✅ bỏ trống được, xếp sau · lô/hạn dùng ❌ bắt buộc ·
 thuốc chưa có trong danh mục 🔴 **tắc** (xem V3-1).
 
-### V3-5 Báo cáo CSV toàn mã máy, không đọc được
+### V3-5 ✅ XONG 2026-08-04 — Báo cáo CSV toàn mã máy, không đọc được
 
 | Báo cáo | Tiêu đề cột thật trong mã |
 |---|---|
@@ -371,6 +371,12 @@ CSV tự tra tên"*. Với một chủ quầy thì tệp ấy **bằng không**.
 ⇒ Việc: tiêu đề tiếng Việt · **thêm cột tên thuốc/tên chi nhánh** · định dạng ngày và tiền
 theo lối Việt Nam. Đây là đọc chéo module có kiểm soát, cần thiết kế cổng đọc như `N-1` đã làm
 cho hoá đơn.
+
+**Đã làm 04/08:** cả ba báo cáo đổi tiêu đề sang tiếng Việt, thêm cột tên thuốc/tên chi
+nhánh cạnh cột mã (giữ nguyên cột mã, không xoá), `dd/mm/yyyy` + tiền phân cách nghìn + số
+lượng bỏ số 0 thừa. Tên tra tại composition root (`api/v1/reports.py`) dưới danh tính hệ
+thống — cùng khuôn `CatalogDrugInfoProvider` (`N-1`, ADR-0004). Chi tiết + đánh đổi
+streaming vs. tra tên hàng loạt: `docs/adr/ADR-0005-report-csv-doc-duoc-tieng-viet.md`.
 
 ### V3-6 Phân quyền ở mục Nhân viên — CÓ, nhưng chủ chuỗi không thấy
 
@@ -492,7 +498,7 @@ việc cần làm tiếp theo**. Gộp làm một đợt thì rẻ hơn làm r�
 | ~~1~~ | ~~**V3-1** thêm thuốc mới~~ | ✅ **xong 04/08** |
 | ~~2~~ | ~~**V3-2** nút tạo đơn mua~~ | ✅ **xong 04/08** |
 | ~~3~~ | ~~**V3-6 + V3-10**~~ | ✅ **xong 04/08** |
-| 4 | **V3-5** báo cáo đọc được | Đầu vào của V3-8 |
+| ~~4~~ | ~~**V3-5** báo cáo đọc được~~ | ✅ **xong 04/08** |
 | 5 | **V3-7a** báo cáo lợi nhuận | Dữ liệu đã đủ — *chờ Chain chốt chiều xem* |
 | 6 | **V3-4** màn dẫn đường bắt đầu | Sau khi V3-1 xong mới trọn nghĩa |
 | 7 | **V3-3** gom đề xuất cùng NCC | Bất tiện, không chặn |
@@ -533,7 +539,7 @@ Vì sao an toàn: **số liệu của chính cơ sở, sai thì thấy ngay**, v
 
 | Cần gì | Phụ thuộc |
 |---|---|
-| Số sạch, có tên thay vì UUID | **V3-5** (báo cáo đọc được) |
+| Số sạch, có tên thay vì UUID | ✅ **V3-5** (báo cáo đọc được, xong 04/08) |
 | Giá vốn ⇒ lợi nhuận | **V3-7a** |
 | Công cụ đọc có kiểm soát quyền | Mới — AI **phải đi qua đúng `RequestContext`** của người hỏi |
 

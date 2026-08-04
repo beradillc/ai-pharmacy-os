@@ -103,6 +103,13 @@ def _auth(session: Any) -> dict[str, str]:
     return {"Authorization": f"Bearer {session['access_token']}"}
 
 
+def _parse_vn_money(cell: str) -> int:
+    """Undo ``core.formatting.format_money``'s dot-grouped Vietnamese thousands
+    separator — ``Decimal("130.000")`` would silently misparse the dot as a decimal
+    point and read 130.000 m as 130, not one hundred thirty thousand."""
+    return int(cell.replace(".", ""))
+
+
 def _make_staff(client: TestClient, admin: Any, email: str, role_code: str) -> str:
     roles = client.get("/api/v1/roles", headers=_auth(admin)).json()
     role = next(r for r in roles if r["code"] == role_code)
@@ -254,11 +261,14 @@ def test_revenue_export_sums_completed_orders(client: TestClient) -> None:
     assert tuple(rows[0]) == REVENUE_CSV_HEADER
     body = rows[1:]
     assert body  # at least one bucket
-    total_orders = sum(int(row[REVENUE_CSV_HEADER.index("order_count")]) for row in body)
-    total_revenue = sum(Decimal(row[REVENUE_CSV_HEADER.index("revenue_total")]) for row in body)
+    total_orders = sum(int(row[REVENUE_CSV_HEADER.index("Số đơn")]) for row in body)
+    total_revenue = sum(_parse_vn_money(row[REVENUE_CSV_HEADER.index("Doanh thu")]) for row in body)
     assert total_orders == 2
-    assert total_revenue == Decimal("130000")
-    assert {row[REVENUE_CSV_HEADER.index("currency")] for row in body} == {"VND"}
+    assert total_revenue == 130_000
+    assert {row[REVENUE_CSV_HEADER.index("Loại tiền")] for row in body} == {"VND"}
+    # Bootstrap creates exactly one branch ("Chi nhánh chính") — the readable name
+    # column must resolve to it, not fall back to the raw id (ROADMAP V3-5).
+    assert {row[REVENUE_CSV_HEADER.index("Chi nhánh")] for row in body} == {"Chi nhánh chính"}
 
 
 def test_revenue_export_branch_filter_narrows_to_nothing_for_a_foreign_branch(
@@ -334,10 +344,10 @@ def test_revenue_export_salesperson_filter_narrows_to_that_user(client: TestClie
     )
     assert r.status_code == 200
     body = list(csv.reader(io.StringIO(r.text)))[1:]
-    total = sum(Decimal(row[REVENUE_CSV_HEADER.index("revenue_total")]) for row in body)
-    orders = sum(int(row[REVENUE_CSV_HEADER.index("order_count")]) for row in body)
+    total = sum(_parse_vn_money(row[REVENUE_CSV_HEADER.index("Doanh thu")]) for row in body)
+    orders = sum(int(row[REVENUE_CSV_HEADER.index("Số đơn")]) for row in body)
     assert orders == 1
-    assert total == Decimal("25000")
+    assert total == 25_000
 
 
 def test_revenue_export_without_salesperson_filter_counts_everyone(client: TestClient) -> None:
@@ -352,8 +362,8 @@ def test_revenue_export_without_salesperson_filter_counts_everyone(client: TestC
 
     r = client.get(_REVENUE, headers=_auth(admin), params=_date_range())
     body = list(csv.reader(io.StringIO(r.text)))[1:]
-    total = sum(Decimal(row[REVENUE_CSV_HEADER.index("revenue_total")]) for row in body)
-    assert total == Decimal("65000")
+    total = sum(_parse_vn_money(row[REVENUE_CSV_HEADER.index("Doanh thu")]) for row in body)
+    assert total == 65_000
 
 
 def test_revenue_export_salesperson_filter_unknown_user_is_empty(client: TestClient) -> None:
@@ -383,11 +393,14 @@ def test_stock_export_lists_lot_and_expiry(client: TestClient) -> None:
     rows = list(csv.reader(io.StringIO(r.text)))
     assert tuple(rows[0]) == STOCK_CSV_HEADER
     body = rows[1:]
-    batch_id_col = STOCK_CSV_HEADER.index("batch_id")
+    batch_id_col = STOCK_CSV_HEADER.index("Mã lô (hệ thống)")
     batch_ids = {row[batch_id_col] for row in body}
     assert received["batch_id"] in batch_ids
     match = next(row for row in body if row[batch_id_col] == received["batch_id"])
-    assert Decimal(match[STOCK_CSV_HEADER.index("quantity")]) == Decimal("15")
+    assert Decimal(match[STOCK_CSV_HEADER.index("Số lượng")]) == Decimal("15")
+    # Readable name columns (ROADMAP V3-5) — the batch's own branch is the bootstrap
+    # one, so the name column must resolve, not fall back to the raw id.
+    assert match[STOCK_CSV_HEADER.index("Chi nhánh")] == "Chi nhánh chính"
 
 
 def test_stock_export_branch_filter_narrows_to_nothing_for_a_foreign_branch(
@@ -434,14 +447,19 @@ def test_top_drugs_ranks_by_quantity_net_of_returns(client: TestClient) -> None:
     assert tuple(rows[0]) == TOP_DRUGS_CSV_HEADER
     body = rows[1:]
     assert len(body) == 2
-    rank_col = TOP_DRUGS_CSV_HEADER.index("rank")
-    drug_col = TOP_DRUGS_CSV_HEADER.index("drug_id")
-    qty_col = TOP_DRUGS_CSV_HEADER.index("quantity_sold")
+    rank_col = TOP_DRUGS_CSV_HEADER.index("Hạng")
+    drug_col = TOP_DRUGS_CSV_HEADER.index("Mã thuốc (hệ thống)")
+    name_col = TOP_DRUGS_CSV_HEADER.index("Tên thuốc")
+    qty_col = TOP_DRUGS_CSV_HEADER.index("Số lượng bán")
     assert body[0][rank_col] == "1"
     assert body[0][drug_col] == drug_a
     assert Decimal(body[0][qty_col]) == Decimal("10")
     assert body[1][rank_col] == "2"
     assert body[1][drug_col] == drug_b
+    # Both drugs were created via /api/v1/drugs (real catalog rows) — the name
+    # column must resolve for both, not fall back to the raw id (ROADMAP V3-5).
+    assert body[0][name_col] != drug_a
+    assert body[1][name_col] != drug_b
 
 
 def test_top_drugs_sort_by_revenue_can_reorder_vs_quantity(client: TestClient) -> None:
@@ -455,7 +473,7 @@ def test_top_drugs_sort_by_revenue_can_reorder_vs_quantity(client: TestClient) -
 
     r = client.get(_TOP_DRUGS, headers=_auth(admin), params={**_date_range(), "sort_by": "revenue"})
     body = list(csv.reader(io.StringIO(r.text)))[1:]
-    drug_col = TOP_DRUGS_CSV_HEADER.index("drug_id")
+    drug_col = TOP_DRUGS_CSV_HEADER.index("Mã thuốc (hệ thống)")
     assert body[0][drug_col] == pricey
 
 
