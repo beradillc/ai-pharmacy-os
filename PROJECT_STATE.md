@@ -10456,3 +10456,85 @@ healthcheck. Mint = server = `11917f9` (sẽ +1 commit tài liệu này).
 `tailscale funnel` **vẫn đang bật** — vô hại, không ai ở VN dùng được nó; tắt bằng
 `tailscale funnel reset` nếu muốn dọn.
 🔴 `RATE_LIMIT_LOGIN_ATTEMPTS` **vẫn ở 300**, chưa trả về 10.
+
+---
+
+## 7ef. 🕐🔗 Reboot thứ hai · sửa múi giờ · vá lỗi `link-demo` in link chết (2026-08-04, 20:15)
+
+**Bối cảnh:** Chain bảo "kiểm tra tình trạng server". Máy `bera-saas` **vừa tự reboot lúc 19:31**
+(không ai chủ động). Đây là lần reboot thứ hai, và lần này **không có ai SSH vào để dựng gì cả** —
+đúng kịch bản thật nhất từ trước tới nay.
+
+**Kết quả tự phục hồi — hạ tầng qua bài kiểm tra không hẹn mà có:**
+
+| Hạng mục | Sau reboot, không ai can thiệp |
+|---|---|
+| Container | **5/5 `(healthy)`** — cả `edge` mới thêm |
+| `pharmacy-os.service` | ✅ `active` (linger làm việc đúng) |
+| `cloudflared-demo.service` | ✅ `active` |
+| Dữ liệu | 70 thuốc · 61 hoạt chất · 2 users · 1 tenant — nguyên vẹn |
+| Git | `bd22fa1`, cây sạch, khớp máy dev |
+| API qua internet công cộng | `{"status":"ok","version":"0.2.0"}` |
+| `crond` | `active`, 3 job |
+
+### 🐞 Lỗi thật tìm được: `link-demo` có thể in ra link CHẾT mà nhìn như thật
+
+Không phải lỗi giả định — **suýt xảy ra ngay sáng nay**. Log lần boot 12:31Z:
+
+```
+54  Requesting new quick Tunnel on trycloudflare.com...
+55  failed to request quick Tunnel: Post "https://api.trycloudflare.com/tunnel": ... connection refused
+57  Requesting new quick Tunnel on trycloudflare.com...
+60  |  https://listed-delivered-forest-lips.trycloudflare.com  |
+```
+
+Ba lỗ trong bản `link-demo` cũ:
+
+| # | Lỗ | Hậu quả thật |
+|---|---|---|
+| 1 | Regex bắt luôn `api.trycloudflare.com` trong **dòng BÁO LỖI** (dòng 55) | Gõ đúng khoảng 12:31:50–12:32:06 ⇒ in ra `https://api.trycloudflare.com/` — link rác |
+| 2 | Log ghi **nối tiếp qua nhiều lần boot**, script lấy `tail -1` | Từ lúc boot tới lúc tunnel đăng ký xong (~15–35s), in ra URL **lần boot trước** — đã chết |
+| 3 | In link **trước**, `curl` health **sau** | Vẫn in ra link chết, chỉ kèm thêm một con số 000 phía dưới |
+
+Lỗ #2 nguy hiểm nhất vì **im lặng**: link đúng định dạng, đúng tên miền, không có gì gợn — Chain gửi
+cho khách xong mới biết hỏng.
+
+**Đã sửa (3 việc, không cần sudo vì đều là user unit / script cá nhân):**
+
+| Sửa gì | Cách |
+|---|---|
+| Xoay log mỗi lần khởi động | `ExecStartPre=… mv -f %h/cloudflared-demo.log %h/cloudflared-demo.log.1` — log chỉ chứa lần chạy hiện tại, giữ 1 bản cũ để truy vết |
+| Chỉ nhận URL banner, loại `api.` | regex `[a-z0-9]+(-[a-z0-9]+)+\.trycloudflare\.com` + `grep -v '^https://api\.'` |
+| **Chờ tới khi link thật sự trả 200 mới in** | vòng lặp tối đa 90s, `curl $u/api/v1/health`; không sống thì báo hỏng kèm lệnh chẩn đoán |
+
+**Kiểm chứng bằng restart thật, không tin lý thuyết (kỷ luật #5):** `systemctl --user restart
+cloudflared-demo` → log cũ 14 231 byte dồn sang `.log.1`, log mới 679 byte, **đếm URL = 0** tại thời
+điểm +2s (đúng cái khe mà bản cũ sẽ in link chết) → `link-demo` in `⏳ đang chờ…`, rồi trả
+`https://continue-nature-las-administrator.trycloudflare.com/` + `✅ app trả 200`. Kiểm lại từ máy
+dev qua internet công cộng: trang chủ 200, health ok.
+
+**Thêm lối tắt trên máy dev Mint:** `~/.local/bin/link-demo` — SSH sang server rồi in link, Chain gõ
+một chữ `link-demo` là có link mới nhất, không cần nhớ IP. Đã thêm `~/.local/bin` vào PATH trong
+`~/.bashrc` (trước đó chưa có).
+
+### 🕐 Múi giờ server sai 11 tiếng — đã sửa
+
+`bera-saas` chạy `America/New_York (EDT, -0400)`, không phải giờ VN. Mọi mốc giờ trong
+`pharmacy_backups.log`, `pharmacy_deadman.log`, **và tên file backup** (`pharmacy_os_20260804_060001
+.sql`) đều lệch -11h so với đồng hồ Chain nhìn. Chưa gây hỏng dữ liệu, nhưng lúc cần trả lời "bản
+backup gần nhất lúc mấy giờ" thì đọc nhầm là chắc chắn — và đó đúng là câu hỏi hay gặp lúc sự cố.
+
+`sudo timedatectl set-timezone Asia/Ho_Chi_Minh` + `systemctl restart crond` (crond phải khởi động
+lại mới đọc múi giờ mới, nếu không lịch cron vẫn chạy theo giờ cũ). Xác nhận: `Asia/Ho_Chi_Minh
+(+07)`, `crond active`.
+
+⚠️ **Hệ quả cần biết:** tên file backup từ nay nhảy +11h. Bản `..._20260804_060001.sql` (6h sáng giờ
+Mỹ) và bản 21:00 tối nay (giờ VN) **nằm cùng ngày 04/08 nhưng cách nhau chỉ ~3h thực**. Không mất dữ
+liệu, chỉ là đọc thứ tự file theo tên trong đúng ngày hôm nay sẽ thấy lạ. Từ 05/08 trở đi bình thường.
+
+**Backup:** 2 kỳ cron 07:00 và 08:00 (giờ Mỹ cũ) **không chạy** vì máy tắt trong khoảng đó — không
+phải lỗi cron. Bản gần nhất `20260804_060001.sql` (164 KB) đã tự kiểm chứng khôi phục ĐẠT. Kỳ tiếp
+theo 21:00 giờ VN.
+
+**Link demo hiện tại:** `https://continue-nature-las-administrator.trycloudflare.com/` — **sẽ đổi lần
+nữa** ở lần restart kế tiếp. Đây vẫn là lý do tên miền riêng là nút thắt số 1.
