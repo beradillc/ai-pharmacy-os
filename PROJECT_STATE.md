@@ -2,10 +2,11 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-04** — §7ea: **kiểm chứng server độc lập bằng reboot THẬT** (4
-> container tự lên lại không cần ai can thiệp, app + `tailscale serve` sống nguyên) + cài
-> **Cockpit** làm giao diện giám sát (`https://bera-saas.tailfb7b8c.ts.net:9090`, chỉ qua
-> Tailscale). Trước đó §7dz: **server độc lập + sao lưu tự động + remote git**.
+> **Cập nhật cuối: 2026-08-04** — §7eb **ĐÓNG PHIÊN**: full-auto V3-5 → V3-7a → deploy
+> AlmaLinux hoàn tất, 9 commit đã push `beradillc/ai-pharmacy-os` (remote đầu tiên trong
+> lịch sử dự án). `bera-saas` sống, kiểm chứng độc lập bằng reboot thật, Cockpit giám sát.
+> pytest **1580 passed** chạy lại lần cuối trước khi đóng. 12 quyết định tự chốt + 3 phát
+> hiện phụ + 9 nợ mở, xem bảng đầy đủ trong §7eb.
 > `bera-saas` tự khởi động lại qua `systemd --user` (không phụ thuộc phiên đăng nhập nào),
 > backup CSDL + khoá mã hoá mỗi giờ (RPO≤1h, D-OPS-01) có dead-man's switch, và toàn bộ mã
 > nguồn (lần đầu tiên trong lịch sử dự án) có remote riêng tư `beradillc/ai-pharmacy-os` qua
@@ -211,6 +212,7 @@
 | [§7dy](#7dy-tri-n-khai-almalinux-ho-n-t-t-bera-saas-s-ng-tenant-th-t-u-ti-n-2026-08-04) | 2026-08-04 | 🚀✅ **DEPLOY ALMALINUX HOÀN TẤT** — bera-saas sống, tenant thật "Quầy thuốc 650", 3 lỗi thật đã sửa |
 | [§7dz](#7dz-server-c-l-p-sao-l-u-t-ng-m-ngu-n-c-remote-2026-08-04) | 2026-08-04 | 🛡️ **SERVER ĐỘC LẬP + SAO LƯU TỰ ĐỘNG + REMOTE GIT** — systemd unit, cron backup RPO≤1h, `beradillc/ai-pharmacy-os` |
 | [§7ea](#7ea-ki-m-ch-ng-server-c-l-p-b-ng-reboot-th-t-cockpit-gi-m-s-t-2026-08-04) | 2026-08-04 | ✅ **KIỂM CHỨNG BẰNG REBOOT THẬT + Cockpit** — 4 container tự lên sau reboot, giao diện giám sát `:9090` |
+| [§7eb](#7eb-ng-phi-n-full-auto-v3-5-v3-7a-deploy-almalinux-ho-n-t-t-2026-08-04) | 2026-08-04 | 🔒 **ĐÓNG PHIÊN** — V3-5→V3-7a→deploy AlmaLinux hoàn tất, 9 commit, remote git đầu tiên, 12 quyết định tự chốt |
 
 ---
 
@@ -10174,3 +10176,91 @@ cho SSH/mọi cổng khác trên máy này).
 Server độc lập + giám sát cơ bản coi như **đóng**. Còn 2 nợ cũ chưa đổi (xem §7dz): backup
 chưa có bản sao ngoài máy, dead-man's switch chưa nối dịch vụ ngoài — Uptime Kuma ở trên có
 thể giải quyết cả hai cùng lúc nếu Chain muốn làm tiếp.
+
+## 7eb. 🔒 ĐÓNG PHIÊN — full-auto V3-5 → V3-7a → deploy AlmaLinux hoàn tất (2026-08-04)
+
+**Phiên dài nhất từ trước tới nay của dự án** — mở dưới uỷ quyền GĐ toàn quyền (Chain
+chuyển từ mảng Công Trình), leo thang uỷ quyền 2 lần giữa chừng (full-auto Code → "uỷ quyền
+cao nhất, làm hết" cho hạ tầng), và giữa chừng phát hiện phiên đang chạy **trực tiếp trên
+máy Mint thật của Chain**, không phải sandbox cách ly — thay đổi hẳn cách phần hạ tầng của
+phiên được thực hiện (tự SSH thay vì chỉ hướng dẫn qua chat).
+
+### Tổng hợp việc đã đóng (§7dt → §7ea, đọc lướt cho Chain)
+
+| § | Việc | Trạng thái |
+|---|---|---|
+| 7dt | **V3-5** — báo cáo CSV 3 file đổi tiếng Việt + tên thuốc/chi nhánh | ✅ Xong, ADR-0005 |
+| 7dv | **V3-7a** — báo cáo lợi nhuận gộp theo ngày/tháng/quý/năm, quyền riêng `sales.profit.read` | ✅ Xong, ADR-0006 |
+| 7dw | Đóng phiên full-auto Code (V3-5+V3-7a) | ✅ |
+| 7dx | Chuẩn bị deploy AlmaLinux — Dockerfile frontend đầu tiên, `docker-compose.prod.yml`, runbook | ✅ Chuẩn bị xong |
+| 7dy | **Triển khai AlmaLinux HOÀN TẤT** — `bera-saas` sống, tenant thật "Quầy thuốc 650" | ✅ Sống |
+| 7dz | Server độc lập (systemd) + sao lưu tự động (RPO≤1h) + remote git lần đầu | ✅ Xong |
+| 7ea | Kiểm chứng độc lập bằng **reboot thật** + Cockpit giám sát | ✅ Xác nhận bằng hành động thật |
+
+### Toàn bộ quyết định đã tự chốt trong phiên (full-auto điều 3 — CEO đọc lướt)
+
+| # | Quyết định | Vì sao không hỏi trước / hỏi rồi mới làm | Ghi chi tiết ở |
+|---|---|---|---|
+| 1 | Giữ cột mã bên cạnh cột tên trong CSV (V3-5), không thay thế | Đọc đúng nghĩa hẹp của "thêm cột" | ADR-0005 |
+| 2 | `sales.profit.read` là quyền MỚI, không tái dùng `sales.read` | Margin nhạy cảm hơn doanh thu, không tái dùng được như V3-5 | ADR-0006 |
+| 3 | Giá vốn V3-7a tính GỘP, dùng `cost_price` hiện tại (không tại-đúng-thời-điểm) | Khớp chính sách doanh thu đã có; sửa đúng cần đổi lược đồ, ngoài phạm vi | ADR-0006 |
+| 4 | Cài Tailscale trực tiếp trên máy Mint thay vì tiếp tục USB | Hỏi Chain trước, Chain đồng ý | §7dy |
+| 5 | Bật `PHARMACY_ALLOW_MOCKS_IN_PROD=true` (diễn tập vận hành) | Trình bày đủ rủi ro an toàn bệnh nhân trước, **Chain tự chọn** sau khi hiểu rõ | §7dy |
+| 6 | Không tự đặt mật khẩu/tên tenant thật | Chờ Chain cung cấp — dữ liệu thật không tự bịa | §7dy |
+| 7 | Chọn Podman thay Docker CE | AlmaLinux 10 quá mới, chưa có kho Docker CE chính thức | §7dx |
+| 8 | `docker-compose.prod.yml` riêng, không gộp vào `staging.yml` | Chain chốt đây LÀ production thật, tránh nhầm môi trường | §7dx |
+| 9 | Không sửa `scripts/backup_verify.sh`/`backup_deadman.sh`, cài `podman-docker` thay vào | Script đã diễn tập kiểm chứng 5/5 ca — sửa lại là tự tạo rủi ro mới | §7dz |
+| 10 | SSH deploy key riêng 1 repo, không PAT toàn tài khoản Chain | "Một việc nguy hiểm nên khó" — thu hẹp phạm vi quyền tối đa | §7dz |
+| 11 | Reboot thật để kiểm server độc lập | Chain xác nhận đang thử nghiệm, chấp nhận rủi ro downtime ngắn để có bằng chứng thật | §7ea |
+| 12 | Cài Cockpit, không dựng Uptime Kuma luôn | Trả lời đúng câu hỏi đã hỏi ("theo dõi server"); Uptime Kuma là dịch vụ mới, để hỏi riêng | §7ea |
+
+**Không có quyết định pháp lý/lâm sàng thật nào bị tự quyết mà không hỏi** — mục 5 (mock AI)
+là quyết định gần lâm sàng nhất trong phiên, và đã dừng lại trình bày đầy đủ trước khi hỏi,
+đúng nghĩa vụ CLAUDE.md gốc ("Quyết định ảnh hưởng... rủi ro pháp lý... PHẢI trình bày góc
+nhìn GĐ NGAY").
+
+### 🔴 Ba phát hiện phụ, không nằm trong việc được giao — ghi vì kỷ luật #13/#18
+
+1. **`tailscale serve --set-path` cắt tiền tố trước khi chuyển tiếp** — tài liệu Tailscale
+   không nói rõ, chỉ phát hiện được bằng đối chiếu `curl` trực tiếp backend so với qua proxy
+   (§7dy). Đã sửa runbook.
+2. **`readycheck.sh` (script có sẵn trên máy, không phải của repo) báo sai 3/21 mục** —
+   không dùng làm căn cứ nữa, đã kiểm lại toàn bộ bằng lệnh trực tiếp trước khi tin (§7dx).
+3. **Bug logging thật: `pharmacy_os/logging.py` thiếu `format_exc_info`** — mọi
+   `_log.exception(...)` trong toàn dự án chỉ ghi `"exc_info": true`, mất hết nội dung lỗi.
+   Phải tra thẳng log Postgres mới thấy lỗi thật lúc gỡ `outbox_drain_failed` (§7dy). **Chưa
+   sửa — nợ mở**, đây là lỗ hổng quan sát thật cho một hệ thống production.
+
+### Cổng cuối phiên
+
+```
+RUFF=0 FORMAT=0 IMPORTLINTER=0 (19/19) MYPY=0
+PYTEST_EXIT=0   1580 passed, 61 warnings (251s) — chạy lại lần cuối trước khi đóng phiên
+9 commit: b0d4aed·405524d·b373447·7023790·f251eb9·63e75ca·eb4ca89·3ba88d8·f88afd3
+Tất cả đã push origin/main (beradillc/ai-pharmacy-os) — lần đầu tiên repo có remote
+```
+
+### Điểm dừng
+
+- `bera-saas`: **sống thật**, tenant "Quầy thuốc 650", vừa qua reboot thật xác nhận độc lập.
+  `docker compose ps` (máy dev Mint, khác `bera-saas`): postgres+redis vẫn `up`, dữ liệu thử
+  từ test integration, không phải dữ liệu thật.
+- Cây git máy Mint: **sạch** trừ 1 file KHÔNG liên quan phiên này
+  (`docs/testing/videos/00_tong-quan_ban-nhap.mp4` đã bị xoá khỏi đĩa từ trước, không rõ bởi
+  ai/khi nào — cố ý **không** commit xoá này, để nguyên cho Chain tự quyết).
+- SSH deploy key (`~/.ssh/id_ed25519_ai_pharmacy_os`) và mật khẩu SSH/sudo của Chain
+  **không** nằm trong bất kỳ file nào của repo — chỉ dùng trực tiếp qua kết nối.
+
+### 🚧 Nợ mở cuối phiên
+
+| # | Việc | Ai |
+|---|---|---|
+| 1 | Chain xác nhận bằng **trình duyệt thật** (kỷ luật #15) — `curl` đã xanh hết nhưng chưa thay được | Chain |
+| 2 | Đổi mật khẩu admin thật (`beradillc@gmail.com`, đang `must_change_password=True`) | Chain |
+| 3 | Uptime Kuma — đóng nốt "dead-man's switch chạy trên chính máy nó giám sát" + thêm dashboard uptime app | Chain quyết có làm không |
+| 4 | Backup chưa có bản sao NGOÀI máy `bera-saas` (chỉ 1 laptop, không RAID) | Trợ lý Code (khi Chain có hướng) |
+| 5 | Bug logging structlog mất traceback (`pharmacy_os/logging.py`) | Trợ lý Code |
+| 6 | Tắt `PHARMACY_ALLOW_MOCKS_IN_PROD` ngay khi có `AI__API_KEY` thật | Chain + Trợ lý Code |
+| 7 | `V3-4`/`V3-3` (màn dẫn đường, gom NCC) — tạm gác sau đợt deploy | Trợ lý Code |
+| 8 | `V3-7b` (hoá đơn NCC/VAT/công nợ) — chờ Trợ lý Kế toán | Trợ lý Kế toán |
+| 9 | fail2ban riêng cho app, mở công khai ra internet — cố ý chưa làm | Chain (khi cần) |
