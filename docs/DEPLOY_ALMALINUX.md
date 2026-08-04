@@ -123,7 +123,29 @@ Nếu `tailscale serve` báo "Serve is not enabled on your tailnet" kèm link
 Serve (khác Funnel) không thật sự bị chặn bởi cờ đó; xác nhận bằng `tailscale serve
 status` sau khi chạy.
 
-### 6b. Mở CÔNG KHAI ra internet bằng Funnel (2026-08-04, Chain duyệt — demo rộng rãi)
+### 6b. ⛔ Funnel — KHÔNG DÙNG ĐƯỢC Ở VIỆT NAM (giữ lại để không thử lại lần nữa)
+
+🔴 **Đã mở thành công về mặt kỹ thuật, nhưng nhà mạng Việt Nam chặn tên miền `.ts.net`.**
+Đo thật 2026-08-04, cùng một thời điểm:
+
+| Đường | Từ ngoài VN (WebFetch) | Từ mạng Chain (5G + WiFi) |
+|---|---|---|
+| `https://bera-saas.tailfb7b8c.ts.net/` (443) | ✅ trang BERAS | ❌ `ERR_CONNECTION_CLOSED` |
+| cùng URL, mở bằng Chrome thật (không qua Zalo) | ✅ | ❌ `ERR_CONNECTION_CLOSED` |
+| `...:8443/` | ✅ | ❌ |
+
+**Đổi cổng không cứu được ⇒ chặn theo tên miền/SNI, không phải theo cổng.**
+`ERR_CONNECTION_CLOSED` (kết nối mở rồi bị đóng giữa chừng) là dấu hiệu đặc trưng của
+DPI, khác hẳn `ERR_CONNECTION_TIMED_OUT` của lỗi định tuyến. Cùng lúc đó Cloudflare vào
+được bình thường ⇒ không phải mạng Chain hỏng, mà đúng tên miền này bị chặn.
+
+**Cách dùng hiện tại: Cloudflare Tunnel — xem mục 6c.** Phần dưới đây giữ nguyên làm tư
+liệu (cú pháp Funnel đúng, bẫy DNS MagicDNS), phòng khi triển khai ở nơi không bị chặn.
+
+<details>
+<summary>Cú pháp Funnel (không dùng ở VN — bấm để xem)</summary>
+
+#### Mở CÔNG KHAI ra internet bằng Funnel (2026-08-04)
 
 Mục tiêu: người xem **mở link là vào**, không cài Tailscale, không cần tài khoản Tailscale.
 
@@ -151,6 +173,57 @@ tailscale funnel reset         # gỡ công khai, quay về tailnet-only
 `https://bera-saas.tailfb7b8c.ts.net/` bằng một dịch vụ chạy ngoài mạng (WebFetch của
 Claude, hạ tầng Anthropic) — trả về đúng trang `BERAS — Sổ Quản Lý Nhà Thuốc`, và
 `/api/v1/health` trả `{"status":"ok","version":"0.2.0",...}`. Đúng tinh thần kỷ luật #15.
+
+🔴 **Bẫy DNS khi thử trên máy TỪNG cài Tailscale.** Cùng một tên miền phân giải ra hai
+địa chỉ khác nhau tuỳ nguồn DNS:
+
+| Nguồn DNS | Trả về | Route được ngoài tailnet? |
+|---|---|---|
+| Công cộng (`8.8.8.8`, `1.1.1.1`) | `103.84.155.153/.217` (IP Funnel) | ✅ |
+| MagicDNS (trong tailnet) | `100.76.165.120` (IP tailnet) | ❌ |
+
+Tắt app Tailscale **không** xoá cấu hình DNS mà VPN profile đã cài, cũng không xoá cache
+DNS ⇒ máy vẫn trỏ về IP tailnet, và triệu chứng là **timeout**. Phải gỡ hẳn VPN profile
+(hoặc bật/tắt chế độ máy bay) mới thành phép thử sạch. **Phép thử đúng nhất vẫn là một
+máy CHƯA TỪNG cài Tailscale** — máy đã cài mang sẵn một điều kiện mà không người xem nào có.
+
+</details>
+
+### 6c. ✅ Mở công khai bằng **Cloudflare Tunnel** — cách đang dùng (2026-08-04)
+
+Ba mảnh phải có đủ, thiếu một là không chạy:
+
+**① Gộp frontend + API vào MỘT cổng.** Một đường hầm Cloudflare chỉ trỏ tới **một** cổng,
+trong khi `tailscale serve` trước đây phục vụ hai tuyến. Service `edge` (Caddy) trong
+`docker-compose.prod.yml` làm việc này ở cổng `8080` — xem `infra/caddy/Caddyfile`.
+Khối `/api/v1*` phải đứng **trước** khối bắt-tất-cả, nếu không request API rơi vào
+frontend và trả trang 404 của Next thay vì JSON.
+
+**② `NEXT_PUBLIC_API_BASE_URL` phải là đường dẫn TƯƠNG ĐỐI `/api/v1`.** Mặc định trong
+compose nay đã là vậy. Trước 04/08 nó là URL tuyệt đối bắt buộc khai ⇒ tên miền bị nướng
+vào ảnh Docker lúc build ⇒ **mỗi lần đổi đường ra internet phải build lại frontend**.
+Kiểm nhanh ảnh có sạch không:
+```bash
+podman exec pharmacy-os-prod_frontend_1 grep -rl 'tailfb7b8c' /app/.next   # phải RỖNG
+```
+
+**③ Đường hầm chạy bền bằng systemd user unit** `~/.config/systemd/user/cloudflared-demo.service`
+(`enabled`, `Restart=always`, log ghi ra `~/cloudflared-demo.log`). Binary ở
+`~/.local/bin/cloudflared`.
+⚠️ `nohup cloudflared … &` **không sống sót** khi phiên SSH đóng — đã vấp 04/08, tiến
+trình chết im lặng trong khi log cũ vẫn còn nên tưởng đang chạy. Phải là systemd unit.
+
+**Lấy link demo hiện tại:**
+```bash
+link-demo          # ~/.local/bin/link-demo — in URL + trạng thái unit + mã HTTP
+```
+
+🔴 **URL ĐỔI mỗi lần cloudflared khởi động lại** (`trycloudflare.com` cấp ngẫu nhiên).
+`Restart=always` nghĩa là mạng chập một nhịp cũng đổi; reboot cũng đổi. **Đây là lý do
+cấu hình hiện tại CHƯA thoả mục tiêu "bật máy lên là vào được ngay"** — vào được, nhưng
+bằng một địa chỉ khác, phải chạy `link-demo` để lấy.
+**Cách gỡ vĩnh viễn:** một tên miền riêng trỏ nameserver về Cloudflare ⇒ "named tunnel"
+⇒ địa chỉ cố định, không đổi. Chain xác nhận 2026-08-04 **chưa có tên miền**.
 
 ## 7. Kiểm thử TRƯỚC khi có dữ liệu thật — bắt buộc, không bỏ qua
 
@@ -213,7 +286,12 @@ Bốn mắt xích phải cùng đúng thì mở link là chạy. Đã rà từng
 | 1 | `tailscaled` tự chạy khi boot | `systemctl is-enabled tailscaled` | ✅ `enabled` + `active` |
 | 2 | **`Linger`** — cho `systemd --user` chạy khi **chưa ai đăng nhập** | `loginctl show-user chain \| grep Linger` | ✅ `Linger=yes` |
 | 3 | Unit app tự dựng 4 container | `systemctl --user is-enabled pharmacy-os.service` | ✅ `enabled` + `active` |
-| 4 | Funnel còn bật | `tailscale funnel status` | ✅ `(Funnel on)` |
+| 4 | ~~Funnel còn bật~~ → **`cloudflared` tự chạy** | `systemctl --user is-enabled cloudflared-demo.service` | ✅ `enabled` + `active` |
+| 5 | Caddy gộp 2 tuyến | `curl -s -o /dev/null -w '%{http_code}' localhost:8080/api/v1/health` | ✅ `200` |
+
+⚠️ **Mắt xích 4 lên được nhưng ĐỊA CHỈ ĐỔI** — xem cảnh báo cuối mục 6c. "Vào được ngay"
+đúng theo nghĩa dịch vụ sống, **không** đúng theo nghĩa link cũ còn dùng được. Sau mỗi
+lần bật máy phải chạy `link-demo` lấy địa chỉ mới, cho tới khi có tên miền riêng.
 
 🔴 **Mắt xích số 2 là chỗ dễ hỏng nhất và im lặng nhất.** Không có `Linger=yes` thì
 `systemd --user` chỉ sống trong lúc có phiên đăng nhập ⇒ máy boot xong, **không ai SSH

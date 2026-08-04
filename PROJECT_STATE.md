@@ -2,7 +2,11 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-04** — §7ed **Funnel công khai**: người xem mở link là vào, KHÔNG
+> **Cập nhật cuối: 2026-08-04** — §7ee **nhà mạng VN chặn `.ts.net`**: Funnel mở thành công
+> về kỹ thuật nhưng không ai ở VN vào được (chặn SNI — đổi cổng 443→8443 không cứu). Chuyển
+> sang **Cloudflare Tunnel** + **Caddy** gộp `/`+`/api/v1` vào một cổng + `NEXT_PUBLIC_API_BASE_URL`
+> **tương đối** (hết nướng tên miền vào ảnh Docker). 🔴 URL còn đổi mỗi lần khởi động — cần tên
+> miền riêng mới cố định được. Trước đó §7ed **Funnel công khai**: người xem mở link là vào, KHÔNG
 > cần cài Tailscale (kiểm chứng từ NGOÀI tailnet). Danh mục **70 mã thuốc** vào Quầy thuốc 650.
 > Mã nguồn Mint ↔ server nay **khớp `9885fa8`** (server từng tụt 6 commit). 🔴 Rate limit đang
 > nới **300**, phải trả về 10 khi tắt Funnel. Trước đó §7ec **tối ưu server**: 4/4 container nay có giới hạn RAM
@@ -222,6 +226,7 @@
 | [§7eb](#7eb-ng-phi-n-full-auto-v3-5-v3-7a-deploy-almalinux-ho-n-t-t-2026-08-04) | 2026-08-04 | 🔒 **ĐÓNG PHIÊN** — V3-5→V3-7a→deploy AlmaLinux hoàn tất, 9 commit, remote git đầu tiên, 12 quyết định tự chốt |
 | [§7ec](#7ec-t-i-u-server-ch-n-o-n-iphone-kh-ng-v-o-c-2026-08-04-chi-u) | 2026-08-04 | 🔧 **TỐI ƯU SERVER** — giới hạn RAM + healthcheck 4 container; iPhone chưa vào tailnet (không phải lỗi server) |
 | [§7ed](#7ed-m-funnel-c-ng-khai-ng-b-m-ngu-n-mint-server-2026-08-04-chi-u) | 2026-08-04 | 🌐 **FUNNEL CÔNG KHAI** — demo không cần cài Tailscale (kiểm từ ngoài tailnet) + 70 mã thuốc + Mint↔server khớp `9885fa8` |
+| [§7ee](#7ee-nh-m-ng-vn-ch-n-ts-net-chuy-n-sang-cloudflare-tunnel-2026-08-04-t-i) | 2026-08-04 | 🇻🇳 **NHÀ MẠNG VN CHẶN `.ts.net`** — chuyển sang Cloudflare Tunnel + Caddy gộp cổng + API base URL tương đối |
 
 ---
 
@@ -10400,3 +10405,54 @@ chứng. `sudo reboot` cần mật khẩu ⇒ Claude không chạy được, ph�
 Mint = server = `9885fa8`. Funnel **đang bật**, app 200/200 từ ngoài. 4 container
 `(healthy)`, có `mem_limit`. Dữ liệu: 70 thuốc · 2 users · 1 tenant.
 Tắt demo: `tailscale funnel reset` (+ trả rate limit về 10).
+
+## 7ee. 🇻🇳 Nhà mạng VN chặn `.ts.net` → chuyển sang Cloudflare Tunnel (2026-08-04, tối)
+
+**Triệu chứng Chain báo:** mở link Funnel trên 5G → `ERR_CONNECTION_CLOSED`.
+
+### Chẩn đoán — 4 vòng, mỗi vòng loại một nghi phạm
+
+| Vòng | Giả thuyết | Cách loại | Kết luận |
+|---|---|---|---|
+| 1 | Server chết sau reboot | SSH + `podman ps` + WebFetch từ ngoài | ❌ sai — 4 container tự lên, Funnel `on`, ngoài VN vào bình thường |
+| 2 | DNS trỏ IP tailnet | `dig @8.8.8.8` vs MagicDNS | Có thật (`103.84.155.x` vs `100.76.165.120`) nhưng **không phải** nguyên nhân cuối |
+| 3 | Thiếu `https://` (Funnel chỉ 443) | Chain gõ đủ `https://` | ❌ vẫn `ERR_CONNECTION_CLOSED` |
+| 4 | **Chặn theo tên miền/SNI** | Thêm tuyến `:8443` — vẫn hỏng; Cloudflare quick tunnel — **vào được** | ✅ **xác nhận** |
+
+🔴 **Bằng chứng quyết định:** đổi cổng 443→8443 không cứu được ⇒ không phải chặn cổng.
+Cùng thời điểm, cùng thiết bị, cùng mạng: `.ts.net` chết / `trycloudflare.com` sống.
+
+**Bài học đo lường:** `ERR_CONNECTION_CLOSED` (mở rồi bị đóng) ≠ `ERR_CONNECTION_TIMED_OUT`
+(không tới được). Cái đầu là DPI cắt giữa chừng, cái sau là định tuyến. Phân biệt được hai
+cái này rút ngắn chẩn đoán rất nhiều — vòng 2 lẽ ra đã loại được sớm hơn nếu đọc kỹ mã lỗi.
+
+### Đã dựng — 3 mảnh, thiếu 1 là không chạy
+
+| # | Mảnh | Vì sao bắt buộc |
+|---|---|---|
+| ① | Service **`edge`** (Caddy) gộp `/` + `/api/v1` vào cổng `8080` | Một đường hầm Cloudflare chỉ trỏ **một** cổng; `tailscale serve` trước đây phục vụ hai tuyến |
+| ② | `NEXT_PUBLIC_API_BASE_URL` → **`/api/v1`** tương đối (build lại frontend) | Trước đó tên miền bị **nướng vào ảnh Docker** ⇒ đổi đường ra internet là phải build lại. Đúng lúc cần linh hoạt nhất thì cứng nhất |
+| ③ | **systemd user unit** `cloudflared-demo.service` | `nohup … &` **chết im lặng** khi phiên SSH đóng — đã vấp, log cũ còn nên tưởng đang chạy |
+
+**Kiểm chứng từ ngoài (WebFetch):** `/` → trang BERAS · `/api/v1/health` →
+`{"status":"ok",...}` **qua cùng origin** ⇒ đăng nhập chạy được, không còn gọi về `.ts.net`.
+Đã xác nhận ảnh frontend mới **không còn chuỗi `tailfb7b8c`**.
+
+### 🔴 Chưa đạt mục tiêu Chain đặt — nói rõ, không làm tròn
+
+Mục tiêu là *"bật server lên là vào được ngay"*. Hiện **dịch vụ** lên được ngay (5 mắt xích
+khởi động đều `enabled`), nhưng **địa chỉ đổi mỗi lần** cloudflared khởi động lại —
+`trycloudflare.com` cấp URL ngẫu nhiên, mà unit có `Restart=always` nên mạng chập một nhịp
+cũng đổi. Chain phải chạy `link-demo` lấy địa chỉ mới sau mỗi lần bật máy.
+
+**Gỡ vĩnh viễn cần một tên miền riêng** trỏ nameserver về Cloudflare ⇒ named tunnel ⇒ địa
+chỉ cố định. **Chain xác nhận chưa có tên miền** — đây là nút thắt còn lại, và nó là quyết
+định mua sắm chứ không phải việc kỹ thuật.
+
+### Điểm dừng
+
+5 container (`postgres`·`redis`·`backend`·`frontend`·**`edge`**), đều có `mem_limit` +
+healthcheck. Mint = server = `11917f9` (sẽ +1 commit tài liệu này).
+`tailscale funnel` **vẫn đang bật** — vô hại, không ai ở VN dùng được nó; tắt bằng
+`tailscale funnel reset` nếu muốn dọn.
+🔴 `RATE_LIMIT_LOGIN_ATTEMPTS` **vẫn ở 300**, chưa trả về 10.
