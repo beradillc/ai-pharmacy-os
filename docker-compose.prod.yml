@@ -81,7 +81,16 @@ services:
       context: .
       dockerfile: infra/docker/frontend.Dockerfile
       args:
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?phải đặt NEXT_PUBLIC_API_BASE_URL, VD https://bera-saas.tailfb7b8c.ts.net/api/v1}
+        # Mặc định là ĐƯỜNG DẪN TƯƠNG ĐỐI, có chủ ý (đổi 2026-08-04).
+        # Trước đây đây là URL tuyệt đối bắt buộc phải khai — nghĩa là tên miền bị
+        # "nướng" vào ảnh Docker lúc build, và mỗi lần đổi đường ra internet đều phải
+        # build lại frontend. Đúng lúc cần linh hoạt nhất (chẩn đoán một đường truyền
+        # bị nhà mạng chặn) thì lại là lúc cứng nhất.
+        # Đường dẫn tương đối ⇒ trình duyệt gọi API trên CÙNG origin với trang đang mở
+        # ⇒ chạy đúng dưới bất kỳ tên miền nào (Tailscale, Cloudflare, domain riêng, IP)
+        # mà không phải build lại lần nào nữa. Điều kiện: phải có thứ gộp `/` và
+        # `/api/v1` vào cùng một cổng — đó là việc của service `edge` bên dưới.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
     depends_on:
       - backend
     ports:
@@ -93,6 +102,29 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+    restart: unless-stopped
+
+  # Gộp frontend + API vào MỘT cổng (xem infra/caddy/Caddyfile cho lý do đầy đủ).
+  # Chỉ publish trên 127.0.0.1 — giống backend/frontend, không lộ ra LAN. Thứ đưa nó ra
+  # internet là đường hầm chạy trên host (cloudflared), nằm ngoài phạm vi compose.
+  edge:
+    image: docker.io/caddy:2-alpine
+    volumes:
+      # `:z` bắt buộc trên AlmaLinux — SELinux đang enforcing, thiếu nhãn này thì Caddy
+      # bị từ chối đọc file và container chết ngay lúc khởi động.
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro,z
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      - backend
+      - frontend
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
 volumes:

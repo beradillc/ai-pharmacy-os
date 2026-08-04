@@ -1,0 +1,19 @@
+# Gộp frontend + API vào MỘT cổng, để đưa ra ngoài qua một đường hầm duy nhất.
+#
+# Vì sao cần: `tailscale serve` vốn làm đúng việc này (2 tuyến / và /api/v1 trên cùng
+# domain 443). Nhưng nhà mạng Việt Nam chặn tên miền `.ts.net` (đo thật 2026-08-04:
+# ERR_CONNECTION_CLOSED trên cả 443 lẫn 8443, từ cả Zalo lẫn trình duyệt thật, trong khi
+# cùng URL đó truy cập bình thường từ ngoài VN). Cloudflare qua được, nhưng một đường hầm
+# Cloudflare chỉ trỏ tới MỘT cổng — nên phải có chỗ gộp hai dịch vụ lại trước đó.
+#
+# Trật tự quan trọng: khối /api/v1* phải đứng TRƯỚC khối bắt-tất-cả, nếu không mọi
+# request API sẽ rơi vào frontend và trả về trang 404 của Next thay vì JSON.
+:8080 {
+	handle /api/v1* {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
