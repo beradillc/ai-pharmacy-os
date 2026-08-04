@@ -111,10 +111,17 @@ sudo tailscale serve --bg --https=443 / http://127.0.0.1:3000
 tailscale serve status
 ```
 
-Nếu `tailscale serve` báo lỗi "path already served" khi chạy lệnh thứ hai, dùng
-`tailscale serve --https=443 --yes` hoặc xem `tailscale serve --help` cho cú pháp
-bản Tailscale hiện có (cú pháp `serve` từng đổi giữa các bản) — dán lỗi vào đây nếu
-gặp, đừng tự đoán cờ.
+🔴 **`--set-path` CẮT phần tiền tố khớp trước khi chuyển tiếp** — đích (target URL) phải
+tự lặp lại `/api/v1` (đúng như lệnh trên), không phải chỉ `http://127.0.0.1:8000`.
+Thiếu cú pháp này thì mọi request `/api/v1/*` bị forward thành `/*` (không có tiền tố)
+tới backend, và backend trả 404 vì route thật là `/api/v1/...`. Đã xác nhận bằng lệnh
+thật 2026-08-04 (curl trực tiếp `127.0.0.1:8000/api/v1/health` = 200, `.../health`
+không tiền tố = 404 — backend đúng, lỗi nằm ở cấu hình serve).
+
+Nếu `tailscale serve` báo "Serve is not enabled on your tailnet" kèm link
+`login.tailscale.com/f/serve?node=...` — thử chạy lại lệnh trước khi mở link, có thể
+Serve (khác Funnel) không thật sự bị chặn bởi cờ đó; xác nhận bằng `tailscale serve
+status` sau khi chạy.
 
 ## 7. Kiểm thử TRƯỚC khi có dữ liệu thật — bắt buộc, không bỏ qua
 

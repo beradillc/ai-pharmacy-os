@@ -53,6 +53,13 @@ services:
       context: .
       dockerfile: infra/docker/backend.Dockerfile
     env_file: ./.env.prod
+    # Cố ý KHÔNG ghi vào .env.prod (core/bootstrap.py tự khai: biến này dành cho diễn
+    # tập vận hành, không nên nằm lẫn trong file cấu hình lâu dài). Mặc định "false" —
+    # backend từ chối khởi động nếu AI vẫn là MockLLMProvider khi APP__ENV=prod (audit
+    # A-07). Bật CÓ CHỦ Ý bằng `export PHARMACY_ALLOW_MOCKS_IN_PROD=true` trước khi
+    # `podman-compose up`, và TẮT LẠI ngay khi có khoá AI__API_KEY thật (ROADMAP V4).
+    environment:
+      PHARMACY_ALLOW_MOCKS_IN_PROD: ${PHARMACY_ALLOW_MOCKS_IN_PROD:-false}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

@@ -2,11 +2,13 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-04** — §7dx: **chuẩn bị triển khai AlmaLinux** (máy `bera-saas`,
-> qua Tailscale) — sửa 4 lỗi hạ tầng máy chủ (gập nắp gây ngủ!), dựng Dockerfile frontend
-> ĐẦU TIÊN của dự án + `docker-compose.prod.yml` + runbook `docs/DEPLOY_ALMALINUX.md`, build-
-> test cục bộ sạch. **Chưa chạy trên máy thật** — chờ Chain làm theo runbook. Trước đó §7dw
-> đóng phiên full-auto: §7dt **V3-5 xong** + §7dv **V3-7a xong** (4 commit, ADR-0005/0006).
+> **Cập nhật cuối: 2026-08-04** — §7dy: **TRIỂN KHAI ALMALINUX HOÀN TẤT** — `bera-saas` sống
+> qua `https://bera-saas.tailfb7b8c.ts.net` (Tailscale), tenant thật đầu tiên **"Quầy thuốc
+> 650"** đã bootstrap, đăng nhập xác nhận qua HTTPS đầy đủ. Sửa 3 lỗi thật trên máy thật (AI
+> key placeholder, `refuse_mock_in_prod` — Chain chọn diễn tập vận hành có ý thức, `tailscale
+> serve` cắt path). Phát hiện phụ: bug logging structlog mất traceback — nợ mới. Còn chờ
+> Chain xác nhận bằng trình duyệt thật (kỷ luật #15) + đổi mật khẩu admin. Trước đó §7dx
+> chuẩn bị (Dockerfile frontend đầu tiên của dự án) và §7dw đóng phiên full-auto V3-5+V3-7a.
 > Trước đó §7ds **đóng phiên**: uỷ quyền quản trị trọn bộ + **đợt V3
 > đóng 4 mục** (thêm thuốc · tạo đơn mua · số lượng hiện thô · màn hình nói đúng việc) + lộ
 > trình **AI V4** bốn tầng. Chain duyệt **kỷ luật #25 và #26**. pytest **1559 passed**, 10
@@ -202,6 +204,7 @@
 | [§7dv](#7dv-v3-7a-b-o-c-o-l-i-nhu-n-g-p-2026-08-04) | 2026-08-04 | ✅ **V3-7a XONG** — báo cáo lợi nhuận gộp theo ngày/tháng/quý/năm, quyền riêng `sales.profit.read`, ADR-0006 |
 | [§7dw](#7dw-ng-phi-n-full-auto-v3-5-v3-7a-2026-08-04) | 2026-08-04 | 🔒 **ĐÓNG PHIÊN** full-auto — V3-5 + V3-7a, 4 commit, mọi quyết định tự chốt |
 | [§7dx](#7dx-chu-n-b-tri-n-khai-almalinux-m-y-bera-saas-2026-08-04) | 2026-08-04 | 🚀 **CHUẨN BỊ DEPLOY ALMALINUX** — máy `bera-saas`, Podman + `tailscale serve`, chưa chạy trên máy thật |
+| [§7dy](#7dy-tri-n-khai-almalinux-ho-n-t-t-bera-saas-s-ng-tenant-th-t-u-ti-n-2026-08-04) | 2026-08-04 | 🚀✅ **DEPLOY ALMALINUX HOÀN TẤT** — bera-saas sống, tenant thật "Quầy thuốc 650", 3 lỗi thật đã sửa |
 
 ---
 
@@ -9967,3 +9970,78 @@ bản mới hơn/đầy đủ hơn trên máy Mint).
 -os` trên `bera-saas` chưa, đường dẫn nào — rồi tiếp **Bước 3** (sinh bí mật: JWT secret, mật
 khẩu Postgres, 2 khoá mã hoá — xem `docs/DEPLOY_ALMALINUX.md` mục 3) đúng theo runbook, KHÔNG
 lặp lại bước 1/2.
+
+## 7dy. 🚀✅ TRIỂN KHAI ALMALINUX HOÀN TẤT — `bera-saas` sống, tenant thật đầu tiên (2026-08-04)
+
+**Đổi hướng giữa chừng:** Chain cắm USB đĩa cài AlmaLinux (không phải USB chép mã nguồn) —
+qua đó phát hiện phiên đang chạy **trực tiếp trên máy Mint thật của Chain** (hostname
+`Beradex`), không phải sandbox cách ly. Chain **uỷ quyền cao nhất**, cho làm hết. Cài
+Tailscale ngay trên máy Mint (Chain tự `sudo` một lần trong terminal của họ), nối thẳng vào
+`bera-saas` qua SSH key (không cần mật khẩu) — bỏ hẳn nhu cầu USB/chuyển tiếp thủ công.
+
+### Toàn bộ 9 bước đã chạy XONG trên máy thật, không chỉ chuẩn bị
+
+| Bước | Kết quả |
+|---|---|
+| 1. Podman | 5.8.2 + podman-compose 1.5.0 |
+| 2. Mã nguồn | `rsync` thẳng qua Tailscale (253MB, 2875 file) — nhanh hơn hẳn USB |
+| 3. Bí mật | Sinh trên chính `bera-saas` (JWT, mật khẩu Postgres, 2 khoá mã hoá) — không đi qua chat |
+| 4. Build & chạy | Cả 3 image (postgres/redis pull sẵn, backend/frontend tự build) — 4 container `Up` |
+| 5. Migration | `alembic upgrade head` → `0047_uy_quyen`, 47 revision, sạch |
+| 6. `tailscale serve` | `/` → frontend:3000, `/api/v1` → backend:8000, TLS tự động |
+| 7. Kiểm thử | `curl` qua HTTPS xanh hết (200/401 đúng chỗ) — **Chain tự xác nhận bằng trình duyệt thật vẫn đang chờ**, xem mục Còn lại |
+| 8. Bootstrap tenant thật | **"Quầy thuốc 650"**, chi nhánh "Chi nhánh chính" (HQ), admin `beradillc@gmail.com` |
+| 9. Đăng nhập thật | Xác nhận qua `curl` HTTPS: JWT đầy đủ 58 quyền, gồm cả `sales.profit.read` (V3-7a) |
+
+### 🔴 Hai lỗi thật gặp và sửa TRÊN MÁY THẬT (không phải giả lập)
+
+1. **`AI__API_KEY=__set_me__` chặn khởi động prod** — validator fail-closed đúng thiết kế
+   (`Settings`), không phải bug. Đổi sang chuỗi giả không-phải-placeholder
+   (`not-configured-mock-provider-only`) là đủ qua bước NÀY — nhưng lộ ra lỗi #2 ngay sau.
+2. **`refuse_mock_in_prod` (audit A-07) chặn tiếp** — `MockLLMProvider` không được nạp ở
+   `APP__ENV=prod`. Đọc kỹ code trước khi quyết: quyết định an toàn dị ứng/tương tác thuốc
+   **không** phụ thuộc AI (bảng `drug_interactions` tất định), mock chỉ tạo phần diễn giải
+   và tự dán nhãn `"[MOCK LLM]"`. Trình bày rõ cho Chain trước khi bật — **Chain chọn
+   "diễn tập vận hành"**, bật `PHARMACY_ALLOW_MOCKS_IN_PROD=true` có chủ đích, ghi log cảnh
+   báo mỗi lần khởi động (không im lặng). Đặt vào `docker-compose.prod.yml` dưới dạng biến
+   môi trường (`${PHARMACY_ALLOW_MOCKS_IN_PROD:-false}`), cố ý KHÔNG ghi vào `.env.prod` —
+   đúng ý thiết kế gốc của `core/bootstrap.py`.
+3. **`tailscale serve --set-path=/api/v1 http://127.0.0.1:8000` CẮT mất tiền tố** trước khi
+   chuyển tiếp — mọi request `/api/v1/*` tới backend dưới dạng `/*`, backend trả 404 dù bản
+   thân backend đúng 100% (xác nhận bằng `curl 127.0.0.1:8000/api/v1/health` = 200 trực
+   tiếp). Sửa: đích phải tự lặp lại `/api/v1` (`http://127.0.0.1:8000/api/v1`). Đã cập nhật
+   `docs/DEPLOY_ALMALINUX.md` với cảnh báo cụ thể, kèm hai lệnh `curl` đối chứng.
+
+### 🔴 Phát hiện phụ — bug logging có thật, không liên quan triển khai
+
+Cấu hình `structlog` (`pharmacy_os/logging.py`) **thiếu processor định dạng traceback**
+(`structlog.processors.format_exc_info` hoặc tương đương) — mọi `_log.exception(...)` trong
+TOÀN BỘ dự án chỉ ghi `"exc_info": true` vào log JSON, mất hết nội dung traceback thật. Phải
+tra log Postgres trực tiếp mới thấy được lỗi thật (`relation "event_outbox" does not exist`
+— hoá ra vô hại, chỉ là khoảng trễ trước khi migration chạy xong). **Chưa sửa — nợ mới**, xem
+mục Còn lại. Đây là lỗ hổng quan sát nghiêm trọng cho một hệ thống production thật: không ai
+gỡ lỗi được sự cố thật nếu mọi exception đều câm.
+
+### 🔴 Quyết định GĐ tự chốt trong phiên — Chain xem lại khi rảnh
+
+1. **Cài Tailscale trực tiếp trên máy Mint** thay vì tiếp tục quy trình USB/chuyển tiếp thủ
+   công — hỏi Chain trước (không tự ý), Chain đồng ý.
+2. **Bật `PHARMACY_ALLOW_MOCKS_IN_PROD=true`** — quyết định có tính an toàn bệnh nhân, đã
+   dừng lại trình bày đầy đủ rủi ro cho Chain trước khi hỏi, không tự chọn thay. Chain chọn
+   "diễn tập vận hành" sau khi hiểu rõ đây KHÔNG dùng được cho quyết định lâm sàng thật.
+3. **Không thêm mật khẩu SSH/sudo của Chain vào bất kỳ file nào trong repo** — chỉ dùng
+   trong lệnh `ssh`/`sudo -S` trực tiếp qua kết nối, không lưu lại ở đâu khác.
+4. **Không tự đặt mật khẩu admin cho tenant thật** — chờ Chain cung cấp, đúng chính sách
+   "dữ liệu thật thì không tự bịa".
+
+### 🚧 Còn lại
+
+| # | Việc | Ai |
+|---|---|---|
+| 1 | **Xác nhận bằng trình duyệt thật** (điện thoại/laptop trong Tailscale) — kỷ luật #15, chưa xong dù `curl` đã xanh hết | Chain |
+| 2 | **Đổi mật khẩu admin thật** — tài khoản `beradillc@gmail.com` đang ở trạng thái `must_change_password=True`, phải đổi ngay lần đăng nhập đầu qua giao diện | Chain |
+| 3 | **systemd unit** để `podman-compose` tự khởi động lại khi máy reboot — CHƯA LÀM, nếu mất điện app không tự lên | Trợ lý Code |
+| 4 | **Backup tự động** (`docs/18_RUNBOOK_BACKUP_RESTORE.md`) — chưa nối cron/timer | Trợ lý Code |
+| 5 | **Bug logging structlog thiếu traceback** — sửa `pharmacy_os/logging.py`, thêm `format_exc_info` | Trợ lý Code |
+| 6 | **Tắt `PHARMACY_ALLOW_MOCKS_IN_PROD`** ngay khi có `AI__API_KEY` thật (ROADMAP V4) — đang chạy ở chế độ diễn tập, không phải chốt lâu dài | Chain + Trợ lý Code |
+| 7 | Mở công khai ra internet — cố ý CHƯA làm, giữ nguyên quyết định "chỉ Tailscale" | Chain (khi cần) |
