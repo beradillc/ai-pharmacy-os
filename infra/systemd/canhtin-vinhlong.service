@@ -8,6 +8,9 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 # Bí mật SMTP để ngoài repo, quyền 0600 — cùng mẫu ~/.config/pharmacy-os.env
+# Tài khoản gửi dùng chung ở bera-mail.env; file canhtin chỉ còn MAIL_TO riêng
+# — không nhân bản App Password ra hai chỗ.
+EnvironmentFile=%h/.config/bera-mail.env
 EnvironmentFile=%h/.config/canhtin-vinhlong.env
 ExecStart=%h/.local/bin/canhtin-vinhlong
 StandardOutput=append:%h/canhtin-vinhlong.log

@@ -10700,3 +10700,78 @@ mốc kế tiếp `21:30:15`.
 ⚠️ **Đánh đổi Chain đã chấp nhận:** không còn thư định kỳ nghĩa là **im lặng có hai nghĩa** —
 chưa có tin, hay script đã chết. `canhtin-conhong` trả lời được câu đó, nhưng phải **chủ động
 gõ**, không tự nhắc. Đây là lựa chọn có ý thức, không phải thiếu sót.
+
+---
+
+## 7ei. 🚨 Canh sức khoẻ máy, gửi email khi bất thường (2026-08-05, 06:00)
+
+Chain reboot máy rồi giao: kiểm server + thêm tính năng gửi email khi máy bất thường.
+
+### Bối cảnh: SSH tắc, và nó chứng minh luôn tính năng là cần
+
+Đầu phiên **không SSH vào được** — `Tailscale SSH` chế độ `check` hết cửa sổ 12 giờ, đòi
+xác thực qua trình duyệt. Đường vòng qua LAN cũng chặn (`192.168.1.6:22 No route to host`
+— đúng thiết kế, `firewalld` chỉ mở SSH trên `tailscale0`). Kết quả đo được từ ngoài:
+
+| Đo | Kết quả |
+|---|---|
+| Máy trong tailnet | ✅ active, ping 8,3 ms |
+| Link demo **cũ** | ❌ **HTTP 530** — đường hầm chết theo reboot |
+| Link demo **mới** | ⚠️ không ai biết, phải SSH mới lấy được |
+
+Máy sống, app có thể vẫn chạy, nhưng **địa chỉ demo bốc hơi và không có đường nào biết cái
+mới**. Đây chính là ca dùng số 1 của tính năng vừa làm.
+
+### Thiết kế — 4 quyết định
+
+| Quyết định | Vì sao |
+|---|---|
+| **Gửi theo CẠNH (OK→xấu), không theo mức** | Đĩa đầy 3 ngày × 10 phút/lần = **432 thư**. Cảnh báo bị làm ngơ tệ hơn không có cảnh báo |
+| Nhắc lại mỗi 6 giờ nếu chưa xử lý | Không im hẳn, cũng không phiền |
+| Gộp 1 thư cho nhiều lỗi | Mất điện hỏng 5 thứ ⇒ 1 thư 5 dòng |
+| Thư riêng khi **máy vừa dậy, kèm link demo MỚI** | Gỡ đúng nút vừa vấp |
+| Phân biệt **"xấu"** với **"không đo được"** | Đọc lỗi ⇒ ghi `⚠️`, KHÔNG suy ra bình thường. Im vì mù khác im vì ổn |
+
+8 phép kiểm: đĩa >85% · RAM <250 MB · tải >2× nhân · container thiếu/không khoẻ · API nội bộ
+≠200 · đường hầm chết hoặc link ≠200 · backup >3 giờ tuổi · canh tin ngừng >90 phút.
+
+### 🔴 Đột biến bắt được LỖI THẬT (kỷ luật #14)
+
+Hạ `RAM_TRONG_TOI_THIEU_MB` xuống 999999 để ép nhánh báo lỗi. Kết quả **sai kỳ vọng**:
+
+| Bước | Kỳ vọng | Thực tế lần đầu |
+|---|---|---|
+| B — lần đầu có lỗi, máy vừa dậy | gửi | ✅ gửi (nhánh ① "vừa khởi động lại" giành trước) |
+| C — chạy lại ngay | **IM** | 🔴 **GỬI** |
+
+Nguyên nhân: `_lan_nhac` **chỉ được đặt trong nhánh ②**. Nhánh ① gửi thư (đã liệt kê đủ lỗi)
+nhưng không khởi động đồng hồ ⇒ vòng sau `now − 0 > 6 giờ` ⇒ bắn thư "VẪN CHƯA XỬ LÝ" ngay
+lập tức. Nghĩa là: **máy reboot trong lúc đang có lỗi = spam ngay vòng kế**.
+
+Vá: nhánh ① cũng đặt `_lan_nhac` khi có lỗi. Chạy lại đúng kịch bản:
+**B gửi → C im → C2 im → D gửi thư mừng hồi phục.** Đúng cả 4.
+
+Nếu chỉ nhìn cổng xanh mà không ép nó đỏ thì lỗi này chỉ lộ ra vào **lần reboot đầu tiên
+trùng lúc có sự cố** — tức đúng lúc tệ nhất.
+
+### Tách bí mật SMTP
+
+`~/.config/bera-mail.env` (0600) giữ `SMTP_USER`/`SMTP_PASS` dùng chung; `MAIL_TO` đặt riêng
+trong từng unit vì **mỗi việc gửi cho người khác nhau** — canh tin gửi người nhà, canh máy gửi
+Chain. `canhtin-vinhlong.env` nay chỉ còn `MAIL_TO`, không nhân bản App Password ra hai chỗ.
+Đã xác nhận canh tin vẫn chạy sau khi tách (`Result=success`).
+
+### Tài nguyên server lúc 06:05 (sau reboot 05:52)
+
+| Hạng mục | Giá trị |
+|---|---|
+| CPU | Intel i5-7200U, **4 nhân**, tải 5 phút **0,14** |
+| RAM | **2,5 GB khả dụng** / 3,4 GB — dùng 931 MB |
+| Đĩa `/` | **5%** — còn **42,5 GB** / 45 GB |
+| Container | **5/5 healthy** |
+| Backup | `20260805_060001.sql` — 0,1 giờ tuổi, **chạy đúng giờ VN** (múi giờ sửa 04/08 có tác dụng) |
+| Git | Mint = server, cây sạch |
+| Link demo **mới** | `https://belly-elite-see-forecasts.trycloudflare.com/` |
+
+Máy rất thoáng: đĩa mới dùng 5%, RAM dư 2,5 GB, tải gần như bằng 0. Không có nút thắt tài
+nguyên nào.

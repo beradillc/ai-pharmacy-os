@@ -305,6 +305,12 @@ def main() -> int:
             + duoi,
         )
         cu["_boot_da_bao"] = int(bay_gio - uptime_giay()) // 60
+        # Thư này ĐÃ liệt kê đủ danh sách lỗi, nên phải khởi động luôn đồng hồ 6 giờ.
+        # Không đặt thì `_lan_nhac` còn 0 ⇒ vòng chạy NGAY SAU tưởng đã tới hạn nhắc
+        # lại và bắn thư lần hai. Đột biến ngưỡng RAM ngày 05/08 bắt được đúng ca này:
+        # máy reboot trong lúc đang có lỗi ⇒ spam ngay vòng sau.
+        if hong:
+            cu["_lan_nhac"] = bay_gio
         thu_da_gui = True
 
     # ② Có phép kiểm vừa chuyển sang XẤU, hoặc còn xấu và tới hạn nhắc lại
