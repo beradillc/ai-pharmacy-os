@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID
@@ -42,15 +42,44 @@ class VnpayConfirmOutcome(StrEnum):
 
 
 class RevenueGranularity(StrEnum):
-    """How the revenue report buckets orders into periods.
+    """How the revenue/profit reports bucket orders into periods.
 
-    Bucketing happens in Python (:mod:`sales.application.service`), not SQL
-    ``date_trunc`` — that function is Postgres-only and the project's models are
-    kept cross-dialect (Postgres + SQLite for tests)."""
+    Bucketing happens in Python (:func:`period_start`), not SQL ``date_trunc`` —
+    that function is Postgres-only and the project's models are kept cross-dialect
+    (Postgres + SQLite for tests).
+
+    ``QUARTER``/``YEAR`` added 2026-08-04 (ROADMAP V3-7a, Chain chốt "theo ngày,
+    tháng, quý, năm") — shared with the revenue export too since both reports need
+    the exact same period boundaries to stay comparable to each other.
+    """
 
     DAY = "day"
     WEEK = "week"
     MONTH = "month"
+    QUARTER = "quarter"
+    YEAR = "year"
+
+
+def period_start(when: datetime, granularity: RevenueGranularity) -> date:
+    """Bucket a timestamp to its period's first day (local to the stored value —
+    the project stores ``created_at`` in UTC throughout, so buckets are UTC days).
+
+    Shared by the revenue report (:mod:`sales.application.service`) and the profit
+    report (``api/v1/reports.py``, ROADMAP V3-7a) — both need identical period
+    boundaries, or a period's revenue and its cost could silently disagree about
+    which bucket a borderline order belongs to.
+    """
+    day = when.date()
+    if granularity is RevenueGranularity.DAY:
+        return day
+    if granularity is RevenueGranularity.WEEK:
+        return day - timedelta(days=day.weekday())  # Monday of that week
+    if granularity is RevenueGranularity.MONTH:
+        return day.replace(day=1)
+    if granularity is RevenueGranularity.QUARTER:
+        quarter_first_month = ((day.month - 1) // 3) * 3 + 1
+        return day.replace(month=quarter_first_month, day=1)
+    return day.replace(month=1, day=1)  # RevenueGranularity.YEAR
 
 
 @dataclass(frozen=True, slots=True)

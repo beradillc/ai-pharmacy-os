@@ -104,6 +104,25 @@ class MovementRepository(Protocol):
         """
         ...
 
+    async def cost_by_ref(self, ref_type: str, ref_ids: Sequence[UUID]) -> dict[UUID, Decimal]:
+        """Sum ``quantity × batch.cost_price`` of every ``OUT`` movement per
+        ``ref_id``, for the profit report (ROADMAP V3-7a).
+
+        Reads :class:`~pharmacy_os.modules.inventory.domain.entities.ProductBatch`'s
+        **current** ``cost_price`` — the weighted-average cost as of *now*, not a
+        snapshot from when the movement happened. A batch that received more stock
+        at a different price *after* the movement will report a cost slightly off
+        from what that specific dispense actually cost at the time. ``StockMovement``
+        carries no cost field of its own (append-only ledger of quantity/direction
+        only), so a true point-in-time cost would need a schema change — out of
+        scope here (documented limitation, ``docs/adr/ADR-0006``).
+
+        A ``ref_id`` with no matching movement is **absent** from the result, not
+        mapped to ``0`` — same convention as :meth:`CatalogService.drug_names`:
+        callers must not confuse "no cost" with "not found".
+        """
+        ...
+
 
 class BalanceRepository(Protocol):
     async def adjust(

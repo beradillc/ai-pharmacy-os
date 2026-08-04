@@ -29,6 +29,15 @@ INVENTORY_PERMISSIONS = frozenset(
     {"inventory.read", "inventory.receive", "inventory.dispense", "inventory.reconcile"}
 )
 SALES_PERMISSIONS = frozenset({"sales.read", "sales.create", "sales.return"})
+#: Gross margin — revenue minus cost of goods (ROADMAP V3-7a, 2026-08-04). Split from
+#: ``sales.read`` deliberately: ``sales.read`` already lets a cashier see *what sold*
+#: (POS UI shows that today), but nothing today shows *how much it cost the pharmacy*
+#: — a cashier or warehouse clerk seeing exact purchase cost/margin per sale is a
+#: commercial-sensitivity escalation the reused-permission reasoning in V3-5/ADR-0005
+#: does NOT cover (that reuse was justified because revenue export "is not more
+#: sensitive than what the POS/inventory UI already shows"; profit margin is not
+#: already shown anywhere). Chain-level only — see ``docs/adr/ADR-0006``.
+PROFIT_PERMISSIONS = frozenset({"sales.profit.read"})
 #: ``rx.image.read`` (2026-07-31, Chain duyệt khuyến nghị GĐ) tách khỏi ``rx.read`` vì ảnh
 #: đơn thuốc mang **chẩn đoán** — đúng thứ ``crm.sensitive.read`` cố ý không cấp cho thu
 #: ngân. Để chung sẽ mở một đường vòng qua ranh giới quyền đó: thu ngân không đọc được hồ
@@ -154,6 +163,7 @@ ALL_PERMISSIONS: frozenset[str] = (
     CATALOG_PERMISSIONS
     | INVENTORY_PERMISSIONS
     | SALES_PERMISSIONS
+    | PROFIT_PERMISSIONS
     | RX_PERMISSIONS
     | CLINICAL_PERMISSIONS
     | CRM_PERMISSIONS
@@ -223,6 +233,9 @@ _CHAIN_PHARMACIST_PERMISSIONS = (
     CATALOG_PERMISSIONS
     | INVENTORY_PERMISSIONS
     | SALES_PERMISSIONS
+    # Chủ chuỗi xem báo cáo lợi nhuận (ROADMAP V3-7a) — dược sĩ chi nhánh/thu ngân/thủ
+    # kho không, xem ghi chú ở `PROFIT_PERMISSIONS`.
+    | PROFIT_PERMISSIONS
     | RX_PERMISSIONS
     | CLINICAL_PERMISSIONS
     | CRM_PERMISSIONS

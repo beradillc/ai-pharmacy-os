@@ -7,7 +7,7 @@ and published only after a successful commit.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Sequence
 from datetime import date, timedelta
 from decimal import Decimal
 from uuid import UUID
@@ -777,6 +777,37 @@ class InventoryService:
                 if len(page) < _STOCK_REPORT_BATCH:
                     return
                 offset += _STOCK_REPORT_BATCH
+
+    async def cogs_by_order(
+        self, order_ids: Sequence[UUID], ctx: RequestContext
+    ) -> dict[UUID, Decimal]:
+        """Cost of goods sold per sale order, for the profit report (ROADMAP V3-7a).
+
+        Sums ``StockMovement`` rows this drug's FEFO dispense wrote for each order
+        (``ref_type="sale"``, ``ref_id=order_id`` — see
+        :meth:`dispense_for_sale`/:meth:`_dispense_sale_once`), valued at each
+        movement's batch's **current** ``cost_price``. See
+        :meth:`~pharmacy_os.modules.inventory.domain.ports.MovementRepository.cost_by_ref`
+        for why that is an approximation, not a point-in-time snapshot.
+
+        Deliberately **gross**, matching :meth:`SalesService.revenue_report_rows`'s
+        own policy (counts a sale's full value even if later returned) — a return
+        does not reverse the original dispense's ``StockMovement`` row, so this
+        method's total already stays gross without special-casing returns. Profit
+        computed as revenue − this must use the *same* policy on both sides or the
+        two numbers would not be comparable.
+
+        Requires ``inventory.read`` (reused — this is not more sensitive than what
+        the stock report already reads about the same batches, PROJECT_STATE §7dt/
+        §7dv). An ``order_id`` with nothing dispensed for it (e.g. an order that
+        predates :meth:`dispense_for_sale` being wired, or a fully-out-of-stock
+        line) is **absent** from the result, same convention as
+        :meth:`CatalogService.drug_names`.
+        """
+        require_permission(ctx, "inventory.read")
+        async with self._uow_factory() as uow:
+            movements = self._movements(uow, ctx)
+            return await movements.cost_by_ref("sale", order_ids)
 
     # ── BERAS V2 Phase 2: tồn theo vị trí ─────────────────────────────────────────
 

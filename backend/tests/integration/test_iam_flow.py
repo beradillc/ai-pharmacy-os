@@ -35,9 +35,11 @@ from pharmacy_os.modules.iam.application import (
 from pharmacy_os.modules.iam.domain import (
     BRANCH_PHARMACIST,
     CASHIER,
+    CHAIN_PHARMACIST,
     SYSTEM_ADMIN,
     SYSTEM_ROLES,
     SYSTEM_ROLES_BY_CODE,
+    WAREHOUSE,
     Role,
 )
 
@@ -652,3 +654,55 @@ async def test_branch_names_requires_a_permission(iam_service: IamService) -> No
     )
     with pytest.raises(PermissionDeniedError):
         await iam_service.branch_names(ctx)
+
+
+# --- sales.profit.read (ROADMAP V3-7a, PROJECT_STATE §7dv) ------------------
+
+
+async def test_only_chain_pharmacist_gets_the_profit_permission(
+    iam_service: IamService, auth_service: AuthService
+) -> None:
+    """Commercial-sensitivity split: a cashier already sees what sold (POS UI),
+    but margin/cost is new exposure — chain-level only, see
+    ``PROFIT_PERMISSIONS`` docstring and ADR-0006."""
+    ctx = await _admin_ctx(iam_service, auth_service)
+    roles = {r.code: r for r in await iam_service.list_roles(ctx)}
+    assert "sales.profit.read" in roles[CHAIN_PHARMACIST].permissions
+    assert "sales.profit.read" not in roles[BRANCH_PHARMACIST].permissions
+    assert "sales.profit.read" not in roles[CASHIER].permissions
+    assert "sales.profit.read" not in roles[WAREHOUSE].permissions
+
+
+async def test_sync_backfills_the_profit_permission_to_a_pre_existing_role(
+    iam_service: IamService, auth_service: AuthService
+) -> None:
+    """Kỷ luật #7 regression: a permission added to ``SYSTEM_ROLES`` in code must
+    reach a deployment provisioned *before* the change, not just brand-new
+    tenants. Simulates that "before" state by writing back a stale role row
+    missing ``sales.profit.read``, then confirms ``sync_system_roles`` backfills
+    it — the same failure shape PROJECT_STATE §7l documented for ``audit.read``."""
+    ctx = await _admin_ctx(iam_service, auth_service)
+    async with iam_service._uow_factory() as uow:  # noqa: SLF001 - test-only shortcut
+        repos = iam_service._repos_factory(uow)  # noqa: SLF001
+        stale = next(
+            r for r in await repos.roles.list_available(ctx.tenant_id) if r.code == CHAIN_PHARMACIST
+        )
+        await repos.roles.update(
+            Role(
+                id=stale.id,
+                code=stale.code,
+                name=stale.name,
+                description=stale.description,
+                permissions=stale.permissions - {"sales.profit.read"},
+            )
+        )
+        await uow.commit()
+
+    before = next(r for r in await iam_service.list_roles(ctx) if r.code == CHAIN_PHARMACIST)
+    assert "sales.profit.read" not in before.permissions
+
+    result = await iam_service.sync_system_roles()
+    assert result.updated >= 1
+
+    after = next(r for r in await iam_service.list_roles(ctx) if r.code == CHAIN_PHARMACIST)
+    assert "sales.profit.read" in after.permissions

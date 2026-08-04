@@ -36,6 +36,7 @@ from pharmacy_os.modules.sales.application.dto import (
     SaleOutput,
     VnpayConfirmOutcome,
     VnpayInitiateOutput,
+    period_start,
 )
 from pharmacy_os.modules.sales.domain import (
     Payment,
@@ -796,17 +797,71 @@ class SalesService:
                 return info.name, info.unit
         return str(drug_id), ""
 
-    @staticmethod
-    def _period_start(when: datetime, granularity: RevenueGranularity) -> date:
-        """Bucket a timestamp to its period's first day (local to the stored value —
-        the project stores ``created_at`` in UTC throughout, so buckets are UTC days).
+    async def order_revenue_rows(
+        self,
+        ctx: RequestContext,
+        *,
+        date_from: date,
+        date_to: date,
+        branch_id: UUID | None = None,
+        sold_by_user_id: UUID | None = None,
+    ) -> AsyncIterator[OrderRevenueRow]:
+        """Per-order revenue facts over ``[date_from, date_to]`` (inclusive both
+        ends), **not** bucketed into periods — the raw stream :meth:`revenue_report_rows`
+        buckets internally, exposed on its own for the profit report
+        (``api/v1/reports.py``, ROADMAP V3-7a).
+
+        Profit needs order-level rows because cost is resolved **per order**
+        (``InventoryService.cogs_by_order``, one order at a time can span several
+        FEFO-allocated batches) before bucketing — bucketing revenue first, the way
+        :meth:`revenue_report_rows` does for its own CSV, would throw away the
+        ``order_id`` a cost lookup needs.
+
+        Same permission/validation/streaming contract as :meth:`revenue_report_rows`
+        (``sales.read``, checked eagerly; paged in batches of
+        :data:`_REVENUE_REPORT_BATCH`) — this method exists to let the composition
+        root revenue *and* profit reports without duplicating the query.
         """
-        day = when.date()
-        if granularity is RevenueGranularity.DAY:
-            return day
-        if granularity is RevenueGranularity.WEEK:
-            return day - timedelta(days=day.weekday())  # Monday of that week
-        return day.replace(day=1)  # RevenueGranularity.MONTH
+        require_permission(ctx, "sales.read")
+        if date_from > date_to:
+            raise ValidationError("Khoảng thời gian không hợp lệ: 'từ' sau 'đến'")
+        created_from = datetime.combine(date_from, time.min, tzinfo=UTC)
+        created_to = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=UTC)
+        return self._order_revenue_stream(
+            ctx,
+            created_from=created_from,
+            created_to=created_to,
+            branch_id=branch_id,
+            sold_by_user_id=sold_by_user_id,
+        )
+
+    async def _order_revenue_stream(
+        self,
+        ctx: RequestContext,
+        *,
+        created_from: datetime,
+        created_to: datetime,
+        branch_id: UUID | None,
+        sold_by_user_id: UUID | None,
+    ) -> AsyncIterator[OrderRevenueRow]:
+        offset = 0
+        async with self._uow_factory() as uow:
+            repo = self._repo_factory(uow, ctx)
+            while True:
+                batch: list[OrderRevenueRow] = await repo.completed_in_range(
+                    ctx.tenant_id,
+                    branch_id=branch_id,
+                    sold_by_user_id=sold_by_user_id,
+                    created_from=created_from,
+                    created_to=created_to,
+                    limit=_REVENUE_REPORT_BATCH,
+                    offset=offset,
+                )
+                for order in batch:
+                    yield order
+                if len(batch) < _REVENUE_REPORT_BATCH:
+                    break
+                offset += _REVENUE_REPORT_BATCH
 
     async def list_sales(
         self,
@@ -900,58 +955,38 @@ class SalesService:
         appear only in the unfiltered (every-salesperson) report — a per-salesperson
         report never sees them, by design.
         """
-        require_permission(ctx, "sales.read")
-        if date_from > date_to:
-            raise ValidationError("Khoảng thời gian không hợp lệ: 'từ' sau 'đến'")
-        created_from = datetime.combine(date_from, time.min, tzinfo=UTC)
-        created_to = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=UTC)
-        return self._revenue_report_stream(
+        # Permission + date-window validation happen inside order_revenue_rows,
+        # awaited below — still eager (raises before this coroutine returns), no
+        # need to duplicate the checks here.
+        orders = await self.order_revenue_rows(
             ctx,
-            created_from=created_from,
-            created_to=created_to,
-            granularity=granularity,
+            date_from=date_from,
+            date_to=date_to,
             branch_id=branch_id,
             sold_by_user_id=sold_by_user_id,
         )
+        return self._bucket_by_period(orders, granularity)
 
-    async def _revenue_report_stream(
-        self,
-        ctx: RequestContext,
-        *,
-        created_from: datetime,
-        created_to: datetime,
-        granularity: RevenueGranularity,
-        branch_id: UUID | None,
-        sold_by_user_id: UUID | None,
+    @staticmethod
+    async def _bucket_by_period(
+        orders: AsyncIterator[OrderRevenueRow], granularity: RevenueGranularity
     ) -> AsyncIterator[RevenueRow]:
+        """Fold a per-order stream into ``(period, branch, currency)`` buckets —
+        bounded by the number of distinct buckets in the window, never by the
+        number of orders, so a long/busy range still streams with flat memory on
+        the expensive (row) side. Shared bucketing logic for
+        :meth:`revenue_report_rows`; the profit report (``api/v1/reports.py``)
+        buckets its own combined revenue+cost accumulator the same way, using the
+        same :func:`period_start`.
+        """
         buckets: dict[tuple[date, UUID, str], tuple[Decimal, int]] = {}
-        offset = 0
-        async with self._uow_factory() as uow:
-            repo = self._repo_factory(uow, ctx)
-            while True:
-                batch: list[OrderRevenueRow] = await repo.completed_in_range(
-                    ctx.tenant_id,
-                    branch_id=branch_id,
-                    sold_by_user_id=sold_by_user_id,
-                    created_from=created_from,
-                    created_to=created_to,
-                    limit=_REVENUE_REPORT_BATCH,
-                    offset=offset,
-                )
-                for order in batch:
-                    key = (
-                        self._period_start(order.created_at, granularity),
-                        order.branch_id,
-                        order.currency,
-                    )
-                    prev_total, prev_count = buckets.get(key, (Decimal("0"), 0))
-                    buckets[key] = (prev_total + order.subtotal, prev_count + 1)
-                if len(batch) < _REVENUE_REPORT_BATCH:
-                    break
-                offset += _REVENUE_REPORT_BATCH
-        for (period_start, b_id, currency), (revenue_total, order_count) in sorted(buckets.items()):
+        async for order in orders:
+            key = (period_start(order.created_at, granularity), order.branch_id, order.currency)
+            prev_total, prev_count = buckets.get(key, (Decimal("0"), 0))
+            buckets[key] = (prev_total + order.subtotal, prev_count + 1)
+        for (bucket_start, b_id, currency), (revenue_total, order_count) in sorted(buckets.items()):
             yield RevenueRow(
-                period_start=period_start,
+                period_start=bucket_start,
                 branch_id=b_id,
                 currency=currency,
                 order_count=order_count,

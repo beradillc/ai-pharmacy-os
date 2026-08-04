@@ -231,6 +231,26 @@ class SqlAlchemyMovementRepository:
         row = (await self._session.execute(stmt)).first()
         return row is not None
 
+    async def cost_by_ref(self, ref_type: str, ref_ids: Sequence[UUID]) -> dict[UUID, Decimal]:
+        if not ref_ids:
+            return {}
+        stmt = (
+            select(
+                StockMovementORM.ref_id,
+                func.sum(StockMovementORM.quantity * ProductBatchORM.cost_price),
+            )
+            .join(ProductBatchORM, ProductBatchORM.id == StockMovementORM.batch_id)
+            .where(
+                StockMovementORM.ref_type == ref_type,
+                StockMovementORM.ref_id.in_(ref_ids),
+                StockMovementORM.type == "OUT",
+                StockMovementORM.tenant_id == self._ctx.tenant_id,
+            )
+            .group_by(StockMovementORM.ref_id)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return {ref_id: cost for ref_id, cost in rows if ref_id is not None}
+
 
 class SqlAlchemyBalanceRepository:
     def __init__(self, session: AsyncSession, ctx: RequestContext) -> None:
