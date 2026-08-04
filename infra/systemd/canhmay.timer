@@ -1,0 +1,13 @@
+[Unit]
+Description=Chay canh suc khoe may moi 10 phut
+
+[Timer]
+OnCalendar=*:00/10
+# Persistent CHỈ có tác dụng với OnCalendar (đã vấp 04/08 với canhtin — xem §7eh).
+Persistent=true
+# Chạy sớm sau khi máy dậy: đây là lúc cần thư "link demo mới" nhất.
+OnBootSec=2min
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target

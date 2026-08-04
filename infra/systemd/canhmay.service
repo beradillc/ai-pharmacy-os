@@ -1,0 +1,16 @@
+[Unit]
+# Canh sức khoẻ máy bera-saas, gửi email khi bất thường (lập 2026-08-05).
+# Thiết kế + ngưỡng: scripts/canhmay.py
+Description=Canh suc khoe may bera-saas
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Bí mật SMTP dùng chung; MAIL_TO đặt riêng ở đây vì thư máy gửi cho CHAIN,
+# khác người nhận của canh-tin tuyển dụng.
+EnvironmentFile=%h/.config/bera-mail.env
+Environment=MAIL_TO=beradillc@gmail.com
+ExecStart=%h/.local/bin/canhmay
+StandardOutput=append:%h/canhmay.log
+StandardError=append:%h/canhmay.log
