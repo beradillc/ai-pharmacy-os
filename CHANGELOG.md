@@ -32,6 +32,12 @@ mục đã phát hành**, sai thì ghi một mục mới đính chính.
 
 ### Đã thêm
 
+- **`GET /reports/profit/export`** — lợi nhuận gộp (doanh thu − giá vốn) theo
+  ngày/tuần/tháng/quý/năm, gộp chi nhánh/loại tiền, CSV tiếng Việt (ROADMAP V3-7a).
+  Quyền **mới `sales.profit.read`** — chỉ cấp `chain_pharmacist`/`system_admin`, không
+  tái dùng `sales.read` (margin không phải dữ liệu cashier đã thấy sẵn). Giá vốn tính
+  gộp (không trừ hàng trả) và dùng giá vốn hiện tại của lô (bình quân gia quyền) —
+  chi tiết `docs/adr/ADR-0006`.
 - **Cài đặt → Lưu trữ** (`/cai-dat/luu-tru`): xem lại ảnh đơn thuốc đã chụp. Dữ liệu hiện
   **theo phân quyền** — quyền mới **`archive.read.chain`** (cấp chuỗi) cho xem toàn bộ chi
   nhánh; không có thì chỉ chi nhánh đang đăng nhập. Ảnh chỉ tải khi bấm mở, và mỗi lượt mở

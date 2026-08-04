@@ -98,6 +98,39 @@ class RevenueRow:
     revenue_total: Decimal
 
 
+@dataclass(frozen=True, slots=True)
+class ProfitRow:
+    """One (period, branch, currency) bucket of the profit report (ROADMAP V3-7a).
+
+    Built at the composition root (``api/v1/reports.py``), not by
+    :class:`SalesService` — it combines :class:`RevenueRow`-shaped revenue with
+    cost from ``InventoryService.cogs_by_order``, and no single module owns both
+    facts. Both totals are **gross** (matches :class:`RevenueRow`'s own gross
+    policy — a return does not reverse either side), so ``gross_profit`` is a
+    stable, comparable figure across periods.
+    """
+
+    period_start: date
+    branch_id: UUID
+    currency: str
+    order_count: int
+    revenue_total: Decimal
+    cogs_total: Decimal
+
+    @property
+    def gross_profit(self) -> Decimal:
+        return self.revenue_total - self.cogs_total
+
+    @property
+    def margin_pct(self) -> Decimal | None:
+        """``None`` when ``revenue_total`` is 0 — a bucket can only be empty of
+        revenue if it is also empty of orders (an order always has a positive
+        subtotal), so this is a genuinely undefined ratio, not a 0% margin."""
+        if self.revenue_total == 0:
+            return None
+        return (self.gross_profit / self.revenue_total) * 100
+
+
 @dataclass(slots=True)
 class SaleLineInput:
     drug_id: UUID

@@ -396,7 +396,7 @@ nào giải thích**. Người dùng kết luận "phần mềm thiếu tính n�
 ⇒ Việc: khi thiếu quyền thì **nói ra** (*"Cần quyền cấp vai trò — liên hệ quản trị hệ thống"*),
 đừng ẩn trơn. Áp cho **mọi** nút bị gác quyền, không riêng màn này.
 
-### V3-7 Hoá đơn mua thuốc · giá vốn · lợi nhuận
+### V3-7 ✅ V3-7a XONG 2026-08-04 — Hoá đơn mua thuốc · giá vốn · lợi nhuận
 
 | Thứ cần | Có chưa |
 |---|---|
@@ -406,9 +406,12 @@ nào giải thích**. Người dùng kết luận "phần mềm thiếu tính n�
 
 Chia làm hai việc **rất khác nhau về giá**:
 
-- **V3-7a — Báo cáo lợi nhuận.** Dữ liệu **đã nằm sẵn**: giá bán ở `sale_lines`, giá vốn ở
-  `product_batches`. Thiếu **người nối hai đầu**, không thiếu dữ liệu ⇒ rẻ hơn nhiều so với vẻ
-  ngoài. **Cần Chain chốt chiều xem:** theo thuốc · theo ngày · hay theo nhà cung cấp.
+- **V3-7a ✅ Báo cáo lợi nhuận.** Chain chốt chiều xem: **theo ngày, tháng, quý, năm**.
+  `GET /reports/profit/export`, quyền riêng `sales.profit.read` (không tái dùng `sales.read`
+  — margin nhạy cảm hơn doanh thu, xem ADR-0006). Giá vốn tính GỘP (không trừ hàng trả),
+  khớp đúng chính sách doanh thu đã có. Giá vốn dùng `cost_price` **hiện tại** của lô (bình
+  quân gia quyền) — xấp xỉ đã ghi nhận, không phải giá tại đúng thời điểm bán (`StockMovement`
+  không mang cột giá). Chi tiết đầy đủ: `docs/adr/ADR-0006-bao-cao-loi-nhuan-gop.md`.
 - **V3-7b — Hoá đơn NCC, VAT, công nợ.** Thêm trường + migration, và **đụng ranh giới kế toán**.
   🔴 **Chưa code khi chưa có câu trả lời:** phần mềm dừng ở *ghi nhận nội bộ để theo dõi lợi
   nhuận*, hay *xuất số liệu khớp sổ thuế*? Hai đích cách nhau rất xa về khối lượng. Hỏi Trợ lý
@@ -499,7 +502,7 @@ việc cần làm tiếp theo**. Gộp làm một đợt thì rẻ hơn làm r�
 | ~~2~~ | ~~**V3-2** nút tạo đơn mua~~ | ✅ **xong 04/08** |
 | ~~3~~ | ~~**V3-6 + V3-10**~~ | ✅ **xong 04/08** |
 | ~~4~~ | ~~**V3-5** báo cáo đọc được~~ | ✅ **xong 04/08** |
-| 5 | **V3-7a** báo cáo lợi nhuận | Dữ liệu đã đủ — *chờ Chain chốt chiều xem* |
+| ~~5~~ | ~~**V3-7a** báo cáo lợi nhuận~~ | ✅ **xong 04/08** |
 | 6 | **V3-4** màn dẫn đường bắt đầu | Sau khi V3-1 xong mới trọn nghĩa |
 | 7 | **V3-3** gom đề xuất cùng NCC | Bất tiện, không chặn |
 | 8 | **V3-7b** · **V3-8** | *Chờ Kế toán / chờ Pháp Lý + khoá API* |
@@ -540,7 +543,7 @@ Vì sao an toàn: **số liệu của chính cơ sở, sai thì thấy ngay**, v
 | Cần gì | Phụ thuộc |
 |---|---|
 | Số sạch, có tên thay vì UUID | ✅ **V3-5** (báo cáo đọc được, xong 04/08) |
-| Giá vốn ⇒ lợi nhuận | **V3-7a** |
+| Giá vốn ⇒ lợi nhuận | ✅ **V3-7a** (xong 04/08 — lưu ý: `sales.profit.read` là quyền riêng, tầng AI đọc nội bộ cần xin thêm quyền này nếu muốn trả lời câu hỏi lợi nhuận) |
 | Công cụ đọc có kiểm soát quyền | Mới — AI **phải đi qua đúng `RequestContext`** của người hỏi |
 
 🔴 **Ràng buộc bắt buộc, không thoả hiệp:** AI **không** được có đường đọc riêng vòng qua phân

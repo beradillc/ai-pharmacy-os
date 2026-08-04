@@ -31,10 +31,11 @@ from pharmacy_os.core.events import InMemoryEventBus
 from pharmacy_os.main import create_app
 from pharmacy_os.models_registry import Base
 from pharmacy_os.modules.iam.application import BootstrapTenantInput, IamService
-from pharmacy_os.modules.iam.domain import CASHIER, WAREHOUSE
+from pharmacy_os.modules.iam.domain import CASHIER, CHAIN_PHARMACIST, WAREHOUSE
 from pharmacy_os.modules.iam.interface import build_repositories
 from pharmacy_os.modules.inventory.application.csv_export import STOCK_CSV_HEADER
 from pharmacy_os.modules.sales.application.csv_export import (
+    PROFIT_CSV_HEADER,
     REVENUE_CSV_HEADER,
     TOP_DRUGS_CSV_HEADER,
 )
@@ -47,6 +48,7 @@ STAFF_PASSWORD = "MatKhauNhanVien26"
 _REVENUE = "/api/v1/reports/revenue/export"
 _STOCK = "/api/v1/reports/inventory/stock/export"
 _TOP_DRUGS = "/api/v1/reports/top-drugs/export"
+_PROFIT = "/api/v1/reports/profit/export"
 
 
 async def _bootstrap(db_url: str) -> None:
@@ -188,6 +190,24 @@ def _receive_stock(client: TestClient, admin: Any, quantity: int) -> Any:
         "expiry_date": (date.today() + timedelta(days=365)).isoformat(),
         "quantity": quantity,
         "cost_price": 1000,
+    }
+    r = client.post("/api/v1/inventory/receive", headers=_auth(admin), json=body)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def _receive_for_drug(
+    client: TestClient, admin: Any, drug_id: str, quantity: int, cost_price: int
+) -> Any:
+    """Like :func:`_receive_stock` but for a real, already-created ``drug_id`` and a
+    caller-chosen ``cost_price`` — the profit tests need a known cost basis to check
+    an exact COGS/margin figure, not a random drug."""
+    body = {
+        "drug_id": drug_id,
+        "lot_no": f"LOT-{uuid4().hex[:8]}",
+        "expiry_date": (date.today() + timedelta(days=365)).isoformat(),
+        "quantity": quantity,
+        "cost_price": cost_price,
     }
     r = client.post("/api/v1/inventory/receive", headers=_auth(admin), json=body)
     assert r.status_code == 201, r.text
@@ -509,3 +529,114 @@ def test_reports_are_read_only(client: TestClient) -> None:
         assert verb(_REVENUE, headers=_auth(admin)).status_code == 405
         assert verb(_STOCK, headers=_auth(admin)).status_code == 405
         assert verb(_TOP_DRUGS, headers=_auth(admin)).status_code == 405
+
+
+# --- profit export (ROADMAP V3-7a, PROJECT_STATE §7dv) -------------------------
+
+
+def test_profit_requires_a_token(client: TestClient) -> None:
+    assert client.get(_PROFIT, params=_date_range()).status_code == 401
+
+
+def test_profit_requires_its_own_permission_not_sales_read(client: TestClient) -> None:
+    """The permission split under test: unlike revenue/stock/top-drugs, a cashier
+    (sales.read + inventory.read, no sales.profit.read) must be refused — margin
+    is not something V3-5's reuse reasoning covers (ADR-0006)."""
+    admin = _login(client)
+    _make_staff(client, admin, "tn3@bera.vn", CASHIER)
+    cashier = _login(client, "tn3@bera.vn", STAFF_PASSWORD)
+
+    assert client.get(_PROFIT, headers=_auth(cashier), params=_date_range()).status_code == 403
+
+
+def test_a_chain_pharmacist_can_export_profit(client: TestClient) -> None:
+    admin = _login(client)
+    _make_staff(client, admin, "dsc@bera.vn", CHAIN_PHARMACIST)
+    pharmacist = _login(client, "dsc@bera.vn", STAFF_PASSWORD)
+
+    assert client.get(_PROFIT, headers=_auth(pharmacist), params=_date_range()).status_code == 200
+
+
+def test_profit_computes_revenue_minus_cost_of_goods(client: TestClient) -> None:
+    admin = _login(client)
+    drug = _drug(client, admin)
+    _receive_for_drug(client, admin, drug, quantity=10, cost_price=1000)
+    # 4 units @ 5.000đ (revenue 20.000, cost 4.000) + 3 units @ 6.000đ (revenue
+    # 18.000, cost 3.000) — same drug/batch, two separate orders in the same
+    # period: total revenue 38.000, cost 7.000, gross profit 31.000.
+    _create_sale_for_drug(client, admin, drug, quantity=4, unit_price=5_000)
+    _create_sale_for_drug(client, admin, drug, quantity=3, unit_price=6_000)
+
+    r = client.get(_PROFIT, headers=_auth(admin), params=_date_range())
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "attachment" in r.headers["content-disposition"]
+
+    rows = list(csv.reader(io.StringIO(r.text)))
+    assert tuple(rows[0]) == PROFIT_CSV_HEADER
+    body = rows[1:]
+    assert len(body) == 1  # both orders same drug/branch/currency/period → one bucket
+
+    row = body[0]
+    assert int(row[PROFIT_CSV_HEADER.index("Số đơn")]) == 2
+    assert _parse_vn_money(row[PROFIT_CSV_HEADER.index("Doanh thu")]) == 38_000
+    assert _parse_vn_money(row[PROFIT_CSV_HEADER.index("Giá vốn")]) == 7_000
+    assert _parse_vn_money(row[PROFIT_CSV_HEADER.index("Lợi nhuận gộp")]) == 31_000
+    margin = float(row[PROFIT_CSV_HEADER.index("Biên lợi nhuận (%)")])
+    assert abs(margin - (31_000 / 38_000 * 100)) < 0.05
+    assert row[PROFIT_CSV_HEADER.index("Chi nhánh")] == "Chi nhánh chính"
+
+
+def test_profit_is_gross_a_return_does_not_reduce_cost_or_revenue(client: TestClient) -> None:
+    """Same gross policy as the revenue report (SalesService.revenue_report_rows'
+    own docstring): a return records SaleReturned but does not reverse the
+    original StockMovement, so cost stays gross the same way revenue does — the
+    two sides must move together or profit would stop being comparable."""
+    admin = _login(client)
+    drug = _drug(client, admin)
+    _receive_for_drug(client, admin, drug, quantity=10, cost_price=1000)
+    sale = _create_sale_for_drug(client, admin, drug, quantity=5, unit_price=5_000)
+
+    ret = client.post(
+        f"/api/v1/sales/{sale['id']}/returns",
+        headers=_auth(admin),
+        json={"line_id": sale["lines"][0]["id"], "quantity": 2},
+    )
+    assert ret.status_code == 200, ret.text
+
+    r = client.get(_PROFIT, headers=_auth(admin), params=_date_range())
+    body = list(csv.reader(io.StringIO(r.text)))[1:]
+    assert _parse_vn_money(body[0][PROFIT_CSV_HEADER.index("Doanh thu")]) == 25_000
+    assert _parse_vn_money(body[0][PROFIT_CSV_HEADER.index("Giá vốn")]) == 5_000
+
+
+def test_profit_branch_filter_narrows_to_nothing_for_a_foreign_branch(client: TestClient) -> None:
+    admin = _login(client)
+    drug = _drug(client, admin)
+    _receive_for_drug(client, admin, drug, quantity=5, cost_price=1000)
+    _create_sale_for_drug(client, admin, drug, quantity=1, unit_price=1_000)
+
+    r = client.get(
+        _PROFIT, headers=_auth(admin), params={**_date_range(), "branch_id": str(uuid4())}
+    )
+    rows = list(csv.reader(io.StringIO(r.text)))
+    assert len(rows) == 1  # header only
+
+
+def test_profit_rejects_reversed_date_range(client: TestClient) -> None:
+    admin = _login(client)
+    r = client.get(
+        _PROFIT,
+        headers=_auth(admin),
+        params={
+            "date_from": date.today().isoformat(),
+            "date_to": (date.today() - timedelta(days=1)).isoformat(),
+        },
+    )
+    assert r.status_code == 422
+
+
+def test_profit_is_read_only(client: TestClient) -> None:
+    admin = _login(client)
+    for verb in (client.post, client.put, client.patch, client.delete):
+        assert verb(_PROFIT, headers=_auth(admin)).status_code == 405

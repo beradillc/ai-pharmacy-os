@@ -23,7 +23,7 @@ from collections.abc import Mapping
 from uuid import UUID
 
 from pharmacy_os.core.formatting import format_date_vn, format_money, format_qty
-from pharmacy_os.modules.sales.application.dto import RevenueRow
+from pharmacy_os.modules.sales.application.dto import ProfitRow, RevenueRow
 from pharmacy_os.modules.sales.domain.ports import DrugSalesAggRow
 
 #: Column order for the exported file. Stable: append new columns at the end
@@ -94,4 +94,40 @@ def drug_sales_row_to_csv(
         branch_names.get(row.branch_id, str(row.branch_id)),
         format_qty(row.quantity_sold),
         format_money(row.revenue),
+    ]
+
+
+#: Column order for the profit export (ROADMAP V3-7a, 2026-08-04). Gated by
+#: ``sales.profit.read`` at the endpoint (``api/v1/reports.py``) — see
+#: ``ProfitRow``/``PROFIT_PERMISSIONS`` for why this is not reused sales.read.
+PROFIT_CSV_HEADER: tuple[str, ...] = (
+    "Kỳ báo cáo",
+    "Mã chi nhánh",
+    "Chi nhánh",
+    "Loại tiền",
+    "Số đơn",
+    "Doanh thu",
+    "Giá vốn",
+    "Lợi nhuận gộp",
+    "Biên lợi nhuận (%)",
+)
+
+
+def profit_row_to_csv(row: ProfitRow, branch_names: Mapping[UUID, str]) -> list[str]:
+    """One profit-report bucket as a list of string cells, aligned to
+    :data:`PROFIT_CSV_HEADER`. Margin is left **blank**, not "0.0", when
+    :attr:`ProfitRow.margin_pct` is ``None`` — see that property's docstring for
+    why a zero-revenue bucket is undefined rather than a 0% margin.
+    """
+    margin = row.margin_pct
+    return [
+        format_date_vn(row.period_start),
+        str(row.branch_id),
+        branch_names.get(row.branch_id, str(row.branch_id)),
+        row.currency,
+        str(row.order_count),
+        format_money(row.revenue_total),
+        format_money(row.cogs_total),
+        format_money(row.gross_profit),
+        f"{margin:.1f}" if margin is not None else "",
     ]

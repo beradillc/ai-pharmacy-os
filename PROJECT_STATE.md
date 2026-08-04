@@ -2,9 +2,11 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-04** — §7dt: **V3-5 xong** (báo cáo CSV 3 file đổi tiếng Việt +
-> tên thuốc/chi nhánh, ADR-0005) dưới uỷ quyền GĐ toàn quyền sau khi Chain chuyển từ mảng
-> Công Trình. pytest **1565 passed** + 16 payment_vnpay, đột biến xác nhận cổng có răng.
+> **Cập nhật cuối: 2026-08-04** — §7dv: **V3-7a xong** (báo cáo lợi nhuận gộp theo
+> ngày/tháng/quý/năm, quyền riêng `sales.profit.read`, ADR-0006), ngay sau §7dt **V3-5 xong**
+> (báo cáo CSV 3 file đổi tiếng Việt + tên thuốc/chi nhánh, ADR-0005) — cả hai dưới uỷ quyền
+> GĐ toàn quyền sau khi Chain chuyển từ mảng Công Trình. Đột biến xác nhận cổng có răng ở
+> cả hai mục.
 > Trước đó §7ds **đóng phiên**: uỷ quyền quản trị trọn bộ + **đợt V3
 > đóng 4 mục** (thêm thuốc · tạo đơn mua · số lượng hiện thô · màn hình nói đúng việc) + lộ
 > trình **AI V4** bốn tầng. Chain duyệt **kỷ luật #25 và #26**. pytest **1559 passed**, 10
@@ -197,6 +199,7 @@
 | [§7dr](#7dr-u-quy-n-qu-n-tr-tr-n-b-3-5-4-5-5-5-2026-08-03) | 2026-08-03 | ✅ **UỶ QUYỀN QUẢN TRỊ TRỌN BỘ** 3/5·4/5·5/5 — 2 lỗi thật trong domain bước 2/5 |
 | [§7ds](#7ds-ng-phi-n-2026-08-03-04-t-v3-4-m-c-2026-08-04) | 2026-08-04 | 🔒 **ĐÓNG PHIÊN** — uỷ quyền trọn bộ + đợt V3 4 mục + lộ trình AI V4 · kỷ luật #25·#26 |
 | [§7dt](#7dt-v3-5-b-o-c-o-csv-c-c-ti-ng-vi-t-2026-08-04) | 2026-08-04 | ✅ **V3-5 XONG** — báo cáo CSV tiếng Việt + tên thuốc/chi nhánh, ADR-0005, full-auto |
+| [§7dv](#7dv-v3-7a-b-o-c-o-l-i-nhu-n-g-p-2026-08-04) | 2026-08-04 | ✅ **V3-7a XONG** — báo cáo lợi nhuận gộp theo ngày/tháng/quý/năm, quyền riêng `sales.profit.read`, ADR-0006 |
 
 ---
 
@@ -9704,7 +9707,7 @@ Alembic: 0047_uy_quyen (head) · CSDL qt650
 | # | Việc | Ai |
 |---|---|---|
 | ~~**V3-5**~~ | ~~Báo cáo CSV đọc được~~ ✅ **xong 04/08**, xem §7dt | — |
-| **V3-7a** | Báo cáo lợi nhuận — 🔴 **chờ Chain chốt chiều xem**: thuốc / ngày / NCC | Chain |
+| ~~**V3-7a**~~ | ~~Báo cáo lợi nhuận~~ ✅ **xong 04/08**, xem §7dv | — |
 | **V3-4** · **V3-3** | Màn dẫn đường bắt đầu · gom đề xuất cùng NCC | Trợ lý Code |
 | **V3-7b** | Hoá đơn NCC · VAT · công nợ — 🔴 chờ **Kế toán**: dừng ở nội bộ hay khớp sổ thuế? | Trợ lý Kế toán |
 | **AI tầng C** | 🔴 chờ **Pháp Lý** + Chain chốt *"AI chọn thuốc"* hay *"dựng từ phác đồ"* | Pháp Lý · Chain |
@@ -9773,3 +9776,57 @@ Xem bảng "Nợ mở" cập nhật ngay phía trên §7dt — V3-5 đã gạch,
 Việc kế tiếp theo thứ tự ROADMAP: **V3-7a** (chờ Chain chốt chiều xem lợi nhuận: thuốc /
 ngày / NCC — không tự chốt được, đây là quyết định sản phẩm cần Chain), sau đó **V3-4**/
 **V3-3** (không chặn, tự làm được).
+
+## 7dv. ✅ V3-7a — Báo cáo lợi nhuận gộp (2026-08-04)
+
+**Chain trả lời câu hỏi treo ở §7dt/ROADMAP:** *"chiều xem lợi nhuận: thuốc/ngày/NCC?"* →
+**"Theo ngày, tháng, quý, năm"**. Đóng trọn V3-7a cùng phiên full-auto, ngay sau V3-5.
+
+### Việc đã đóng
+
+`GET /reports/profit/export` — lợi nhuận gộp (doanh thu − giá vốn) theo kỳ, gộp
+chi-nhánh/loại-tiền, quyền riêng `sales.profit.read`. Chi tiết đầy đủ + 3 quyết định tự chốt
+(quyền riêng, chính sách gộp không trừ hàng trả, giá vốn hiện tại không phải tại-thời-điểm):
+`docs/adr/ADR-0006-bao-cao-loi-nhuan-gop.md`.
+
+Ba bước, đúng kỷ luật #1:
+
+| Bước | Nội dung | Commit |
+|---|---|---|
+| 1 (nền) | `RevenueGranularity` +QUARTER/YEAR, `period_start()` tách thành hàm dùng chung, `SalesService.order_revenue_rows`, `InventoryService.cogs_by_order`/`MovementRepository.cost_by_ref`, permission mới `sales.profit.read` (chỉ chain_pharmacist + system_admin) | `b373447` |
+| 2 (interface) | `GET /reports/profit/export`, `ProfitRow`/`PROFIT_CSV_HEADER`, test e2e + đột biến, ADR-0006, ROADMAP | (commit theo sau ngay entry này) |
+
+### 🔴 Quyết định GĐ tự chốt trong phiên — Chain xem lại khi rảnh
+
+1. **`sales.profit.read` là quyền MỚI, không tái dùng `sales.read`/`inventory.read`.** Lý do
+   tái dùng ở V3-5 (ADR-0005) là *"không nhạy hơn thứ POS đã hiện sẵn"* — margin không khớp
+   lý do đó, không màn nào hiện giá vốn/% lợi nhuận cho thu ngân hôm nay. Chỉ cấp
+   `chain_pharmacist` + `system_admin`.
+2. **Giá vốn tính GỘP, không trừ hàng trả** — bắt buộc phải khớp chính sách doanh thu đã có
+   (`revenue_report_rows` đã tự khai là gộp), nếu không phép trừ Doanh thu − Giá vốn vô
+   nghĩa. May mắn về mặt kỹ thuật: `StockMovement` gốc không bị đảo khi có hàng trả, nên
+   "gộp" là hành vi tự nhiên của `cogs_by_order`, không cần code riêng.
+3. **Giá vốn đọc `ProductBatch.cost_price` HIỆN TẠI (bình quân gia quyền), không phải giá tại
+   đúng thời điểm xuất kho.** `StockMovement` không mang cột giá — sửa đúng cần đổi lược đồ,
+   ngoài phạm vi "rẻ" ROADMAP kỳ vọng. Ghi vào sổ nợ nếu Chain cần độ chính xác cao hơn sau
+   này (đối chiếu thuế/kiểm toán).
+
+### Cổng tại điểm dừng
+
+```
+RUFF=0 FORMAT=0 IMPORTLINTER=0 (19/19) MYPY=0 (291 tệp)
+PYTEST_EXIT=0   1572 (bước 1) → xem tổng cuối bước 2
+Đột biến (kỷ luật #14):
+  - IamService.branch_names → {} : 2 test đỏ đúng lý do (§7dt, bước trước)
+  - IamService — role backfill: test giả lập role chain_pharmacist THIẾU quyền mới,
+    xác nhận sync_system_roles() backfill đúng (kỷ luật #7)
+  - InventoryService.cogs_by_order → {} : 2 test đỏ đúng lý do, đã khôi phục
+```
+
+### 🚧 Còn lại
+
+Nợ ROADMAP V3 còn: **V3-4** (màn dẫn đường bắt đầu) · **V3-3** (gom đề xuất cùng NCC) —
+không chặn ai, làm được ngay. **V3-7b** (hoá đơn NCC/VAT/công nợ) vẫn chờ Trợ lý Kế toán.
+Nợ mới từ ADR-0006: giá vốn tại-đúng-thời-điểm (cần đổi lược đồ `StockMovement`, chưa làm —
+không cấp bách, chỉ cần nếu Chain sau này đối chiếu thuế/kiểm toán cần độ chính xác cao hơn
+mức "bình quân gia quyền hiện tại").

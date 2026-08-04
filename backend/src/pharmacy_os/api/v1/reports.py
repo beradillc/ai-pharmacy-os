@@ -27,20 +27,28 @@ Two endpoints, both read-only, both requiring a token (401 unauthenticated,
   ``analytics`` (PROJECT_STATE §7am) — sorting/ranking/limiting is presentation-only,
   done here rather than in ``SalesService``.
 
-**Vietnamese-readable, 2026-08-04 (ROADMAP V3-5, ADR-0005):** all three exports were
-"toàn mã máy, không đọc được" — UUID ids, ISO dates, raw ``Decimal``, no drug/branch
-name anywhere. This file now resolves ``drug_id``/``branch_id`` → display name once
-per request and hands the maps to the modules' pure ``*_row_to_csv`` functions, under
-a **fixed system identity** (same pattern as ``CatalogDrugInfoProvider`` in
+**Vietnamese-readable, 2026-08-04 (ROADMAP V3-5, ADR-0005):** all three exports above
+were "toàn mã máy, không đọc được" — UUID ids, ISO dates, raw ``Decimal``, no drug/
+branch name anywhere. This file now resolves ``drug_id``/``branch_id`` → display name
+once per request and hands the maps to the modules' pure ``*_row_to_csv`` functions,
+under a **fixed system identity** (same pattern as ``CatalogDrugInfoProvider`` in
 ``cross_module.py``): a cashier exporting revenue holds only ``sales.read`` and must
 not need ``catalog.read``/extra ``iam`` grants just so the file prints a name instead
 of a UUID.
+
+* ``GET /reports/profit/export`` — gross profit (revenue − cost of goods sold),
+  grouped by day/week/month/quarter/year (ROADMAP V3-7a, 2026-08-04). **Not** part
+  of the "no new permission" set above: requires ``sales.profit.read``, a permission
+  of its own — margin/cost is not already shown anywhere in the POS/inventory UI the
+  way revenue and stock levels are, so the reuse reasoning that justified V3-5's
+  exports does not apply here. See ``docs/adr/ADR-0006``.
 """
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Sequence
 from datetime import date
+from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
@@ -50,18 +58,21 @@ from fastapi.responses import StreamingResponse
 from pharmacy_os.api.deps import get_context
 from pharmacy_os.core.context import RequestContext
 from pharmacy_os.core.http import csv_stream_body
+from pharmacy_os.core.security import require_permission
 from pharmacy_os.modules.catalog.application import CatalogService
 from pharmacy_os.modules.iam.application import IamService
 from pharmacy_os.modules.inventory.application import InventoryService
 from pharmacy_os.modules.inventory.application.csv_export import STOCK_CSV_HEADER, stock_row_to_csv
 from pharmacy_os.modules.sales.application import SalesService
 from pharmacy_os.modules.sales.application.csv_export import (
+    PROFIT_CSV_HEADER,
     REVENUE_CSV_HEADER,
     TOP_DRUGS_CSV_HEADER,
     drug_sales_row_to_csv,
+    profit_row_to_csv,
     revenue_row_to_csv,
 )
-from pharmacy_os.modules.sales.application.dto import RevenueGranularity
+from pharmacy_os.modules.sales.application.dto import ProfitRow, RevenueGranularity, period_start
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -77,6 +88,12 @@ _SYSTEM_USER = UUID("00000000-0000-0000-0000-00005a1e5001")
 #: up with a DB page boundary — not required for correctness, just avoids the
 #: report doing two different batch sizes for no reason.
 _DRUG_NAME_CHUNK = 500
+
+#: Chunk size for resolving cost-of-goods against the streamed profit report's
+#: per-order revenue stream. Same value/reasoning as :data:`_DRUG_NAME_CHUNK` — a
+#: tenant's completed-orders window can be arbitrarily long, so cost is resolved
+#: per chunk, not once for every order up front.
+_COGS_CHUNK = 500
 
 
 def _sales_service(request: Request) -> SalesService:
@@ -269,6 +286,79 @@ async def export_top_drugs(
     filename = f"thuoc-ban-chay-{ctx.tenant_id}-{date_from}_{date_to}.csv"
     return StreamingResponse(
         csv_stream_body(TOP_DRUGS_CSV_HEADER, csv_rows()),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/profit/export")
+async def export_profit(
+    date_from: date = Query(..., description="Từ ngày (bao gồm)"),
+    date_to: date = Query(..., description="Đến ngày (bao gồm)"),
+    granularity: RevenueGranularity = Query(
+        RevenueGranularity.MONTH, description="Nhóm theo ngày/tuần/tháng/quý/năm"
+    ),
+    branch_id: UUID | None = Query(None, description="Lọc theo chi nhánh (bỏ trống = toàn chuỗi)"),
+    sales: SalesService = Depends(_sales_service),
+    inventory: InventoryService = Depends(_inventory_service),
+    iam: IamService = Depends(_iam_service),
+    ctx: RequestContext = Depends(get_context),
+) -> StreamingResponse:
+    """Gross profit (revenue − cost of goods sold) grouped by period/branch/currency
+    over ``[date_from, date_to]``, as a CSV attachment (ROADMAP V3-7a — Chain chốt
+    chiều xem *"theo ngày, tháng, quý, năm"*, default ``MONTH``).
+
+    Requires **``sales.profit.read``** — a permission of its own, not reused from
+    ``sales.read``/``inventory.read`` the way V3-5's exports could be (see
+    ``PROFIT_PERMISSIONS`` in ``iam/domain/system_roles.py`` and ADR-0006): margin
+    is not already visible anywhere in the POS/inventory UI, unlike revenue or
+    stock-on-hand.
+
+    Combines two module-owned facts no single service can join on its own —
+    :meth:`SalesService.order_revenue_rows` (per-order revenue) and
+    :meth:`InventoryService.cogs_by_order` (per-order cost, resolved in chunks of
+    :data:`_COGS_CHUNK` as the revenue stream is consumed, same reason
+    :func:`export_stock` chunks drug names). Both sides are **gross** — see
+    :class:`ProfitRow` — so they stay comparable to each other and to the revenue
+    export's own gross figures.
+    """
+    require_permission(ctx, "sales.profit.read")
+    orders = await sales.order_revenue_rows(
+        ctx, date_from=date_from, date_to=date_to, branch_id=branch_id
+    )
+    branch_names = await _branch_names(iam, ctx.tenant_id)
+
+    async def csv_rows() -> AsyncIterator[Sequence[str]]:
+        buckets: dict[tuple[date, UUID, str], tuple[Decimal, Decimal, int]] = {}
+        async for batch in _chunked(orders, _COGS_CHUNK):
+            order_ids = [o.order_id for o in batch]
+            cogs_by_order = await inventory.cogs_by_order(order_ids, ctx)
+            for order in batch:
+                key = (period_start(order.created_at, granularity), order.branch_id, order.currency)
+                prev_revenue, prev_cogs, prev_count = buckets.get(
+                    key, (Decimal("0"), Decimal("0"), 0)
+                )
+                buckets[key] = (
+                    prev_revenue + order.subtotal,
+                    prev_cogs + cogs_by_order.get(order.order_id, Decimal("0")),
+                    prev_count + 1,
+                )
+        for (bucket_start, b_id, currency), (revenue, cogs, count) in sorted(buckets.items()):
+            yield profit_row_to_csv(
+                ProfitRow(
+                    period_start=bucket_start,
+                    branch_id=b_id,
+                    currency=currency,
+                    order_count=count,
+                    revenue_total=revenue,
+                    cogs_total=cogs,
+                ),
+                branch_names,
+            )
+
+    filename = f"loi-nhuan-{ctx.tenant_id}-{date_from}_{date_to}.csv"
+    return StreamingResponse(
+        csv_stream_body(PROFIT_CSV_HEADER, csv_rows()),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
