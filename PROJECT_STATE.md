@@ -9954,3 +9954,16 @@ Toàn bộ 9 bước của `docs/DEPLOY_ALMALINUX.md` **chưa chạy lần nào 
 build-test cục bộ. Việc kế tiếp: Chain làm theo runbook từ bước 1 (cài Podman), dán kết quả/
 lỗi từng bước để tôi đọc tiếp — đặc biệt bước 7 (kiểm thử trình duyệt thật) **bắt buộc xanh
 trước khi bootstrap tenant thật** (bước 8), đúng kỷ luật #15.
+
+### ⏸️ Điểm dừng 2026-08-04 (giữa chừng deploy) — Chain tự chép mã nguồn qua USB
+
+Đã làm được tới hết **Bước 1** (cài Podman 5.8.2 + podman-compose 1.5.0 trên `bera-saas` —
+xác nhận qua `--version`, thành công). Đang ở **Bước 2** (đưa mã nguồn lên máy) thì Chain báo
+sẽ tự làm: về máy Linux Mint đang lập trình PharmaOS, cắm USB chép trực tiếp mã nguồn mới
+nhất sang `bera-saas` — không cần tarball 3,7MB tôi đã gửi qua `SendUserFile` nữa (Chain có
+bản mới hơn/đầy đủ hơn trên máy Mint).
+
+**Khi Chain quay lại, hỏi đúng 1 câu để tiếp tục đúng chỗ:** mã nguồn đã nằm ở `~/ai-pharmacy
+-os` trên `bera-saas` chưa, đường dẫn nào — rồi tiếp **Bước 3** (sinh bí mật: JWT secret, mật
+khẩu Postgres, 2 khoá mã hoá — xem `docs/DEPLOY_ALMALINUX.md` mục 3) đúng theo runbook, KHÔNG
+lặp lại bước 1/2.
