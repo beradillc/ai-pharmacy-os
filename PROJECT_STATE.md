@@ -2,7 +2,11 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-04** — §7eb **ĐÓNG PHIÊN**: full-auto V3-5 → V3-7a → deploy
+> **Cập nhật cuối: 2026-08-04** — §7ec **tối ưu server**: 4/4 container nay có giới hạn RAM
+> (768/256/768/512 MB) + healthcheck, áp live không gián đoạn, `(healthy)` cả 4. iPhone không vào
+> được là do **chưa gia nhập tailnet**, không phải lỗi server. Phát hiện phụ: repo trên server
+> **không có remote** và cũ hơn dev 1 commit — mã đang chạy thật trôi khỏi repo chính.
+> Trước đó §7eb **ĐÓNG PHIÊN**: full-auto V3-5 → V3-7a → deploy
 > AlmaLinux hoàn tất, 9 commit đã push `beradillc/ai-pharmacy-os` (remote đầu tiên trong
 > lịch sử dự án). `bera-saas` sống, kiểm chứng độc lập bằng reboot thật, Cockpit giám sát.
 > pytest **1580 passed** chạy lại lần cuối trước khi đóng. 12 quyết định tự chốt + 3 phát
@@ -213,6 +217,7 @@
 | [§7dz](#7dz-server-c-l-p-sao-l-u-t-ng-m-ngu-n-c-remote-2026-08-04) | 2026-08-04 | 🛡️ **SERVER ĐỘC LẬP + SAO LƯU TỰ ĐỘNG + REMOTE GIT** — systemd unit, cron backup RPO≤1h, `beradillc/ai-pharmacy-os` |
 | [§7ea](#7ea-ki-m-ch-ng-server-c-l-p-b-ng-reboot-th-t-cockpit-gi-m-s-t-2026-08-04) | 2026-08-04 | ✅ **KIỂM CHỨNG BẰNG REBOOT THẬT + Cockpit** — 4 container tự lên sau reboot, giao diện giám sát `:9090` |
 | [§7eb](#7eb-ng-phi-n-full-auto-v3-5-v3-7a-deploy-almalinux-ho-n-t-t-2026-08-04) | 2026-08-04 | 🔒 **ĐÓNG PHIÊN** — V3-5→V3-7a→deploy AlmaLinux hoàn tất, 9 commit, remote git đầu tiên, 12 quyết định tự chốt |
+| [§7ec](#7ec-t-i-u-server-ch-n-o-n-iphone-kh-ng-v-o-c-2026-08-04-chi-u) | 2026-08-04 | 🔧 **TỐI ƯU SERVER** — giới hạn RAM + healthcheck 4 container; iPhone chưa vào tailnet (không phải lỗi server) |
 
 ---
 
@@ -10264,3 +10269,54 @@ Tất cả đã push origin/main (beradillc/ai-pharmacy-os) — lần đầu ti�
 | 7 | `V3-4`/`V3-3` (màn dẫn đường, gom NCC) — tạm gác sau đợt deploy | Trợ lý Code |
 | 8 | `V3-7b` (hoá đơn NCC/VAT/công nợ) — chờ Trợ lý Kế toán | Trợ lý Kế toán |
 | 9 | fail2ban riêng cho app, mở công khai ra internet — cố ý chưa làm | Chain (khi cần) |
+
+## 7ec. 🔧 Tối ưu server + chẩn đoán iPhone không vào được (2026-08-04, chiều)
+
+**Chain hỏi 2 việc:** ① iPhone không vào được web ② tiếp tục tối ưu server.
+
+### ① iPhone — không phải lỗi server
+
+Server khoẻ hoàn toàn: `curl /` → **200**, `curl /api/v1/health` → **200**, `tailscale serve`
+còn nguyên cả 2 tuyến. Nguyên nhân nằm ở đầu kia: **tailnet `tailfb7b8c.ts.net` chỉ có 3 thiết
+bị** — `Beradex` (Mint) · `bera-saas` · `POCO X6 Pro 5G` (Android). **Không có iPhone nào.**
+`tailscale serve` ở mức `tailnet only` + firewall chặn 3000/8000/9090 zone public ⇒ thiết bị
+ngoài tailnet **về nguyên tắc** không vào được. Đây là thiết kế "chỉ Tailscale" (§7dy) đang chạy
+đúng. Cách sửa nằm trên iPhone: cài Tailscale, đăng nhập đúng `beradillc@gmail.com`.
+
+### ② Tối ưu — 2 việc ĐÃ LÀM
+
+| Phát hiện | Mức | Đã xử lý |
+|---|---|---|
+| **4/4 container không có giới hạn RAM/CPU** (`mem=0 cpu=0`) trên máy 3,4 Gi | 🔴 | ✅ `podman update --memory`: postgres 768m · redis 256m · backend 768m · frontend 512m (tổng 2,25 Gi, chừa ~1,1 Gi hệ thống). **Không restart, không gián đoạn.** Đã ghi vào `docker-compose.prod.yml` để sống qua recreate |
+| **backend/frontend không có healthcheck** | 🟠 | ✅ Probe dựng bằng runtime có sẵn trong image (backend chỉ có `python3`, frontend chỉ có `node` — không có curl/wget). 4/4 container nay báo `(healthy)`, trước chỉ `Up` |
+
+*Vì sao mức 🔴:* `restart: unless-stopped` chỉ cứu khi tiến trình **chết**, không cứu khi app
+**treo**; và không có `mem_limit` thì một container rò rỉ bộ nhớ khiến OOM killer chọn nạn nhân
+theo điểm số — **có thể giết Postgres đang giữ dữ liệu tenant thật** thay vì giết thủ phạm.
+
+### 🔴 Ba việc CHƯA làm — cần `sudo` hoặc cần Chain
+
+| # | Việc | Vì sao chưa làm |
+|---|---|---|
+| 1 | **Mật khẩu Postgres thật nằm plaintext trong `crontab`** (`PG_PASSWORD='KH7L...'`) | Cùng hình dạng lỗi N-4 đã bắt 02/08 (script nhúng mật khẩu thật). Rủi ro thấp hơn (crontab chmod 600) nhưng lộ qua `/proc/PID/environ` với cùng user. Nên chuyển sang file env `chmod 600` |
+| 2 | Server chạy **WiFi** (`wlp1s0`), cổng ethernet `enp2s0` **unavailable** | Server phục vụ mà nối WiFi — mất sóng là mất dịch vụ. Cần cắm dây, việc vật lý |
+| 3 | `journald` chưa đặt `SystemMaxUse` → mặc định **10% của `/` = 4,5 G** | Cần `sudo`. Hiện mới dùng 8 M, chưa cấp bách |
+
+### 🔴 Phát hiện phụ — repo trên server TRÔI khỏi repo chính
+
+| | Máy Mint (dev) | `bera-saas` |
+|---|---|---|
+| `git remote` | `beradillc/ai-pharmacy-os` | ❌ **không có** |
+| HEAD | `e24bfef` (§7eb) | `63e75ca` (§7dx) — **cũ hơn 1 commit** |
+| Cây làm việc | sạch (trừ 1 mp4) | hàng chục file `D` (video/ảnh không rsync sang) |
+
+Bản mã **đang chạy thật** không nối với repo chính ⇒ mọi sửa trực tiếp trên server sẽ **mất**
+trong lần rsync/deploy sau. Đã xử lý đúng chiều: sửa cả hai nơi, đối chiếu `diff` xác nhận
+**giống hệt nhau**, và commit vào repo dev (`7da50a2`) để nó là nguồn sự thật. Nhưng **gốc vấn
+đề chưa gỡ** — cần quyết cách deploy về sau (`git pull` trên server thay vì `rsync`).
+
+### Điểm dừng
+
+- 4/4 container `(healthy)`, giới hạn RAM đã vào cgroup (xác nhận `podman inspect`).
+- Commit `7da50a2` ở repo dev, **chưa push** — chờ Chain quyết.
+- Sao lưu compose gốc: `~/ai-pharmacy-os/docker-compose.prod.yml.bak-20260804-1637`.
