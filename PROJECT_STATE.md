@@ -2,11 +2,11 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-04** — §7dv: **V3-7a xong** (báo cáo lợi nhuận gộp theo
-> ngày/tháng/quý/năm, quyền riêng `sales.profit.read`, ADR-0006), ngay sau §7dt **V3-5 xong**
-> (báo cáo CSV 3 file đổi tiếng Việt + tên thuốc/chi nhánh, ADR-0005) — cả hai dưới uỷ quyền
-> GĐ toàn quyền sau khi Chain chuyển từ mảng Công Trình. Đột biến xác nhận cổng có răng ở
-> cả hai mục.
+> **Cập nhật cuối: 2026-08-04** — §7dx: **chuẩn bị triển khai AlmaLinux** (máy `bera-saas`,
+> qua Tailscale) — sửa 4 lỗi hạ tầng máy chủ (gập nắp gây ngủ!), dựng Dockerfile frontend
+> ĐẦU TIÊN của dự án + `docker-compose.prod.yml` + runbook `docs/DEPLOY_ALMALINUX.md`, build-
+> test cục bộ sạch. **Chưa chạy trên máy thật** — chờ Chain làm theo runbook. Trước đó §7dw
+> đóng phiên full-auto: §7dt **V3-5 xong** + §7dv **V3-7a xong** (4 commit, ADR-0005/0006).
 > Trước đó §7ds **đóng phiên**: uỷ quyền quản trị trọn bộ + **đợt V3
 > đóng 4 mục** (thêm thuốc · tạo đơn mua · số lượng hiện thô · màn hình nói đúng việc) + lộ
 > trình **AI V4** bốn tầng. Chain duyệt **kỷ luật #25 và #26**. pytest **1559 passed**, 10
@@ -200,6 +200,8 @@
 | [§7ds](#7ds-ng-phi-n-2026-08-03-04-t-v3-4-m-c-2026-08-04) | 2026-08-04 | 🔒 **ĐÓNG PHIÊN** — uỷ quyền trọn bộ + đợt V3 4 mục + lộ trình AI V4 · kỷ luật #25·#26 |
 | [§7dt](#7dt-v3-5-b-o-c-o-csv-c-c-ti-ng-vi-t-2026-08-04) | 2026-08-04 | ✅ **V3-5 XONG** — báo cáo CSV tiếng Việt + tên thuốc/chi nhánh, ADR-0005, full-auto |
 | [§7dv](#7dv-v3-7a-b-o-c-o-l-i-nhu-n-g-p-2026-08-04) | 2026-08-04 | ✅ **V3-7a XONG** — báo cáo lợi nhuận gộp theo ngày/tháng/quý/năm, quyền riêng `sales.profit.read`, ADR-0006 |
+| [§7dw](#7dw-ng-phi-n-full-auto-v3-5-v3-7a-2026-08-04) | 2026-08-04 | 🔒 **ĐÓNG PHIÊN** full-auto — V3-5 + V3-7a, 4 commit, mọi quyết định tự chốt |
+| [§7dx](#7dx-chu-n-b-tri-n-khai-almalinux-m-y-bera-saas-2026-08-04) | 2026-08-04 | 🚀 **CHUẨN BỊ DEPLOY ALMALINUX** — máy `bera-saas`, Podman + `tailscale serve`, chưa chạy trên máy thật |
 
 ---
 
@@ -9830,3 +9832,125 @@ không chặn ai, làm được ngay. **V3-7b** (hoá đơn NCC/VAT/công nợ) 
 Nợ mới từ ADR-0006: giá vốn tại-đúng-thời-điểm (cần đổi lược đồ `StockMovement`, chưa làm —
 không cấp bách, chỉ cần nếu Chain sau này đối chiếu thuế/kiểm toán cần độ chính xác cao hơn
 mức "bình quân gia quyền hiện tại").
+
+## 7dw. 🔒 ĐÓNG PHIÊN — full-auto V3-5 + V3-7a (2026-08-04)
+
+**Phiên làm gì:** mở dưới uỷ quyền GĐ toàn quyền (Chain chuyển từ mảng Công Trình) — đóng
+trọn **V3-5** (§7dt) và **V3-7a** (§7dv) theo đúng thứ tự ưu tiên ROADMAP đã ghi. 4 commit,
+cả 4 đều đủ 4 cổng xanh trước khi commit, đúng kỷ luật #1/#9.
+
+### Đối chiếu việc giao/làm — không lệch
+
+Không có việc tồn từ phiên trước bị bỏ sót: cả hai mục (V3-5, V3-7a) đều do chính phiên này
+mở và đóng trong cùng một lượt, theo đúng thứ tự "Thứ tự đề nghị" của ROADMAP tại thời điểm
+mở phiên (V3-5 hạng 4, V3-7a hạng 5 — cả hai đã hạng 1-3 đóng từ phiên trước §7ds).
+
+### Toàn bộ quyết định đã tự chốt trong phiên (full-auto #3 — CEO đọc lướt)
+
+| # | Quyết định | Vì sao không hỏi trước | Ghi ở đâu |
+|---|---|---|---|
+| 1 | Giữ cột mã (`*_id`) bên cạnh cột tên trong CSV, không thay thế | ROADMAP nói "thêm cột", không nói "đổi cột" — đọc đúng nghĩa hẹp | ADR-0005 |
+| 2 | `IamService.branch_names` tái dùng `iam.user.read`, không thêm quyền mới | Chỉ gọi dưới danh tính hệ thống, không seed/migration nào cần | ADR-0005 |
+| 3 | `stock` export chunk 500 dòng/lượt tra tên, `revenue`/`top-drugs` thì không | `stock` là stream DB thật, hai báo cáo kia đã gom danh sách trước | ADR-0005 |
+| 4 | `sales.profit.read` là quyền MỚI, không tái dùng `sales.read` | Margin không phải dữ liệu POS đã hiện sẵn — nhạy cảm hơn doanh thu | ADR-0006 |
+| 5 | Giá vốn tính GỘP, không trừ hàng trả | Phải khớp chính sách doanh thu đã có, nếu không phép trừ vô nghĩa | ADR-0006 |
+| 6 | Giá vốn dùng `cost_price` hiện tại, không phải tại-đúng-thời-điểm | Sửa đúng cần đổi lược đồ `StockMovement` — ngoài phạm vi "rẻ" của V3-7a | ADR-0006 |
+
+Không có quyết định pháp lý/lâm sàng nào trong phiên này — cả hai mục đều thuần kỹ thuật/
+báo cáo nội bộ, không chạm `docs/13_COMPLIANCE_SPEC.md`.
+
+### Cổng cuối phiên
+
+```
+RUFF=0 FORMAT=0 IMPORTLINTER=0 (19/19) MYPY=0 (291 tệp)
+PYTEST_EXIT=0   1580 passed (1565 → 1580, +15) + 16 payment_vnpay
+Đột biến (kỷ luật #14): 5 lượt trong phiên, tất cả đỏ đúng lý do, tất cả đã khôi phục
+  (branch_names→{} ×1, cogs_by_order→{} ×1, role backfill kỷ luật #7 ×1 dạng khác)
+4 commit: b0d4aed · 405524d · b373447 · 7023790 — mỗi commit tự chạy đủ 4 cổng trước khi vào
+```
+
+### Điểm dừng
+
+- `docker compose ps`: postgres + redis **vẫn `up`** (hạ tầng dùng chung, cố ý giữ — dev DB
+  hiện có dữ liệu thử từ các test integration, không phải dữ liệu thật, an toàn xoá container
+  bất cứ lúc nào bằng `docker compose down`).
+- Cây git **sạch**, `main`, không remote.
+- Không có tài khoản thử/dữ liệu thử nào phải dọn (khác các phiên trước) — hai mục hôm nay
+  chỉ thêm code, không tạo tenant/dữ liệu demo mới.
+
+### 🚧 Nợ mở
+
+| # | Việc | Ai |
+|---|---|---|
+| **V3-4** · **V3-3** | Màn dẫn đường bắt đầu · gom đề xuất cùng NCC | Trợ lý Code |
+| **V3-7b** | Hoá đơn NCC · VAT · công nợ — chờ Trợ lý Kế toán trả lời | Trợ lý Kế toán |
+| **ADR-0006 nợ** | Giá vốn tại-đúng-thời-điểm (đổi lược đồ `StockMovement`) — không cấp bách | Trợ lý Code (sau, nếu cần) |
+| **AI tầng A** | Nay làm được (V3-5 + V3-7a đều xong) — vẫn chặn bởi khoá `AI__API_KEY` thật | Chain |
+| — | 🔴 Cờ **quầy thuốc vs nhà thuốc** — treo từ 01/08, chặn AI tầng C | Trợ lý Pháp Lý |
+| — | 🔴 Câu hỏi **T3**: quyền ký sổ có trong phạm vi uỷ quyền không? (treo từ 03/08) | Chain |
+| — | 🔴 Chain chạy **runbook `docs/18 §D`** trên máy thật (treo từ 03/08) | Chain |
+| **UQ** | Màn hình uỷ quyền + bộ quyền `maint.*` — hôm nay chỉ dùng được qua API | Trợ lý Code |
+| **B2/B3** | `backup_deadman.sh` có răng · 7 cổng trình duyệt (xem phát hiện `node_modules`) | Trợ lý Code |
+| **HẠ TẦNG** | Chain giao chuẩn bị deploy sang **AlmaLinux** — xem §7dx | Trợ lý Code |
+
+## 7dx. 🚀 Chuẩn bị triển khai AlmaLinux — máy `bera-saas` (2026-08-04)
+
+**Chain giao:** *"chuẩn bị deploy sang Almalinux chạy server"*. Rà qua SSH (Chain chạy lệnh,
+dán kết quả) — máy `bera-saas` là **laptop cá nhân** dùng làm server qua Tailscale
+(`bera-saas.tailfb7b8c.ts.net`), AlmaLinux 10.2, 4 nhân, ~3,5GB RAM, 43GB trống. Production,
+**dữ liệu thật ngay từ đầu** (Chain chốt), **chỉ qua Tailscale, chưa mở công khai** (Chain
+chốt). Chi tiết đầy đủ từng bước: `docs/DEPLOY_ALMALINUX.md`.
+
+### Việc đã làm
+
+1. **Hạ tầng máy chủ** — máy có sẵn `readycheck.sh` (không phải của repo này, Chain/một phiên
+   Claude Code trước tự viết) báo 4 lỗi ✗ chặn "sẵn sàng chạy server 24/7": gập nắp làm máy
+   ngủ (2 lỗi — **nghiêm trọng nhất**, app sẽ tự sập khi ai gập máy), zram chưa bật, tmux
+   thiếu. Đã sửa cả 4 qua SSH — xác nhận lại bằng lệnh thật (`busctl get-property...
+   HandleLidSwitch` → `"ignore"`), không tin báo cáo của script.
+   - 🔴 **readycheck.sh không đáng tin hoàn toàn** — báo sai 3 chỗ (tmux/git/ripgrep "chưa
+     cài" dù đã cài sẵn, fail2ban "chưa bật" dù đang chạy). Không dùng làm căn cứ nữa, luôn
+     kiểm lại bằng lệnh trực tiếp — đúng kỷ luật #15/#23 (đo cả phép đo, hai nguồn độc lập).
+2. **Chọn Podman, không Docker CE** — AlmaLinux 10 quá mới, chưa có kho Docker CE chính thức;
+   Podman có sẵn trong AppStream, hợp SELinux Enforcing (đang bật, giữ nguyên) hơn.
+3. **`infra/docker/frontend.Dockerfile`** — image frontend ĐẦU TIÊN của dự án (trước đây chỉ
+   có backend). Next.js `output: "standalone"` (mới thêm vào `next.config.ts`).
+   `NEXT_PUBLIC_API_BASE_URL` phải truyền qua `--build-arg` — Next.js đóng cứng biến
+   `NEXT_PUBLIC_*` lúc build, không đổi được bằng env lúc chạy container.
+4. **`docker-compose.prod.yml`** + **`.env.prod.example`** — dựa hẳn trên khuôn
+   `docker-compose.staging.yml`/`.env.staging.example` đã có (không dựng hệ thống song song).
+   Khác biệt chính: thêm service `frontend`, postgres/redis **không publish port ra host**
+   (staging có publish 5433/6380 để dev đối chiếu tay — prod không cần, chặt hơn).
+5. **Kiến trúc mạng: `tailscale serve` làm reverse-proxy + TLS**, không nginx/certbot/domain
+   công khai — vì Chain chốt "chỉ qua Tailscale". `tailscale0` đã ở zone `trusted` của
+   firewalld từ trước, không cần mở thêm cổng nào.
+6. **Build-test CỤC BỘ trước khi giao Chain chạy trên máy thật** — cả hai Dockerfile build
+   sạch (Docker có sẵn trong sandbox), container frontend khởi động, `curl /login` trả 200
+   đúng tiêu đề, xác nhận `NEXT_PUBLIC_API_BASE_URL` đã nhúng đúng vào bundle client. Không
+   gửi Chain một Dockerfile chưa tự tay build thử lần nào.
+7. **`docs/DEPLOY_ALMALINUX.md`** — runbook đầy đủ 9 bước (cài Podman → lấy mã nguồn → sinh bí
+   mật → build/chạy → migration → `tailscale serve` → **kiểm thử bắt buộc trước khi có dữ
+   liệu thật** → bootstrap tenant thật → vận hành hằng ngày), cộng mục Nợ rõ ràng.
+
+### 🔴 Quyết định GĐ tự chốt trong phiên — Chain xem lại khi rảnh
+
+1. **Không tự SSH thực thi trực tiếp trên máy thật** — mọi lệnh đều đưa Chain chạy qua
+   terminal của Chain rồi dán kết quả lại. Sandbox này không có Tailscale nên vốn dĩ
+   **không kết nối được** tới `bera-saas` — không phải một lựa chọn thận trọng, mà là giới
+   hạn kỹ thuật thật.
+2. **Chọn Podman thay vì cố cài Docker CE** — tránh dùng repo Docker chưa chính thức hỗ trợ
+   el10 (rủi ro không tương thích), Podman là lựa chọn "chính chủ" RHEL-family.
+3. **Không thêm frontend vào `docker-compose.staging.yml` sẵn có** — tạo riêng
+   `docker-compose.prod.yml`, vì Chain chốt đây LÀ production dữ liệu thật, không phải
+   staging; gộp chung dễ gây nhầm "chạy staging" khi thật ra đang đấu dữ liệu thật.
+4. **Chưa dựng systemd unit để tự khởi động lại sau khi máy reboot, chưa nối backup vào
+   cron** — ghi rõ vào mục Nợ trong runbook, không âm thầm bỏ qua. Máy là laptop (không phải
+   máy chủ rack có UPS thật) nên rủi ro mất điện/khởi động lại là có thật hơn bình thường —
+   Chain cần biết trước khi có dữ liệu thật.
+
+### 🚧 Còn lại — Chain tự làm trên máy thật (tôi không truy cập trực tiếp được)
+
+Toàn bộ 9 bước của `docs/DEPLOY_ALMALINUX.md` **chưa chạy lần nào trên máy thật** — chỉ mới
+build-test cục bộ. Việc kế tiếp: Chain làm theo runbook từ bước 1 (cài Podman), dán kết quả/
+lỗi từng bước để tôi đọc tiếp — đặc biệt bước 7 (kiểm thử trình duyệt thật) **bắt buộc xanh
+trước khi bootstrap tenant thật** (bước 8), đúng kỷ luật #15.

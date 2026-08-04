@@ -22,6 +22,7 @@ coverage.xml
 # file mẫu trong repo là môi trường chỉ dựng lại được bằng trí nhớ của một người.
 !.env.example
 !.env.staging.example
+!.env.prod.example
 # Tài khoản chạy cổng trình duyệt (N-4). Mẫu `scripts/ui-gates.env.example` VÀO git,
 # bản thật thì không — trước 02/08 mật khẩu nằm cứng trong 4 script và đã vào git.
 scripts/ui-gates.env

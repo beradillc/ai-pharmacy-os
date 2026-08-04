@@ -1,0 +1,77 @@
+# AI Pharmacy OS — PRODUCTION (chuẩn bị deploy AlmaLinux, Chain chốt 2026-08-04:
+# dữ liệu THẬT ngay từ đầu, truy cập CHỈ qua Tailscale — chưa mở công khai).
+#
+# Không cổng nào ở đây lộ ra internet:
+#   - postgres/redis: KHÔNG publish port ra host — chỉ mạng nội bộ compose, service
+#     khác gọi qua tên service (`postgres`, `redis`), không ai bên ngoài container
+#     chạm được kể cả trên chính máy host.
+#   - backend/frontend: publish CHỈ trên 127.0.0.1 — để `tailscale serve` (chạy trên
+#     chính máy host, ngoài phạm vi compose) reverse-proxy + cấp TLS tự động vào
+#     đúng domain Tailscale. Không cần nginx/certbot/domain công khai.
+#
+# Chạy (xem docs/DEPLOY_ALMALINUX.md cho quy trình đầy đủ, gồm cả bước sinh khoá):
+#   cp .env.prod.example .env.prod        # rồi ĐIỀN mọi chỗ __set_me__ NGAY TRÊN SERVER
+#   export PROD_DB_PASSWORD=...           # phải KHỚP đúng mật khẩu đã điền trong .env.prod DB__URL
+#   export NEXT_PUBLIC_API_BASE_URL=https://<domain-tailscale>/api/v1
+#   podman-compose -f docker-compose.prod.yml build
+#   podman-compose -f docker-compose.prod.yml up -d
+#   podman-compose -f docker-compose.prod.yml exec backend alembic upgrade head
+#
+# Đổi NEXT_PUBLIC_API_BASE_URL sau này ⇒ phải `build` lại frontend (đóng cứng lúc
+# build, xem infra/docker/frontend.Dockerfile), không phải chỉ đổi env rồi restart.
+name: pharmacy-os-prod
+
+services:
+  postgres:
+    image: docker.io/pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: pharma
+      POSTGRES_PASSWORD: ${PROD_DB_PASSWORD:?phải đặt PROD_DB_PASSWORD, không dùng mật khẩu mẫu — phải KHỚP DB__URL trong .env.prod}
+      POSTGRES_DB: pharmacy_os
+    volumes:
+      - prod-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pharma -d pharmacy_os"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: docker.io/redis:7-alpine
+    volumes:
+      - prod-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+    env_file: ./.env.prod
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: infra/docker/frontend.Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?phải đặt NEXT_PUBLIC_API_BASE_URL, VD https://bera-saas.tailfb7b8c.ts.net/api/v1}
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+
+volumes:
+  prod-postgres-data:
+  prod-redis-data:

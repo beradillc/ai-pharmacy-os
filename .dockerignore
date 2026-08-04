@@ -1,0 +1,16 @@
+# Build context is repo root for both infra/docker/*.Dockerfile — keep the
+# context small and never leak local secrets/venvs into an image layer.
+.git
+**/.venv
+**/node_modules
+**/.next
+**/__pycache__
+**/*.pyc
+.env
+.env.*
+!.env.*.example
+backend/.pytest_cache
+backend/htmlcov
+frontend/tsconfig.tsbuildinfo
+docs/ui-history
+*.log

@@ -2,6 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /**
+   * Chỉ copy đúng file cần cho production vào `.next/standalone` (kèm
+   * `server.js` tối giản, không cần `next start`/`node_modules` đầy đủ trong
+   * image) — Dockerfile sản xuất (`infra/docker/frontend.Dockerfile`,
+   * chuẩn bị deploy AlmaLinux 2026-08-04) dựa vào đúng thư mục này.
+   */
+  output: "standalone",
+
+  /**
    * Tắt huy hiệu dev của Next ở góc dưới trái.
    *
    * 🔴 Không phải chuyện thẩm mỹ: trên khổ điện thoại 390px, huy hiệu đó **đè lên
