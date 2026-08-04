@@ -2,13 +2,14 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-04** — §7dy: **TRIỂN KHAI ALMALINUX HOÀN TẤT** — `bera-saas` sống
-> qua `https://bera-saas.tailfb7b8c.ts.net` (Tailscale), tenant thật đầu tiên **"Quầy thuốc
-> 650"** đã bootstrap, đăng nhập xác nhận qua HTTPS đầy đủ. Sửa 3 lỗi thật trên máy thật (AI
-> key placeholder, `refuse_mock_in_prod` — Chain chọn diễn tập vận hành có ý thức, `tailscale
-> serve` cắt path). Phát hiện phụ: bug logging structlog mất traceback — nợ mới. Còn chờ
-> Chain xác nhận bằng trình duyệt thật (kỷ luật #15) + đổi mật khẩu admin. Trước đó §7dx
-> chuẩn bị (Dockerfile frontend đầu tiên của dự án) và §7dw đóng phiên full-auto V3-5+V3-7a.
+> **Cập nhật cuối: 2026-08-04** — §7dz: **server độc lập + sao lưu tự động + remote git**.
+> `bera-saas` tự khởi động lại qua `systemd --user` (không phụ thuộc phiên đăng nhập nào),
+> backup CSDL + khoá mã hoá mỗi giờ (RPO≤1h, D-OPS-01) có dead-man's switch, và toàn bộ mã
+> nguồn (lần đầu tiên trong lịch sử dự án) có remote riêng tư `beradillc/ai-pharmacy-os` qua
+> deploy key giới hạn 1 repo. Trước đó §7dy: **TRIỂN KHAI ALMALINUX HOÀN TẤT** — `bera-saas`
+> sống qua Tailscale, tenant thật đầu tiên **"Quầy thuốc 650"** đã bootstrap, đăng nhập xác
+> nhận qua HTTPS đầy đủ, 3 lỗi thật trên máy thật đã sửa. §7dx/§7dw trước đó nữa: chuẩn bị
+> deploy + đóng phiên full-auto V3-5/V3-7a.
 > Trước đó §7ds **đóng phiên**: uỷ quyền quản trị trọn bộ + **đợt V3
 > đóng 4 mục** (thêm thuốc · tạo đơn mua · số lượng hiện thô · màn hình nói đúng việc) + lộ
 > trình **AI V4** bốn tầng. Chain duyệt **kỷ luật #25 và #26**. pytest **1559 passed**, 10
@@ -205,6 +206,7 @@
 | [§7dw](#7dw-ng-phi-n-full-auto-v3-5-v3-7a-2026-08-04) | 2026-08-04 | 🔒 **ĐÓNG PHIÊN** full-auto — V3-5 + V3-7a, 4 commit, mọi quyết định tự chốt |
 | [§7dx](#7dx-chu-n-b-tri-n-khai-almalinux-m-y-bera-saas-2026-08-04) | 2026-08-04 | 🚀 **CHUẨN BỊ DEPLOY ALMALINUX** — máy `bera-saas`, Podman + `tailscale serve`, chưa chạy trên máy thật |
 | [§7dy](#7dy-tri-n-khai-almalinux-ho-n-t-t-bera-saas-s-ng-tenant-th-t-u-ti-n-2026-08-04) | 2026-08-04 | 🚀✅ **DEPLOY ALMALINUX HOÀN TẤT** — bera-saas sống, tenant thật "Quầy thuốc 650", 3 lỗi thật đã sửa |
+| [§7dz](#7dz-server-c-l-p-sao-l-u-t-ng-m-ngu-n-c-remote-2026-08-04) | 2026-08-04 | 🛡️ **SERVER ĐỘC LẬP + SAO LƯU TỰ ĐỘNG + REMOTE GIT** — systemd unit, cron backup RPO≤1h, `beradillc/ai-pharmacy-os` |
 
 ---
 
@@ -10045,3 +10047,74 @@ gỡ lỗi được sự cố thật nếu mọi exception đều câm.
 | 5 | **Bug logging structlog thiếu traceback** — sửa `pharmacy_os/logging.py`, thêm `format_exc_info` | Trợ lý Code |
 | 6 | **Tắt `PHARMACY_ALLOW_MOCKS_IN_PROD`** ngay khi có `AI__API_KEY` thật (ROADMAP V4) — đang chạy ở chế độ diễn tập, không phải chốt lâu dài | Chain + Trợ lý Code |
 | 7 | Mở công khai ra internet — cố ý CHƯA làm, giữ nguyên quyết định "chỉ Tailscale" | Chain (khi cần) |
+
+## 7dz. 🛡️ Server độc lập + sao lưu tự động + mã nguồn có remote (2026-08-04)
+
+**Chain giao 3 việc, đóng cả 3 trong cùng phiên:** sao lưu tự động · server chạy độc lập
+(không phụ thuộc phiên/máy Mint) · bảo vệ thư mục dev trên Mint. Đóng luôn 2 dòng nợ #3, #4
+ở bảng trên.
+
+### 1. Server độc lập — ĐÓNG NỢ #3
+
+`systemd --user` unit (`~/.config/systemd/user/pharmacy-os.service` trên `bera-saas`) gọi
+`podman-compose up -d` lúc `default.target`, đọc bí mật runtime (`PROD_DB_PASSWORD`,
+`NEXT_PUBLIC_API_BASE_URL`, `PHARMACY_ALLOW_MOCKS_IN_PROD`) từ
+`~/.config/pharmacy-os.env` (chmod 600) qua `EnvironmentFile=` — không đặt trong unit file
+trực tiếp. `loginctl enable-linger chain` xác nhận **đã bật sẵn từ trước** (không rõ ai bật,
+không phải tôi lần này) — kiểm bằng lệnh thật (`loginctl show-user chain -p Linger`), không
+suy đoán. Đã kiểm bằng `systemctl --user start` (không reboot thật máy — đang có tenant thật
+đang chạy, cân nhắc rủi ro/lợi ích thì kiểm bằng lệnh start là đủ bằng chứng cho unit đúng,
+chưa cần rủi ro downtime của một lần reboot thật).
+
+### 2. Sao lưu tự động — ĐÓNG NỢ #4
+
+**Không viết script mới cho phần CSDL** — dự án đã có `scripts/backup_verify.sh` +
+`scripts/backup_deadman.sh`, đã diễn tập kiểm chứng đầy đủ ngày 2026-07-28
+(`docs/18_RUNBOOK_BACKUP_RESTORE.md`), đúng RPO ≤ 1 giờ Chain đã khoá (D-OPS-01). Cả hai gọi
+lệnh `docker`, không có trên AlmaLinux — cài gói `podman-docker` (RHEL cấp sẵn) thay vì sửa
+script đã kiểm chứng, đúng kỷ luật #17 "sửa cũ là ngoại lệ".
+
+Thêm **`scripts/backup_secrets.sh`** (mới, ~20 dòng) — sao lưu `.env.prod` (2 khoá mã hoá +
+JWT secret) vào thư mục **TÁCH RIÊNG** khỏi bản dump CSDL, đúng quy tắc B.2 của `docs/18`:
+*"Sao lưu khoá TÁCH RIÊNG khỏi bản dump CSDL. Để chung một chỗ thì mất một lần là mất cả
+hai."* Không có việc này thì "sao lưu tự động" chỉ bảo vệ được dữ liệu mã hoá, không bảo vệ
+được khoá để đọc lại nó — mất khoá thì backup CSDL còn nguyên cũng vô dụng.
+
+Đặt lịch cron (không dùng systemd timer — nhất quán với cách `docs/18` đã viết sẵn):
+`0 * * * *` backup CSDL · `5 * * * *` backup khoá · `15 * * * *` dead-man's switch (lệch giờ
+có chủ đích, theo đúng chú thích gốc trong `backup_deadman.sh`). Chạy thử tay cả 3 trước khi
+đặt cron — cả 3 `EXIT=0`, restore verification khớp tuyệt đối
+(`57|198|0047_uy_quyen` = `57|198|0047_uy_quyen`).
+
+### 3. Bảo vệ thư mục dev trên Mint — mã nguồn có remote lần đầu
+
+Repo `AI_Pharmacy_OS` **chưa từng có remote** suốt lịch sử dự án (nhiều kỷ luật/ghi chú đã
+nhắc điều này như một khoảng hở). Chain xác nhận có GitHub, cấp quyền
+`beradillc/ai-pharmacy-os` (chú ý: tên repo GitHub viết thường, khác cách gọi dự án
+"AI_Pharmacy_OS" — đã thử nhầm 3 biến thể trước khi tìm đúng bằng `git ls-remote`, không
+đoán suông).
+
+Dùng **SSH deploy key riêng cho repo này** (`~/.ssh/id_ed25519_ai_pharmacy_os`), không dùng
+tài khoản GitHub cá nhân của Chain hay PAT toàn quyền — deploy key chỉ có quyền đúng 1 repo,
+đúng nguyên tắc "một việc nguy hiểm nên khó" đã áp cho `maint.sql.run` trước đây. Toàn bộ
+lịch sử git (mọi commit từ đầu dự án) đã `git push -u origin main` thành công, xác nhận HEAD
+hai bên khớp `eb4ca89`.
+
+### 🔴 Quyết định GĐ tự chốt — Chain xem lại khi rảnh
+
+1. **Không sửa `scripts/backup_verify.sh`/`backup_deadman.sh`** dù chúng gọi `docker` không
+   có sẵn — cài `podman-docker` thay vì sửa. Script đã qua diễn tập kiểm chứng 5/5 ca; sửa
+   lại là tự tạo rủi ro mới cho thứ đã được tin cậy.
+2. **`backup_secrets.sh` KHÔNG mã hoá thêm lớp nào** ngoài quyền file `600` + thư mục `700` —
+   đủ để chặn user khác trên cùng máy, KHÔNG đủ nếu máy/ổ cứng bị lấy đi vật lý. Ghi rõ vào
+   nợ, không tự nhận là "đã xong hoàn toàn".
+3. **Không reboot thật `bera-saas` để kiểm systemd unit** — tenant thật đã có, cân nhắc
+   downtime thật so với lợi ích kiểm chứng thêm. `systemctl --user start` thành công là bằng
+   chứng đủ mạnh cho việc này; nếu Chain muốn kiểm chắc hơn, tự chọn thời điểm reboot ít ảnh
+   hưởng nhất.
+4. **Không đặt `PING_URL` (healthchecks.io/Uptime Kuma)** cho dead-man's switch — cần tài
+   khoản dịch vụ ngoài Chain phải tự đăng ký, ngoài phạm vi tôi tự quyết được hôm nay.
+
+### 🚧 Còn lại
+
+Xem mục "🚧 Nợ" cuối `docs/DEPLOY_ALMALINUX.md` — đã cập nhật đầy đủ, không lặp lại ở đây.

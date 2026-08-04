@@ -157,27 +157,42 @@ podman-compose -f docker-compose.prod.yml exec backend \
 
 ## 9. Vận hành hằng ngày
 
-- **Tự khởi động khi máy reboot:** `podman-compose` không tự chạy lại sau khi máy khởi
-  động lại trừ khi có systemd unit — **CHƯA LÀM**, xem mục Nợ bên dưới.
-- **Backup:** `docs/18_RUNBOOK_BACKUP_RESTORE.md` đã có runbook — chưa áp dụng cho
-  máy này, xem mục Nợ.
+- **Tự khởi động khi máy reboot** — ✅ ĐÃ LÀM (2026-08-04): `systemd --user` unit
+  `~/.config/systemd/user/pharmacy-os.service` (`EnvironmentFile=~/.config/pharmacy-os.env`,
+  chứa `PROD_DB_PASSWORD`/`NEXT_PUBLIC_API_BASE_URL`/`PHARMACY_ALLOW_MOCKS_IN_PROD`) +
+  `loginctl enable-linger chain` (chạy được cả khi chưa ai đăng nhập). Kiểm bằng
+  `systemctl --user status pharmacy-os.service`.
+- **Backup tự động** — ✅ ĐÃ LÀM (2026-08-04): cron dùng thẳng
+  `scripts/backup_verify.sh` (mỗi giờ, có tự khôi phục kiểm chứng) +
+  `scripts/backup_deadman.sh` (lệch 15 phút, báo khi backup ngừng chạy) +
+  `scripts/backup_secrets.sh` (mới, sao lưu `.env.prod` — khoá mã hoá — TÁCH RIÊNG thư
+  mục khỏi bản dump CSDL, đúng quy tắc B.2 `docs/18`). Cần `podman-docker` (gói
+  tương thích `docker` CLI) để 2 script gốc chạy nguyên vẹn, không sửa code — đã cài.
+  `crontab -l` xem lịch; log ở `~/pharmacy_backups.log` / `~/pharmacy_deadman.log` /
+  `~/pharmacy_secrets_backup.log`.
 - **Xem log:** `podman-compose -f docker-compose.prod.yml logs -f backend`
 - **Cập nhật code:** `git pull && podman-compose -f docker-compose.prod.yml build &&
   podman-compose -f docker-compose.prod.yml up -d && podman-compose -f
   docker-compose.prod.yml exec backend alembic upgrade head`
 
-## 🚧 Nợ — chưa làm trong lần chuẩn bị này
+## 🚧 Nợ — chưa làm
 
-- **systemd unit / `podman-compose` tự khởi động lại sau khi máy reboot** — hiện tại
-  nếu máy khởi động lại (mất điện, cập nhật kernel), app **không tự lên**. Cần
-  `podman generate systemd` cho từng container hoặc một unit gọi
-  `podman-compose up -d` lúc boot.
-- **Backup tự động** (`docs/18_RUNBOOK_BACKUP_RESTORE.md`) — runbook có sẵn nhưng
-  chưa nối vào cron/systemd timer trên máy này.
 - **fail2ban cho chính ứng dụng** (khác fail2ban cấp hệ điều hành đã bật sẵn) — rate
   limit đăng nhập đã có ở tầng app (`SECURITY__RATE_LIMIT_*`), chưa có gì ở tầng
   mạng cho riêng cổng ứng dụng.
 - **Mở công khai ra internet** — cố ý CHƯA làm (Chain chốt 2026-08-04). Khi nào cần,
   phải quay lại: domain thật, TLS Let's Encrypt/certbot, mở cổng 80/443 qua
   firewalld zone `public`, và rà lại toàn bộ rate-limit/fail2ban trước khi mở.
-- **`AI__API_KEY` thật** — chưa cấp, tầng AI (ROADMAP V4) vẫn dùng `MockLLMProvider`.
+- **`AI__API_KEY` thật** — chưa cấp, tầng AI (ROADMAP V4) vẫn dùng `MockLLMProvider`
+  (đang chạy dưới cờ diễn tập vận hành `PHARMACY_ALLOW_MOCKS_IN_PROD=true` — Chain chốt
+  2026-08-04, xem PROJECT_STATE §7dy). **Tắt cờ này ngay khi có khoá thật.**
+- **Backup chưa có bản sao NGOÀI máy `bera-saas`** — 3 script trên chỉ bảo vệ khỏi lỗi
+  dữ liệu/thao tác sai, KHÔNG bảo vệ khỏi máy/ổ cứng hỏng vật lý (laptop, không phải
+  server rack có RAID). Cải thiện thêm: đồng bộ định kỳ `~/pharmacy_backups` +
+  `~/pharmacy_secrets_backup` sang máy khác hoặc lưu trữ đám mây.
+- **Dead-man's switch chỉ chạy trên chính máy `bera-saas`** — nếu cron chết hẳn (không
+  chỉ script backup chết) thì cả 2 lớp cùng im lặng. Đóng hẳn lỗ hổng cần dịch vụ NGOÀI
+  máy chủ (`PING_URL` trỏ healthchecks.io/Uptime Kuma — xem chú thích trong
+  `scripts/backup_deadman.sh`), chưa cấu hình.
+- **Bug logging structlog mất traceback** (`pharmacy_os/logging.py` thiếu
+  `format_exc_info`) — không liên quan triển khai nhưng làm log khó gỡ lỗi thật.
