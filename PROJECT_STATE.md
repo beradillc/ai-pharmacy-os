@@ -2,7 +2,10 @@
 
 > Nguồn sự thật về **trạng thái hiện tại** của dự án.
 >
-> **Cập nhật cuối: 2026-08-04** — §7dz: **server độc lập + sao lưu tự động + remote git**.
+> **Cập nhật cuối: 2026-08-04** — §7ea: **kiểm chứng server độc lập bằng reboot THẬT** (4
+> container tự lên lại không cần ai can thiệp, app + `tailscale serve` sống nguyên) + cài
+> **Cockpit** làm giao diện giám sát (`https://bera-saas.tailfb7b8c.ts.net:9090`, chỉ qua
+> Tailscale). Trước đó §7dz: **server độc lập + sao lưu tự động + remote git**.
 > `bera-saas` tự khởi động lại qua `systemd --user` (không phụ thuộc phiên đăng nhập nào),
 > backup CSDL + khoá mã hoá mỗi giờ (RPO≤1h, D-OPS-01) có dead-man's switch, và toàn bộ mã
 > nguồn (lần đầu tiên trong lịch sử dự án) có remote riêng tư `beradillc/ai-pharmacy-os` qua
@@ -207,6 +210,7 @@
 | [§7dx](#7dx-chu-n-b-tri-n-khai-almalinux-m-y-bera-saas-2026-08-04) | 2026-08-04 | 🚀 **CHUẨN BỊ DEPLOY ALMALINUX** — máy `bera-saas`, Podman + `tailscale serve`, chưa chạy trên máy thật |
 | [§7dy](#7dy-tri-n-khai-almalinux-ho-n-t-t-bera-saas-s-ng-tenant-th-t-u-ti-n-2026-08-04) | 2026-08-04 | 🚀✅ **DEPLOY ALMALINUX HOÀN TẤT** — bera-saas sống, tenant thật "Quầy thuốc 650", 3 lỗi thật đã sửa |
 | [§7dz](#7dz-server-c-l-p-sao-l-u-t-ng-m-ngu-n-c-remote-2026-08-04) | 2026-08-04 | 🛡️ **SERVER ĐỘC LẬP + SAO LƯU TỰ ĐỘNG + REMOTE GIT** — systemd unit, cron backup RPO≤1h, `beradillc/ai-pharmacy-os` |
+| [§7ea](#7ea-ki-m-ch-ng-server-c-l-p-b-ng-reboot-th-t-cockpit-gi-m-s-t-2026-08-04) | 2026-08-04 | ✅ **KIỂM CHỨNG BẰNG REBOOT THẬT + Cockpit** — 4 container tự lên sau reboot, giao diện giám sát `:9090` |
 
 ---
 
@@ -10118,3 +10122,55 @@ hai bên khớp `eb4ca89`.
 ### 🚧 Còn lại
 
 Xem mục "🚧 Nợ" cuối `docs/DEPLOY_ALMALINUX.md` — đã cập nhật đầy đủ, không lặp lại ở đây.
+
+## 7ea. ✅ Kiểm chứng server độc lập BẰNG REBOOT THẬT + Cockpit giám sát (2026-08-04)
+
+**Chain nói rõ:** máy chủ hiện đang ở giai đoạn **thử nghiệm** (khác dữ liệu bệnh nhân thật đã
+nói ở §7dy — Chain điều chỉnh lại mức rủi ro chấp nhận được) — cho phép kiểm bằng hành động
+thật thay vì chỉ suy luận từ `systemctl --user start`.
+
+### Reboot thật — không còn là suy luận
+
+`sudo reboot` thật trên `bera-saas`, dò lại kết nối bằng vòng lặp `ssh` (không phải một lần
+đoán), rồi dò tiếp tới khi đủ 4 container `Up`:
+
+```
+Trước reboot: up 1 giờ 18 phút
+Sau khi máy dậy lại: uptime 0 phút — poll SSH thành công lần đầu sau ~vài chục giây
+4 container: Up 11–17 giây SAU khi máy vừa dậy — không ai chạy tay lệnh nào
+curl https://bera-saas.tailfb7b8c.ts.net/api/v1/health → {"status":"ok",...}
+curl https://bera-saas.tailfb7b8c.ts.net/ → HTTP 200
+tailscale serve status → cả 2 tuyến (/  và /api/v1) còn nguyên, không cần cấu hình lại
+```
+
+**Đây là bằng chứng, không phải suy đoán** — đúng tinh thần kỷ luật #5/#15 của dự án
+(xác nhận bằng lệnh thật, đo đúng thứ người dùng thật chạm vào).
+
+### Giao diện giám sát — Cockpit
+
+Cài `cockpit` + `cockpit-podman` (+ `cockpit-system`, kho AppStream/BaseOS chính thức
+AlmaLinux — không phải bên thứ ba). Xem được CPU/RAM/đĩa/mạng/log hệ thống/dịch vụ systemd,
+và **quản lý trực tiếp 4 container Podman qua web** (start/stop/xem log từng container) nhờ
+plugin `cockpit-podman`.
+
+**Truy cập:** `https://bera-saas.tailfb7b8c.ts.net:9090` — đăng nhập bằng đúng tài khoản hệ
+thống `chain` (cùng mật khẩu SSH/sudo). Đã xác nhận **CHỈ** lộ qua Tailscale, không qua WiFi
+công cộng (`firewall-cmd --zone=public --query-port=9090/tcp` → `no`, đúng khuôn bảo vệ đã áp
+cho SSH/mọi cổng khác trên máy này).
+
+### 🔴 Quyết định GĐ tự chốt
+
+1. **Chưa dựng Uptime Kuma/dashboard uptime riêng cho app** — Cockpit trả lời đúng câu hỏi
+   "theo dõi SERVER" đã hỏi (CPU/RAM/đĩa/container), nhưng KHÔNG giám sát uptime của chính
+   `https://.../api/v1/health` theo thời gian, và KHÔNG đóng được lỗ hổng "dead-man's switch
+   chạy trên chính máy đang được giám sát" đã ghi ở §7dz. Nếu Chain muốn thêm, đây là bước
+   kế tiếp hợp lý (Uptime Kuma nhận `PING_URL` thay `backup_deadman.sh` đang thiếu) — chưa tự
+   làm vì đây là thêm một dịch vụ mới, chưa được hỏi rõ có cần không.
+2. **Không đổi cách đăng nhập Cockpit** (không dựng tài khoản riêng) — dùng thẳng tài khoản
+   hệ thống `chain` đã có, tránh nhân thêm một bộ thông tin đăng nhập mới phải nhớ/bảo vệ.
+
+### 🚧 Còn lại
+
+Server độc lập + giám sát cơ bản coi như **đóng**. Còn 2 nợ cũ chưa đổi (xem §7dz): backup
+chưa có bản sao ngoài máy, dead-man's switch chưa nối dịch vụ ngoài — Uptime Kuma ở trên có
+thể giải quyết cả hai cùng lúc nếu Chain muốn làm tiếp.
