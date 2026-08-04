@@ -213,10 +213,21 @@ podman exec pharmacy-os-prod_frontend_1 grep -rl 'tailfb7b8c' /app/.next   # ph�
 ⚠️ `nohup cloudflared … &` **không sống sót** khi phiên SSH đóng — đã vấp 04/08, tiến
 trình chết im lặng trong khi log cũ vẫn còn nên tưởng đang chạy. Phải là systemd unit.
 
+Unit có thêm **`ExecStartPre`** xoay log mỗi lần khởi động (giữ 1 bản `.log.1`):
+```ini
+ExecStartPre=/bin/sh -c 'mv -f %h/cloudflared-demo.log %h/cloudflared-demo.log.1 2>/dev/null || true'
+```
+Không có dòng này thì log dồn qua nhiều lần boot, và `link-demo` sẽ đọc trúng URL của
+**lần boot trước** (đã chết) trong khoảng 15–35s tunnel mới chưa đăng ký xong — link
+đúng định dạng, không có gì gợn, gửi cho khách xong mới biết hỏng (§7ef).
+
 **Lấy link demo hiện tại:**
 ```bash
-link-demo          # ~/.local/bin/link-demo — in URL + trạng thái unit + mã HTTP
+link-demo          # trên bera-saas — nguồn: scripts/link-demo.sh trong repo
+link-demo          # trên máy dev Mint — ~/.local/bin/link-demo, tự SSH sang server
 ```
+Script **chờ tới khi link thật sự trả HTTP 200** rồi mới in (tối đa 90s), không in ra
+link chưa kiểm chứng. Vừa reboot mà gõ ngay thì thấy `⏳ đang chờ đường hầm lên`.
 
 🔴 **URL ĐỔI mỗi lần cloudflared khởi động lại** (`trycloudflare.com` cấp ngẫu nhiên).
 `Restart=always` nghĩa là mạng chập một nhịp cũng đổi; reboot cũng đổi. **Đây là lý do
