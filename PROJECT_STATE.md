@@ -10679,3 +10679,24 @@ sau đọc log không tưởng là đang lỗi.
 **Việc lớn hơn cái script:** tài khoản `beradillc@gmail.com` — nơi `rclone` đang đồng bộ **toàn
 bộ Vault công ty** lên Drive — trước hôm nay **chưa bật 2FA**. Cái script chỉ là cái cớ làm lộ ra
 điều đó. Nay đã bật.
+
+**Cập nhật 21:01 — Chain chốt BỎ thư nhịp tim.** Yêu cầu: gửi ngay 1 thư mẫu để xem định dạng,
+sau đó **chỉ gửi khi có thông báo mới**; vẫn giữ nhịp kiểm 30 phút.
+
+| Thay đổi | Chi tiết |
+|---|---|
+| Bỏ thư nhịp tim hàng tuần | Xoá khối `NHIPTIM`; hộp thư im lặng hoàn toàn cho tới khi có tin mới |
+| Thay bằng dấu thời gian | Mỗi lượt chạy xong ghi `lastrun.txt` — kiểm sống không cần thư |
+| Thêm lệnh `canhtin-conhong` | `scripts/canhtin_conhong.sh` → in timer · mốc kế tiếp · lần chạy cuối · số tin đã theo dõi; **quá 90 phút không chạy ⇒ báo BẤT THƯỜNG** (mốc 30' + `RandomizedDelaySec` 120s) |
+| **Giữ nguyên** thư báo động khi nguồn hỏng | Nó chỉ kêu khi thật sự có chuyện, không phải thư định kỳ |
+
+Thư mẫu đã gửi: chạy `tom_tat()` **thật** trên thông báo **thật** `260/TB-SGDĐT` qua đúng đường
+ống các thư sau sẽ dùng, kèm khối đầu ghi rõ *"THƯ MẪU — không phải tin mới"*.
+
+Kiểm chứng sau khi bỏ nhịp tim: `systemctl --user start` → `Result=success`, log
+`[OK] không có tin mới`, **không thư nào được gửi**. `canhtin-conhong` → `✅ BÌNH THƯỜNG`,
+mốc kế tiếp `21:30:15`.
+
+⚠️ **Đánh đổi Chain đã chấp nhận:** không còn thư định kỳ nghĩa là **im lặng có hai nghĩa** —
+chưa có tin, hay script đã chết. `canhtin-conhong` trả lời được câu đó, nhưng phải **chủ động
+gõ**, không tự nhắc. Đây là lựa chọn có ý thức, không phải thiếu sót.

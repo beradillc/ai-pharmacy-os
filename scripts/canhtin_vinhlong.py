@@ -71,8 +71,7 @@ TU_KHOA = [
 
 STATE = Path.home() / ".local/state/canhtin-vinhlong"
 SEEN = STATE / "seen.txt"
-NHIPTIM = STATE / "nhiptim.txt"  # lần cuối gửi mail nhịp tim
-NHIPTIM_GIAY = 7 * 24 * 3600
+LASTRUN = STATE / "lastrun.txt"  # dấu thời gian lượt chạy thành công gần nhất
 
 # Trang này có HAI kiểu markup khác nhau, phát hiện lúc chạy thử 04/08:
 #   - Mục tin tức     : <a href="..." title="Tiêu đề"><img ...></a>  ⇒ tiêu đề ở thuộc tính
@@ -258,6 +257,7 @@ def main() -> int:
         # Lần chạy đầu: ghi nhận toàn bộ tin đang có làm mốc, KHÔNG dội mail 30 tin cũ.
         tat_ca = [u for _, _, u, _ in moi] + bo_qua
         ghi_seen(tat_ca)
+        LASTRUN.write_text(str(time.time()))
         print(f"[MỐC ĐẦU] ghi nhận {len(tat_ca)} tin đang có, không gửi mail")
         return 0
 
@@ -271,24 +271,19 @@ def main() -> int:
         gui_mail(tieu_de_mail, than_mail(moi))
         # CHỈ ghi sau khi gửi xong — gui_mail ném lỗi thì không tới dòng này, vòng sau thử lại.
         ghi_seen([u for _, _, u, _ in moi] + bo_qua)
+        LASTRUN.write_text(str(time.time()))
         print(f"[GỬI] {len(moi)} tin mới, bỏ qua {len(bo_qua)} tin không liên quan")
         return 0
 
     if bo_qua:
         ghi_seen(bo_qua)
 
-    # Nhịp tim: im lặng có hai nghĩa — không có tin, hay script đã chết?
-    lan_cuoi = float(NHIPTIM.read_text()) if NHIPTIM.exists() else 0.0
-    if time.time() - lan_cuoi > NHIPTIM_GIAY:
-        gui_mail(
-            "✅ Canh tin Vĩnh Long: vẫn đang chạy, chưa có tin tuyển dụng mới",
-            "Thư nhịp tim hàng tuần — script vẫn sống và vẫn đang canh.\n\n"
-            f"Đã theo dõi {len(doc_seen())} tin (đều là tin cũ).\n"
-            "Nguồn: " + ", ".join(t for _, t, _ in NGUON) + "\n\n"
-            "Không nhận được thư này quá 2 tuần nghĩa là script đã chết — báo Chain kiểm tra.\n",
-        )
-        NHIPTIM.write_text(str(time.time()))
-        print("[NHỊP TIM] đã gửi")
+    # Chain chốt 04/08: KHÔNG gửi thư nhịp tim hàng tuần. Chỉ gửi khi có tin mới.
+    # Đổi lại, mỗi lượt chạy thành công đóng dấu thời gian vào lastrun.txt — hộp thư im
+    # lặng thì vẫn kiểm được script còn sống hay không bằng `canhtin-conhong`, không cần
+    # thư định kỳ. Thư báo động khi NGUỒN HỎNG vẫn giữ (khối `if hong` ở trên): nó chỉ
+    # kêu khi thật sự có chuyện, không phải thư định kỳ.
+    LASTRUN.write_text(str(time.time()))
 
     print(f"[OK] không có tin mới (bỏ qua {len(bo_qua)} tin không liên quan)")
     return 0
