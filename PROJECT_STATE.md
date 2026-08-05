@@ -10885,3 +10885,53 @@ script hoặc lệnh `ssh` không đăng nhập phải ghi ĐƯỜNG DẪN TUY�
 
 `rasoat` nay có thêm 2 mục: `ttyd-claude.service` và **"ttyd chỉ trong tailnet"** — mục sau báo đỏ
 nếu cổng 7681 chuyển sang nghe `0.0.0.0`. Tổng: **28 đạt · 0 hỏng · 1 không đo được**.
+
+---
+
+## 7el. 🔎 Rà soát chuyển giao — 73 file công trình suýt mất (2026-08-05, 08:50)
+
+Chain mở phiên server qua Termius rồi yêu cầu GĐ rà soát việc chuyển giao dữ liệu.
+
+### Phần đã chuyển: ĐẠT, kiểm bằng đối chiếu từng file
+
+| Hạng mục | Bằng chứng |
+|---|---|
+| Nội dung Vault | **236/236 file khớp `md5sum`** Mint ↔ server |
+| Lịch sử | 61 commit · `fsck` sạch · `bundle verify` đạt |
+| Pharmacy | Mint = server = GitHub = `ff4222b` |
+
+### 🔴 Nhưng rà rộng ra thì chuyển giao CHƯA ĐỦ để xoá máy
+
+Phạm vi làm sáng nay là *"chuyển Vault sang server"* — đúng phạm vi đó thì trọn vẹn. Nhưng câu hỏi
+thật là *"xoá Mint được chưa"*, và câu trả lời khác hẳn:
+
+| Thứ bỏ sót | Dung lượng | Vì sao lọt |
+|---|---|---|
+| **73 file công trình** trên `Desktop` + `Downloads` — bảng KL Kè Láng Thé, bản vẽ PDF, HSTT đợt 01/04/05, báo cáo tuần, tồn kho CSV | **168 MB** | Không nằm trong Vault ⇒ không trong git ⇒ `rclone` (chỉ đồng bộ thư mục `Vault`) không thấy |
+| Khoá `id_ed25519_ai_pharmacy_os` | 1 KB | Repo trên server **chưa từng có `remote`** ⇒ mất khoá là **không máy nào đẩy GitHub được nữa**, và không ai biết cho tới lần đẩy sau |
+| Bộ nhớ Claude (3 file) | vài KB | Nằm ở `~/.claude`, ngoài Vault |
+| Thunderbird · Mozilla · 4 script rời | 465 MB | Dữ liệu cá nhân, ngoài phạm vi ban đầu |
+
+### Đã xử lý (Chain duyệt toàn bộ)
+
+| Việc | Kiểm chứng |
+|---|---|
+| `Desktop` + `Downloads` → `/srv/vault/ngoai-vault/` | **100/100 file khớp `md5sum`**, 168 MB |
+| Khoá SSH + `~/.ssh/config` + `remote origin` cho repo trên server | ✅ thiếu host key GitHub, đã thêm |
+| **Server đẩy được lên GitHub** | Ép ghi thật bằng thẻ `moc-chuyen-giao-2026-08-05`, đọc ngược từ GitHub thấy `refs/tags/...` |
+| Bộ nhớ Claude → `~/.claude/projects/-srv-vault-Vault/memory/` | 3 file |
+| `.thunderbird` · `.mozilla` · 4 script → `/home/chain/mint-canhan/` | 7.647 file · 465 MB |
+
+🔴 **Lỗ thứ hai, bắt được ngay sau khi cứu:** `dongbo-vault-drive` chỉ đẩy `/srv/vault/Vault`, **không
+đẩy `ngoai-vault`**. Nghĩa là 168 MB vừa cứu sẽ chỉ có **đúng một bản trên server** — hỏng đúng mục
+đích cứu nó. Đã vá: thêm nhánh ③ đẩy `ngoai-vault` sang `vault sever/_ngoai-vault`, và mã thoát
+gộp cả `$MA_NGOAI` để lỗi nhánh mới không bị nuốt.
+
+**Bài học: "đã chuyển xong X" chỉ đúng trong phạm vi X.** Câu hỏi cần trả lời không phải *"X đã sang
+chưa"* mà *"xoá máy nguồn thì mất gì"* — hai câu đó cho hai câu trả lời khác nhau, và câu thứ hai
+mới là câu Chain thật sự hỏi. Cùng họ với kỷ luật #16: đừng tin sổ nợ về việc một tính năng đã có
+tới đâu, đi `grep` thực tế.
+
+⚠️ **`Everything up-to-date` KHÔNG chứng minh đẩy được.** Nó chỉ chứng minh nối được và không có gì
+để đẩy. Phải ép một lượt **ghi thật** (thẻ mốc) rồi **đọc ngược từ GitHub** mới là bằng chứng —
+kỷ luật #14 và #23: cổng phải đỏ được, và hai vế phép so phải từ hai nguồn độc lập.

@@ -43,16 +43,28 @@ fi
     --stats-one-line --stats 1m 2>&1 | sed 's/^/  /'
 MA_SYNC=${PIPESTATUS[0]}
 
-# ③ Bundle → cùng thư mục đó, để khôi phục chỉ cần lấy một chỗ.
+# ③ Hồ sơ ngoài Vault (Desktop/Downloads cứu từ máy Mint 05/08) → cùng thư mục.
+#    Chúng KHÔNG nằm trong git nên bundle không chứa; không đẩy riêng thì 168 MB
+#    hồ sơ công trình chỉ có đúng một bản trên server — hỏng đúng mục đích cứu nó.
+if [ -d /srv/vault/ngoai-vault ]; then
+    "$RCLONE" sync /srv/vault/ngoai-vault "$DICH/_ngoai-vault" \
+        --exclude "*.tmp" --exclude ".DS_Store" \
+        --transfers 4 --checkers 8 --fast-list --stats-one-line --stats 1m 2>&1 | sed 's/^/  /'
+    MA_NGOAI=${PIPESTATUS[0]}
+else
+    MA_NGOAI=0
+fi
+
+# ④ Bundle → cùng thư mục đó, để khôi phục chỉ cần lấy một chỗ.
 "$RCLONE" copy "$BUNDLE" "$DICH/_lichsu/" --stats-one-line 2>&1 | sed 's/^/  /'
 MA_BUNDLE=${PIPESTATUS[0]}
 
-if [ "$MA_SYNC" -eq 0 ] && [ "$MA_BUNDLE" -eq 0 ]; then
+if [ "$MA_SYNC" -eq 0 ] && [ "$MA_BUNDLE" -eq 0 ] && [ "$MA_NGOAI" -eq 0 ]; then
     date +%s > /srv/vault/.dongbo_lancuoi
     echo "=== $(date '+%F %T') XONG ==="
     exit 0
 fi
 # Mã thoát đọc từ PIPESTATUS chứ không phải $? — pipe qua `sed` sẽ nuốt mã của rclone
 # và mọi lượt đều báo thành công (kỷ luật #8 của dự án).
-echo "=== $(date '+%F %T') LỖI: sync=$MA_SYNC bundle=$MA_BUNDLE ==="
+echo "=== $(date '+%F %T') LỖI: sync=$MA_SYNC ngoai=$MA_NGOAI bundle=$MA_BUNDLE ==="
 exit 1
