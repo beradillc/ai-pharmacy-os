@@ -1,0 +1,12 @@
+[Unit]
+Description=Dong bo Vault len Drive moi gio
+
+[Timer]
+OnCalendar=hourly
+# Persistent CHỈ có tác dụng với OnCalendar — đã vấp 04/08 (§7eh).
+Persistent=true
+OnBootSec=5min
+RandomizedDelaySec=180
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,23 @@
+[Unit]
+# Phiên Claude Code sẵn sàng ngay khi máy khởi động (Chain chốt 05/08):
+# SSH vào là gõ `lam` rồi làm luôn, không phải khởi động gì.
+Description=Phien Claude Code san sang trong tmux
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+WorkingDirectory=/srv/vault/Vault
+# Chạy trong Vault, KHÔNG chạy trong ~/ai-pharmacy-os: toàn quyền mà đặt ngay
+# cạnh CSDL tenant thật là bán kính thiệt hại rộng không cần thiết. Muốn làm
+# Pharmacy thì mở phiên riêng, có ý thức.
+#
+# `exec bash -l` phía sau: Claude thoát thì cửa sổ tmux vẫn còn shell, không sập
+# phiên — nếu sập thì lần sau `lam` sẽ tạo phiên mới ở thư mục mặc định, sai chỗ.
+ExecStart=/usr/bin/tmux new-session -d -s bera -c /srv/vault/Vault "claude --dangerously-skip-permissions; exec bash -l"
+ExecStop=/usr/bin/tmux kill-session -t bera
+
+[Install]
+WantedBy=default.target

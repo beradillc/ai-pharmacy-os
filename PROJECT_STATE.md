@@ -10775,3 +10775,68 @@ Chain. `canhtin-vinhlong.env` nay chỉ còn `MAIL_TO`, không nhân bản App P
 
 Máy rất thoáng: đĩa mới dùng 5%, RAM dư 2,5 GB, tải gần như bằng 0. Không có nút thắt tài
 nguyên nào.
+
+---
+
+## 7ej. 🗄️ Vault lên server + Drive "vault sever" + phiên Claude tự khởi động (2026-08-05, 07:20)
+
+Chain chốt: cài **Fedora** thay Mint cho máy gõ · Vault trên server ở **phân vùng khác** PharmaOS ·
+đẩy lên Drive **thư mục ngang hàng** tên `vault sever` · máy khởi động là có sẵn phiên Claude toàn
+quyền để vào làm luôn · bảo đảm đủ quy tắc `.md`.
+
+### Đã dựng
+
+| Hạng mục | Kết quả |
+|---|---|
+| Kho lịch sử Vault | `/srv/vault/vault.git` — **61 commit**, trên `sda3` (`/`), **khác phân vùng** PharmaOS (`sda5`) |
+| Bản làm việc | `/srv/vault/Vault`, cây sạch, đã tin cậy workspace cho Claude |
+| Hook tự cập nhật | `post-receive` → đẩy vào bare là bản làm việc tự `pull --ff-only` |
+| Drive | `beradillc_gdrive:vault sever` — **ngang hàng** `Vault`, 235 file, 47,6 MiB |
+| Lịch sử trên Drive | `vault sever/_lichsu/vault.bundle` — **38,6 MB, `bundle verify` đạt** |
+| Đồng bộ định kỳ | `dongbo-vault-drive.timer`, mỗi giờ, `Persistent=true` |
+| Phiên Claude | `claude-phien.service` → tmux `bera` chạy `claude --dangerously-skip-permissions` tại `/srv/vault/Vault`. Gõ **`lam`** là vào |
+| Rà soát | lệnh **`rasoat`** — 27 mục, mã thoát ≠0 nếu có mục đỏ |
+| Quy tắc `.md` | **6/6 khớp checksum** với Mint (5 vai + sổ điều phối) + `CLAUDE.md` Pharmacy khớp riêng |
+
+### Quyết định thiết kế đáng ghi
+
+| Quyết định | Vì sao |
+|---|---|
+| Drive **thư mục riêng** `vault sever`, không ghi chung `Vault` | Hai máy cùng `rclone sync` một thư mục là hai bên xoá file của nhau — `sync` xoá mọi thứ ở đích không có ở nguồn |
+| Lịch sử đẩy dạng **1 file bundle**, không đẩy `.git/` | `.git` 37 MB nhưng hàng nghìn file nhỏ, Drive quét lại mỗi lượt. Bundle = 1 file, `git clone vault.bundle` khôi phục 100% |
+| `bundle verify` **trước khi** đẩy | Bundle hỏng mà vẫn đẩy thì ngày cần khôi phục mới biết — đúng lúc không sửa được nữa |
+| Hook dùng `pull --ff-only`, **không** `checkout -f` | Chain sẽ làm việc trực tiếp trên server; ép checkout là xoá trắng việc chưa commit. Thà pull thất bại có báo |
+| Phiên Claude chạy trong **Vault**, không trong `~/ai-pharmacy-os` | Toàn quyền mà đặt cạnh CSDL tenant thật là bán kính thiệt hại rộng không cần thiết |
+| `rclone` cài **binary tĩnh** vào `~/.local/bin` | Không phải mở `dnf` trong sudoers — `dnf` là đường lên root (§7eg) |
+
+### 🔴 BA lần đo sai trong phiên, cả ba tôi tự phát hiện — ghi lại vì cùng một họ
+
+| # | Kết luận sai ban đầu | Sự thật | Vì sao sai |
+|---|---|---|---|
+| 1 | "Máy không có swap" | Có 8,9 GB (zram 1,8 + đĩa 7) | `swapon` không nằm trong PATH của shell không đăng nhập |
+| 2 | "Mint 150 file, server 148 — thiếu 7 file pháp luật" | **148 = 148**, chỉ 2 file cố ý `.gitignore` | `git ls-files` bọc tên tiếng Việt trong ngoặc kép ⇒ `comm` so trượt |
+| 3 | "Claude thoát ngay, phiên hỏng" | Claude **đang chạy**, PID 43437, 300 MB | `pane_current_command` báo tiến trình vỏ, không báo tiến trình con |
+| 4 | "sudoers NOPASSWD KHÔNG thấy" (trong chính `rasoat`) | Vẫn còn hiệu lực | `/etc/sudoers.d/` là `0750 root:root` ⇒ `[ -f ]` thất bại vì **thiếu quyền**, không phải thiếu file |
+
+Cả bốn cùng một hình dạng: **một phép đo trả về kết quả trông hợp lệ nhưng đo sai thứ**. Kỷ luật #15
+gọi đúng tên: *"phải đo cả chính phép đo"*. Ca #1 và #2 lộ ra vì **kết quả tự mâu thuẫn** (`free` vs
+`swapon`; 148+7≠150) — dấu hiệu đáng tin nhất để biết mình đang đo sai. Ca #4 đáng nói nhất: nó nằm
+trong chính script rà soát tôi vừa viết để phân biệt *"hỏng"* với *"không đo được"*, và tôi vi phạm
+đúng nguyên tắc đó. Đã sửa: đo bằng **hành vi** (`sudo -n` chạy thử) thay vì sự tồn tại của file.
+
+⚠️ **`tmux capture-pane` làm SẬP tmux server trên máy này** (tmux `next-3.4`, vết đổ vỡ ở
+`cmd_capture_pane_exec`, hỏng bộ nhớ trong libc `free`). Dùng `tmux list-panes` để xem trạng thái,
+**đừng dùng `capture-pane`** — nó giết luôn phiên đang chạy của Chain.
+
+### Kết quả `rasoat` lúc 07:22
+
+**26 đạt · 0 hỏng · 1 không đo được** (GitHub — cần `fetch` mạng nên để ngoài vòng nhanh).
+
+### Nợ còn lại
+
+| Việc | Mức |
+|---|---|
+| `rclone` đang dùng **client_id dùng chung của rclone**, Google sẽ ngưng **trong năm 2026** ⇒ đồng bộ Drive sẽ chết | 🟠 có hạn, chưa gấp |
+| Chưa reboot thật để chứng minh `claude-phien` tự lên sau khởi động | 🟠 chưa kiểm |
+| Mint vẫn là nguồn `rclone` cho thư mục `Vault` cũ — cài Fedora là nó dừng | 🟠 Chain quyết |
+| Tên miền riêng | 🔴 nút thắt số 1, ngày thứ ba |
