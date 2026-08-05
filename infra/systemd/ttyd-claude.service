@@ -1,0 +1,30 @@
+[Unit]
+# Mở phiên Claude Code qua TRÌNH DUYỆT (Chain chốt 05/08): bật máy chủ lên là điện
+# thoại vào thẳng phiên đang làm dở, không cần cài Termux, dùng bàn phím quen.
+#
+# 🔒 CHỈ nghe trên IP tailnet (100.76.165.120), KHÔNG nghe trên WiFi/LAN.
+#    Đây là một cái shell mở qua trình duyệt — ai vào được là vào được máy với
+#    quyền của `chain`, mà phiên `lam` lại chạy Claude ở chế độ không hỏi xác nhận.
+#    Hai lớp chặn: (1) phải ở trong tailnet, (2) phải biết mật khẩu.
+# 🚫 TUYỆT ĐỐI KHÔNG đưa cổng này ra Cloudflare như link demo — đó là mở shell cho
+#    cả internet. Link demo công khai được vì nó chỉ là ứng dụng có màn đăng nhập.
+Description=Phien Claude Code qua trinh duyet (chi trong tailnet)
+After=network-online.target claude-phien.service
+Wants=network-online.target
+Requires=claude-phien.service
+
+[Service]
+Type=simple
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=%h/.config/ttyd.env
+WorkingDirectory=/srv/vault/Vault
+# -W cho phép gõ (mặc định ttyd chỉ đọc). `lam` nối vào tmux `bera` đang chạy sẵn,
+# nên đóng trình duyệt KHÔNG làm mất việc — mở lại là thấy đúng chỗ đang dở.
+ExecStart=%h/.local/bin/ttyd -i 100.76.165.120 -p 7681 -W -t fontSize=16 -t 'theme={"background":"#1e1e1e"}' -c ${TTYD_USER}:${TTYD_PASS} %h/.local/bin/lam
+Restart=always
+RestartSec=5
+StandardOutput=append:%h/ttyd.log
+StandardError=append:%h/ttyd.log
+
+[Install]
+WantedBy=default.target

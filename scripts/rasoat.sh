@@ -72,7 +72,7 @@ else d "Bundle lịch sử" xau "chưa sinh bundle"; fi
 
 echo
 echo "── TỰ ĐỘNG ──"
-for u in pharmacy-os.service cloudflared-demo.service claude-phien.service \
+for u in pharmacy-os.service cloudflared-demo.service claude-phien.service ttyd-claude.service \
          canhmay.timer canhtin-vinhlong.timer dongbo-vault-drive.timer; do
   T=$(systemctl --user is-active "$u" 2>/dev/null)
   E=$(systemctl --user is-enabled "$u" 2>/dev/null)
@@ -105,6 +105,13 @@ if sudo -n timedatectl status >/dev/null 2>&1; then
 else
   d "sudoers NOPASSWD hẹp" xau "lệnh trong danh sách KHÔNG chạy được"
 fi
+# ttyd là SHELL mở qua trình duyệt — phải chắc nó chỉ nghe trên tailnet, không
+# nghe 0.0.0.0. Nghe sai chỗ là mở shell ra WiFi cho cả nhà/hàng xóm.
+NGHE=$(/usr/sbin/ss -tln 2>/dev/null | grep -c "100\.76\.165\.120:7681")
+RONG=$(/usr/sbin/ss -tln 2>/dev/null | grep -cE "(0\.0\.0\.0|\*):7681")
+if [ "$RONG" -gt 0 ]; then d "ttyd chỉ trong tailnet" xau "ĐANG NGHE RỘNG — lộ ra ngoài tailnet"
+elif [ "$NGHE" -gt 0 ]; then d "ttyd chỉ trong tailnet" ok "chỉ 100.76.165.120:7681"
+else d "ttyd chỉ trong tailnet" mu "không thấy cổng 7681 đang nghe"; fi
 tailscale status >/dev/null 2>&1 && d "Tailscale" ok "$(tailscale ip -4 2>/dev/null | head -1)" || d "Tailscale" xau "không đọc được"
 systemctl is-active --quiet firewalld && d "firewalld" ok "active" || d "firewalld" xau "không chạy"
 systemctl is-active --quiet fail2ban && d "fail2ban" ok "active" || d "fail2ban" mu "không chạy"

@@ -10840,3 +10840,48 @@ trong chính script rà soát tôi vừa viết để phân biệt *"hỏng"* v�
 | Chưa reboot thật để chứng minh `claude-phien` tự lên sau khởi động | 🟠 chưa kiểm |
 | Mint vẫn là nguồn `rclone` cho thư mục `Vault` cũ — cài Fedora là nó dừng | 🟠 Chain quyết |
 | Tên miền riêng | 🔴 nút thắt số 1, ngày thứ ba |
+
+---
+
+## 7ek. 📱 Mở phiên Claude Code bằng TRÌNH DUYỆT điện thoại (2026-08-05, 08:35)
+
+Chain hỏi vì sao không thấy phiên `bera` trong app Claude Code trên điện thoại.
+
+**Trả lời thẳng: không thể.** App Claude Code chạy phiên trong hạ tầng của Anthropic; `bera` là một
+tiến trình `tmux` nằm trên máy `bera-saas` trong nhà Chain. Không có cơ chế nối hai thứ đó — đây là
+giới hạn kiến trúc, không phải thiếu cấu hình. Ghi lại để phiên sau không đi tìm cách "kết nối".
+
+**Làm được vế còn lại:** bật máy chủ → mở trình duyệt điện thoại → thấy ngay phiên đang làm dở.
+
+| Hạng mục | Cấu hình |
+|---|---|
+| Công cụ | `ttyd` 1.7.7, binary tĩnh vào `~/.local/bin` — **không dùng `dnf`**, không mở lỗ sudo |
+| Địa chỉ | `http://100.76.165.120:7681` |
+| Lệnh chạy | `~/.local/bin/lam` ⇒ nối vào tmux `bera` **đang chạy sẵn**, đóng trình duyệt không mất việc |
+| Tự khởi động | `ttyd-claude.service`, `Requires=claude-phien.service` |
+| Bí mật | `~/.config/ttyd.env` (0600), mật khẩu sinh ngẫu nhiên 14 ký tự |
+
+### 🔒 Hai lớp chặn, đã kiểm bằng hành vi chứ không tin tham số
+
+`ttyd` là **một cái shell mở qua trình duyệt** — ai vào được là vào được máy với quyền `chain`, mà
+phiên `lam` lại chạy Claude ở chế độ không hỏi xác nhận. Nên phải chứng minh, không phải khai báo:
+
+| Đường vào | Kết quả đo |
+|---|---|
+| `http://192.168.1.6:7681` (WiFi/LAN) | **000 — không nối được** |
+| `http://127.0.0.1:7681` | **000 — không nối được** |
+| `http://100.76.165.120:7681` không mật khẩu | **401** |
+| `http://100.76.165.120:7681` có mật khẩu | **200** |
+| `/usr/sbin/ss -tln` | `LISTEN 100.76.165.120:7681` — **không** `0.0.0.0` |
+
+🚫 **TUYỆT ĐỐI KHÔNG đưa cổng 7681 ra Cloudflare** như link demo. Link demo công khai được vì nó là
+ứng dụng có màn đăng nhập; cổng này là shell.
+
+⚠️ **Lại một lần `ss` báo rỗng trong khi `curl` trả 401** — số tự mâu thuẫn. Nguyên nhân **giống hệt
+ca `swapon` sáng nay**: `ss` nằm ở `/usr/sbin`, không có trong PATH của shell không đăng nhập. Đây
+là lần thứ hai cùng một nguyên nhân trong một ngày ⇒ **quy tắc: mọi lệnh chẩn đoán hệ thống trong
+script hoặc lệnh `ssh` không đăng nhập phải ghi ĐƯỜNG DẪN TUYỆT ĐỐI** (`/usr/sbin/ss`,
+`/usr/sbin/swapon`), đừng dựa vào PATH.
+
+`rasoat` nay có thêm 2 mục: `ttyd-claude.service` và **"ttyd chỉ trong tailnet"** — mục sau báo đỏ
+nếu cổng 7681 chuyển sang nghe `0.0.0.0`. Tổng: **28 đạt · 0 hỏng · 1 không đo được**.
